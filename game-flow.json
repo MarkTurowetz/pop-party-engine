@@ -4,8 +4,8 @@
       "id": "lobby",
       "name": "Lobby Game State",
       "nodePosition": {
-        "x": 241,
-        "y": 124
+        "x": 402,
+        "y": 70
       },
       "startNodePosition": {
         "x": 849,
@@ -16,7 +16,7 @@
         "y": 1808
       },
       "entryTargetActionId": "lobby-action-mqojohry",
-      "nextStateTargetId": "crafting-game-state",
+      "nextStateTargetId": "route-action-mruxdo2o-zcgo5",
       "actions": [
         {
           "id": "lobby-countdown-complete",
@@ -201,8 +201,8 @@
       "id": "intro",
       "name": "Game Intro Game State",
       "nodePosition": {
-        "x": 625,
-        "y": 310
+        "x": 402,
+        "y": 518
       },
       "startNodePosition": {
         "x": 715,
@@ -278,8 +278,8 @@
       "id": "round-intro-game-state",
       "name": "Round Intro Game State",
       "nodePosition": {
-        "x": 625,
-        "y": 550
+        "x": 402,
+        "y": 742
       },
       "startNodePosition": {
         "x": 715,
@@ -355,8 +355,8 @@
       "id": "crafting-game-state",
       "name": "Crafting Game State",
       "nodePosition": {
-        "x": 625,
-        "y": 790
+        "x": 402,
+        "y": 966
       },
       "startNodePosition": {
         "x": 742,
@@ -709,8 +709,8 @@
       "id": "presentation-game-state",
       "name": "Presentation Game State",
       "nodePosition": {
-        "x": 625,
-        "y": 1030
+        "x": 402,
+        "y": 1190
       },
       "startNodePosition": {
         "x": 715,
@@ -869,8 +869,8 @@
       "id": "scoreboard-game-state",
       "name": "Scoreboard Game State",
       "nodePosition": {
-        "x": 625,
-        "y": 1270
+        "x": 402,
+        "y": 1414
       },
       "startNodePosition": {
         "x": 715,
@@ -946,8 +946,8 @@
       "id": "post-game-state",
       "name": "Post Game State",
       "nodePosition": {
-        "x": 625,
-        "y": 2470
+        "x": 592,
+        "y": 2188
       },
       "startNodePosition": {
         "x": 715,
@@ -1023,8 +1023,8 @@
       "id": "writing-moment",
       "name": "Writing Moment",
       "nodePosition": {
-        "x": 835,
-        "y": 1990
+        "x": 192,
+        "y": 1964
       },
       "startNodePosition": {
         "x": 715,
@@ -1172,8 +1172,8 @@
       "id": "voice-moment",
       "name": "Voice Moment",
       "nodePosition": {
-        "x": 415,
-        "y": 1990
+        "x": 612,
+        "y": 1964
       },
       "startNodePosition": {
         "x": 715,
@@ -1184,7 +1184,7 @@
         "y": 2292
       },
       "entryTargetActionId": "voice-moment-action-mqpsey1p",
-      "nextStateTargetId": "voting-moment",
+      "nextStateTargetId": "post-game-state",
       "actions": [
         {
           "id": "voice-mic-access",
@@ -1341,8 +1341,8 @@
       "id": "voting-moment",
       "name": "Voting Moment",
       "nodePosition": {
-        "x": 625,
-        "y": 2230
+        "x": 212,
+        "y": 2188
       },
       "startNodePosition": {
         "x": 715,
@@ -1353,7 +1353,7 @@
         "y": 3562
       },
       "entryTargetActionId": "voting-moment-action-mqpt7alu",
-      "nextStateTargetId": "post-game-state",
+      "nextStateTargetId": "route-action-mruxeq15-5gd78",
       "actions": [
         {
           "id": "voting-show-cards",
@@ -1599,18 +1599,18 @@
       },
       "nextTargetActionId": "",
       "nodePosition": {
-        "x": 595,
-        "y": 1510
+        "x": 372,
+        "y": 1638
       },
       "subActions": [],
-      "variable": "activePlayerCount",
+      "variable": "g.test",
       "valueType": "int",
       "branches": [
         {
           "id": "legacy-hit",
           "type": "code",
           "value": "3",
-          "code": "x <= 3",
+          "code": "x == 0",
           "targetNodeId": "writing-moment",
           "targetActionId": "writing-moment"
         },
@@ -1619,8 +1619,8 @@
           "type": "noMatch",
           "value": "",
           "code": "x < 3",
-          "targetNodeId": "writing-moment",
-          "targetActionId": "writing-moment"
+          "targetNodeId": "voice-moment",
+          "targetActionId": "voice-moment"
         }
       ],
       "routeNodeType": "action",
@@ -1637,8 +1637,8 @@
       },
       "nextTargetActionId": "",
       "nodePosition": {
-        "x": 625,
-        "y": 2950
+        "x": 402,
+        "y": 2636
       },
       "subActions": [],
       "jumpTargetActionId": "lobby",
@@ -1656,14 +1656,52 @@
       },
       "nextTargetActionId": "",
       "nodePosition": {
-        "x": 625,
-        "y": 2710
+        "x": 622,
+        "y": 2412
       },
       "subActions": [],
       "isShown": false,
       "instant": false,
       "routeNodeType": "action",
       "nextTargetNodeId": "route-action-mqrd9i6n-8mb29"
+    },
+    {
+      "id": "route-action-mruxdo2o-zcgo5",
+      "name": "Code Node",
+      "type": "codeNode",
+      "category": "standard",
+      "timing": {
+        "mode": "E+",
+        "seconds": 0
+      },
+      "nextTargetActionId": "route-action-mqqwadxk-oji3m",
+      "nodePosition": {
+        "x": 1189,
+        "y": 346
+      },
+      "subActions": [],
+      "code": "g.test = 0;",
+      "routeNodeType": "action",
+      "nextTargetNodeId": "route-action-mqqwadxk-oji3m"
+    },
+    {
+      "id": "route-action-mruxeq15-5gd78",
+      "name": "Code Node",
+      "type": "codeNode",
+      "category": "standard",
+      "timing": {
+        "mode": "E+",
+        "seconds": 0
+      },
+      "nextTargetActionId": "route-action-mqqwadxk-oji3m",
+      "nodePosition": {
+        "x": 152,
+        "y": 2412
+      },
+      "subActions": [],
+      "code": "g.test++;",
+      "routeNodeType": "action",
+      "nextTargetNodeId": "route-action-mqqwadxk-oji3m"
     }
   ]
 }
