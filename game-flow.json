@@ -4,7 +4,7 @@
       "id": "lobby",
       "name": "Lobby Game State",
       "nodePosition": {
-        "x": 402,
+        "x": 864,
         "y": 70
       },
       "startNodePosition": {
@@ -201,7 +201,7 @@
       "id": "intro",
       "name": "Game Intro Game State",
       "nodePosition": {
-        "x": 402,
+        "x": 864,
         "y": 518
       },
       "startNodePosition": {
@@ -294,7 +294,7 @@
       "id": "round-intro-game-state",
       "name": "Round Intro Game State",
       "nodePosition": {
-        "x": 402,
+        "x": 864,
         "y": 742
       },
       "startNodePosition": {
@@ -387,7 +387,7 @@
       "id": "crafting-game-state",
       "name": "Crafting Game State",
       "nodePosition": {
-        "x": 402,
+        "x": 864,
         "y": 966
       },
       "startNodePosition": {
@@ -757,7 +757,7 @@
       "id": "presentation-game-state",
       "name": "Presentation Game State",
       "nodePosition": {
-        "x": 402,
+        "x": 864,
         "y": 1190
       },
       "startNodePosition": {
@@ -933,7 +933,7 @@
       "id": "scoreboard-game-state",
       "name": "Scoreboard Game State",
       "nodePosition": {
-        "x": 402,
+        "x": 864,
         "y": 1414
       },
       "startNodePosition": {
@@ -945,7 +945,7 @@
         "y": 1042
       },
       "entryTargetActionId": "scoreboard-game-state-action-mqpt5dmx",
-      "nextStateTargetId": "route-action-mqqwadxk-oji3m",
+      "nextStateTargetId": "writing-moment",
       "actions": [
         {
           "id": "scoreboard-game-state-action-mqlaj01s",
@@ -1026,8 +1026,8 @@
       "id": "post-game-state",
       "name": "Post Game State",
       "nodePosition": {
-        "x": 592,
-        "y": 2188
+        "x": 1074,
+        "y": 2412
       },
       "startNodePosition": {
         "x": 791,
@@ -1119,8 +1119,8 @@
       "id": "writing-moment",
       "name": "Writing Moment",
       "nodePosition": {
-        "x": 192,
-        "y": 1964
+        "x": 864,
+        "y": 1638
       },
       "startNodePosition": {
         "x": 758,
@@ -1284,8 +1284,8 @@
       "id": "voice-moment",
       "name": "Voice Moment",
       "nodePosition": {
-        "x": 612,
-        "y": 1964
+        "x": 674,
+        "y": 2636
       },
       "startNodePosition": {
         "x": 743,
@@ -1296,7 +1296,7 @@
         "y": 2062
       },
       "entryTargetActionId": "voice-moment-action-mqpsey1p",
-      "nextStateTargetId": "post-game-state",
+      "nextStateTargetId": "voting-moment",
       "actions": [
         {
           "id": "voice-mic-access",
@@ -1469,8 +1469,8 @@
       "id": "voting-moment",
       "name": "Voting Moment",
       "nodePosition": {
-        "x": 212,
-        "y": 2188
+        "x": 864,
+        "y": 1862
       },
       "startNodePosition": {
         "x": 737,
@@ -1481,7 +1481,7 @@
         "y": 3082
       },
       "entryTargetActionId": "voting-moment-action-mqpt7alu",
-      "nextStateTargetId": "route-action-mruxeq15-5gd78",
+      "nextStateTargetId": "route-action-mqqwadxk-oji3m",
       "actions": [
         {
           "id": "voting-show-cards",
@@ -1743,8 +1743,8 @@
       },
       "nextTargetActionId": "",
       "nodePosition": {
-        "x": 372,
-        "y": 1638
+        "x": 834,
+        "y": 2086
       },
       "subActions": [],
       "variable": "g.test",
@@ -1755,16 +1755,16 @@
           "type": "code",
           "value": "3",
           "code": "x == 0",
-          "targetNodeId": "writing-moment",
-          "targetActionId": "writing-moment"
+          "targetNodeId": "route-action-mruxeq15-5gd78",
+          "targetActionId": "route-action-mruxeq15-5gd78"
         },
         {
           "id": "no-match",
           "type": "noMatch",
           "value": "",
           "code": "x < 3",
-          "targetNodeId": "voice-moment",
-          "targetActionId": "voice-moment"
+          "targetNodeId": "post-game-state",
+          "targetActionId": "post-game-state"
         }
       ],
       "routeNodeType": "action",
@@ -1781,8 +1781,8 @@
       },
       "nextTargetActionId": "",
       "nodePosition": {
-        "x": 402,
-        "y": 2636
+        "x": 864,
+        "y": 2860
       },
       "subActions": [],
       "jumpTargetActionId": "lobby",
@@ -1800,8 +1800,8 @@
       },
       "nextTargetActionId": "",
       "nodePosition": {
-        "x": 622,
-        "y": 2412
+        "x": 1054,
+        "y": 2636
       },
       "subActions": [],
       "isShown": false,
@@ -1818,15 +1818,15 @@
         "mode": "E+",
         "seconds": 0
       },
-      "nextTargetActionId": "route-action-mqqwadxk-oji3m",
+      "nextTargetActionId": "writing-moment",
       "nodePosition": {
-        "x": 1189,
-        "y": 346
+        "x": 834,
+        "y": 294
       },
       "subActions": [],
       "code": "g.test = 0;",
       "routeNodeType": "action",
-      "nextTargetNodeId": "route-action-mqqwadxk-oji3m"
+      "nextTargetNodeId": "writing-moment"
     },
     {
       "id": "route-action-mruxeq15-5gd78",
@@ -1837,15 +1837,15 @@
         "mode": "E+",
         "seconds": 0
       },
-      "nextTargetActionId": "route-action-mqqwadxk-oji3m",
+      "nextTargetActionId": "voice-moment",
       "nodePosition": {
-        "x": 152,
+        "x": 624,
         "y": 2412
       },
       "subActions": [],
       "code": "g.test++;",
       "routeNodeType": "action",
-      "nextTargetNodeId": "route-action-mqqwadxk-oji3m"
+      "nextTargetNodeId": "voice-moment"
     }
   ]
 }
