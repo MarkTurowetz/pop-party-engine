@@ -1,6 +1,6 @@
 ---
 name: build-party-game-widgets
-description: Construct and review layered Art Manager prefabs for Party Game Template using separate visual-state, lifecycle-animation, compound-widget, and dynamic-collection responsibilities. Use when creating, refactoring, migrating, wiring, or debugging text fields, voting cards, player widgets, MC-style prefab hierarchies, layout containers, runtime-spawned item prefabs, child timeline commands, semantic states, reveal animations, or other reusable game objects in this repository.
+description: Construct and review layered Art Manager prefabs for Party Game Template using separate visual-state, lifecycle-animation, compound-widget, and dynamic-collection responsibilities. Use when creating, refactoring, migrating, wiring, or debugging text fields, voting cards, player widgets, MC-style prefab hierarchies, layout containers, runtime anchors or hitboxes, runtime-spawned item prefabs, child timeline commands, semantic states, reveal animations, or other reusable game objects in this repository.
 ---
 
 # Build Party Game Widgets
@@ -111,6 +111,17 @@ Allow runtime code to assign genuinely data-driven content and theme values on t
 
 Remove runtime code that assigns lifecycle visibility, opacity, scale, rotation, motion, or animated color transitions. Runtime code supplies dynamic data, selects semantic states, and decides when to animate; authored timelines decide lifecycle presentation.
 
+### Resolve runtime geometry from the active authored state
+
+Treat a component's timeline-resolved properties as its authoritative runtime geometry.
+
+- Resolve anchors, containers, hitboxes, and spawn points from the stopped state used in game, such as `On`, including inherited or held keyframes from earlier frames.
+- Use the component's base `x`, `y`, `scale`, rotation, opacity, width, and height only when the active timeline state does not author that property.
+- Read geometry from the target component itself. Never infer an anchor from a sibling such as an avatar, from a parent's stale canvas metadata, or from unrelated DOM bounds.
+- Project the resolved point through each parent canvas and transform exactly once. Parent transforms accumulate outside the child; they do not rewrite or synchronize child-authored values.
+- Keep timeline-owned geometry authoritative even when the Art Manager inspector value differs from the component's stored base value.
+- Add a regression test in which the base position, active-state keyframe, and nearby sibling position are deliberately different. Assert that runtime uses the active-state keyframe.
+
 ## Construction workflow
 
 1. Inventory required content, semantic states, lifecycle animations, dynamic item counts, and possible group choreography.
@@ -120,7 +131,8 @@ Remove runtime code that assigns lifecycle visibility, opacity, scale, rotation,
 5. Add animated MCs to a compound widget with unique lower-camel instance labels and deliberate top-to-bottom visual stacking.
 6. For variable-length groups, add a distribution container and spawn uniquely identified Item MC references into it at runtime.
 7. Wire runtime code to dynamic data, semantic state selection, and explicit lifecycle calls.
-8. Verify nested previews, frame-zero bounds, layer order, distribution/reflow, timeline commands, and runtime transitions.
+8. Resolve runtime anchors and hitboxes from the active stopped timeline state, with base values as property-level fallbacks only.
+9. Verify nested previews, frame-zero bounds, layer order, distribution/reflow, timeline commands, and runtime transitions.
 
 ## Validation checklist
 
@@ -136,6 +148,8 @@ Remove runtime code that assigns lifecycle visibility, opacity, scale, rotation,
 - Confirm large filled children are below the smaller overlays they could otherwise cover.
 - Confirm data-driven text and fill colors target labeled base components without competing with lifecycle animation properties.
 - Confirm a dynamic container positions its children without runtime-authored per-item coordinates.
+- Confirm runtime anchors, containers, and hitboxes use the active state's resolved keyframes rather than stale base component values or sibling geometry.
+- Confirm an automated test distinguishes the active-state position from both the base position and the nearest sibling position.
 - Confirm every spawned item has an independent identity and lifecycle timeline.
 - Confirm disappearing items finish their animation before removal and remaining items reflow correctly.
 - Confirm game code contains no competing CSS/class visibility or animation assignments.
@@ -155,4 +169,6 @@ Remove runtime code that assigns lifecycle visibility, opacity, scale, rotation,
 - Adding an unnecessary collection MC around a container that belongs directly to one compound widget.
 - Driving timeline-owned visuals through runtime CSS or direct opacity/visibility writes.
 - Referencing descendants by unstable generated ids.
+- Reading base component geometry while an active timeline state overrides it.
+- Positioning a runtime-spawned object from a sibling's geometry or a transparent element's stale DOM bounds instead of its authored anchor.
 - Freezing parent reference dimensions so child source changes cannot propagate.
