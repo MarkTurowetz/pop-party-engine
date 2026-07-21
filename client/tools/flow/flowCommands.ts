@@ -211,6 +211,22 @@ export function removeFlowStatesCommand(stateIds: Iterable<string>): FlowCommand
   };
 }
 
+export function removeFlowRootNodesCommand(nodeIds: Iterable<string>): FlowCommand {
+  const ids = [...new Set(nodeIds)].filter(Boolean);
+  return {
+    id: `remove-flow-root-nodes:${ids.join(",")}`,
+    label: ids.length > 1 ? "Delete root flow nodes" : "Delete root flow node",
+    apply: (flow) => {
+      const stateIds = new Set((flow.states || []).map((state) => state.id));
+      const routeNodeIds = new Set((flow.routeNodes || []).map((node) => node.id));
+      for (const id of ids) {
+        if (routeNodeIds.has(id)) removeFlowRouteNode(flow, id);
+      }
+      removeFlowStates(flow, ids.filter((id) => stateIds.has(id)));
+    }
+  };
+}
+
 export function addFlowActionCommand(
   stateId: string,
   selectedPrimaryActionId = "",

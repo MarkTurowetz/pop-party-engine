@@ -247,6 +247,7 @@ interface DragState {
 
 interface LivePosition {
   nodeId: string;
+  movingNodeIds: string[];
   dx: number;
   dy: number;
   x: number;
@@ -678,6 +679,16 @@ export function FlowNodeCanvas({
   const beginDrag = (node: FlowGraphNode, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || !onMoveNode) return;
     if (node.draggable === false) return;
+    const movingNodeIds = node.selected
+      ? nodes
+          .filter((candidate) =>
+            candidate.selected &&
+            candidate.draggable !== false &&
+            candidate.kind !== "branch" &&
+            candidate.kind !== "subAction"
+          )
+          .map((candidate) => candidate.id)
+      : [node.id];
     dragRef.current = {
       nodeId: node.id,
       originX: node.x,
@@ -696,6 +707,7 @@ export function FlowNodeCanvas({
       if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) drag.moved = true;
       setLivePosition({
         nodeId: drag.nodeId,
+        movingNodeIds,
         dx,
         dy,
         x: drag.originX + dx,
@@ -789,13 +801,16 @@ export function FlowNodeCanvas({
   };
 
   const displayNodes = livePosition
-    ? nodes.map((node) =>
-        node.id === livePosition.nodeId
-          ? { ...node, x: livePosition.x, y: livePosition.y }
-          : node.parentNodeId === livePosition.nodeId
+    ? (() => {
+        const movingNodeIds = new Set(livePosition.movingNodeIds);
+        return nodes.map((node) =>
+          movingNodeIds.has(node.id)
             ? { ...node, x: node.x + livePosition.dx, y: node.y + livePosition.dy }
-            : node
-      )
+            : node.parentNodeId && movingNodeIds.has(node.parentNodeId)
+              ? { ...node, x: node.x + livePosition.dx, y: node.y + livePosition.dy }
+              : node
+        );
+      })()
     : nodes;
   const { width, height } = worldSize(displayNodes);
   // Selecting a node highlights the nodes it points TO (its next steps) in pink, so you

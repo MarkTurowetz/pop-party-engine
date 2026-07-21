@@ -21,6 +21,8 @@ export interface FlowMomentSelectionResult {
   selectedFlowRouteBranchId: string;
 }
 
+export type FlowRootNodeSelectionResult = FlowMomentSelectionResult;
+
 export interface FlowRouteNodeSelectionResult {
   selectedFlowRouteNodeId: string;
   selectedFlowRouteBranchId: string;
@@ -126,6 +128,24 @@ export function selectFlowMomentState(
     nextIds.add(stateId);
   }
   return setFlowMomentSelectionState(nextIds, validStateIds);
+}
+
+export function setFlowRootNodeSelectionState(
+  ids: Iterable<string> | string | null | undefined,
+  validStateIds: Iterable<string> | null | undefined,
+  validRouteNodeIds: Iterable<string> | null | undefined
+): FlowRootNodeSelectionResult {
+  const validStates = validIdSet(validStateIds);
+  const validRouteNodes = validIdSet(validRouteNodeIds);
+  const nextIds = asArray(ids).filter((id) => validStates.has(id) || validRouteNodes.has(id));
+  const primaryId = nextIds[nextIds.length - 1] || "";
+  return {
+    selectedFlowActionIds: new Set(nextIds),
+    selectedFlowActionId: "",
+    selectedFlowStateId: validStates.has(primaryId) ? primaryId : "",
+    selectedFlowRouteNodeId: validRouteNodes.has(primaryId) ? primaryId : "",
+    selectedFlowRouteBranchId: ""
+  };
 }
 
 export function setFlowRouteNodeSelectionState(routeNodeId: string): FlowRouteNodeSelectionResult {

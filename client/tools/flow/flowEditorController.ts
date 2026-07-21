@@ -25,6 +25,7 @@ import {
   removeFlowActionsCommand,
   removeFlowRouteBranchCommand,
   removeFlowRouteNodeCommand,
+  removeFlowRootNodesCommand,
   removeFlowStatesCommand,
   renameFlowStateCommand,
   refreshFlowActionTypeNameCommand,
@@ -58,6 +59,7 @@ import { serializeGameFlowForSave } from "./flowSerialization";
 import { flowSubroutineActions } from "./flowSubroutines";
 import { type RemoveFlowRouteBranchOptions } from "./flowMutations";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
+import { rootRouteNodeIds, rootStateIds } from "./flowRootGraph";
 
 /** All selectable action ids across the flow (primary, sub-actions, decision branches). */
 function allFlowActionIds(flow: GameFlow): string[] {
@@ -125,6 +127,7 @@ export interface FlowEditorController {
   selectState(stateId: string): void;
   selectActions(ids: Iterable<string> | string | null | undefined): void;
   selectRouteNode(routeNodeId: string): void;
+  selectRootNodes(ids: Iterable<string> | string | null | undefined): void;
   selectRouteBranch(routeNodeId: string, branchId: string): void;
   clearActionSelection(): void;
   clearRouteSelection(): void;
@@ -139,6 +142,7 @@ export interface FlowEditorController {
   renameState(stateId: string, name: string): void;
   moveState(draggedStateId: string, targetStateId: string, placeAfter?: boolean): void;
   removeStates(stateIds: Iterable<string>): void;
+  removeRootNodes(nodeIds: Iterable<string>): void;
   setNextTarget(stateId: string, targetId: string): void;
   setEntryTarget(stateId: string, targetId: string, subroutinePath?: Iterable<string>): void;
   setVotingSource(stateId: string, sourceStateId: string): void;
@@ -345,6 +349,10 @@ export function createFlowEditorController(
     selectActions: (ids) =>
       commit(store.selectActions(ids, allFlowActionIds(store.snapshot().flow))),
     selectRouteNode: (routeNodeId) => commit(store.selectRouteNode(routeNodeId)),
+    selectRootNodes: (ids) => {
+      const flow = store.snapshot().flow;
+      commit(store.selectRootNodes(ids, rootStateIds(flow), rootRouteNodeIds(flow)));
+    },
     selectRouteBranch: (routeNodeId, branchId) =>
       commit(store.selectRouteBranch(routeNodeId, branchId)),
     clearActionSelection: () => commit(store.clearActionSelection()),
@@ -362,6 +370,8 @@ export function createFlowEditorController(
     moveState: (draggedStateId, targetStateId, placeAfter = false) =>
       commit(store.execute(moveFlowStateCommand(draggedStateId, targetStateId, placeAfter))),
     removeStates: (stateIds) => commit(store.execute(removeFlowStatesCommand(stateIds))),
+    removeRootNodes: (nodeIds) =>
+      commit(store.execute(removeFlowRootNodesCommand(nodeIds))),
     setNextTarget: (stateId, targetId) =>
       commit(store.execute(setFlowStateNextTargetCommand(stateId, targetId))),
     setEntryTarget: (stateId, targetId, subroutinePath = []) => {

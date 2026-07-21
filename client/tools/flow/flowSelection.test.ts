@@ -6,6 +6,7 @@ import {
   selectFlowMomentState,
   setFlowActionSelectionState,
   setFlowMomentSelectionState,
+  setFlowRootNodeSelectionState,
   setFlowRouteBranchSelectionState,
   setFlowRouteNodeSelectionState
 } from "./flowSelection";
@@ -81,5 +82,25 @@ describe("Flow selection helpers", () => {
       selectedFlowRouteBranchId: "branch-1",
       selectedFlowActionId: ""
     });
+  });
+
+  it("selects mixed moment and route nodes at the root flow depth", () => {
+    const result = setFlowRootNodeSelectionState(
+      ["intro", "code-1", "missing", "round-one"],
+      ["intro", "round-one"],
+      ["code-1"]
+    );
+
+    expect([...result.selectedFlowActionIds]).toEqual(["intro", "code-1", "round-one"]);
+    expect(result.selectedFlowStateId).toBe("round-one");
+    expect(result.selectedFlowRouteNodeId).toBe("");
+
+    const routePrimary = setFlowRootNodeSelectionState(
+      ["intro", "code-1"],
+      ["intro"],
+      ["code-1"]
+    );
+    expect(routePrimary.selectedFlowStateId).toBe("");
+    expect(routePrimary.selectedFlowRouteNodeId).toBe("code-1");
   });
 });

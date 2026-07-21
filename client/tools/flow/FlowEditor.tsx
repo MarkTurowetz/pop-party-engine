@@ -17,6 +17,7 @@ import {
   subroutineGraphConnections,
   subroutineGraphNodes,
   subroutineNodeExits,
+  translatedSelectedNodePositions,
   type FlowNodeDepth,
   type FlowNodeExit
 } from "./flowNodeGraph";
@@ -413,6 +414,13 @@ export function FlowEditor({
       );
       return;
     }
+    if (nodeDepth === "subroutines") {
+      const selectedRootIds = selectedActionIds.size
+        ? [...selectedActionIds]
+        : [selection.selectedFlowRouteNodeId || selectedStateId].filter(Boolean);
+      if (selectedRootIds.length) controller.removeRootNodes(selectedRootIds);
+      return;
+    }
     if (selection.selectedFlowRouteNodeId) {
       controller.removeRouteNode(selection.selectedFlowRouteNodeId);
       return;
@@ -442,6 +450,7 @@ export function FlowEditor({
     selectedActionId,
     selectedActionIds,
     activeSubroutinePath,
+    nodeDepth,
     selection.selectedFlowRouteNodeId,
     selection.selectedFlowRouteBranchId
   ]);
@@ -557,7 +566,7 @@ export function FlowEditor({
             targetNodeId
           );
       }}
-      onSelectNode={(nodeId) => {
+      onSelectNode={(nodeId, additive) => {
         const node = nodeNodes.find((candidate) => candidate.id === nodeId);
         if (node?.kind === "branch" && node.parentNodeId && node.branchId) {
           if (nodeDepth === "subroutines")
@@ -567,9 +576,18 @@ export function FlowEditor({
         }
         if (nodeDepth === "subroutines") {
           const source = rootFlowNodeSource(flow, nodeId);
-          if (source === "state") controller.selectState(nodeId);
-          else if (source === "routeNode") controller.selectRouteNode(nodeId);
-        } else controller.selectActions(nodeId);
+          if (source) {
+            const nextIds = additive ? new Set(selectedActionIds) : new Set<string>();
+            if (additive && nextIds.has(nodeId)) nextIds.delete(nodeId);
+            else nextIds.add(nodeId);
+            controller.selectRootNodes(nextIds);
+          }
+        } else {
+          const nextIds = additive ? new Set(selectedActionIds) : new Set<string>();
+          if (additive && nextIds.has(nodeId)) nextIds.delete(nodeId);
+          else nextIds.add(nodeId);
+          controller.selectActions(nextIds);
+        }
       }}
       onEnterSubroutine={(nodeId) => {
         if (nodeDepth === "subroutines") {
@@ -594,18 +612,41 @@ export function FlowEditor({
           setNodeDepth("subroutines");
         }
       }}
-      onMoveNode={(nodeId, x, y) =>
-        controller.setNodePosition(nodeDepth, selectedStateId, nodeId, x, y, activeSubroutinePath)
-      }
+      onMoveNode={(nodeId, x, y) => {
+        const selectedPositionUpdates = translatedSelectedNodePositions(
+          nodeNodes,
+          nodeId,
+          x,
+          y
+        );
+        if (selectedPositionUpdates.length > 1) {
+          controller.setNodePositions(
+            nodeDepth,
+            selectedStateId,
+            selectedPositionUpdates,
+            activeSubroutinePath
+          );
+          return;
+        }
+        controller.setNodePosition(
+          nodeDepth,
+          selectedStateId,
+          nodeId,
+          x,
+          y,
+          activeSubroutinePath
+        );
+      }}
       onCreateConnectedAction={(exit, x, y) => {
         if (nodeDepth === "subroutines") controller.addConnectedRootAction(exit, { x, y });
         else if (nodeDepth === "subroutine")
           controller.addConnectedAction(selectedStateId, exit, { x, y }, activeSubroutinePath);
       }}
       onOptimizeLayout={optimizeNodeLayout}
-      onSelectNodes={
-        nodeDepth === "subroutine" ? (ids) => controller.selectActions(ids) : undefined
-      }
+      onSelectNodes={(ids) => {
+        if (nodeDepth === "subroutines") controller.selectRootNodes(ids);
+        else controller.selectActions(ids);
+      }}
     />
   );
 

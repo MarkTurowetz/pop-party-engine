@@ -74,6 +74,10 @@ function createRoomPhaseRuntime({
 
   function startRouteActionSession(room, target, result) {
     if (!result?.routeNodeId) return false;
+    // Each arrival is a new execution, even when a route loops back to the
+    // same action node. Keep duplicate callbacks idempotent while that action
+    // is active, then allow its effects to run again on the next visit.
+    clearAppliedActionEffects(room);
     room.routeActionSession = {
       currentNodeId: result.routeNodeId,
       sourcePhase: room.phase,

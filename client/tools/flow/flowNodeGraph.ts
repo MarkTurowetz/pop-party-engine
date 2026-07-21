@@ -94,6 +94,30 @@ export interface FlowNodePositionUpdate {
   y: number;
 }
 
+export function translatedSelectedNodePositions(
+  nodes: FlowGraphNode[],
+  draggedNodeId: string,
+  x: number,
+  y: number
+): FlowNodePositionUpdate[] {
+  const draggedNode = nodes.find((node) => node.id === draggedNodeId);
+  const selectedMovableNodes = nodes.filter(
+    (node) =>
+      node.selected &&
+      node.draggable !== false &&
+      node.kind !== "branch" &&
+      node.kind !== "subAction"
+  );
+  if (!draggedNode?.selected || selectedMovableNodes.length <= 1) return [];
+  const dx = x - draggedNode.x;
+  const dy = y - draggedNode.y;
+  return selectedMovableNodes.map((node) => ({
+    nodeId: node.id,
+    x: Math.max(0, node.x + dx),
+    y: Math.max(0, node.y + dy)
+  }));
+}
+
 const CHILD_NODE_TOP_GAP = 16;
 const CHILD_NODE_GAP = 18;
 const CHILD_NODE_HEIGHT = 34;

@@ -42,6 +42,20 @@ describe("Flow store", () => {
     expect(store.selectRouteBranch("entry", "branch-a").selection.selectedFlowRouteBranchId).toBe("branch-a");
   });
 
+  it("tracks a mixed root-flow marquee selection", () => {
+    const store = createFlowStore(flowFixture());
+
+    const selection = store.selectRootNodes(
+      ["intro", "entry", "round-one"],
+      ["intro", "round-one"],
+      ["entry"]
+    ).selection;
+
+    expect([...selection.selectedFlowActionIds]).toEqual(["intro", "entry", "round-one"]);
+    expect(selection.selectedFlowStateId).toBe("round-one");
+    expect(selection.selectedFlowRouteNodeId).toBe("");
+  });
+
   it("repairs missing state selection after replacing flow", () => {
     const store = createFlowStore(flowFixture(), { selection: { selectedFlowStateId: "round-one" } });
 

@@ -5,6 +5,7 @@ import {
   clearFlowRouteNodeSelectionState,
   setFlowActionSelectionState,
   setFlowMomentSelectionState,
+  setFlowRootNodeSelectionState,
   setFlowRouteBranchSelectionState,
   setFlowRouteNodeSelectionState,
   type FlowSelectionSnapshot
@@ -35,6 +36,11 @@ export interface FlowStore {
   replaceFlow: (flow: GameFlow) => FlowStoreSnapshot;
   selectActions: (ids: Iterable<string> | string | null | undefined, validIds: Iterable<string> | null | undefined) => FlowStoreSnapshot;
   selectMoments: (ids: Iterable<string> | string | null | undefined, validStateIds?: Iterable<string> | null | undefined) => FlowStoreSnapshot;
+  selectRootNodes: (
+    ids: Iterable<string> | string | null | undefined,
+    validStateIds: Iterable<string> | null | undefined,
+    validRouteNodeIds: Iterable<string> | null | undefined
+  ) => FlowStoreSnapshot;
   selectRouteBranch: (routeNodeId: string, branchId: string) => FlowStoreSnapshot;
   selectRouteNode: (routeNodeId: string) => FlowStoreSnapshot;
   snapshot: () => FlowStoreSnapshot;
@@ -130,6 +136,13 @@ export function createFlowStore(initialFlow: GameFlow, options: FlowStoreOptions
       selection = {
         ...selection,
         ...setFlowMomentSelectionState(ids, validStateIds || flowStateIds(history.flow()))
+      };
+      return emit();
+    },
+    selectRootNodes: (ids, validStateIds, validRouteNodeIds) => {
+      selection = {
+        ...selection,
+        ...setFlowRootNodeSelectionState(ids, validStateIds, validRouteNodeIds)
       };
       return emit();
     },

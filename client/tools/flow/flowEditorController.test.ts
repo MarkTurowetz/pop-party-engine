@@ -59,6 +59,35 @@ describe("createFlowEditorController", () => {
     expect(controller.getState().snapshot.selection.selectedFlowActionId).toBe("act-1");
   });
 
+  it("selects, deletes, and restores mixed root-flow nodes as one edit", () => {
+    const flow = flowFixture();
+    flow.routeNodes = [
+      { id: "code-1", name: "Increment", routeNodeType: "action", type: "codeNode" }
+    ] as never;
+    const controller = createFlowEditorController({ initialFlow: flow, api: fakeApi() });
+
+    controller.selectRootNodes(["intro", "code-1"]);
+    expect([...controller.getState().snapshot.selection.selectedFlowActionIds]).toEqual([
+      "intro",
+      "code-1"
+    ]);
+
+    controller.removeRootNodes(["intro", "code-1"]);
+    expect(controller.getState().snapshot.flow.states.map((state) => state.id)).toEqual([
+      "round-one"
+    ]);
+    expect(controller.getState().snapshot.flow.routeNodes).toEqual([]);
+
+    controller.undo();
+    expect(controller.getState().snapshot.flow.states.map((state) => state.id)).toEqual([
+      "intro",
+      "round-one"
+    ]);
+    expect(controller.getState().snapshot.flow.routeNodes?.map((node) => node.id)).toEqual([
+      "code-1"
+    ]);
+  });
+
   it("selects graph-scoped decision branch ids without local id collisions", () => {
     const controller = createFlowEditorController({
       initialFlow: {

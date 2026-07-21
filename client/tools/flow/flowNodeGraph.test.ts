@@ -7,6 +7,7 @@ import {
   subroutineGraphNodes,
   subroutineNodeExits,
   optimizedVerticalNodePositions,
+  translatedSelectedNodePositions,
   decisionBranchGraphNodeId
 } from "./flowNodeGraph";
 import { rootFlowGraphConnections, rootFlowNodeExits } from "./flowRootGraph";
@@ -36,6 +37,17 @@ describe("flowNodeGraph", () => {
     expect(nodes[0].subtitle).toBe("1 actions / Next: Round");
     // saved nodePosition is honoured
     expect({ x: nodes[1].x, y: nodes[1].y }).toEqual({ x: 500, y: 300 });
+  });
+
+  it("translates every selected draggable root node as one group", () => {
+    const nodes = rootSubroutineGraphNodes(flowFixture(), {
+      selectedActionIds: ["intro", "round"]
+    });
+
+    expect(translatedSelectedNodePositions(nodes, "intro", 180, 140)).toEqual([
+      { nodeId: "intro", x: 180, y: 140 },
+      { nodeId: "round", x: 600, y: 360 }
+    ]);
   });
 
   it("builds Start + action + Return nodes inside a subroutine", () => {
