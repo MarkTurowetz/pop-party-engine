@@ -5,6 +5,7 @@ const { createActionCompletionRuntime } = require("./server/action-completion-ru
 const { createActionEffectStateRuntime } = require("./server/action-effect-state-runtime");
 const { readAppVersion } = require("./server/app-version");
 const { createControllerInputPayloadRuntime } = require("./server/controller-input-payload-runtime");
+const { resetGameSessionState } = require("./server/game-session-reset-runtime");
 const { createControllerSubmitHandlersRuntime } = require("./server/controller-submit-handlers-runtime");
 const { createCountdownRuntime } = require("./server/countdown-runtime");
 const { createControllerLayoutNormalizationRuntime } = require("./server/controller-layout-normalization-runtime");
@@ -944,6 +945,7 @@ const {
   markDisplayedAnswersCorrectness,
   normalizePlayerFilter,
   prepareVotingCards,
+  resetGameSessionState,
   revealAuthors,
   revealVotes,
   revealWinningAnswer,
@@ -1092,7 +1094,6 @@ const {
 const {
   handleControllerChoice,
   handleControllerMicrophoneAccess,
-  handleControllerTextPreview,
   handleControllerTextSubmit
 } = createControllerSubmitHandlersRuntime({
   allActivePlayersHaveSubmittedInput,
@@ -1154,7 +1155,6 @@ const {
   handleCompleteAction,
   handleControllerChoice,
   handleControllerMicrophoneAccess,
-  handleControllerTextPreview,
   handleControllerTextSubmit,
   handleHeartbeat,
   handleInputEvent,

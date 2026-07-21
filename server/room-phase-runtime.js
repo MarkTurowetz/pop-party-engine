@@ -1,6 +1,7 @@
 "use strict";
 
 const { storeCurrentMomentAnswers } = require("./stored-player-answers-runtime");
+const { resetGameSessionState } = require("./game-session-reset-runtime");
 
 const VOTING_CARD_ACTION_TYPES = new Set([
   "setVotingCardsShown",
@@ -154,6 +155,9 @@ function createRoomPhaseRuntime({
     clearTextInput(room);
     clearVotingData(room);
     clearDisplayedPlayerAnswers(room);
+    resetGameSessionState(room);
+    room.playerSessionKey = "";
+    room.numSequentialGames = 0;
   }
 
   function quitRoomToLobby(room) {

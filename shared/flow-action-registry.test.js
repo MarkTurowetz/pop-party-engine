@@ -11,6 +11,7 @@ const {
   validateFlowActionDefinitions
 } = require("./flow-action-registry");
 const { normalizeFlowId } = require("../server/value-normalizers");
+const { resetGameSessionState } = require("../server/game-session-reset-runtime");
 
 function registry(extra = {}) {
   return createFlowActionRegistry({
@@ -30,6 +31,7 @@ function registry(extra = {}) {
     normalizePlayerFilter: () => "all",
     normalizeTextTarget: (value) => String(value || "presentation"),
     normalizeVotingCardFilter: () => "all",
+    resetGameSessionState,
     ...extra
   });
 }

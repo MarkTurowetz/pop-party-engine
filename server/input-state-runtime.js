@@ -10,6 +10,7 @@ function createInputStateRuntime({ activePlayers }) {
   function clearChoiceInput(room) {
     clearAnswersSubmittedAdvanceTimer(room);
     room.choiceInputActionId = "";
+    room.choiceInputVisitId = 0;
     room.choiceInputPrompt = "";
     room.choiceInputOptions = [];
     room.choiceInputOriginalIndexes = [];
@@ -28,6 +29,7 @@ function createInputStateRuntime({ activePlayers }) {
   function clearTextInput(room) {
     clearAnswersSubmittedAdvanceTimer(room);
     room.textInputActionId = "";
+    room.textInputVisitId = 0;
     room.textInputPrompt = "";
     room.textInputPlaceholder = "";
     room.textInputCharacterLimit = 0;
@@ -42,6 +44,7 @@ function createInputStateRuntime({ activePlayers }) {
   function clearMicrophoneAccessInput(room) {
     clearAnswersSubmittedAdvanceTimer(room);
     room.microphoneAccessActionId = "";
+    room.microphoneAccessVisitId = 0;
     room.microphoneAccessPrompt = "";
     room.microphoneAccessButtonLabel = "";
     room.microphoneAccessMode = "vip";

@@ -45,8 +45,6 @@ export interface ControllerRecordingLifecycleOptions {
   onError?: (message: string) => void;
   onStateChange?: (state: ControllerRecordingState) => void;
   onStatus?: (message: string) => void;
-  placeholderText?: string;
-  previewText: (actionId: string, text: string) => Promise<unknown> | unknown;
   recognitionConstructor?: () => SpeechRecognitionConstructor | null;
   submitText: (actionId: string, text: string) => Promise<unknown> | unknown;
 }
@@ -72,8 +70,6 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     onError = () => {},
     onStateChange = () => {},
     onStatus = () => {},
-    placeholderText = "T",
-    previewText,
     recognitionConstructor = defaultSpeechRecognitionConstructor,
     submitText
   } = options;
@@ -84,7 +80,6 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
   let finalTranscriptSegments: string[] = [];
   let interimTranscriptSegments: string[] = [];
   let activeActionId = "";
-  let previewPromise: Promise<unknown> = Promise.resolve(null);
   let releaseBufferTimer: number | null = null;
 
   function isBusy(): boolean {
@@ -192,29 +187,21 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     recognition = null;
     activeActionId = "";
     clearCaptureText();
-    previewPromise = Promise.resolve(null);
     setState("idle");
     onStatus(message);
   }
 
   async function submitCapturedTranscript(actionId: string, text: string): Promise<void> {
-    onStatus("Finishing transcript");
-    try {
-      await previewPromise;
-    } catch {
-      // The final transcript can still update the stage if the temporary preview failed.
-    }
     onStatus("Saving transcript");
     await submitText(actionId, text);
   }
 
   function configureRecognition(activeRecognition: SpeechRecognitionLike): void {
     activeRecognition.continuous = true;
-    // Interim results are kept locally and never rendered or sent while the
-    // button is held. They recover words that Chrome never promotes to a final
-    // result, which is especially common when an input device changes mode or
-    // the recognition service closes a session early.
-    activeRecognition.interimResults = true;
+    // Submit only recognition-service final results. Interim snapshots are
+    // frequently truncated or rewritten on mobile and Bluetooth microphones;
+    // treating them as answers produces the short, last-words-only failures.
+    activeRecognition.interimResults = false;
     activeRecognition.maxAlternatives = 1;
     activeRecognition.lang = "en-US";
     activeRecognition.onresult = (event) => {
@@ -289,7 +276,6 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     recognition = null;
     activeActionId = "";
     clearCaptureText();
-    previewPromise = Promise.resolve(null);
     setState("idle");
     detachRecognition(activeRecognition);
     if (activeRecognition && abort) {
@@ -315,7 +301,6 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
 
     clearCaptureText();
     activeActionId = actionId;
-    previewPromise = Promise.resolve(null);
     setState("listening");
     onStatus("Listening");
     if (startRecognitionSession(Recognition)) {
@@ -332,13 +317,6 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     if (state !== "listening" || activeActionId !== actionId) return false;
     setState("buffering");
     onStatus("Processing speech");
-    previewPromise = Promise.resolve(previewText(actionId, placeholderText))
-      .then(() => {
-        if (state === "buffering" || state === "stopping") onStatus("Finishing transcript");
-      })
-      .catch((error: Error) => {
-        onStatus(error.message || "Could not show voice preview");
-      });
     const waitMs = releaseBufferMs();
     releaseBufferTimer = window.setTimeout(() => {
       releaseBufferTimer = null;

@@ -15,7 +15,6 @@ const BUTTON_SPEC = { width: 300, height: 64, fontSize: 24 };
 export interface ControllerVoiceInputOptions {
   getButton: () => HTMLButtonElement | null;
   getReleaseBufferSeconds: () => number;
-  previewText: (actionId: string, text: string) => Promise<unknown> | unknown;
   renderGlobalMessage: (lobby: Dict, message: string, options: { id: string }) => void;
   setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
   setText?: (target: HTMLElement, value: unknown) => void;
@@ -54,7 +53,6 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   const {
     getButton,
     getReleaseBufferSeconds,
-    previewText,
     renderGlobalMessage,
     setButtonText,
     setText,
@@ -76,7 +74,6 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   let renderedButton: HTMLButtonElement | null = null;
   let renderedButtonText = "";
   let renderedStatusText = "";
-  const rememberedAccessKey = "partyTemplate.microphoneAccessGranted";
 
   function setStatusText(value: string): void {
     if (renderedStatusText === value && status.dataset?.textFitSource === value) return;
@@ -121,7 +118,6 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
         onStatus: (message) => {
           setStatusText(message);
         },
-        previewText,
         submitText
       });
     }
@@ -138,30 +134,10 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
     setStatusText("Hold to record");
   }
 
-  function hasRememberedMicrophoneAccess(): boolean {
-    try {
-      return localStorage.getItem(rememberedAccessKey) === "true";
-    } catch {
-      return false;
-    }
-  }
-
   async function canRecordWithMicrophone(): Promise<boolean> {
-    // The authored microphone-access step already opened getUserMedia and
-    // records that success. Trust it before querying Permissions: desktop
-    // browsers may report microphone as "prompt" or not implement the query at
-    // all even though SpeechRecognition can use the granted microphone.
-    if (hasRememberedMicrophoneAccess()) return true;
     try {
       const permission = await navigator.permissions?.query?.({ name: "microphone" as PermissionName });
-      if (permission?.state === "granted") {
-        try {
-          localStorage.setItem(rememberedAccessKey, "true");
-        } catch {
-          // Storage can be unavailable in private browsing modes.
-        }
-        return true;
-      }
+      if (permission?.state === "granted") return true;
       if (permission?.state === "denied") return false;
     } catch {
       // Some browsers do not expose microphone permission state.

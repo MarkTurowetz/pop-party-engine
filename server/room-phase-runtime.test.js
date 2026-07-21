@@ -109,6 +109,29 @@ describe("route action sessions", () => {
   });
 });
 
+describe("game termination lifecycle", () => {
+  it("wipes game-session data when returning to the lobby", () => {
+    const runtime = createRouteRuntime();
+    const room = {
+      phase: "writing-moment",
+      players: new Map([["p1", { id: "p1", name: "Ava", points: 10, pendingPoints: 5 }]]),
+      storedPlayerAnswers: { 1: { writing: { p1: { text: "old answer" } } } },
+      votingCards: [{ id: "old-card" }],
+      playerSessionKey: "p1",
+      numSequentialGames: 4,
+      pendingFlowEvents: new Set(["old-event"])
+    };
+
+    runtime.enterLobbyPhase(room);
+
+    expect(room.storedPlayerAnswers).toEqual({});
+    expect(room.votingCards).toEqual([]);
+    expect(room.playerSessionKey).toBe("");
+    expect(room.numSequentialGames).toBe(0);
+    expect(room.players.get("p1")).toMatchObject({ id: "p1", name: "Ava", points: 0, pendingPoints: 0 });
+  });
+});
+
 describe("reusable voting moments", () => {
   it("prepares a fresh card source from each immediately preceding input moment", () => {
     const preparedAnswers = [];

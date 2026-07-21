@@ -560,31 +560,11 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     category: "standard",
     ...identityAction("setupGame"),
     stageRunner: "serverEffect",
-    applyRoomEffect: (room) => {
-      for (const player of room.players.values()) {
-        player.points = 0;
-        player.pendingPoints = 0;
-      }
+    applyRoomEffect: (room, _action, context) => {
+      context.resetGameSessionState(room);
       room.currentRound = 0;
-      room.flowVariables = {};
-      room.triviaPromptText = "";
-      room.G = {};
-      room.pendingPointPopups = [];
-      room.playerAnswerRecords = {};
-      room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
-      room.storedPlayerAnswers = {};
-      room.votingCards = [];
-      room.votingCardsShown = false;
-      room.votingResultsShown = false;
-      room.votingAuthorsRevealed = false;
-      room.votingVotesRevealed = false;
-      room.votingWinnerRevealed = false;
-      room.votingWinners = [];
       room.playersShown = false;
       room.playerAnswersShown = false;
-      room.hiddenPlayerAnswerIds = new Set();
-      room.displayedPlayerAnswers = new Map();
-      room.displayedAnswerCorrectness = new Map();
     }
   },
   {

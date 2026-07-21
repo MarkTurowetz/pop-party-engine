@@ -3,6 +3,16 @@ const { isMicrophoneAccessAction } = require("../shared/microphone-access-action
 const { isTextAnswerAction } = require("./text-answer-action-runtime");
 const { storePlayerAnswerRecord } = require("./stored-player-answers-runtime");
 
+function controllerInputStaleError(payload, room, inputVisitId, label) {
+  if (payload.gameSessionId !== undefined && Number(payload.gameSessionId) !== Number(room.gameSessionId || 0)) {
+    return `${label} belongs to an earlier game`;
+  }
+  if (payload.inputVisitId !== undefined && Number(payload.inputVisitId) !== Number(inputVisitId || 0)) {
+    return `${label} is stale`;
+  }
+  return "";
+}
+
 function createControllerSubmitHandlersRuntime({
   allActivePlayersHaveSubmittedInput,
   applyChoiceInputAction,
@@ -55,6 +65,8 @@ function createControllerSubmitHandlersRuntime({
     if (payload.actionId && payload.actionId !== room.textInputActionId) {
       return { status: 409, error: "Text input is stale" };
     }
+    const staleError = controllerInputStaleError(payload, room, room.textInputVisitId, "Text input");
+    if (staleError) return { status: 409, error: staleError };
     return { room, player, playerId };
   }
 
@@ -89,6 +101,11 @@ function createControllerSubmitHandlersRuntime({
     applyChoiceInputAction(room, currentAction);
     if (payload.actionId && payload.actionId !== room.choiceInputActionId) {
       sendJson(res, 409, { ok: false, error: "Choice input is stale" });
+      return;
+    }
+    const staleError = controllerInputStaleError(payload, room, room.choiceInputVisitId, "Choice input");
+    if (staleError) {
+      sendJson(res, 409, { ok: false, error: staleError });
       return;
     }
 
@@ -214,6 +231,11 @@ function createControllerSubmitHandlersRuntime({
       sendJson(res, 409, { ok: false, error: "Microphone access input is stale" });
       return;
     }
+    const staleError = controllerInputStaleError(payload, room, room.microphoneAccessVisitId, "Microphone access input");
+    if (staleError) {
+      sendJson(res, 409, { ok: false, error: staleError });
+      return;
+    }
     if (room.microphoneAccessMode === "vip" && player.id !== room.vipPlayerId) {
       sendJson(res, 403, { ok: false, error: "Only the VIP needs microphone access right now" });
       return;
@@ -296,46 +318,11 @@ function createControllerSubmitHandlersRuntime({
     sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
   }
 
-  async function handleControllerTextPreview(req, res) {
-    let payload;
-    try {
-      payload = await readJson(req);
-    } catch (error) {
-      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-      return;
-    }
-
-    const context = resolveTextInputContext(payload);
-    if (!context.room) {
-      sendTextInputContextError(res, context);
-      return;
-    }
-    const { room, playerId } = context;
-    if (room.textInputAnswers.get(playerId)?.done === true) {
-      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
-      return;
-    }
-
-    const previewText = cleanSubmittedText(payload.text, room.textInputCharacterLimit || 240) || "T";
-    const answer = {
-      text: previewText,
-      invalid: false,
-      done: false,
-      nonce: Date.now()
-    };
-    room.textInputAnswers.set(playerId, answer);
-    rememberDisplayedPlayerAnswer(room, playerId, answer);
-    updatePlayerAnswerGroups(room);
-    broadcastLobby(room);
-    sendJson(res, 200, { ok: true, preview: true, lobby: lobbyPayload(room) });
-  }
-
   return {
     handleControllerChoice,
     handleControllerMicrophoneAccess,
-    handleControllerTextPreview,
     handleControllerTextSubmit
   };
 }
 
-module.exports = { createControllerSubmitHandlersRuntime };
+module.exports = { controllerInputStaleError, createControllerSubmitHandlersRuntime };

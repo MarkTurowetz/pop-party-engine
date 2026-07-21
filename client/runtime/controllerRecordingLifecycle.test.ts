@@ -34,7 +34,6 @@ function lifecycle(overrides: Partial<ControllerRecordingLifecycleOptions> = {})
   const onStatus = vi.fn();
   const onError = vi.fn();
   const api = createControllerRecordingLifecycle({
-    previewText: vi.fn(async () => null),
     submitText: vi.fn(async () => null),
     recognitionConstructor: () => (function Rec() {
       return recognition;
@@ -59,7 +58,7 @@ describe("createControllerRecordingLifecycle (ported)", () => {
     expect(api.state()).toBe("listening");
     expect(recognition.start).toHaveBeenCalled();
     expect(recognition.continuous).toBe(true);
-    expect(recognition.interimResults).toBe(true);
+    expect(recognition.interimResults).toBe(false);
     expect(recognition.maxAlternatives).toBe(1);
     expect(onStatus).toHaveBeenCalledWith("Listening");
   });
@@ -104,7 +103,6 @@ describe("createControllerRecordingLifecycle (ported)", () => {
     let recognitionIndex = 0;
     const submitText = vi.fn(async () => null);
     const api = createControllerRecordingLifecycle({
-      previewText: vi.fn(async () => null),
       submitText,
       recognitionConstructor: () => (function Rec() {
         return recognitions[recognitionIndex++];
@@ -122,7 +120,7 @@ describe("createControllerRecordingLifecycle (ported)", () => {
     expect(api.state()).toBe("listening");
     recognitions[1].onresult?.({
       resultIndex: 0,
-      results: { length: 1, 0: { isFinal: false, 0: { transcript: "and the last words" } } }
+      results: { length: 1, 0: { isFinal: true, 0: { transcript: "and the last words" } } }
     });
     api.release("act1");
     recognitions[1].onend?.();
@@ -130,6 +128,29 @@ describe("createControllerRecordingLifecycle (ported)", () => {
     await vi.waitFor(() => {
       expect(submitText).toHaveBeenCalledWith("act1", "the first half and the last words");
     });
+  });
+
+  it("does not publish or submit a placeholder when no speech is recognized", async () => {
+    let finishBuffer!: () => void;
+    vi.stubGlobal("window", {
+      clearTimeout: vi.fn(),
+      setTimeout: vi.fn((callback: () => void) => {
+        finishBuffer = callback;
+        return 1;
+      })
+    });
+    const submitText = vi.fn(async () => null);
+    const { api, recognition, onStatus } = lifecycle({ submitText });
+
+    api.begin("voice-action");
+    api.release("voice-action");
+    finishBuffer();
+    recognition.onend?.();
+    await Promise.resolve();
+
+    expect(submitText).not.toHaveBeenCalled();
+    expect(api.state()).toBe("idle");
+    expect(onStatus).toHaveBeenLastCalledWith("No speech detected");
   });
 
   it("begin returns false and errors when no recognition is available", () => {

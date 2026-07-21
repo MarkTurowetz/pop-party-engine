@@ -21,12 +21,18 @@ function createControllerInputPayloadRuntime({
   normalizeChoiceInputMode,
   triviaContentForAction
 }) {
+  function beginControllerInputVisit(room) {
+    room.controllerInputVisitCounter = Math.max(0, Number(room.controllerInputVisitCounter || 0)) + 1;
+    return room.controllerInputVisitCounter;
+  }
+
   function applyChoiceInputAction(room, action) {
     const config = choiceInputActionConfig(action);
     if (!config) return;
     if (room.choiceInputActionId === action.id) return;
     if (config.kind === "vote") {
       room.choiceInputActionId = action.id;
+      room.choiceInputVisitId = beginControllerInputVisit(room);
       room.choiceInputPrompt = action.prompt || config.prompt;
       room.choiceInputOptions = [];
       room.choiceInputOriginalIndexes = [];
@@ -45,6 +51,7 @@ function createControllerInputPayloadRuntime({
     clearPlayerAnswerData(room);
     const triviaContent = config.kind === "trivia" ? triviaContentForAction(room, action) : null;
     room.choiceInputActionId = action.id;
+    room.choiceInputVisitId = beginControllerInputVisit(room);
     room.choiceInputPrompt = triviaContent?.prompt || action.prompt || config.prompt;
     room.choiceInputOptions = triviaContent?.options || cleanChoiceOptions(action.options);
     room.choiceInputOriginalIndexes = triviaContent?.optionOriginalIndexes || room.choiceInputOptions.map((_, index) => index);
@@ -63,7 +70,7 @@ function createControllerInputPayloadRuntime({
       const visibleCards = (room.votingCards || []).filter((card) => card && card.authorPlayerId !== player?.id);
       return {
         actionId: room.choiceInputActionId,
-        visitId: Number(room.momentVisitId || 0),
+        visitId: Number(room.choiceInputVisitId || 0),
         type: "vote",
         prompt: room.choiceInputPrompt,
         mode: room.choiceInputMode,
@@ -79,7 +86,7 @@ function createControllerInputPayloadRuntime({
     }
     return {
       actionId: room.choiceInputActionId,
-      visitId: Number(room.momentVisitId || 0),
+      visitId: Number(room.choiceInputVisitId || 0),
       type: room.choiceInputKind,
       prompt: room.choiceInputPrompt,
       mode: room.choiceInputMode,
@@ -98,6 +105,7 @@ function createControllerInputPayloadRuntime({
     const config = textAnswerActionConfig(action);
     clearDisplayedPlayerAnswers(room);
     room.textInputActionId = action.id;
+    room.textInputVisitId = beginControllerInputVisit(room);
     room.textInputMode = config.mode;
     room.textInputPrompt = action.prompt || config.prompt;
     room.textInputPlaceholder = action.placeholder || config.placeholder;
@@ -110,6 +118,7 @@ function createControllerInputPayloadRuntime({
     if (room.microphoneAccessActionId === action.id) return;
     const config = microphoneAccessActionConfig(action);
     room.microphoneAccessActionId = action.id;
+    room.microphoneAccessVisitId = beginControllerInputVisit(room);
     room.microphoneAccessPrompt = action.prompt || config.prompt;
     room.microphoneAccessButtonLabel = action.buttonLabel || config.buttonLabel;
     room.microphoneAccessMode = normalizeMicrophoneAccessMode(action.microphoneAccessMode || config.mode);
@@ -122,7 +131,7 @@ function createControllerInputPayloadRuntime({
     const grantedPlayerIds = new Set(room.microphoneAccessAnswers?.keys?.() || []);
     return {
       actionId: room.microphoneAccessActionId,
-      visitId: Number(room.momentVisitId || 0),
+      visitId: Number(room.microphoneAccessVisitId || 0),
       type: "microphoneAccess",
       mode: room.microphoneAccessMode,
       vipPlayerId: room.microphoneAccessMode === "vip" ? room.vipPlayerId || "" : "",
@@ -137,7 +146,7 @@ function createControllerInputPayloadRuntime({
     applyTextInputAction(room, currentAction);
     return {
       actionId: room.textInputActionId,
-      visitId: Number(room.momentVisitId || 0),
+      visitId: Number(room.textInputVisitId || 0),
       type: textAnswerPayloadTypeForMode(room.textInputMode),
       mode: room.textInputMode,
       vipPlayerId: room.textInputMode === "voiceVip" ? room.vipPlayerId || "" : "",

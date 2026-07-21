@@ -7,6 +7,7 @@ import { createControllerModuleCache } from "./controllerModuleCache";
 import { createControllerViewState } from "./controllerViewState";
 import { createControllerAvatarView } from "./controllerAvatarView";
 import { createControllerVoiceInput, shouldDeferVoiceHeartbeat } from "./controllerVoiceInput";
+import { controllerViewVisitKey } from "./controllerViewVisit";
 import { createControllerMicrophoneAccessView } from "./controllerMicrophoneAccessView";
 import { createControllerChoiceInputView } from "./controllerChoiceInputView";
 import { createControllerGlobalActionView } from "./controllerGlobalActionView";
@@ -260,7 +261,6 @@ function getControllerVoiceInput() {
             (w.gameConstants as Dict)?.speechToTextSendInputBuffer ??
             1
         ),
-      previewText: previewControllerText,
       renderGlobalMessage: renderControllerGlobalMessage,
       setButtonText: setControllerButtonText,
       setText: setControllerText,
@@ -474,17 +474,18 @@ function getControllerSessionRuntime() {
   );
 }
 
-let currentControllerMomentVisitKey = "";
+let currentControllerViewVisitKey = "";
 
 function applyControllerLayoutForPhase(phase: string): void {
-  const visitId = Number((w.controllerState?.lobby as Dict | undefined)?.momentVisitId || 0);
-  const visitKey = visitId > 0 ? `moment:${visitId}` : "";
-  const isNewVisit = Boolean(visitKey && visitKey !== currentControllerMomentVisitKey);
+  const lobby = w.controllerState?.lobby as Dict | undefined;
+  const player = w.controllerState?.player as Dict | undefined;
+  const visitKey = controllerViewVisitKey(lobby, player, phase);
+  const isNewVisit = Boolean(visitKey && visitKey !== currentControllerViewVisitKey);
   if (isNewVisit) {
     getControllerGlobalActionView().dispose();
     getControllerLocalButtonRuntime().dispose();
   }
-  if (visitKey) currentControllerMomentVisitKey = visitKey;
+  if (visitKey) currentControllerViewVisitKey = visitKey;
   getControllerGlobalActionView().prepareForLayout(phase);
   if (phase !== controllerLayoutStateIds.voiceInput) getControllerVoiceInput().stopRecognition();
   getControllerLocalButtonRuntime().prepareForLayout(phase === "starting" ? controllerLayoutStateIds.lobby : phase);
@@ -563,16 +564,6 @@ async function grantControllerMicrophoneAccess(actionId: string): Promise<Dict |
   return result;
 }
 
-async function previewControllerText(actionId: string, text = "T"): Promise<void> {
-  if (!w.controllerState) return;
-  try {
-    const result = (await getControllerSubmitApi().previewText(actionId, text)) as Dict;
-    if (result?.lobby) renderControllerState(result.lobby as Dict);
-  } catch (error) {
-    setControllerText(w.controllerVoiceStatus, (error as Error).message);
-  }
-}
-
 async function advanceControllerStageClick(actionId: string): Promise<Dict | null> {
   if (!w.controllerState) return null;
   const result = (await getControllerSubmitApi().inputEvent(actionId, "stageClick")) as Dict;
@@ -600,6 +591,10 @@ function renderControllerState(lobbyInput: unknown): void {
   const controllerPhase = (lobby.phase as string) || "lobby";
   w.controllerState.phase = controllerPhase;
   const renderedState = getControllerStateRuntime().render(lobby, me);
+  // Layout application can recreate the authored banner prefab. Player data
+  // must be injected after that lifecycle boundary so its default "PLAYER"
+  // text can never replace the current identity on refresh or a later visit.
+  setControllerPlayerBanner(me);
   w.controllerState.controllerViewStateId = renderedState.id;
   w.controllerCountdownTimer = renderedState.countdownTimer;
 }
@@ -625,6 +620,13 @@ let controllerSetupStarted = false;
 async function setupController(): Promise<void> {
   if (controllerSetupStarted) return;
   controllerSetupStarted = true;
+  // Browser permission is already authoritative. Remove the former app-level
+  // permission cache so controller persistence is limited to player identity.
+  try {
+    localStorage.removeItem("partyTemplate.microphoneAccessGranted");
+  } catch {
+    // Storage can be unavailable in private browsing modes.
+  }
   w.lockControllerViewport!();
   w.bindControllerButtonPressStates!();
   w.controllerScreen?.classList.add("controller-runtime-booting");

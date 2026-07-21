@@ -33,6 +33,7 @@ function createLobbyPayloadRuntime({
       revision: room.revision,
       phase: room.phase,
       flowStateId: room.flowStateId || room.phase,
+      gameSessionId: Number(room.gameSessionId || 0),
       momentVisitId: Number(room.momentVisitId || 0),
       subroutinePath: Array.isArray(room.subroutinePath) ? [...room.subroutinePath] : [],
       controllerLayoutId: room.controllerLayoutId || room.phase || "lobby",

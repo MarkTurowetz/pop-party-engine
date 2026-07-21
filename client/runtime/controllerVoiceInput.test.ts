@@ -9,7 +9,6 @@ function options(): ControllerVoiceInputOptions {
   return {
     getButton: () => null,
     getReleaseBufferSeconds: () => 1,
-    previewText: vi.fn(async () => null),
     renderGlobalMessage: vi.fn(),
     setButtonText: vi.fn(),
     setText: vi.fn(),
@@ -131,7 +130,7 @@ describe("createControllerVoiceInput (ported)", () => {
     view.stopRecognition();
   });
 
-  it("trusts microphone access already granted by the authored access step on desktop", async () => {
+  it("does not use persisted app state to bypass the current browser permission check", async () => {
     const recognition = {
       continuous: false,
       interimResults: false,
@@ -175,9 +174,10 @@ describe("createControllerVoiceInput (ported)", () => {
 
     button.onpointerdown?.({ preventDefault: vi.fn(), pointerId: 4 } as unknown as PointerEvent);
     await Promise.resolve();
+    await Promise.resolve();
 
     expect(recognition.start).toHaveBeenCalledOnce();
-    expect(permissionQuery).not.toHaveBeenCalled();
+    expect(permissionQuery).toHaveBeenCalledOnce();
     view.stopRecognition();
   });
 

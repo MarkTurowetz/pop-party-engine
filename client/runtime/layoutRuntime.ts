@@ -723,6 +723,11 @@ function prepareControllerArtHostNativeOverlays(host: El, hostId: string): void 
     );
     target.classList.add("controller-widget-art-overlay");
     target.dataset.controllerArtOverlayFor = hostId;
+    if (target.matches("input, textarea, select")) {
+      target.style.setProperty("color", "var(--ink)", "important");
+      target.style.setProperty("-webkit-text-fill-color", "currentColor", "important");
+      target.style.setProperty("opacity", "1", "important");
+    }
   });
 }
 

@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createControllerSubmitApi } from "./controllerSubmitApi";
 
-function setup(state: { playerId?: string; stageCode?: string } | null = { playerId: "p1", stageCode: "ABCD" }) {
+function setup(state: {
+  lobby?: Record<string, unknown>;
+  player?: Record<string, unknown>;
+  playerId?: string;
+  stageCode?: string;
+} | null = { playerId: "p1", stageCode: "ABCD" }) {
   const postJson = vi.fn(async () => ({ ok: true }));
   const api = createControllerSubmitApi({ getControllerState: () => state, postJson });
   return { api, postJson };
@@ -22,10 +27,36 @@ describe("createControllerSubmitApi (ported)", () => {
       stageCode: "ABCD",
       actionId: "act1",
       cardId: "card9",
+      gameSessionId: 0,
+      inputVisitId: 0,
       optionIndex: 2
     });
     await api.startOrCancelGame({ isCancel: true, startToken: "tok" });
-    expect(postJson).toHaveBeenCalledWith("/api/cancel-start", { playerId: "p1", stageCode: "ABCD", startToken: "tok" });
+    expect(postJson).toHaveBeenCalledWith("/api/cancel-start", {
+      gameSessionId: 0,
+      playerId: "p1",
+      stageCode: "ABCD",
+      startToken: "tok"
+    });
+  });
+
+  it("binds submissions to the active game and controller input visit", async () => {
+    const { api, postJson } = setup({
+      playerId: "p1",
+      stageCode: "ABCD",
+      lobby: { gameSessionId: 9, textInput: { actionId: "write", visitId: 14 } }
+    });
+
+    await api.submitText("write", "fresh answer");
+
+    expect(postJson).toHaveBeenCalledWith("/api/controller-text-submit", {
+      actionId: "write",
+      gameSessionId: 9,
+      inputVisitId: 14,
+      playerId: "p1",
+      stageCode: "ABCD",
+      text: "fresh answer"
+    });
   });
 
   it("resolves null without calling postJson when there is no controller state", async () => {

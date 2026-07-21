@@ -34,7 +34,6 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
   const writeButtonText = typeof setButtonText === "function" ? setButtonText : (writeText as (t: HTMLElement, v: unknown, s?: Dict) => void);
 
   const pendingAutoGrantActionIds = new Set<string>();
-  const rememberedAccessKey = "partyTemplate.microphoneAccessGranted";
 
   function isForPlayer(input: Dict | null, me: Dict): boolean {
     if (!input) return false;
@@ -56,43 +55,16 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
     }
   }
 
-  function hasRememberedAccess(): boolean {
-    try {
-      return localStorage.getItem(rememberedAccessKey) === "true";
-    } catch {
-      return false;
-    }
-  }
-
-  function rememberAccessGranted(): void {
-    try {
-      localStorage.setItem(rememberedAccessKey, "true");
-    } catch {
-      // Storage can be unavailable in private browsing modes.
-    }
-  }
-
   async function browserAlreadyHasAccess(): Promise<boolean> {
     const permissionState = await microphonePermissionState();
-    if (permissionState === "granted") {
-      rememberAccessGranted();
-      return true;
-    }
+    if (permissionState === "granted") return true;
     if (permissionState === "denied") return false;
-    if (hasRememberedAccess()) {
-      try {
-        localStorage.removeItem(rememberedAccessKey);
-      } catch {
-        // Storage can be unavailable in private browsing modes.
-      }
-    }
     return false;
   }
 
   async function requestMicrophoneAccess(): Promise<boolean> {
     const permissionState = await microphonePermissionState();
     if (permissionState === "granted") {
-      rememberAccessGranted();
       return true;
     }
     if (permissionState === "denied") {
@@ -100,7 +72,6 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
     }
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stopStream(stream);
-    rememberAccessGranted();
     return true;
   }
 
@@ -128,7 +99,6 @@ export function createControllerMicrophoneAccessView(options: ControllerMicropho
           pendingAutoGrantActionIds.delete(actionId);
           return;
         }
-        rememberAccessGranted();
         button.disabled = true;
         writeText(elements.status, "Microphone ready");
         reportGranted(input);
