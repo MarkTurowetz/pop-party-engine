@@ -294,6 +294,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
         key={component.id}
         className="art-canvas-component"
         data-art-canvas-component={component.id}
+        data-art-component-target-path={scopedTargetId}
         data-art-component-kind={kind}
         aria-current={selected ? "true" : undefined}
         style={style}

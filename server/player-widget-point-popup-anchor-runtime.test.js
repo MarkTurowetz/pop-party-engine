@@ -54,4 +54,16 @@ describe("player widget point popup anchor migration", () => {
       { "prefab-player-widget-mc": saved }
     )).toBe(saved);
   });
+
+  it("recognizes a regenerated component by its stable runtime instance label", () => {
+    const saved = {
+      id: "prefab-player-widget-mc",
+      components: [{ id: "generated-container-id", instanceLabel: "pointPopupContainer", x: 44, y: 55 }]
+    };
+
+    expect(playerWidgetPointPopupAnchorOverride(
+      { id: "prefab-player-widget-mc" },
+      { "prefab-player-widget-mc": saved }
+    )).toBe(saved);
+  });
 });

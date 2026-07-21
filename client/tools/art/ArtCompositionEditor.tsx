@@ -36,10 +36,13 @@ import {
   type TimelineKeyframeSelection
 } from "./artTimelineKeyframeSelection";
 import {
+  alignedArtCanvasPositions,
   applyArtCanvasTransformKeyframes,
   artCanvasDragSelection,
+  artCanvasKeyboardCommand,
   captureArtCanvasTransformTargets,
   centeredArtCanvasPositions,
+  rootArtCanvasSelectionIds,
   translatedArtCanvasPositions,
   type ArtCanvasLivePositions,
   type ArtCanvasTransformPatch,
@@ -733,6 +736,38 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     if (!target) return;
     commitCanvasTransformPatches([{ target, patch }]);
   };
+  const handlePreviewArrowKey = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (!composition || selectedComponentIds.size === 0 || event.defaultPrevented) return;
+    const command = artCanvasKeyboardCommand(event);
+    if (!command) return;
+    const rootSelectionIds = rootArtCanvasSelectionIds(composition.components || [], selectedComponentIds);
+    const targets = captureArtCanvasTransformTargets(
+      composition.components || [],
+      rootSelectionIds,
+      componentTimelineValuesForCanvasEdit
+    );
+    if (!targets.length || (command.mode === "align" && targets.length < 2)) return;
+    let positions: ArtCanvasLivePositions;
+    if (command.mode === "nudge") {
+      const deltaX = command.direction === "left" ? -command.step : command.direction === "right" ? command.step : 0;
+      const deltaY = command.direction === "up" ? -command.step : command.direction === "down" ? command.step : 0;
+      positions = translatedArtCanvasPositions(targets, deltaX, deltaY);
+    } else {
+      const visualBoundsById = new Map();
+      const componentElements = [...(canvasRef.current?.querySelectorAll<HTMLElement>("[data-art-component-target-path]") || [])];
+      for (const target of targets) {
+        const match = findArtComponentTargetPath(composition.components || [], target.id);
+        const targetPath = match?.path ? artComponentTargetPathId(match.path) : target.id;
+        const element = componentElements.find((candidate) => candidate.dataset.artComponentTargetPath === targetPath);
+        if (element) visualBoundsById.set(target.id, element.getBoundingClientRect());
+      }
+      positions = alignedArtCanvasPositions(targets, visualBoundsById, command.direction, previewScale);
+    }
+    if (Object.keys(positions).length !== targets.length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    commitCanvasTransformPatches(targets.map((target) => ({ target, patch: positions[target.id] })));
+  };
   const centerSelectedCanvasComponents = useCallback((): boolean => {
     if (!composition || selectedComponentIds.size < 2) return false;
     const targets = captureArtCanvasTransformTargets(
@@ -1406,12 +1441,16 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
             <div
               ref={previewViewportRef}
               className="art-canvas-viewport"
+              tabIndex={0}
+              aria-label="Art preview canvas"
               data-art-preview-panning={previewPanning ? "true" : "false"}
               style={{ cursor: previewPanning ? "grabbing" : undefined }}
               onDragOver={(event) => {
                 if (event.dataTransfer.types.includes(ART_COMPOSITION_BROWSER_DND_TYPE)) event.preventDefault();
               }}
               onDrop={addDroppedCompositionReference}
+              onKeyDown={handlePreviewArrowKey}
+              onPointerDownCapture={(event) => event.currentTarget.focus({ preventScroll: true })}
               onWheel={zoomPreviewAtPointer}
               onAuxClick={(event) => {
                 if (event.button === 1) event.preventDefault();

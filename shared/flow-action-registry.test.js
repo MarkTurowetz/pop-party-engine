@@ -74,6 +74,23 @@ describe("flow action registry", () => {
     expect(endGameMoment).toHaveBeenCalledWith(room);
   });
 
+  it("keeps point-popup event identities fresh when a game restarts in the same room", () => {
+    const actionRegistry = registry({
+      filteredPlayerIds: () => ["p1"],
+      gameConstants: () => ({ pointsForCorrectAnswer: 100 })
+    });
+    const room = {
+      players: new Map([["p1", { points: 50, pendingPoints: 0 }]]),
+      pendingPointPopupNonce: 7
+    };
+
+    actionRegistry.applyRoomEffect(room, { type: "setupGame" });
+    actionRegistry.applyRoomEffect(room, { type: "showPoints", points: 25, playerFilter: "all" });
+
+    expect(room.pendingPointPopupNonce).toBe(8);
+    expect(room.pendingPointPopups).toEqual([expect.objectContaining({ id: "8-p1", playerId: "p1", points: 25 })]);
+  });
+
   it.each(["setupGame", "getPlayerAnswers"])("preserves the registered %s type in the stage payload", (type) => {
     const actionRegistry = registry();
     expect(actionRegistry.publicAction({ type }, { id: type, actionType: type })).toMatchObject({

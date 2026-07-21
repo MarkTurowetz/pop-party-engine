@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
+  adjacentBrowserCompositionId,
   allArtCompositionItems,
   browserCompositionDragKeys,
   browserCompositionSelectionAfterClick,
   browserDragKeys
 } from "./ArtCompositionBrowser";
+
+describe("ArtCompositionBrowser keyboard navigation", () => {
+  it("selects the adjacent visible composition and clamps at the ends", () => {
+    expect(adjacentBrowserCompositionId(["a", "b", "c"], "b", "up")).toBe("a");
+    expect(adjacentBrowserCompositionId(["a", "b", "c"], "b", "down")).toBe("c");
+    expect(adjacentBrowserCompositionId(["a", "b", "c"], "a", "up")).toBe("a");
+    expect(adjacentBrowserCompositionId(["a", "b", "c"], "c", "down")).toBe("c");
+  });
+});
 
 describe("ArtCompositionBrowser surface views", () => {
   it("lists stage and controller compositions together in the All view", () => {

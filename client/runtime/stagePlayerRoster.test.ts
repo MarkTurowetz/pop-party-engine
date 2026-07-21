@@ -43,6 +43,23 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     })).toEqual({ x: 150, y: 81 });
   });
 
+  it("resolves a regenerated popup anchor through its stable instance label", () => {
+    expect(playerWidgetPointPopupAnchorPosition({
+      components: [{ id: "generated-anchor-id", instanceLabel: "pointPopupContainer", x: 44, y: 55 }],
+      timeline: {
+        fps: 30,
+        frameCount: 2,
+        labels: [{ name: "On", frame: 1 }],
+        commands: [],
+        tracks: [{
+          id: "track-generated-anchor",
+          targetId: "generated-anchor-id",
+          keyframes: [{ frame: 0, props: { x: 64, y: 75 }, easing: "hold" }]
+        }]
+      }
+    })).toEqual({ x: 64, y: 75 });
+  });
+
   it("converts the authored player anchor center into unclipped roster overlay coordinates", () => {
     expect(pointPopupOverlayPosition(
       { left: 225, top: 75, width: 50, height: 20 },
@@ -207,7 +224,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     });
 
     expect(roster.setAnswerBubblesShown(false, { playerFilter: "wrong" })).toBe(333);
-    expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Disappear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("playerAnswerBubbleMC", "Disappear", { instant: false });
     expect(tile.dataset.answerBubbleVisible).toBe("false");
     expect(tile.dataset.answerBubbleHasAnswer).toBe("true");
   });
@@ -285,6 +302,28 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       { frame: 2, props: { defaultText: "ARCTIC", fontColor: "#17131f" } }
     ]);
     expect(sharedBubble.timeline.tracks[0].keyframes[0].props.defaultText).toBe("ANSWER");
+  });
+
+  it("injects voice text into a regenerated current answer-bubble leaf by its authored label", () => {
+    const authored = {
+      name: "Player Answer Bubble",
+      components: [{ id: "text-regenerated", instanceLabel: "answerText", kind: "text", defaultText: "ANSWER" }],
+      timeline: {
+        tracks: [{ targetId: "text-regenerated", keyframes: [{ frame: 0, props: { defaultText: "ANSWER" } }] }]
+      }
+    };
+
+    const runtime = runtimeAnswerBubbleComposition(authored, {
+      hasAnswer: true,
+      visible: true,
+      text: "JURASSIC PARK",
+      nonce: "voice-2",
+      correctness: ""
+    });
+
+    expect((runtime.components as Record<string, unknown>[])[0].defaultText).toBe("JURASSIC PARK");
+    expect((((runtime.timeline as Record<string, unknown>).tracks as Record<string, unknown>[])[0].keyframes as Record<string, unknown>[])[0].props)
+      .toEqual({ defaultText: "JURASSIC PARK" });
   });
 
   it("maps answer correctness onto the three authored bubble states", () => {
@@ -391,11 +430,11 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     roster.syncAvatarComponent(renderer, { avatar: { shape: "raptor" } });
     roster.playSpawnedPlayerWidget(renderer, { name: "Ava", isVip: true });
 
-    expect(playComponent).toHaveBeenCalledWith("player-answer-bubble-mc", "Appear", { instant: false });
-    expect(playComponent).not.toHaveBeenCalledWith("player-avatar-mc", "On", expect.anything());
-    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Appear", { instant: false });
-    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Appear", { instant: false });
-    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("playerAnswerBubbleMC", "Appear", { instant: false });
+    expect(playComponent).not.toHaveBeenCalledWith("playerAvatarMC", "On", expect.anything());
+    expect(playComponent).toHaveBeenCalledWith("playerAvatarMC", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("playerNameMC", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("vipMC", "Appear", { instant: false });
     for (const call of playComponent.mock.calls) expect(call[2]).not.toHaveProperty("complete");
     expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Raptor", { instant: true });
   });
@@ -449,6 +488,26 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
 
     expect(playComponent).not.toHaveBeenCalled();
     expect(complete).toHaveBeenCalledOnce();
+  });
+
+  it("updates the current answer-bubble MC when a voice preview becomes the final transcript", () => {
+    const roster = PartyGamePlayerRoster.createRenderer({});
+    const playComponent = vi.fn(() => 333);
+    const renderer = {
+      render: vi.fn(),
+      componentLifecycleState: vi.fn(() => "shown"),
+      isComponentVisible: vi.fn(() => true),
+      playComponent,
+      stopAtComponent: vi.fn(() => 0)
+    };
+
+    expect(roster.syncAnswerBubbleComponent(
+      renderer,
+      { hasAnswer: true, visible: true, text: "JURASSIC PARK", nonce: "voice-final", correctness: "" },
+      { previousVisible: true, previousNonce: "voice-preview", previousText: "T", updateOnContentChange: true }
+    )).toBe(333);
+
+    expect(playComponent).toHaveBeenCalledWith("playerAnswerBubbleMC", "Update", { instant: false });
   });
 
   it("reports answer lifecycle playback from the timeline state instead of a duration estimate", () => {
@@ -667,13 +726,13 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     const renderer = { render: vi.fn(), playComponent, stopAtComponent };
 
     expect(roster.syncAvatarBehaviorComponent(renderer, { needsInput: false }, {})).toBe(0);
-    expect(stopAtComponent).toHaveBeenCalledWith("player-avatar-behaviors", "Default", { instant: true });
+    expect(stopAtComponent).toHaveBeenCalledWith("playerAvatarBehaviors", "Default", { instant: true });
 
     expect(roster.syncAvatarBehaviorComponent(renderer, { needsInput: true }, { previousNeedsInput: "false" })).toBe(0);
-    expect(playComponent).toHaveBeenCalledWith("player-avatar-behaviors", "ChoosingStart", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("playerAvatarBehaviors", "ChoosingStart", { instant: false });
 
     expect(roster.syncAvatarBehaviorComponent(renderer, { needsInput: false }, { previousNeedsInput: "true" })).toBe(0);
-    expect(playComponent).toHaveBeenCalledWith("player-avatar-behaviors", "ChoosingEnd", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("playerAvatarBehaviors", "ChoosingEnd", { instant: false });
 
     for (const call of playComponent.mock.calls) expect(call[2]).not.toHaveProperty("complete");
 
@@ -741,9 +800,9 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(order).toEqual([
       "render",
       "stop:avatar:Rex",
-      "stop:player-avatar-behaviors:Default",
-      "player-avatar-mc:Appear",
-      "player-name-mc:Appear"
+      "stop:playerAvatarBehaviors:Default",
+      "playerAvatarMC:Appear",
+      "playerNameMC:Appear"
     ]);
   });
 
@@ -777,16 +836,16 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
 
     expect(roster.setShown(true)).toBe(333);
     expect(host.dataset.visualVisible).toBe("true");
-    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Appear", { instant: false });
-    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Appear", { instant: false });
-    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("playerAvatarMC", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("playerNameMC", "Appear", { instant: false });
+    expect(playComponent).toHaveBeenCalledWith("vipMC", "Appear", { instant: false });
 
     playComponent.mockClear();
     expect(roster.setShown(false, { instant: true })).toBe(0);
     expect(host.dataset.visualVisible).toBe("false");
-    expect(playComponent).toHaveBeenCalledWith("player-avatar-mc", "Off", { instant: true });
-    expect(playComponent).toHaveBeenCalledWith("player-name-mc", "Off", { instant: true });
-    expect(playComponent).toHaveBeenCalledWith("vip-mc", "Off", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("playerAvatarMC", "Off", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("playerNameMC", "Off", { instant: true });
+    expect(playComponent).toHaveBeenCalledWith("vipMC", "Off", { instant: true });
   });
 
   it("waits only for each player avatar MC when changing player visibility", async () => {
@@ -806,7 +865,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       roster.tileRenderers.set(tile, {
         render: vi.fn(),
         playComponent: vi.fn((componentId, _animation, options) => {
-          if (componentId === "player-avatar-mc") avatarCompletions.push(options?.complete as () => void);
+          if (componentId === "playerAvatarMC") avatarCompletions.push(options?.complete as () => void);
           else expect(options).not.toHaveProperty("complete");
           return 300;
         })

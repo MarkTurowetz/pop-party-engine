@@ -45,11 +45,13 @@ function checkPlayerExceptions() {
   const source = read("client/runtime/stagePlayerRoster.ts");
   const syncPlayer = section(source, "  syncPlayerObject(", "  syncAvatarComponent(");
   assertAbsent(syncPlayer, [
-    "syncAnswerBubbleComponent(",
     "revealAnswerCorrectness(",
     "setAnswerBubblesShown(",
     "setShown("
   ], "syncPlayerObject reconciliation");
+  assert(syncPlayer.includes("options.reconcileLiveAnswerPreview === true"), "answer lifecycle reconciliation must be limited to the active voice preview");
+  assert(syncPlayer.includes("updateOnContentChange: true"), "voice answer reconciliation must update the current authored bubble lifecycle");
+  assert(!syncPlayer.includes("complete:"), "voice answer reconciliation must remain fire-and-forget");
 
   const choosing = section(source, "  syncAvatarBehaviorComponent(", "  syncAnswerBubbleComponent(");
   const spawning = section(source, "  playSpawnedPlayerWidget(", "  syncTileGameObject(");

@@ -299,7 +299,6 @@
     {
       "id": "voting-moment",
       "name": "Voting Moment",
-      "votingSourceStateId": "writing-moment",
       "entryTargetActionId": "voting-show-cards",
       "nodePositions": {
         "start": {

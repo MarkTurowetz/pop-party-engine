@@ -9,6 +9,29 @@ const VOTING_CARD_ACTION_TYPES = new Set([
   "revealWinningAnswer"
 ]);
 
+function storedAnswerRecordsForState(room, round, stateId) {
+  if (!stateId) return {};
+  return room.storedPlayerAnswers?.[round]?.[stateId] || {};
+}
+
+function latestStoredAnswerSource(room, round) {
+  const roundAnswers = room.storedPlayerAnswers?.[round] || {};
+  const entries = Object.entries(roundAnswers).filter(([, records]) => Object.keys(records || {}).length > 0);
+  const latest = entries[entries.length - 1] || null;
+  return latest ? { stateId: latest[0], records: latest[1] } : null;
+}
+
+function resolveVotingAnswerSource(room, round, requestedStateId) {
+  const requestedRecords = storedAnswerRecordsForState(room, round, requestedStateId);
+  if (Object.keys(requestedRecords).length > 0) {
+    return { stateId: requestedStateId, records: requestedRecords, fallbackUsed: false };
+  }
+  const latest = latestStoredAnswerSource(room, round);
+  return latest
+    ? { ...latest, fallbackUsed: latest.stateId !== requestedStateId }
+    : { stateId: requestedStateId || "", records: {}, fallbackUsed: false };
+}
+
 function createRoomPhaseRuntime({
   activePlayers,
   broadcastLobby,
@@ -92,18 +115,6 @@ function createRoomPhaseRuntime({
       || actionListHasVotingCards(action?.actions || [])
       || actionListHasVotingCards(action?.subActions || [])
     ));
-  }
-
-  function storedAnswerRecordsForState(room, round, stateId) {
-    if (!stateId) return {};
-    return room.storedPlayerAnswers?.[round]?.[stateId] || {};
-  }
-
-  function latestStoredAnswerSource(room, round) {
-    const roundAnswers = room.storedPlayerAnswers?.[round] || {};
-    const entries = Object.entries(roundAnswers).filter(([, records]) => Object.keys(records || {}).length > 0);
-    const latest = entries[entries.length - 1] || null;
-    return latest ? { stateId: latest[0], records: latest[1] } : null;
   }
 
   function isNoActionTarget(target) {
@@ -241,28 +252,23 @@ function createRoomPhaseRuntime({
     }
 
     // Auto-setup voting cards when entering a phase that displays or uses voting cards.
-    // Uses votingSourceStateId if explicitly configured, otherwise falls back to the
-    // phase we just left (the common writing-then-voting pattern needs no configuration).
+    // Prefer votingSourceStateId when it has answers. Otherwise use the phase we
+    // just left, then the latest populated source in this round. This lets one
+    // voting moment safely follow either writing or voice input.
     const enteringState = runtimeGameFlow(room).states.find((s) => s.id === phase);
     const hasVotingCards = actionListHasVotingCards(enteringState?.actions || []);
     const explicitSourceStateId = normalizeFlowId(enteringState?.votingSourceStateId, "");
     const sourceStateId = explicitSourceStateId || (hasVotingCards ? previousPhase : null);
     if (sourceStateId) {
       const loadRound = room.currentRound || 1;
-      let resolvedSourceStateId = sourceStateId;
-      let sourceRecords = storedAnswerRecordsForState(room, loadRound, resolvedSourceStateId);
-      if (!explicitSourceStateId && Object.keys(sourceRecords).length === 0) {
-        const latestSource = latestStoredAnswerSource(room, loadRound);
-        if (latestSource) {
-          resolvedSourceStateId = latestSource.stateId;
-          sourceRecords = latestSource.records;
-        }
-      }
+      const resolvedSource = resolveVotingAnswerSource(room, loadRound, sourceStateId);
+      const resolvedSourceStateId = resolvedSource.stateId;
+      const sourceRecords = resolvedSource.records;
       if (Object.keys(sourceRecords).length > 0) {
         room.playerAnswerRecords = { ...sourceRecords };
         prepareVotingCards(room);
         room.lastVotingSourceStateId = resolvedSourceStateId;
-        room.lastVotingSourceFallbackUsed = resolvedSourceStateId !== sourceStateId;
+        room.lastVotingSourceFallbackUsed = resolvedSource.fallbackUsed;
         room.playerAnswerRecords = {};
       }
     }
@@ -277,4 +283,4 @@ function createRoomPhaseRuntime({
   return { advanceRoomFromMomentReturn, advanceRoomFromRouteAction, endGameMoment, enterGamePhase, enterIntroPhase, enterLobbyPhase, quitRoomToLobby };
 }
 
-module.exports = { createRoomPhaseRuntime };
+module.exports = { createRoomPhaseRuntime, resolveVotingAnswerSource };

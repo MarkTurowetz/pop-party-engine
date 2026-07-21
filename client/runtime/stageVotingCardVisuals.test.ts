@@ -66,6 +66,20 @@ describe("PartyGameVotingCardVisuals (ported voting-card-visuals)", () => {
     ]);
   });
 
+  it("targets current voting-card children through authored instance labels", () => {
+    const regeneratedCard = {
+      components: [
+        { id: "generated-answer", instanceLabel: "answer" },
+        { id: "generated-author", instanceLabel: "author" },
+        { id: "generated-voters", instanceLabel: "voters" },
+        { id: "generated-count", instanceLabel: "voteCount" }
+      ]
+    };
+
+    expect(votingCardLifecycleComponentIds(regeneratedCard)).toEqual(["answer"]);
+    expect(votingCardCompanionComponentIds(regeneratedCard)).toEqual(["author", "voters", "voteCount"]);
+  });
+
   it("waits for exactly one primary callback per voting card and gates Off afterward", async () => {
     let completePrimary: () => void = () => {
       throw new Error("Primary callback was not registered");

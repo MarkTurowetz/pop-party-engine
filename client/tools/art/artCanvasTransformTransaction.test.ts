@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { ArtComponent } from "../../types/game-data";
 import type { TimelineProperties } from "../../../shared/timeline-model";
 import {
+  alignedArtCanvasPositions,
   applyArtCanvasTransformKeyframes,
   artCanvasDragSelection,
+  artCanvasKeyboardCommand,
   captureArtCanvasTransformTargets,
   centeredArtCanvasPositions,
+  rootArtCanvasSelectionIds,
   translatedArtCanvasPositions
 } from "./artCanvasTransformTransaction";
 
@@ -14,6 +17,37 @@ function component(id: string, overrides: Partial<ArtComponent> = {}): ArtCompon
 }
 
 describe("art canvas transform transactions", () => {
+  it("maps arrow shortcuts to one-pixel, ten-pixel, and function-align commands", () => {
+    expect(artCanvasKeyboardCommand({ key: "ArrowLeft" })).toEqual({ direction: "left", mode: "nudge", step: 1 });
+    expect(artCanvasKeyboardCommand({ key: "ArrowDown", shiftKey: true })).toEqual({ direction: "down", mode: "nudge", step: 10 });
+    expect(artCanvasKeyboardCommand({ key: "ArrowRight", shiftKey: true, getModifierState: (key) => key === "Fn" }))
+      .toEqual({ direction: "right", mode: "align", step: 0 });
+    expect(artCanvasKeyboardCommand({ key: "Home", shiftKey: true })).toEqual({ direction: "left", mode: "align", step: 0 });
+  });
+
+  it("moves only selection roots when a selected container contains another selected object", () => {
+    const child = component("child");
+    const parent = component("parent", { kind: "container", children: [child] });
+    expect([...rootArtCanvasSelectionIds([parent, component("sibling")], new Set(["parent", "child", "sibling"]))])
+      .toEqual(["parent", "sibling"]);
+  });
+
+  it("aligns visual edges while preserving differently sized object bounds", () => {
+    const targets = captureArtCanvasTransformTargets(
+      [component("bubble", { x: 100 }), component("popup", { x: 220 })],
+      new Set(["bubble", "popup"]),
+      () => ({})
+    );
+    const bounds = new Map([
+      ["bubble", { left: 20, right: 220, top: 30, bottom: 100 }],
+      ["popup", { left: 170, right: 270, top: 40, bottom: 80 }]
+    ]);
+    expect(alignedArtCanvasPositions(targets, bounds, "left", 2)).toEqual({
+      bubble: { x: 100, y: 0 },
+      popup: { x: 145, y: 0 }
+    });
+  });
+
   it("selects an unselected drag anchor immediately and preserves an existing group", () => {
     expect([...artCanvasDragSelection(new Set(["vip"]), "bubble", false)]).toEqual(["bubble"]);
     expect([...artCanvasDragSelection(new Set(["vip"]), "bubble", true)]).toEqual(["vip", "bubble"]);

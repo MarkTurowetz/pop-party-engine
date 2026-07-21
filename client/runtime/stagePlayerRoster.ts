@@ -39,14 +39,18 @@ declare global {
 const w = () => globalThis as typeof globalThis & Window;
 
 export const PLAYER_WIDGET_COMPOSITION_ID = "prefab-player-widget-mc";
-const PLAYER_ANSWER_BUBBLE_MC_ID = "player-answer-bubble-mc";
+// Runtime commands target authored instance labels, not generated component ids.
+// The current Player Widget MC may replace or regenerate its references without
+// breaking the voice-answer path as long as these public labels stay intact.
+const PLAYER_ANSWER_BUBBLE_MC_ID = "playerAnswerBubbleMC";
 const PLAYER_ANSWER_BUBBLE_STATE_ID = "playerAnswerBubble";
-const PLAYER_AVATAR_MC_ID = "player-avatar-mc";
-const PLAYER_AVATAR_BEHAVIORS_ID = "player-avatar-behaviors";
-const PLAYER_NAME_MC_ID = "player-name-mc";
-const PLAYER_VIP_MC_ID = "vip-mc";
+const PLAYER_AVATAR_MC_ID = "playerAvatarMC";
+const PLAYER_AVATAR_BEHAVIORS_ID = "playerAvatarBehaviors";
+const PLAYER_NAME_MC_ID = "playerNameMC";
+const PLAYER_VIP_MC_ID = "vipMC";
 const AVATAR_FRAME_ID = "avatar";
-const POINT_POPUP_CONTAINER_ID = "point-popup-container";
+const POINT_POPUP_CONTAINER_INSTANCE_LABEL = "pointPopupContainer";
+const POINT_POPUP_CONTAINER_LEGACY_ID = "point-popup-container";
 const POINT_POPUP_COMPOSITION_ID = "player-point-popup";
 
 type RectLike = { left: number; top: number; width: number; height: number };
@@ -70,8 +74,14 @@ export function authoredCanvasPointViewportPosition(
 
 export function playerWidgetPointPopupAnchorPosition(composition: Dict | null): PointLike | null {
   if (!composition) return null;
-  const anchor = ((composition.components as Dict[]) || [])
-    .find((component) => component?.id === POINT_POPUP_CONTAINER_ID);
+  const components = [...((composition.components as Dict[]) || [])];
+  let anchor: Dict | undefined;
+  while (components.length && !anchor) {
+    const component = components.shift();
+    if (!component) continue;
+    if (component.instanceLabel === POINT_POPUP_CONTAINER_INSTANCE_LABEL || component.id === POINT_POPUP_CONTAINER_LEGACY_ID) anchor = component;
+    else components.push(...((component.children as Dict[]) || []));
+  }
   if (!anchor) return null;
   const position = {
     x: Number(anchor.x || 0),
@@ -80,7 +90,10 @@ export function playerWidgetPointPopupAnchorPosition(composition: Dict | null): 
   const timeline = composition.timeline as TimelineDocument | null | undefined;
   if (!timeline?.labels?.length || !timeline?.tracks?.length) return position;
   const onFrame = timeline.labels.find((label) => String(label?.name || "").trim().toLowerCase() === "on")?.frame ?? 0;
-  const timelinePosition = timelineSnapshotAt(timeline, onFrame).targets[POINT_POPUP_CONTAINER_ID];
+  const timelineTargets = timelineSnapshotAt(timeline, onFrame).targets;
+  const timelinePosition = timelineTargets[String(anchor.id || "")]
+    || timelineTargets[POINT_POPUP_CONTAINER_INSTANCE_LABEL]
+    || timelineTargets[POINT_POPUP_CONTAINER_LEGACY_ID];
   const timelineX = Number(timelinePosition?.x);
   const timelineY = Number(timelinePosition?.y);
   return {
@@ -232,13 +245,19 @@ function tileMatchesAnswerFilter(tile: El, player: Dict | null, playerFilter: st
 }
 
 export function runtimeAnswerBubbleComposition(composition: Dict, state: PlayerAnswerBubbleRuntimeState): Dict {
+  let answerTextTargetId = "";
   const runtime = cloneArtComposition(composition, (component) => {
-    if (component.id === "answer-text" && state.hasAnswer) component.defaultText = state.text;
+    const isAnswerText = component.id === "answer-text"
+      || component.instanceLabel === "answerText"
+      || String(component.name || "").trim().toLowerCase() === "answer text";
+    if (!isAnswerText || !state.hasAnswer) return;
+    component.defaultText = state.text;
+    answerTextTargetId = String(component.id || "");
   });
   if (!state.hasAnswer) return runtime;
   const timeline = runtime.timeline as Dict | undefined;
   for (const track of (timeline?.tracks as Dict[]) || []) {
-    if (track.targetId !== "answer-text") continue;
+    if (!answerTextTargetId || track.targetId !== answerTextTargetId) continue;
     for (const keyframe of (track.keyframes as Dict[]) || []) {
       keyframe.props = { ...((keyframe.props as Dict) || {}), defaultText: state.text };
     }
@@ -299,6 +318,7 @@ class PlayerRosterRenderer {
   pointPopupRenderers = new WeakMap<El, TreeRenderer>();
   resizeObserver: ResizeObserver | null = null;
   renderedAnswersShown = false;
+  liveAnswerPreviewEnabled = false;
 
   constructor(options: Dict = {}) {
     this.host = options.host as El | undefined;
@@ -347,7 +367,7 @@ class PlayerRosterRenderer {
   }
 
   answerStateFor(player: Dict): PlayerAnswerBubbleRuntimeState {
-    return playerAnswerBubbleRuntimeState(player, this.renderedAnswersShown);
+    return playerAnswerBubbleRuntimeState(player, this.renderedAnswersShown || this.liveAnswerPreviewEnabled);
   }
 
   compositionResolverFor(tile: El): (id: string) => Dict | null {
@@ -356,7 +376,9 @@ class PlayerRosterRenderer {
       if (!composition) return null;
       const player = this.tilePlayers.get(tile) || {};
       const color = String((player.avatar as Dict)?.color || "#22d3ee");
-      if (id === "player-answer-bubble") return runtimeAnswerBubbleComposition(composition, this.answerStateFor(player));
+      if (id === "player-answer-bubble" || String(composition.name || "").trim().toLowerCase() === "player answer bubble") {
+        return runtimeAnswerBubbleComposition(composition, this.answerStateFor(player));
+      }
       if (id === "player-name-widget") return runtimePlayerNameWidgetComposition(composition, player);
       if (id === "player-vip-widget") return runtimePlayerVipWidgetComposition(composition);
       if (id === "prefab-player-avatar-mc") return runtimePlayerAvatarMcComposition(composition, player);
@@ -409,6 +431,7 @@ class PlayerRosterRenderer {
 
     const previousNeedsInput = tile.dataset.playerNeedsInput;
     const isInitialRender = previousNeedsInput === undefined;
+    const previousAnswerVisible = tile.dataset.answerBubbleVisible === "true";
     const previousAnswerNonce = tile.dataset.answerBubbleNonce || "";
     const previousAnswerText = tile.dataset.answerBubbleText || "";
     const previousAnswerCorrectness = tile.dataset.answerBubbleCorrectness || "";
@@ -437,11 +460,18 @@ class PlayerRosterRenderer {
       previousNeedsInput
     });
     if (isInitialRender) this.playSpawnedPlayerWidget(renderer, player);
-    tile.dataset.answerBubbleHasAnswer = answerState.hasAnswer ? "true" : "false";
-    if (isInitialRender) {
-      tile.dataset.answerBubbleVisible = "false";
-      tile.dataset.answerBubbleCorrectness = "";
+    if (options.reconcileLiveAnswerPreview === true) {
+      this.syncAnswerBubbleComponent(renderer, answerState, {
+        instant: isInitialRender || options.instant === true,
+        previousVisible: previousAnswerVisible,
+        previousNonce: previousAnswerNonce,
+        previousText: previousAnswerText,
+        updateOnContentChange: true
+      });
     }
+    tile.dataset.answerBubbleHasAnswer = answerState.hasAnswer ? "true" : "false";
+    tile.dataset.answerBubbleVisible = answerState.visible ? "true" : "false";
+    if (isInitialRender) tile.dataset.answerBubbleCorrectness = "";
     tile.dataset.answerBubbleNonce = answerState.nonce;
     tile.dataset.answerBubbleText = answerState.text;
     tile.dataset.playerName = playerNameRuntimeText(player);
@@ -488,6 +518,12 @@ class PlayerRosterRenderer {
         : renderer.isComponentVisible?.(targetId);
     const alreadyTargetingVisibility = componentTargetShown === targetShown;
     if (alreadyTargetingVisibility) {
+      const previousNonce = String(options.previousNonce || "");
+      const previousText = String(options.previousText || "");
+      const contentChanged = previousNonce !== state.nonce || previousText !== state.text;
+      if (targetShown && options.updateOnContentChange === true && contentChanged) {
+        return renderer.playComponent?.(targetId, "Update", { instant }) || 0;
+      }
       if (typeof options.complete === "function") (options.complete as () => void)();
       return 0;
     }
@@ -546,6 +582,9 @@ class PlayerRosterRenderer {
 
   render(players: Dict[] = [], options: Dict = {}): void {
     if (!this.host) return;
+    const previousLiveAnswerPreviewEnabled = this.liveAnswerPreviewEnabled;
+    this.liveAnswerPreviewEnabled = options.liveAnswerPreviewEnabled === true;
+    const reconcileLiveAnswerPreview = previousLiveAnswerPreviewEnabled || this.liveAnswerPreviewEnabled;
     const existingTiles = this.existingTilesByPlayerId();
     const desiredIds = new Set(players.map((player) => player.id as string));
     let cursor = this.host.firstElementChild;
@@ -566,7 +605,7 @@ class PlayerRosterRenderer {
       } else {
         this.host!.insertBefore(tile, cursor);
       }
-      this.syncPlayerObject(tile, player, options);
+      this.syncPlayerObject(tile, player, { ...options, reconcileLiveAnswerPreview });
     });
     Array.from(this.host.querySelectorAll(".player-tile[data-player-id]")).forEach((node) => {
       const tile = node as El;

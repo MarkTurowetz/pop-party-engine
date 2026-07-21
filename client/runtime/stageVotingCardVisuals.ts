@@ -100,6 +100,13 @@ function componentById(composition: Dict | null, id: string): Dict | null {
   return ((composition?.components as Dict[]) || []).find((component) => component.id === id) || null;
 }
 
+function authoredComponentTarget(composition: Dict | null, id: string, instanceLabel: string): string {
+  const component = ((composition?.components as Dict[]) || []).find((item) => (
+    item.id === id || item.instanceLabel === instanceLabel
+  ));
+  return component ? String(component.instanceLabel || component.id || "") : "";
+}
+
 function allComponents(components: Dict[] = []): Dict[] {
   return components.flatMap((component) => [
     component,
@@ -149,16 +156,16 @@ function compositionName(composition: Dict): string {
 }
 
 export function votingCardLifecycleComponentIds(composition: Dict | null): string[] {
-  return [VOTING_CARD_ANSWER_COMPONENT_ID].filter((componentId) => componentById(composition, componentId) !== null);
+  return [authoredComponentTarget(composition, VOTING_CARD_ANSWER_COMPONENT_ID, "answer")].filter(Boolean);
 }
 
 export function votingCardCompanionComponentIds(composition: Dict | null): string[] {
   return [
-    VOTING_CARD_ART_COMPONENT_ID,
-    VOTING_CARD_AUTHOR_COMPONENT_ID,
-    VOTING_CARD_VOTERS_COMPONENT_ID,
-    VOTING_CARD_VOTE_COUNT_COMPONENT_ID
-  ].filter((componentId) => componentById(composition, componentId) !== null);
+    authoredComponentTarget(composition, VOTING_CARD_ART_COMPONENT_ID, "cardArt"),
+    authoredComponentTarget(composition, VOTING_CARD_AUTHOR_COMPONENT_ID, "author"),
+    authoredComponentTarget(composition, VOTING_CARD_VOTERS_COMPONENT_ID, "voters"),
+    authoredComponentTarget(composition, VOTING_CARD_VOTE_COUNT_COMPONENT_ID, "voteCount")
+  ].filter(Boolean);
 }
 
 interface VotingCardVisibilityTransitionOptions {
@@ -558,9 +565,9 @@ class VotingCardView {
       playPrimary: (animation, complete) => this.playChild(primaryTargetId, animation, { instant, complete }),
       playCompanions: () => {
         for (const componentId of votingCardCompanionComponentIds(parent)) {
-          if (nextShown && componentId !== VOTING_CARD_ART_COMPONENT_ID) continue;
+          if (nextShown && !["cardArt", VOTING_CARD_ART_COMPONENT_ID].includes(componentId)) continue;
           if (!nextShown && this.rootRenderer?.isComponentVisible?.(componentId) !== true) continue;
-          const hasAuthoredExit = componentId !== VOTING_CARD_VOTERS_COMPONENT_ID;
+          const hasAuthoredExit = !["voters", VOTING_CARD_VOTERS_COMPONENT_ID].includes(componentId);
           const companionAnimation = nextShown
             ? (instant ? "On" : "Appear")
             : (instant || !hasAuthoredExit ? "Off" : "Disappear");
@@ -576,8 +583,10 @@ class VotingCardView {
 
   revealAuthor(options: Dict = {}): Promise<void> {
     const instant = options.instant === true;
+    const parent = this.runtimeComposition(VOTING_CARD_MC_ID);
+    const authorTarget = authoredComponentTarget(parent, VOTING_CARD_AUTHOR_COMPONENT_ID, "author") || VOTING_CARD_AUTHOR_COMPONENT_ID;
     return targetCompletion((complete) => this.playChild(
-      VOTING_CARD_AUTHOR_COMPONENT_ID,
+      authorTarget,
       instant ? "On" : "Appear",
       { instant, complete }
     ));
@@ -596,15 +605,19 @@ class VotingCardView {
   }
 
   voterComponentId(voter: Dict, index: number): string {
-    return `${VOTING_CARD_VOTER_COMPONENT_ID}-${safeComponentId(voter.id, `voter-${index}`)}`;
+    void voter;
+    return `vote${index + 1}`;
   }
 
   revealVoters(options: Dict = {}): Promise<void> {
     const voters = this.currentVisibleVoters;
     if (!voters.length) return Promise.resolve();
     const instant = options.instant === true;
+    const parent = this.runtimeComposition(VOTING_CARD_MC_ID);
+    const votersTarget = authoredComponentTarget(parent, VOTING_CARD_VOTERS_COMPONENT_ID, "voters") || VOTING_CARD_VOTERS_COMPONENT_ID;
+    const voteCountTarget = authoredComponentTarget(parent, VOTING_CARD_VOTE_COUNT_COMPONENT_ID, "voteCount") || VOTING_CARD_VOTE_COUNT_COMPONENT_ID;
     const completions = [targetCompletion((complete) => this.playChild(
-      VOTING_CARD_VOTERS_COMPONENT_ID,
+      votersTarget,
       "On",
       { instant: true, complete }
     )), ...voters.map((voter, index) => targetCompletion((complete) => this.playChild(
@@ -613,7 +626,7 @@ class VotingCardView {
       { instant, complete }
     )))];
     completions.push(targetCompletion((complete) => this.playChild(
-      VOTING_CARD_VOTE_COUNT_COMPONENT_ID,
+      voteCountTarget,
       instant ? "On" : "Appear",
       { instant, complete }
     )));

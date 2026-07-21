@@ -1,5 +1,6 @@
 const PLAYER_WIDGET_COMPOSITION_ID = "prefab-player-widget-mc";
 const POINT_POPUP_CONTAINER_ID = "point-popup-container";
+const POINT_POPUP_CONTAINER_INSTANCE_LABEL = "pointPopupContainer";
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
@@ -10,7 +11,7 @@ function pointPopupContainerComponent() {
     id: POINT_POPUP_CONTAINER_ID,
     name: "Point Popup Container",
     kind: "container",
-    instanceLabel: "pointPopupContainer",
+    instanceLabel: POINT_POPUP_CONTAINER_INSTANCE_LABEL,
     x: 150,
     y: 180,
     width: 154,
@@ -37,12 +38,16 @@ function pointPopupContainerComponent() {
 
 function hasPointPopupContainer(composition) {
   return Array.isArray(composition?.components)
-    && composition.components.some((component) => component?.id === POINT_POPUP_CONTAINER_ID);
+    && composition.components.some((component) => (
+      component?.instanceLabel === POINT_POPUP_CONTAINER_INSTANCE_LABEL
+      || component?.id === POINT_POPUP_CONTAINER_ID
+      || hasPointPopupContainer({ components: component?.children })
+    ));
 }
 
 function migratePlayerWidgetPointPopupAnchorComponents(compositionId, components = []) {
   if (compositionId !== PLAYER_WIDGET_COMPOSITION_ID || !Array.isArray(components)) return components;
-  if (!components.some((component) => component?.id === POINT_POPUP_CONTAINER_ID)) {
+  if (!hasPointPopupContainer({ components })) {
     components.push(pointPopupContainerComponent());
   }
   return components;
@@ -64,6 +69,7 @@ function playerWidgetPointPopupAnchorOverride(defaultComposition, manifestCompos
 
 module.exports = {
   POINT_POPUP_CONTAINER_ID,
+  POINT_POPUP_CONTAINER_INSTANCE_LABEL,
   hasPointPopupContainer,
   migratePlayerWidgetPointPopupAnchorComponents,
   playerWidgetPointPopupAnchorOverride,

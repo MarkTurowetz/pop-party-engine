@@ -720,7 +720,11 @@ function applyStageState(lobby: Dict): void {
   setStageManagedText("stageIntroTitle", "GAME INTRO");
   renderStageWidgetBinding("presentationClickPrompt");
   clearStageDecisionDebug(lobby);
-  renderStagePlayers(players);
+  renderStagePlayers(players, {
+    // Voice capture owns a live answer preview: the temporary T and the final
+    // transcript update the current Player Answer Bubble MC while this input is active.
+    liveAnswerPreviewEnabled: String((lobby.textInput as Dict | null)?.type || "") === "voice"
+  });
   renderPointPopups((lobby.pendingPointPopups as Dict[]) || [], { deferAnimation: true });
   renderVotingCards((lobby.votingCards as Dict[]) || [], votingCardRenderOptions(lobby));
   renderCraftingTimer(lobby.craftingTimer as Dict, {

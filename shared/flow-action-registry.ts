@@ -570,7 +570,6 @@ const flowActionDefinitions: FlowActionDefinition[] = [
       room.triviaPromptText = "";
       room.G = {};
       room.pendingPointPopups = [];
-      room.pendingPointPopupNonce = 0;
       room.playerAnswerRecords = {};
       room.playerAnswerGroups = { correct: [], wrong: [], all: [] };
       room.storedPlayerAnswers = {};

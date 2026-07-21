@@ -107,6 +107,8 @@ function createVotingRuntime({
   }
 
   function prepareVotingCards(room) {
+    room.votingCardGeneration = Math.max(0, Number(room.votingCardGeneration || 0)) + 1;
+    const generation = room.votingCardGeneration;
     const records = room.playerAnswerRecords || {};
     const answersByPlayerId = new Map();
     for (const [key, record] of answerRecordEntries(records)) {
@@ -124,7 +126,10 @@ function createVotingRuntime({
         return items;
       }
       const card = {
-        id: `vote-card-${player.id}`,
+        // A player can author one card per preparation, but a later game must
+        // create a new runtime object even when the same players answer again.
+        id: `vote-card-${generation}-${player.id}`,
+        generation,
         authorPlayerId: player.id,
         text,
         voterIds: [],
@@ -243,6 +248,7 @@ function createVotingRuntime({
           : [];
         return {
           id: card.id,
+          generation: Number(card.generation || 0),
           index,
           text: card.text,
           voteCount: votesRevealed ? Number(card.voteCount || 0) : 0,

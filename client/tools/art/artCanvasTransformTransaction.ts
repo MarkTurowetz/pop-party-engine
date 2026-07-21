@@ -19,6 +19,63 @@ export interface ArtCanvasTransformPatch {
 
 export type ArtCanvasLivePositions = Record<string, { x: number; y: number }>;
 
+export type ArtCanvasArrowDirection = "left" | "right" | "up" | "down";
+
+export interface ArtCanvasKeyboardCommand {
+  direction: ArtCanvasArrowDirection;
+  mode: "align" | "nudge";
+  step: number;
+}
+
+export interface ArtCanvasVisualBounds {
+  bottom: number;
+  left: number;
+  right: number;
+  top: number;
+}
+
+export function artCanvasKeyboardCommand(event: {
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  getModifierState?: (key: "Fn") => boolean;
+  key: string;
+  metaKey?: boolean;
+  shiftKey?: boolean;
+}): ArtCanvasKeyboardCommand | null {
+  if (event.altKey || event.ctrlKey || event.metaKey) return null;
+  const arrowDirections: Record<string, ArtCanvasArrowDirection> = {
+    ArrowLeft: "left",
+    ArrowRight: "right",
+    ArrowUp: "up",
+    ArrowDown: "down"
+  };
+  const functionArrowDirections: Record<string, ArtCanvasArrowDirection> = {
+    Home: "left",
+    End: "right",
+    PageUp: "up",
+    PageDown: "down"
+  };
+  const direction = arrowDirections[event.key] || functionArrowDirections[event.key];
+  if (!direction) return null;
+  const functionModified = Boolean(event.getModifierState?.("Fn")) || Object.prototype.hasOwnProperty.call(functionArrowDirections, event.key);
+  if (event.shiftKey && functionModified) return { direction, mode: "align", step: 0 };
+  if (!arrowDirections[event.key]) return null;
+  return { direction, mode: "nudge", step: event.shiftKey ? 10 : 1 };
+}
+
+export function rootArtCanvasSelectionIds(components: ArtComponent[], selectedIds: ReadonlySet<string>): Set<string> {
+  const roots = new Set<string>();
+  const visit = (items: ArtComponent[], ancestorSelected: boolean): void => {
+    for (const component of items || []) {
+      const selected = selectedIds.has(component.id);
+      if (selected && !ancestorSelected) roots.add(component.id);
+      visit(component.children || [], ancestorSelected || selected);
+    }
+  };
+  visit(components, false);
+  return roots;
+}
+
 export function artCanvasDragSelection(
   currentSelection: ReadonlySet<string>,
   anchorId: string,
@@ -90,6 +147,31 @@ export function translatedArtCanvasPositions(
       ];
     })
   );
+}
+
+export function alignedArtCanvasPositions(
+  targets: ArtCanvasTransformTarget[],
+  visualBoundsById: ReadonlyMap<string, ArtCanvasVisualBounds>,
+  direction: ArtCanvasArrowDirection,
+  previewScale: number
+): ArtCanvasLivePositions {
+  if (targets.length < 2 || previewScale <= 0) return {};
+  const edge = direction === "left" || direction === "right" ? direction : direction === "up" ? "top" : "bottom";
+  const entries = targets
+    .map((target) => ({ target, bounds: visualBoundsById.get(target.id) }))
+    .filter((entry): entry is { target: ArtCanvasTransformTarget; bounds: ArtCanvasVisualBounds } => Boolean(entry.bounds));
+  if (entries.length < 2) return {};
+  const targetEdge = edge === "left" || edge === "top"
+    ? Math.min(...entries.map((entry) => entry.bounds[edge]))
+    : Math.max(...entries.map((entry) => entry.bounds[edge]));
+  const positions: ArtCanvasLivePositions = {};
+  for (const entry of entries) {
+    const pixelDelta = targetEdge - entry.bounds[edge];
+    const worldDeltaX = direction === "left" || direction === "right" ? pixelDelta / previewScale : 0;
+    const worldDeltaY = direction === "up" || direction === "down" ? pixelDelta / previewScale : 0;
+    Object.assign(positions, translatedArtCanvasPositions([entry.target], worldDeltaX, worldDeltaY));
+  }
+  return positions;
 }
 
 export function centeredArtCanvasPositions(targets: ArtCanvasTransformTarget[]): ArtCanvasLivePositions {

@@ -100,6 +100,19 @@ export function browserCompositionDragKeys(
   return [...visualKeys].filter((key) => selectedIds.has(compositionIdFromBrowserKey(key)));
 }
 
+export function adjacentBrowserCompositionId(
+  orderedIds: Iterable<string>,
+  currentId: string,
+  direction: "up" | "down"
+): string {
+  const ids = [...new Set([...orderedIds].map(String).filter(Boolean))];
+  if (!ids.length) return "";
+  const currentIndex = ids.indexOf(currentId);
+  if (currentIndex < 0) return direction === "up" ? ids[ids.length - 1] : ids[0];
+  const delta = direction === "up" ? -1 : 1;
+  return ids[Math.max(0, Math.min(ids.length - 1, currentIndex + delta))];
+}
+
 function collapsedKey(surface: ArtBrowserSurface, folderId: string): string {
   return `${surface}:${folderId}`;
 }
@@ -282,10 +295,32 @@ export function ArtCompositionBrowser({
       ? { surface, primaryId: "", ids: new Set() }
       : { surface, primaryId: selectedCompositionId, ids: new Set([selectedCompositionId]) });
   };
-  const deleteCompositionSelectionFromKey = (event: KeyboardEvent<HTMLOListElement>): void => {
-    if (event.key !== "Delete" && event.key !== "Backspace") return;
+  const handleCompositionListKey = (event: KeyboardEvent<HTMLOListElement>): void => {
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      moveCompositionIdsToTrash(compositionSelection);
+      return;
+    }
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     event.preventDefault();
-    moveCompositionIdsToTrash(compositionSelection);
+    const nextId = adjacentBrowserCompositionId(
+      selectableCompositionIds,
+      selectedCompositionId,
+      event.key === "ArrowUp" ? "up" : "down"
+    );
+    if (!nextId || nextId === selectedCompositionId) return;
+    pendingSelectionScrollTopRef.current = null;
+    setCompositionSelectionState({ surface, primaryId: nextId, ids: new Set([nextId]) });
+    compositionsController.selectComposition(nextId);
+    window.requestAnimationFrame(() => {
+      const item = [...(browserListRef.current?.querySelectorAll<HTMLElement>("[data-art-browser-composition]") || [])]
+        .find((candidate) => candidate.dataset.artBrowserComposition === nextId);
+      item?.scrollIntoView({ block: "nearest" });
+      browserListRef.current?.focus({ preventScroll: true });
+    });
   };
 
   const onDragStart = (event: DragEvent, key: string) => {
@@ -633,7 +668,7 @@ export function ArtCompositionBrowser({
         tabIndex={-1}
         onDragOver={(event) => event.preventDefault()}
         onDrop={onDropRoot}
-        onKeyDown={deleteCompositionSelectionFromKey}
+        onKeyDown={handleCompositionListKey}
       >
         {state.order.map((key) => (key.startsWith("folder:") ? renderFolder(folderIdFromKey(key)) : renderCompositionItem(key)))}
         {unfiled.filter((item) => !search.active || search.visibleKeys.has(item.key)).length ? (
