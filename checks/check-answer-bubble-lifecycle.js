@@ -329,6 +329,11 @@ async function main() {
         ?.createVisual?.()
         ?.timelinePlayer
         ?.currentFrame;
+      const authoredWipeReference = window.artComposition("wipe-widget-mc")
+        ?.components
+        ?.find((component) => component.id === "wipe-art-reference");
+      const authoredReferenceOpacity = String(authoredWipeReference?.opacity ?? 1);
+      const authoredReferenceScale = String(authoredWipeReference?.scale ?? 1);
       const wipeAppearSample = (elapsed) => {
         const reference = element.querySelector("[data-art-component-id='wipe-art-reference']");
         const layer = element.querySelector(".stage-widget-art-layer");
@@ -395,6 +400,8 @@ async function main() {
         appearMidLeft,
         appearSamples,
         appearWidgetFrame,
+        authoredReferenceOpacity,
+        authoredReferenceScale,
         disappearDuration: performance.now() - disappearStartedAt,
         disappearFrame: wipeArtFrame(),
         disappearWidgetFrame: controller.timelineRenderer?.rootTimelinePlayer?.currentFrame,
@@ -426,8 +433,14 @@ async function main() {
       const sampleLabel = `${sample.elapsed}ms/frame ${sample.artFrame}`;
       assert(sample.hostOpacity === "1", `Wipe host opacity changed to ${sample.hostOpacity} at ${sampleLabel}`);
       assert(sample.layerOpacity === "1", `Wipe art layer opacity changed to ${sample.layerOpacity} at ${sampleLabel}`);
-      assert(sample.referenceOpacity === "1", `Wipe Art MC opacity changed to ${sample.referenceOpacity} at ${sampleLabel}`);
-      assert(sample.referenceScale === "1", `Wipe Art MC scale changed to ${sample.referenceScale} at ${sampleLabel}`);
+      assert(
+        sample.referenceOpacity === wipeResult.authoredReferenceOpacity,
+        `Wipe Art MC opacity changed from authored ${wipeResult.authoredReferenceOpacity} to ${sample.referenceOpacity} at ${sampleLabel}`
+      );
+      assert(
+        sample.referenceScale === wipeResult.authoredReferenceScale,
+        `Wipe Art MC scale changed from authored ${wipeResult.authoredReferenceScale} to ${sample.referenceScale} at ${sampleLabel}`
+      );
       assert(
         String(sample.referenceTransitionDuration || "")
           .split(",")
@@ -447,8 +460,14 @@ async function main() {
     assert(wipeResult.disappearFrame === 45, `Wipe Disappear callback fired at art frame ${wipeResult.disappearFrame}`);
     assert(wipeResult.disappearWidgetFrame === 0, `Wipe Widget MC did not finish Off (${wipeResult.disappearWidgetFrame})`);
     assert(wipeResult.disappearUsedLegacyExitClass === false, "Wipe Art MC received the legacy CSS exit class");
-    assert(wipeResult.disappearMidOpacity === "1", `Wipe Art MC opacity was programmatically tweened to ${wipeResult.disappearMidOpacity}`);
-    assert(wipeResult.disappearMidScale === "1", `Wipe Art MC scale was programmatically tweened to ${wipeResult.disappearMidScale}`);
+    assert(
+      wipeResult.disappearMidOpacity === wipeResult.authoredReferenceOpacity,
+      `Wipe Art MC opacity was programmatically tweened from authored ${wipeResult.authoredReferenceOpacity} to ${wipeResult.disappearMidOpacity}`
+    );
+    assert(
+      wipeResult.disappearMidScale === wipeResult.authoredReferenceScale,
+      `Wipe Art MC scale was programmatically tweened from authored ${wipeResult.authoredReferenceScale} to ${wipeResult.disappearMidScale}`
+    );
     assert(wipeResult.disappearFinalInstantClass === true, "Wipe Art MC final visibility command was not marked instant");
     assert(wipeResult.disappearFinalOpacity === "0", `Wipe Art MC final opacity remained in transition at ${wipeResult.disappearFinalOpacity}`);
     assert(wipeResult.disappearFinalScale === "0", `Wipe Art MC final scale remained in transition at ${wipeResult.disappearFinalScale}`);
