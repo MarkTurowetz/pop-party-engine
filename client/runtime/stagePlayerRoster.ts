@@ -5,6 +5,7 @@
 
 import { distributedContainerItemPositions, type DistributedItemSize } from "./distributedContainerLayout";
 import { effectiveVisibilityTimeline } from "./effectiveTimeline";
+import { timelineSnapshotAt } from "./timelinePlayer";
 import { defaultPlayerPointPopupTimeline } from "../../shared/player-point-popup-timeline";
 import type { TimelineDocument } from "../../shared/timeline-model";
 import { createActionCompletionBarrier } from "./actionCompletionBarrier";
@@ -64,6 +65,27 @@ export function authoredCanvasPointViewportPosition(
   return {
     x: canvasRect.left + ((Number(point.x || 0) - canvasMinX) / canvasWidth) * canvasRect.width,
     y: canvasRect.top + ((Number(point.y || 0) - canvasMinY) / canvasHeight) * canvasRect.height
+  };
+}
+
+export function playerWidgetPointPopupAnchorPosition(composition: Dict | null): PointLike | null {
+  if (!composition) return null;
+  const anchor = ((composition.components as Dict[]) || [])
+    .find((component) => component?.id === POINT_POPUP_CONTAINER_ID);
+  if (!anchor) return null;
+  const position = {
+    x: Number(anchor.x || 0),
+    y: Number(anchor.y || 0)
+  };
+  const timeline = composition.timeline as TimelineDocument | null | undefined;
+  if (!timeline?.labels?.length || !timeline?.tracks?.length) return position;
+  const onFrame = timeline.labels.find((label) => String(label?.name || "").trim().toLowerCase() === "on")?.frame ?? 0;
+  const timelinePosition = timelineSnapshotAt(timeline, onFrame).targets[POINT_POPUP_CONTAINER_ID];
+  const timelineX = Number(timelinePosition?.x);
+  const timelineY = Number(timelinePosition?.y);
+  return {
+    x: Number.isFinite(timelineX) ? timelineX : position.x,
+    y: Number.isFinite(timelineY) ? timelineY : position.y
   };
 }
 
@@ -787,11 +809,10 @@ class PlayerRosterRenderer {
     return layer;
   }
 
-  pointPopupAnchor(tile: El | null): Dict | null {
+  pointPopupAnchor(tile: El | null): PointLike | null {
     if (!tile) return null;
     const composition = this.playerObjectCompositionFor(this.tilePlayers.get(tile) || {});
-    return ((composition?.components as Dict[]) || [])
-      .find((component) => component?.id === POINT_POPUP_CONTAINER_ID) || null;
+    return playerWidgetPointPopupAnchorPosition(composition);
   }
 
   positionPointPopup(node: El | null, tile: El | null): boolean {
@@ -804,7 +825,7 @@ class PlayerRosterRenderer {
     const playerObjectRect = playerObject.getBoundingClientRect();
     const canvas = (composition.canvas as Dict) || { width: 300, height: 370 };
     const anchorViewportPosition = authoredCanvasPointViewportPosition(
-      { x: Number(anchor.x || 0), y: Number(anchor.y || 0) },
+      anchor,
       {
         width: Math.max(1, Number(canvas.width || 1)),
         height: Math.max(1, Number(canvas.height || 1)),

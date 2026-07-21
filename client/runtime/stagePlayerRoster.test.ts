@@ -5,6 +5,7 @@ import {
   authoredCanvasPointViewportPosition,
   avatarTimelineLabelForShape,
   pointPopupOverlayPosition,
+  playerWidgetPointPopupAnchorPosition,
   playerAnswerBubbleRuntimeState,
   playerAnswerBubbleStateLabel,
   playerNameRuntimeText,
@@ -23,6 +24,23 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       { width: 300, height: 370 },
       { left: 200, top: 80, width: 150, height: 185 }
     )).toEqual({ x: 215, y: 100 });
+  });
+
+  it("uses the Player Widget On keyframe for the popup anchor before its stale base position", () => {
+    expect(playerWidgetPointPopupAnchorPosition({
+      components: [{ id: "point-popup-container", x: 150, y: 180 }],
+      timeline: {
+        fps: 30,
+        frameCount: 2,
+        labels: [{ name: "Off", frame: 0 }, { name: "On", frame: 1 }],
+        commands: [],
+        tracks: [{
+          id: "track-point-popup-container",
+          targetId: "point-popup-container",
+          keyframes: [{ frame: 0, props: { x: 150, y: 81 }, easing: "hold" }]
+        }]
+      }
+    })).toEqual({ x: 150, y: 81 });
   });
 
   it("converts the authored player anchor center into unclipped roster overlay coordinates", () => {
@@ -60,16 +78,26 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
         canvas: { width: 300, height: 370 },
         components: [
           { id: "player-avatar-mc", x: 150, y: 234 },
-          { id: "point-popup-container", x: 30, y: 40, width: 154, height: 64 }
-        ]
+          { id: "point-popup-container", x: 150, y: 180, width: 154, height: 64 }
+        ],
+        timeline: {
+          fps: 30,
+          frameCount: 2,
+          labels: [{ name: "Off", frame: 0 }, { name: "On", frame: 1 }],
+          commands: [],
+          tracks: [{
+            id: "track-point-popup-container",
+            targetId: "point-popup-container",
+            keyframes: [{ frame: 0, props: { x: 150, y: 81 }, easing: "hold" }]
+          }]
+        }
       })
     });
     roster.tilePlayers.set(tile, { id: "player-1" });
 
     expect(roster.positionPointPopup(node, tile)).toBe(true);
-    expect(node.style.left).toBe("230px");
-    expect(node.style.top).toBe("100px");
-    expect(node.style.left).not.toBe("350px");
+    expect(node.style.left).toBe("350px");
+    expect(node.style.top).toBe("141px");
     expect(node.style.top).not.toBe("294px");
   });
 
