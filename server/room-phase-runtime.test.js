@@ -35,8 +35,39 @@ function createRouteRuntime(overrides = {}) {
   });
 }
 
+function createReusableVotingRuntime(prepareVotingCards) {
+  const states = [
+    { id: "writing-moment", actions: [] },
+    { id: "voice-moment", actions: [] },
+    { id: "voting-moment", actions: [{ id: "vote", type: "voteOnAnswersInput" }] }
+  ];
+  return createRoomPhaseRuntime({
+    activePlayers: () => [],
+    broadcastLobby: vi.fn(),
+    clearActionTimer: vi.fn(),
+    clearAppliedActionEffects: vi.fn(),
+    clearChoiceInput: vi.fn(),
+    clearCountdownTimer: vi.fn(),
+    clearDisplayedPlayerAnswers: vi.fn(),
+    clearMicrophoneAccessInput: vi.fn(),
+    clearPlayerAnswerData: vi.fn(),
+    clearTextInput: vi.fn(),
+    clearVotingData: vi.fn(),
+    clearVotingInput: vi.fn(),
+    entryActionIndexForPhase: () => 0,
+    getStateActions: (stateId) => states.find((state) => state.id === stateId)?.actions || [],
+    isRoundIntroStateId: () => false,
+    normalizeFlowId: (value) => String(value || ""),
+    prepareVotingCards,
+    resetCraftingTimer: vi.fn(),
+    resolveMomentRouteTarget: () => ({}),
+    resolveMomentTargetStateId: () => "",
+    runtimeGameFlow: () => ({ states })
+  });
+}
+
 describe("voting answer source resolution", () => {
-  it("falls back to the latest submitted moment when a configured source is empty", () => {
+  it("does not resurface an older moment when the requested source is empty", () => {
     const room = {
       storedPlayerAnswers: {
         1: {
@@ -46,9 +77,9 @@ describe("voting answer source resolution", () => {
     };
 
     expect(resolveVotingAnswerSource(room, 1, "writing-moment")).toEqual({
-      stateId: "voice-moment",
-      records: { p1: { text: "JURASSIC PARK" } },
-      fallbackUsed: true
+      stateId: "writing-moment",
+      records: {},
+      fallbackUsed: false
     });
   });
 
@@ -75,5 +106,41 @@ describe("route action sessions", () => {
 
     expect(clearAppliedActionEffects).toHaveBeenCalledTimes(2);
     expect(room.routeActionSession.currentNodeId).toBe("code-node");
+  });
+});
+
+describe("reusable voting moments", () => {
+  it("prepares a fresh card source from each immediately preceding input moment", () => {
+    const preparedAnswers = [];
+    const runtime = createReusableVotingRuntime((room) => {
+      preparedAnswers.push(structuredClone(room.playerAnswerRecords));
+      room.votingCards = Object.entries(room.playerAnswerRecords).map(([playerId, answer], index) => ({
+        id: `card-${preparedAnswers.length}-${index}`,
+        authorPlayerId: playerId,
+        text: answer.text
+      }));
+    });
+    const room = {
+      phase: "writing-moment",
+      flowStateId: "writing-moment",
+      currentRound: 1,
+      playerAnswerRecords: { p1: { text: "ALIEN" }, p2: { text: "JAWS" } },
+      pendingFlowEvents: new Set()
+    };
+
+    runtime.enterGamePhase(room, "voting-moment");
+    runtime.enterGamePhase(room, "voice-moment");
+    room.playerAnswerRecords = { p1: { text: "JURASSIC PARK" } };
+    runtime.enterGamePhase(room, "voting-moment");
+
+    expect(preparedAnswers).toEqual([
+      { p1: { text: "ALIEN" }, p2: { text: "JAWS" } },
+      { p1: { text: "JURASSIC PARK" } }
+    ]);
+    expect(room.storedPlayerAnswers[1]).toEqual({
+      "writing-moment": { p1: { text: "ALIEN" }, p2: { text: "JAWS" } },
+      "voice-moment": { p1: { text: "JURASSIC PARK" } }
+    });
+    expect(room.lastVotingSourceStateId).toBe("voice-moment");
   });
 });

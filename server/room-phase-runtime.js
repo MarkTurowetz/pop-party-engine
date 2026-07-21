@@ -1,5 +1,7 @@
 "use strict";
 
+const { storeCurrentMomentAnswers } = require("./stored-player-answers-runtime");
+
 const VOTING_CARD_ACTION_TYPES = new Set([
   "setVotingCardsShown",
   "voteOnAnswersInput",
@@ -14,22 +16,9 @@ function storedAnswerRecordsForState(room, round, stateId) {
   return room.storedPlayerAnswers?.[round]?.[stateId] || {};
 }
 
-function latestStoredAnswerSource(room, round) {
-  const roundAnswers = room.storedPlayerAnswers?.[round] || {};
-  const entries = Object.entries(roundAnswers).filter(([, records]) => Object.keys(records || {}).length > 0);
-  const latest = entries[entries.length - 1] || null;
-  return latest ? { stateId: latest[0], records: latest[1] } : null;
-}
-
 function resolveVotingAnswerSource(room, round, requestedStateId) {
   const requestedRecords = storedAnswerRecordsForState(room, round, requestedStateId);
-  if (Object.keys(requestedRecords).length > 0) {
-    return { stateId: requestedStateId, records: requestedRecords, fallbackUsed: false };
-  }
-  const latest = latestStoredAnswerSource(room, round);
-  return latest
-    ? { ...latest, fallbackUsed: latest.stateId !== requestedStateId }
-    : { stateId: requestedStateId || "", records: {}, fallbackUsed: false };
+  return { stateId: requestedStateId || "", records: requestedRecords, fallbackUsed: false };
 }
 
 function createRoomPhaseRuntime({
@@ -202,14 +191,10 @@ function createRoomPhaseRuntime({
     clearActionTimer(room);
     const previousPhase = room.phase;
 
-    // Auto-save player answers from the departing moment into the persistent store.
-    const answersToSave = room.playerAnswerRecords || {};
-    if (previousPhase && previousPhase !== "lobby" && previousPhase !== "starting" && Object.keys(answersToSave).length > 0) {
-      room.storedPlayerAnswers = room.storedPlayerAnswers || {};
-      const saveRound = room.currentRound || 1;
-      room.storedPlayerAnswers[saveRound] = room.storedPlayerAnswers[saveRound] || {};
-      room.storedPlayerAnswers[saveRound][previousPhase] = { ...answersToSave };
-    }
+    // Accepted answers are stored immediately by the submit handler. Retain a
+    // final transition snapshot as an idempotent safety net for non-controller
+    // answer producers.
+    storeCurrentMomentAnswers(room, previousPhase);
 
     if (previousPhase === "lobby" || previousPhase === "starting") {
       const nextSessionKey = activePlayers(room).map((player) => player.id).sort().join("|");
@@ -256,9 +241,10 @@ function createRoomPhaseRuntime({
     }
 
     // Auto-setup voting cards when entering a phase that displays or uses voting cards.
-    // Prefer votingSourceStateId when it has answers. Otherwise use the phase we
-    // just left, then the latest populated source in this round. This lets one
-    // voting moment safely follow either writing or voice input.
+    // Use the explicitly authored source when present; otherwise use the phase
+    // immediately before this voting visit. Never fall back to an older moment:
+    // a reused voting moment must receive a fresh card set from its current
+    // producer instead of silently resurfacing stale answers.
     const enteringState = runtimeGameFlow(room).states.find((s) => s.id === phase);
     const hasVotingCards = actionListHasVotingCards(enteringState?.actions || []);
     const explicitSourceStateId = normalizeFlowId(enteringState?.votingSourceStateId, "");

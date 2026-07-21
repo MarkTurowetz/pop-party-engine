@@ -1,6 +1,7 @@
 const { isChoiceInputAction } = require("../shared/choice-input-action-config");
 const { isMicrophoneAccessAction } = require("../shared/microphone-access-action-config");
 const { isTextAnswerAction } = require("./text-answer-action-runtime");
+const { storePlayerAnswerRecord } = require("./stored-player-answers-runtime");
 
 function createControllerSubmitHandlersRuntime({
   allActivePlayersHaveSubmittedInput,
@@ -286,6 +287,7 @@ function createControllerSubmitHandlersRuntime({
       correct: null,
       answeredAt: answer.nonce
     };
+    storePlayerAnswerRecord(room, playerId, room.playerAnswerRecords[playerId]);
     updatePlayerAnswerGroups(room);
     broadcastLobby(room);
     if (allActivePlayersHaveSubmittedInput(room)) {

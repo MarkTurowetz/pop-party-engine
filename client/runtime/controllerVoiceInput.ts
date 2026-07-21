@@ -147,6 +147,11 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
   }
 
   async function canRecordWithMicrophone(): Promise<boolean> {
+    // The authored microphone-access step already opened getUserMedia and
+    // records that success. Trust it before querying Permissions: desktop
+    // browsers may report microphone as "prompt" or not implement the query at
+    // all even though SpeechRecognition can use the granted microphone.
+    if (hasRememberedMicrophoneAccess()) return true;
     try {
       const permission = await navigator.permissions?.query?.({ name: "microphone" as PermissionName });
       if (permission?.state === "granted") {
@@ -161,14 +166,9 @@ export function createControllerVoiceInput(options: ControllerVoiceInputOptions)
     } catch {
       // Some browsers do not expose microphone permission state.
     }
-    if (hasRememberedMicrophoneAccess()) {
-      try {
-        localStorage.removeItem(rememberedAccessKey);
-      } catch {
-        // Storage can be unavailable in private browsing modes.
-      }
-    }
-    return false;
+    // Unknown permission state is not denial. Let SpeechRecognition start and
+    // surface its native not-allowed/audio-capture error if access is unusable.
+    return true;
   }
 
   async function beginRecording(actionId: string, expectedPressToken: number | null = null): Promise<void> {

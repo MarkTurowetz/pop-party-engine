@@ -131,6 +131,103 @@ describe("createControllerVoiceInput (ported)", () => {
     view.stopRecognition();
   });
 
+  it("trusts microphone access already granted by the authored access step on desktop", async () => {
+    const recognition = {
+      continuous: false,
+      interimResults: false,
+      maxAlternatives: 0,
+      lang: "",
+      onresult: null,
+      onerror: null,
+      onend: null,
+      start: vi.fn(),
+      stop: vi.fn(),
+      abort: vi.fn()
+    };
+    const button = {
+      dataset: {} as DOMStringMap,
+      disabled: false,
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: () => false,
+      releasePointerCapture: vi.fn()
+    } as unknown as HTMLButtonElement;
+    const Recognition = function Recognition() {
+      return recognition;
+    } as unknown as new () => typeof recognition;
+    const permissionQuery = vi.fn(async () => ({ state: "prompt" }));
+    vi.stubGlobal("window", {
+      SpeechRecognition: Recognition,
+      clearTimeout: vi.fn(),
+      setTimeout: vi.fn(() => 1)
+    });
+    vi.stubGlobal("navigator", { permissions: { query: permissionQuery } });
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(() => "true"),
+      setItem: vi.fn(),
+      removeItem: vi.fn()
+    });
+    const view = createControllerVoiceInput({
+      ...options(),
+      getButton: () => button,
+      status: { dataset: {} as DOMStringMap } as HTMLElement
+    });
+    view.bindButton("voice-action");
+
+    button.onpointerdown?.({ preventDefault: vi.fn(), pointerId: 4 } as unknown as PointerEvent);
+    await Promise.resolve();
+
+    expect(recognition.start).toHaveBeenCalledOnce();
+    expect(permissionQuery).not.toHaveBeenCalled();
+    view.stopRecognition();
+  });
+
+  it("lets native speech recognition decide when the Permissions API is inconclusive", async () => {
+    const recognition = {
+      continuous: false,
+      interimResults: false,
+      maxAlternatives: 0,
+      lang: "",
+      onresult: null,
+      onerror: null,
+      onend: null,
+      start: vi.fn(),
+      stop: vi.fn(),
+      abort: vi.fn()
+    };
+    const button = {
+      dataset: {} as DOMStringMap,
+      disabled: false
+    } as HTMLButtonElement;
+    const Recognition = function Recognition() {
+      return recognition;
+    } as unknown as new () => typeof recognition;
+    vi.stubGlobal("window", {
+      SpeechRecognition: Recognition,
+      clearTimeout: vi.fn(),
+      setTimeout: vi.fn(() => 1)
+    });
+    vi.stubGlobal("navigator", {
+      permissions: { query: vi.fn(async () => ({ state: "prompt" })) }
+    });
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn()
+    });
+    const view = createControllerVoiceInput({
+      ...options(),
+      getButton: () => button,
+      status: { dataset: {} as DOMStringMap } as HTMLElement
+    });
+
+    view.start("voice-action");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(recognition.start).toHaveBeenCalledOnce();
+    view.stopRecognition();
+  });
+
   it("does not start a continuous recording after release wins a pending permission check", async () => {
     let resolvePermission!: (value: { state: string }) => void;
     const permission = new Promise<{ state: string }>((resolve) => {
