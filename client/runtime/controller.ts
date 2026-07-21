@@ -475,6 +475,9 @@ function getControllerSessionRuntime() {
 }
 
 let currentControllerViewVisitKey = "";
+let lastRenderedControllerStageCode = "";
+let lastRenderedControllerSessionId = -1;
+let lastRenderedControllerRevision = -1;
 
 function applyControllerLayoutForPhase(phase: string): void {
   const lobby = w.controllerState?.lobby as Dict | undefined;
@@ -484,6 +487,8 @@ function applyControllerLayoutForPhase(phase: string): void {
   if (isNewVisit) {
     getControllerGlobalActionView().dispose();
     getControllerLocalButtonRuntime().dispose();
+    getControllerChoiceInputView().reset();
+    getControllerTextInputView().reset();
   }
   if (visitKey) currentControllerViewVisitKey = visitKey;
   getControllerGlobalActionView().prepareForLayout(phase);
@@ -574,6 +579,22 @@ async function advanceControllerStageClick(actionId: string): Promise<Dict | nul
 function renderControllerState(lobbyInput: unknown): void {
   if (!w.controllerState) return;
   const lobby = lobbyInput as Dict;
+  const nextStageCode = String(lobby.stageCode || w.controllerState.stageCode || "");
+  const nextSessionId = Number(lobby.gameSessionId || 0);
+  const nextRevision = Number(lobby.revision);
+  if (nextStageCode !== lastRenderedControllerStageCode) {
+    lastRenderedControllerStageCode = nextStageCode;
+    lastRenderedControllerSessionId = -1;
+    lastRenderedControllerRevision = -1;
+  }
+  if (nextSessionId < lastRenderedControllerSessionId) return;
+  if (
+    nextSessionId === lastRenderedControllerSessionId
+    && Number.isFinite(nextRevision)
+    && nextRevision <= lastRenderedControllerRevision
+  ) return;
+  lastRenderedControllerSessionId = nextSessionId;
+  if (Number.isFinite(nextRevision)) lastRenderedControllerRevision = nextRevision;
   w.controllerState.lobby = lobby;
   window.clearInterval(w.controllerCountdownTimer ?? undefined);
   const me = ((lobby.players as Dict[]) || []).find((player) => player.id === w.controllerState!.playerId);

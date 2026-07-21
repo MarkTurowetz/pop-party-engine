@@ -5,13 +5,15 @@ const require = createRequire(import.meta.url);
 const { createLobbyPayloadRuntime } = require("./lobby-payload-runtime");
 
 function runtimeFor(action) {
-  return createLobbyPayloadRuntime({
+  const applyRoomActionEffects = vi.fn();
+  const currentRoomAction = vi.fn(() => action);
+  const runtime = createLobbyPayloadRuntime({
     activePlayers: () => [],
     allActivePlayersHaveSubmittedInput: () => false,
-    applyRoomActionEffects: vi.fn(),
+    applyRoomActionEffects,
     choiceInputPayload: () => null,
     craftingTimerPayload: () => null,
-    currentRoomAction: () => action,
+    currentRoomAction,
     gameConstants: () => ({ gameTitle: "Game", speechToTextSendInputBuffer: 0 }),
     microphoneAccessPayload: () => null,
     normalizePlayerFilter: () => "all",
@@ -23,6 +25,7 @@ function runtimeFor(action) {
     serializeVotingCards: () => [],
     textInputPayload: () => null
   });
+  return { ...runtime, applyRoomActionEffects, currentRoomAction };
 }
 
 describe("lobby payload flow action exposure", () => {
@@ -60,5 +63,23 @@ describe("lobby payload flow action exposure", () => {
     });
 
     expect(payload.triviaPromptText).toBe("Which dinosaur had three horns?");
+  });
+
+  it("exposes a runtime fault without evaluating or applying another flow action", () => {
+    const runtime = runtimeFor({ id: "should-not-run", type: "displayText" });
+    const runtimeFault = { id: "1:4:VOTING_SOURCE_INVALID", code: "VOTING_SOURCE_INVALID", message: "No answers" };
+    const payload = runtime.lobbyPayload({
+      stageCode: "TEST",
+      revision: 3,
+      phase: "voting-moment",
+      flowStateId: "voting-moment",
+      players: new Map(),
+      runtimeFault
+    });
+
+    expect(payload.runtimeFault).toEqual(runtimeFault);
+    expect(payload.action).toBeNull();
+    expect(runtime.currentRoomAction).not.toHaveBeenCalled();
+    expect(runtime.applyRoomActionEffects).not.toHaveBeenCalled();
   });
 });

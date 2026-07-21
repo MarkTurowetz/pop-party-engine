@@ -8,6 +8,7 @@ interface OrchestratorOptions {
   prepareNewStageAction?: (lobby: Dict, actionKey: string) => void;
   cancelStageWipe?: () => void;
   showStageDecisionHalt?: (lobby: Dict) => void;
+  showRuntimeFault?: (lobby: Dict) => void;
   applyStageState?: (lobby: Dict) => void;
   scheduleSubActions?: (action: Dict, actionKey: string) => void;
   runStageWipe?: (onCovered: () => void, complete: () => void) => void;
@@ -58,12 +59,21 @@ class StageRenderOrchestrator {
     const isNewAction = this.renderedActionKey !== actionKey;
     const isNewPhase = Boolean(this.renderedPhase && this.renderedPhase !== nextPhase);
     const haltedByDecision = (lobby.lastDecisionTrace as Dict)?.selectedTarget === "none";
+    const runtimeFault = lobby.runtimeFault as Dict | null;
     if (isNewPhase) {
       options.clearStageAudioPlayers?.();
     }
 
     this.renderedPhase = nextPhase;
     if (isNewAction) options.prepareNewStageAction?.(lobby, actionKey);
+    if (runtimeFault) {
+      options.cancelStageWipe?.();
+      options.showRuntimeFault?.(lobby);
+      this.renderedActionKey = actionKey;
+      this.renderedAction = null;
+      options.applyStageState?.({ ...lobby, action: null });
+      return;
+    }
     if (haltedByDecision) {
       options.cancelStageWipe?.();
       options.showStageDecisionHalt?.(lobby);

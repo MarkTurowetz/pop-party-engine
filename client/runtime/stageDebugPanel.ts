@@ -65,6 +65,7 @@ class StageDebugPanel {
 
   clearDecisionAlert(lobby: Dict = {}): void {
     if (!this.alertElement) return;
+    if (lobby.runtimeFault) return;
     if ((lobby.lastDecisionTrace as Dict)?.selectedTarget !== "none") {
       this.alertElement.classList.add("hidden");
     }
@@ -73,6 +74,15 @@ class StageDebugPanel {
   showDecisionHalt(lobby: Dict = {}): void {
     if (!this.alertElement) return;
     this.alertElement.textContent = `No Matching Branch: ${(lobby.lastDecisionTrace as Dict)?.actionId || "Unknown Action"}`;
+    this.alertElement.classList.remove("hidden");
+  }
+
+  showRuntimeFault(lobby: Dict = {}): void {
+    if (!this.alertElement) return;
+    const fault = (lobby.runtimeFault || {}) as Dict;
+    const expected = fault.expected ? ` Expected: ${fault.expected}.` : "";
+    const actual = fault.actual ? ` Actual: ${fault.actual}.` : "";
+    this.alertElement.textContent = `Runtime Fault [${fault.code || "UNKNOWN"}]: ${fault.message || "The game cannot continue."}${expected}${actual}`;
     this.alertElement.classList.remove("hidden");
   }
 

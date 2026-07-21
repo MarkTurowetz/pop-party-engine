@@ -1,7 +1,7 @@
 const { isChoiceInputAction } = require("../shared/choice-input-action-config");
 const { isMicrophoneAccessAction } = require("../shared/microphone-access-action-config");
 const { isTextAnswerAction } = require("./text-answer-action-runtime");
-const { storePlayerAnswerRecord } = require("./stored-player-answers-runtime");
+const { deletePlayerAnswerRecord, storePlayerAnswerRecord } = require("./stored-player-answers-runtime");
 
 function controllerInputStaleError(payload, room, inputVisitId, label) {
   if (payload.gameSessionId !== undefined && Number(payload.gameSessionId) !== Number(room.gameSessionId || 0)) {
@@ -37,6 +37,10 @@ function createControllerSubmitHandlersRuntime({
   updatePlayerAnswerGroups
 }) {
   function rejectIfPaused(room, res) {
+    if (room.runtimeFault) {
+      sendJson(res, 423, { ok: false, error: room.runtimeFault.message || "Game is halted by a runtime fault" });
+      return true;
+    }
     if (!roomIsPaused(room)) return false;
     sendJson(res, 423, { ok: false, error: "Game is paused" });
     return true;
@@ -52,6 +56,9 @@ function createControllerSubmitHandlersRuntime({
     }
     if (roomIsPaused(room)) {
       return { status: 423, error: "Game is paused" };
+    }
+    if (room.runtimeFault) {
+      return { status: 423, error: room.runtimeFault.message || "Game is halted by a runtime fault" };
     }
 
     const currentAction = resolveRoomActionText(currentRoomAction(room), room);
@@ -160,6 +167,8 @@ function createControllerSubmitHandlersRuntime({
         return;
       }
       room.choiceInputAnswers.delete(playerId);
+      delete room.playerAnswerRecords?.[playerId];
+      deletePlayerAnswerRecord(room, playerId);
       forgetDisplayedPlayerAnswer(room, playerId);
       broadcastLobby(room);
       sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
@@ -193,6 +202,7 @@ function createControllerSubmitHandlersRuntime({
       correct,
       answeredAt: answer.answeredAt
     };
+    storePlayerAnswerRecord(room, playerId, room.playerAnswerRecords[playerId]);
     updatePlayerAnswerGroups(room);
 
     broadcastLobby(room);

@@ -1,5 +1,7 @@
 function resetGameSessionState(room) {
   room.gameSessionId = Math.max(0, Number(room.gameSessionId || 0)) + 1;
+  room.runtimeFault = null;
+  room.sessionOutputs = { sessionId: room.gameSessionId, byVisit: {}, latestByState: {} };
   room.activeInputFlowEventKey = "";
   room.pendingFlowEvents = new Set();
   room.flowVariables = {};
@@ -44,6 +46,7 @@ function resetGameSessionState(room) {
   room.votingInputPrompt = "";
   room.votingAnswers = new Map();
   room.lastVotingSourceStateId = "";
+  room.lastVotingSourceRef = null;
   room.lastVotingSourceFallbackUsed = false;
   room.lastVotingPrepare = null;
   room.microphoneAccessGrantedPlayerIds = new Set();

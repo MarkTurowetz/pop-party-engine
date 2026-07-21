@@ -4,6 +4,7 @@ const {
   isFlowEventBarrierAction,
   stageCompletionCleanupForActionType
 } = require("../shared/flow-action-registry");
+const { createRuntimeFault } = require("./runtime-fault-runtime");
 
 function createActionCompletionRuntime({
   advanceRoomAfterAction,
@@ -39,7 +40,24 @@ function createActionCompletionRuntime({
     if (!releasePendingFlowEvents(room)) broadcastLobby(room);
   }
 
+  function haltMissingTransition(room, action) {
+    clearActionTimer(room);
+    createRuntimeFault(room, {
+      code: "FLOW_TARGET_INVALID",
+      message: `Transition ${action?.name || action?.id || "action"} has no valid target state.`,
+      actionId: action?.id,
+      expected: "An authored transition target or next flow node",
+      actual: "No target"
+    });
+    broadcastLobby(room);
+    return false;
+  }
+
   function finishPendingAction(room, expectedActionId) {
+    if (room.runtimeFault) {
+      clearActionTimer(room);
+      return false;
+    }
     const currentAction = currentRoomAction(room);
     if (!currentAction || currentAction.id !== expectedActionId) {
       clearActionTimer(room);
@@ -58,7 +76,8 @@ function createActionCompletionRuntime({
         broadcastAfterAdvance(room);
         return true;
       }
-      enterGamePhase(room, currentAction.targetState || "intro");
+      if (!currentAction.targetState) return haltMissingTransition(room, currentAction);
+      enterGamePhase(room, currentAction.targetState);
       return true;
     }
 
@@ -69,6 +88,7 @@ function createActionCompletionRuntime({
   }
 
   function schedulePendingAction(room, currentAction, delayMs) {
+    if (room.runtimeFault) return false;
     const delay = Math.max(0, Number(delayMs || 0));
     const now = Date.now();
     room.actionCompletionPendingId = currentAction.id;
@@ -78,6 +98,7 @@ function createActionCompletionRuntime({
     room.actionTimerId = setTimeout(() => {
       finishPendingAction(room, currentAction.id);
     }, delay);
+    return true;
   }
 
   function pauseActionTimer(room) {
@@ -90,7 +111,7 @@ function createActionCompletionRuntime({
   }
 
   function resumeActionTimer(room) {
-    if (room.actionTimerId || !room.actionCompletionPendingId) return;
+    if (room.runtimeFault || room.actionTimerId || !room.actionCompletionPendingId) return;
     const currentAction = currentRoomAction(room);
     if (!currentAction || currentAction.id !== room.actionCompletionPendingId) {
       clearActionTimer(room);
@@ -100,7 +121,7 @@ function createActionCompletionRuntime({
   }
 
   function completeCurrentAction(room, expectedActionId = "", source = "callback") {
-    if (room.isPaused) return false;
+    if (room.runtimeFault || room.isPaused) return false;
     const currentAction = currentRoomAction(room);
     if (!currentAction) return false;
     if (expectedActionId && currentAction.id !== expectedActionId) return false;
@@ -123,14 +144,14 @@ function createActionCompletionRuntime({
           broadcastAfterAdvance(room);
           return;
         }
-        enterGamePhase(room, currentAction.targetState || "intro");
+        if (!currentAction.targetState) return haltMissingTransition(room, currentAction);
+        enterGamePhase(room, currentAction.targetState);
       };
       if (delayMs > 0) {
         schedulePendingAction(room, currentAction, delayMs);
         return true;
       }
-      completeTransitionState();
-      return true;
+      return completeTransitionState() !== false;
     }
 
     clearActionTimer(room);

@@ -18,6 +18,7 @@ export interface ControllerHeartbeatOptions {
 }
 
 export interface ControllerHeartbeatRuntime {
+  poll(): Promise<void>;
   start(): void;
   stop(): void;
 }
@@ -45,17 +46,23 @@ export function createControllerHeartbeatRuntime(options: ControllerHeartbeatOpt
         };
 
   let timer: number | null = null;
+  let polling = false;
+  let runId = 0;
 
   function stop(): void {
     if (timer !== null) window.clearInterval(timer);
     timer = null;
+    runId += 1;
   }
 
   async function pollHeartbeat(): Promise<void> {
     const state = getControllerState();
-    if (!state) return;
+    if (!state || polling) return;
+    const activeRunId = runId;
+    polling = true;
     try {
       const result = await sendHeartbeat();
+      if (activeRunId !== runId) return;
       renderState(result.lobby);
     } catch (error) {
       if ((error as Dict)?.code === "KICKED_TO_LOBBY") {
@@ -69,6 +76,8 @@ export function createControllerHeartbeatRuntime(options: ControllerHeartbeatOpt
         return;
       }
       writeText(elements.meta, "Reconnecting to lobby");
+    } finally {
+      polling = false;
     }
   }
 
@@ -77,7 +86,7 @@ export function createControllerHeartbeatRuntime(options: ControllerHeartbeatOpt
     timer = window.setInterval(pollHeartbeat, 1000);
   }
 
-  return { start, stop };
+  return { poll: pollHeartbeat, start, stop };
 }
 
 declare global {

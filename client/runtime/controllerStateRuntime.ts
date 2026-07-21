@@ -75,6 +75,18 @@ export function createControllerStateRuntime(options: ControllerStateRuntimeOpti
     });
   }
 
+  function renderRuntimeFault(context: RenderContext): boolean | number | null {
+    getVoiceInput().stopRecognition();
+    const fault = (context.lobby.runtimeFault || {}) as Dict;
+    const code = String(fault.code || "RUNTIME_FAULT");
+    const message = String(fault.message || "The game cannot continue because required data is invalid.");
+    return getGlobalActionView().renderMessage(context.lobby, `${message} (${code})`, {
+      id: `runtimeFault:${fault.id || code}`,
+      layoutPhase: controllerLayoutStateIds.presentation,
+      showButton: false
+    });
+  }
+
   function renderSubmissionConfirmation(context: RenderContext): boolean | number | null {
     const confirmation = resolveControllerSubmissionConfirmation(context.lobby, context.me);
     if (!confirmation) return false;
@@ -94,6 +106,11 @@ export function createControllerStateRuntime(options: ControllerStateRuntimeOpti
   }
 
   const stateSpecs: StateSpec[] = [
+    {
+      id: "runtimeFault",
+      matches: (context) => Boolean(context.lobby?.runtimeFault),
+      render: renderRuntimeFault
+    },
     {
       id: "paused",
       matches: (context) => (context.lobby?.isPaused as boolean) === true && !isLobbyPhase(context.phase),

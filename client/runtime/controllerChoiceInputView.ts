@@ -27,6 +27,7 @@ export interface ControllerChoiceInputViewOptions {
 
 export function createControllerChoiceInputView(options: ControllerChoiceInputViewOptions): {
   render(lobby: Dict, me: Dict): boolean;
+  reset(): void;
 } {
   const { applyLayoutForPhase, bindPress, elements, hideViews, setButtonText, setText, setTextShown, showView, submitChoice } =
     options;
@@ -135,7 +136,14 @@ export function createControllerChoiceInputView(options: ControllerChoiceInputVi
     return true;
   }
 
-  return { render };
+  function reset(): void {
+    const buttons = typeof elements.grid.querySelectorAll === "function"
+      ? Array.from(elements.grid.querySelectorAll<HTMLButtonElement>("button.choice-option-button"))
+      : [];
+    for (const button of buttons) button.remove();
+  }
+
+  return { render, reset };
 }
 
 declare global {

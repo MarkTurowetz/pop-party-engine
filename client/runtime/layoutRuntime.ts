@@ -714,6 +714,7 @@ function prepareControllerArtHostNativeOverlays(host: El, hostId: string): void 
     // control must stay interactive and paint its value/caret above the
     // pointer-transparent authored art layer.
     target.classList.remove(
+      "hidden",
       "controller-layout-hidden",
       "controller-layout-visual-hidden",
       "controller-layout-visual-exiting",

@@ -24,6 +24,7 @@ function createVotingRuntime({
     room.votingWinnerRevealed = false;
     room.votingWinners = [];
     room.lastVotingSourceStateId = "";
+    room.lastVotingSourceRef = null;
     room.lastVotingSourceFallbackUsed = false;
   }
 

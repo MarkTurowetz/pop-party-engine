@@ -69,27 +69,40 @@ function createReusableVotingRuntime(prepareVotingCards) {
 describe("voting answer source resolution", () => {
   it("does not resurface an older moment when the requested source is empty", () => {
     const room = {
-      storedPlayerAnswers: {
-        1: {
-          "voice-moment": { p1: { text: "JURASSIC PARK" } }
-        }
+      gameSessionId: 3,
+      sessionOutputs: {
+        sessionId: 3,
+        byVisit: {
+          "voice-moment@8": { sessionId: 3, stateId: "voice-moment", visitId: 8, records: { p1: { text: "JURASSIC PARK" } } }
+        },
+        latestByState: { "voice-moment": "voice-moment@8" }
       }
     };
 
-    expect(resolveVotingAnswerSource(room, 1, "writing-moment")).toEqual({
-      stateId: "writing-moment",
+    expect(resolveVotingAnswerSource(room, { sessionId: 3, stateId: "writing-moment", visitId: 9 })).toEqual({
+      sourceRef: { sessionId: 3, stateId: "writing-moment", visitId: 9 },
       records: {},
+      output: null,
       fallbackUsed: false
     });
   });
 
-  it("uses the requested moment when it has current answers", () => {
+  it("uses only the requested producer visit in the current game session", () => {
     const records = { p1: { text: "THE MATRIX" } };
-    const room = { storedPlayerAnswers: { 2: { "writing-moment": records } } };
+    const output = { sessionId: 4, stateId: "writing-moment", visitId: 11, records };
+    const room = {
+      gameSessionId: 4,
+      sessionOutputs: {
+        sessionId: 4,
+        byVisit: { "writing-moment@11": output },
+        latestByState: { "writing-moment": "writing-moment@11" }
+      }
+    };
 
-    expect(resolveVotingAnswerSource(room, 2, "writing-moment")).toEqual({
-      stateId: "writing-moment",
+    expect(resolveVotingAnswerSource(room, { sessionId: 4, stateId: "writing-moment", visitId: 11 })).toEqual({
+      sourceRef: { sessionId: 4, stateId: "writing-moment", visitId: 11 },
       records,
+      output,
       fallbackUsed: false
     });
   });
@@ -167,5 +180,31 @@ describe("reusable voting moments", () => {
     });
     expect(room.lastVotingSourceStateId).toBe("voice-moment");
     expect(room.momentVisitId).toBe(firstVotingVisitId + 2);
+  });
+
+  it("halts visibly when the immediately preceding producer visit has no valid answers", () => {
+    const runtime = createReusableVotingRuntime((room) => {
+      room.votingCards = [];
+      room.lastVotingPrepare = { cardCount: 0, skipped: [] };
+    });
+    const room = {
+      gameSessionId: 9,
+      momentVisitId: 14,
+      phase: "voice-moment",
+      flowStateId: "voice-moment",
+      currentRound: 1,
+      playerAnswerRecords: {},
+      pendingFlowEvents: new Set()
+    };
+
+    expect(runtime.enterGamePhase(room, "voting-moment")).toBe(false);
+    expect(room.runtimeFault).toMatchObject({
+      code: "VOTING_SOURCE_INVALID",
+      gameSessionId: 9,
+      stateId: "voting-moment",
+      sourceRef: { sessionId: 9, stateId: "voice-moment", visitId: 14 }
+    });
+    expect(room.actionTimerId).toBeUndefined();
+    expect(room.votingCards).toEqual([]);
   });
 });

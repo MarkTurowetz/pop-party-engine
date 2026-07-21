@@ -61,7 +61,7 @@ function createRoomActionEffectsRuntime({
   });
 
   function applyRoomActionEffects(room, action) {
-    if (!action || hasAppliedActionEffect(room, action.id)) return;
+    if (room.runtimeFault || !action || hasAppliedActionEffect(room, action.id)) return;
     markAppliedActionEffect(room, action.id);
     actionRegistry.applyRoomEffect(room, action);
   }

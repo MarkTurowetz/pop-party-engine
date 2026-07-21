@@ -198,10 +198,10 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
 
   function configureRecognition(activeRecognition: SpeechRecognitionLike): void {
     activeRecognition.continuous = true;
-    // Submit only recognition-service final results. Interim snapshots are
-    // frequently truncated or rewritten on mobile and Bluetooth microphones;
-    // treating them as answers produces the short, last-words-only failures.
-    activeRecognition.interimResults = false;
+    // Bluetooth microphones can finalize late or only when recognition stops.
+    // Keep interim snapshots as a capture-only fallback; they are reconciled
+    // by result index and never submitted until the user releases the button.
+    activeRecognition.interimResults = true;
     activeRecognition.maxAlternatives = 1;
     activeRecognition.lang = "en-US";
     activeRecognition.onresult = (event) => {

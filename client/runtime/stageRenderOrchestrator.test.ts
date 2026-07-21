@@ -81,4 +81,23 @@ describe("StageRenderOrchestrator flow identity", () => {
     expect(applyStageState).toHaveBeenCalledTimes(2);
     expect(runStageAction).toHaveBeenCalledTimes(1);
   });
+
+  it("renders a visible runtime fault and never runs the authored action", () => {
+    const applyStageState = vi.fn();
+    const runStageAction = vi.fn();
+    const showRuntimeFault = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({ applyStageState, runStageAction, showRuntimeFault });
+    const lobby = {
+      revision: 20,
+      phase: "voting-moment",
+      runtimeFault: { code: "VOTING_SOURCE_INVALID", message: "No answers" },
+      action: { id: "show-cards", type: "setVotingCardsShown" }
+    };
+
+    orchestrator.render(lobby);
+
+    expect(showRuntimeFault).toHaveBeenCalledWith(lobby);
+    expect(runStageAction).not.toHaveBeenCalled();
+    expect(applyStageState).toHaveBeenCalledWith({ ...lobby, action: null });
+  });
 });

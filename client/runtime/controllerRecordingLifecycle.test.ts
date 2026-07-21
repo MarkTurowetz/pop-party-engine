@@ -58,7 +58,7 @@ describe("createControllerRecordingLifecycle (ported)", () => {
     expect(api.state()).toBe("listening");
     expect(recognition.start).toHaveBeenCalled();
     expect(recognition.continuous).toBe(true);
-    expect(recognition.interimResults).toBe(false);
+    expect(recognition.interimResults).toBe(true);
     expect(recognition.maxAlternatives).toBe(1);
     expect(onStatus).toHaveBeenCalledWith("Listening");
   });
@@ -127,6 +127,24 @@ describe("createControllerRecordingLifecycle (ported)", () => {
 
     await vi.waitFor(() => {
       expect(submitText).toHaveBeenCalledWith("act1", "the first half and the last words");
+    });
+  });
+
+  it("uses a late interim transcript when Bluetooth capture ends without a final result", async () => {
+    vi.stubGlobal("window", { clearTimeout: vi.fn(), setTimeout: vi.fn(() => 1) });
+    const submitText = vi.fn(async () => null);
+    const { api, recognition } = lifecycle({ submitText });
+
+    api.begin("voice-action");
+    recognition.onresult?.({
+      resultIndex: 0,
+      results: { length: 1, 0: { isFinal: false, 0: { transcript: "the whole bluetooth phrase" } } }
+    });
+    api.release("voice-action");
+    recognition.onend?.();
+
+    await vi.waitFor(() => {
+      expect(submitText).toHaveBeenCalledWith("voice-action", "the whole bluetooth phrase");
     });
   });
 

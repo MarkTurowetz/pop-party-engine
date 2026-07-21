@@ -18,13 +18,15 @@ function createLobbyPayloadRuntime({
 }) {
   function lobbyPayload(room) {
     selectVip(room);
-    const currentAction = resolveRoomActionText(currentRoomAction(room), room);
-    applyRoomActionEffects(room, currentAction);
+    let runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
+    const currentAction = runtimeFault ? null : resolveRoomActionText(currentRoomAction(room), room);
+    runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
+    if (!runtimeFault) applyRoomActionEffects(room, currentAction);
     const constants = gameConstants();
     const input = choiceInputPayload(room, currentAction);
     const textInput = textInputPayload(room, currentAction);
     const microphoneAccess = microphoneAccessPayload(room, currentAction);
-    if (microphoneAccess && allActivePlayersHaveSubmittedInput(room)) {
+    if (!runtimeFault && microphoneAccess && allActivePlayersHaveSubmittedInput(room)) {
       scheduleMicrophoneAccessAdvance(room);
     }
     return {
@@ -35,6 +37,7 @@ function createLobbyPayloadRuntime({
       flowStateId: room.flowStateId || room.phase,
       gameSessionId: Number(room.gameSessionId || 0),
       momentVisitId: Number(room.momentVisitId || 0),
+      runtimeFault,
       subroutinePath: Array.isArray(room.subroutinePath) ? [...room.subroutinePath] : [],
       controllerLayoutId: room.controllerLayoutId || room.phase || "lobby",
       isPaused: room.isPaused === true,

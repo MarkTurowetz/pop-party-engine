@@ -1,7 +1,12 @@
 "use strict";
 
-const { storeCurrentMomentAnswers } = require("./stored-player-answers-runtime");
+const {
+  latestSessionAnswerOutput,
+  resolveSessionAnswerOutput,
+  storeCurrentMomentAnswers
+} = require("./stored-player-answers-runtime");
 const { resetGameSessionState } = require("./game-session-reset-runtime");
+const { createRuntimeFault } = require("./runtime-fault-runtime");
 
 const VOTING_CARD_ACTION_TYPES = new Set([
   "setVotingCardsShown",
@@ -12,14 +17,20 @@ const VOTING_CARD_ACTION_TYPES = new Set([
   "revealWinningAnswer"
 ]);
 
-function storedAnswerRecordsForState(room, round, stateId) {
-  if (!stateId) return {};
-  return room.storedPlayerAnswers?.[round]?.[stateId] || {};
-}
-
-function resolveVotingAnswerSource(room, round, requestedStateId) {
-  const requestedRecords = storedAnswerRecordsForState(room, round, requestedStateId);
-  return { stateId: requestedStateId || "", records: requestedRecords, fallbackUsed: false };
+function resolveVotingAnswerSource(room, sourceRef, explicitSourceStateId = "") {
+  const output = explicitSourceStateId
+    ? latestSessionAnswerOutput(room, explicitSourceStateId)
+    : resolveSessionAnswerOutput(room, sourceRef);
+  return {
+    sourceRef: output
+      ? { sessionId: output.sessionId, stateId: output.stateId, visitId: output.visitId }
+      : explicitSourceStateId
+        ? { sessionId: Number(room.gameSessionId || 0), stateId: explicitSourceStateId, visitId: 0 }
+        : { ...sourceRef },
+    records: output?.records || {},
+    output,
+    fallbackUsed: false
+  };
 }
 
 function createRoomPhaseRuntime({
@@ -82,6 +93,7 @@ function createRoomPhaseRuntime({
   }
 
   function advanceRoomToMomentGraphTarget(room, target) {
+    if (room.runtimeFault) return;
     const result = resolveMomentRouteTarget(room, target);
     setRouteTrace(room, target, result);
     if (result?.targetKind === "action") {
@@ -90,10 +102,35 @@ function createRoomPhaseRuntime({
     }
     room.routeActionSession = null;
     const targetStateId = result?.stateId || resolveMomentTargetStateId(room, target);
-    if (!targetStateId || isNoActionTarget(targetStateId)) return;
-    if (runtimeGameFlow(room).states.some((item) => item.id === targetStateId)) {
-      enterGamePhase(room, targetStateId);
+    if (!targetStateId || isNoActionTarget(targetStateId)) {
+      clearActionTimer(room);
+      createRuntimeFault(room, {
+        code: "FLOW_TARGET_INVALID",
+        message: `The flow cannot continue from ${room.flowStateId || room.phase} because its next target is missing or invalid.`,
+        expected: "A valid authored moment or route node target",
+        actual: result?.haltReason || String(target || "No target"),
+        sourceRef: { stateId: room.flowStateId || room.phase, target: String(target || "") }
+      });
+      broadcastLobby(room);
+      return;
     }
+    if (runtimeGameFlow(room).states.some((item) => item.id === targetStateId)) {
+      if (targetStateId === "lobby") {
+        enterLobbyPhase(room);
+        broadcastLobby(room);
+        return;
+      }
+      enterGamePhase(room, targetStateId);
+      return;
+    }
+    createRuntimeFault(room, {
+      code: "FLOW_TARGET_INVALID",
+      message: `The flow target ${targetStateId} does not identify an authored moment.`,
+      expected: "A valid authored moment",
+      actual: targetStateId,
+      sourceRef: { stateId: room.flowStateId || room.phase, target: targetStateId }
+    });
+    broadcastLobby(room);
   }
 
   function advanceRoomFromRouteAction(room, action) {
@@ -192,14 +229,16 @@ function createRoomPhaseRuntime({
   }
 
   function enterGamePhase(room, phase) {
+    if (room.runtimeFault) return false;
     clearCountdownTimer(room);
     clearActionTimer(room);
     const previousPhase = room.phase;
+    const previousVisitId = Number(room.momentVisitId || 0);
 
     // Accepted answers are stored immediately by the submit handler. Retain a
     // final transition snapshot as an idempotent safety net for non-controller
     // answer producers.
-    storeCurrentMomentAnswers(room, previousPhase);
+    storeCurrentMomentAnswers(room, previousPhase, previousVisitId);
 
     if (previousPhase === "lobby" || previousPhase === "starting") {
       const nextSessionKey = activePlayers(room).map((player) => player.id).sort().join("|");
@@ -254,18 +293,31 @@ function createRoomPhaseRuntime({
     const enteringState = runtimeGameFlow(room).states.find((s) => s.id === phase);
     const hasVotingCards = actionListHasVotingCards(enteringState?.actions || []);
     const explicitSourceStateId = normalizeFlowId(enteringState?.votingSourceStateId, "");
-    const sourceStateId = explicitSourceStateId || (hasVotingCards ? previousPhase : null);
-    if (sourceStateId) {
-      const loadRound = room.currentRound || 1;
-      const resolvedSource = resolveVotingAnswerSource(room, loadRound, sourceStateId);
-      const resolvedSourceStateId = resolvedSource.stateId;
-      const sourceRecords = resolvedSource.records;
-      if (Object.keys(sourceRecords).length > 0) {
-        room.playerAnswerRecords = { ...sourceRecords };
-        prepareVotingCards(room);
-        room.lastVotingSourceStateId = resolvedSourceStateId;
-        room.lastVotingSourceFallbackUsed = resolvedSource.fallbackUsed;
-        room.playerAnswerRecords = {};
+    if (hasVotingCards) {
+      const immediateSourceRef = {
+        sessionId: Number(room.gameSessionId || 0),
+        stateId: previousPhase,
+        visitId: previousVisitId
+      };
+      const resolvedSource = resolveVotingAnswerSource(room, immediateSourceRef, explicitSourceStateId);
+      const sourceRecords = resolvedSource.records || {};
+      room.playerAnswerRecords = { ...sourceRecords };
+      prepareVotingCards(room);
+      room.lastVotingSourceStateId = String(resolvedSource.sourceRef?.stateId || "");
+      room.lastVotingSourceRef = resolvedSource.sourceRef;
+      room.lastVotingSourceFallbackUsed = false;
+      room.playerAnswerRecords = {};
+      const cardCount = Array.isArray(room.votingCards) ? room.votingCards.length : 0;
+      if (!resolvedSource.output || Object.keys(sourceRecords).length === 0 || cardCount === 0) {
+        clearActionTimer(room);
+        createRuntimeFault(room, {
+          code: "VOTING_SOURCE_INVALID",
+          message: `Voting cannot start because ${resolvedSource.sourceRef?.stateId || "the preceding moment"} did not produce any valid answers for this visit.`,
+          stateId: phase,
+          expected: "At least one valid player answer and one generated voting card",
+          actual: `${Object.keys(sourceRecords).length} answer records; ${cardCount} voting cards`,
+          sourceRef: resolvedSource.sourceRef
+        });
       }
     }
 
@@ -274,6 +326,7 @@ function createRoomPhaseRuntime({
       return;
     }
     broadcastLobby(room);
+    return !room.runtimeFault;
   }
 
   return { advanceRoomFromMomentReturn, advanceRoomFromRouteAction, endGameMoment, enterGamePhase, enterIntroPhase, enterLobbyPhase, quitRoomToLobby };

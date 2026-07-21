@@ -175,7 +175,7 @@ function stageWipeController(): Dict | null {
 function stageRenderOrchestrator(): Dict | null {
   if (!stageRenderOrchestratorInstance && w().PartyGameStageRenderOrchestrator) {
     stageRenderOrchestratorInstance = (w().PartyGameStageRenderOrchestrator as unknown as { createOrchestrator: (o: Dict) => Dict }).createOrchestrator({
-      applyStageState, cancelStageWipe, clearStageAudioPlayers, completeFlowAction, prepareNewStageAction, runStageAction, runStageWipe, scheduleSubActions, showStageDecisionHalt
+      applyStageState, cancelStageWipe, clearStageAudioPlayers, completeFlowAction, prepareNewStageAction, runStageAction, runStageWipe, scheduleSubActions, showRuntimeFault, showStageDecisionHalt
     });
   }
   return stageRenderOrchestratorInstance;
@@ -654,6 +654,10 @@ function clearStageDecisionDebug(lobby: Dict): void {
 
 function showStageDecisionHalt(lobby: Dict): void {
   (stageDebugPanel() as { showDecisionHalt?: (l: Dict) => void } | null)?.showDecisionHalt?.(lobby);
+}
+
+function showRuntimeFault(lobby: Dict): void {
+  (stageDebugPanel() as { showRuntimeFault?: (l: Dict) => void } | null)?.showRuntimeFault?.(lobby);
 }
 
 function controllerJoinUrlForStage(stageCode: unknown): string {

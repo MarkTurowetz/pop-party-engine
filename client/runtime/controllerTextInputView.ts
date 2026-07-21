@@ -31,7 +31,10 @@ export interface ControllerTextInputViewOptions {
   submitText: (actionId: string) => void;
 }
 
-export function createControllerTextInputView(options: ControllerTextInputViewOptions): { render(lobby: Dict, me: Dict): boolean } {
+export function createControllerTextInputView(options: ControllerTextInputViewOptions): {
+  render(lobby: Dict, me: Dict): boolean;
+  reset(): void;
+} {
   const {
     applyLayoutForPhase,
     dismissedInvalidKey,
@@ -70,9 +73,19 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
 
   function setVisibility({ isDone, isVoiceInput, showInvalid }: { isDone: boolean; isVoiceInput: boolean; showInvalid: boolean }): void {
     showText(elements.done, isDone, { instant: true });
-    showText(elements.input, !isDone && !isVoiceInput, { instant: true });
+    // The authored voice layout owns whether the text field host exists. Do
+    // not write a generic `.hidden` class onto the native control, because it
+    // would survive into the next writing visit after the voice host unmounts.
+    if (!isVoiceInput) showText(elements.input, !isDone, { instant: true });
     showText(elements.voiceStatus, !isDone && isVoiceInput, { instant: true });
     showText(elements.invalidBanner, showInvalid && !isDone, { instant: true });
+  }
+
+  function reset(): void {
+    renderedInputVisitKey = "";
+    (elements.input as HTMLInputElement).value = "";
+    elements.input.classList?.remove?.("hidden");
+    getVoiceInput().stopRecognition();
   }
 
   function render(lobby: Dict, me: Dict): boolean {
@@ -134,7 +147,7 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
     return true;
   }
 
-  return { render };
+  return { render, reset };
 }
 
 declare global {

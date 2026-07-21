@@ -255,6 +255,40 @@ describe("createControllerTextInputView (ported)", () => {
     expect(applyLayoutForPhase).toHaveBeenCalledWith(controllerLayoutStateIds.voiceInput);
     expect(getVoiceButton).toHaveBeenCalledOnce();
     expect(voiceInput.bindButton).toHaveBeenCalledWith("voice");
+    expect((view as { render: unknown }).render).toBeTypeOf("function");
+  });
+
+  it("does not apply generic hidden state to the native writing field while rendering voice", () => {
+    const inputElement = { classList: { remove: vi.fn() }, removeAttribute: vi.fn(), value: "" } as unknown as HTMLInputElement;
+    const setTextShown = vi.fn();
+    const view = createControllerTextInputView({
+      applyLayoutForPhase: vi.fn(),
+      dismissedInvalidKey: () => "",
+      disposeButton: vi.fn(),
+      elements: {
+        done: {} as HTMLElement,
+        input: inputElement,
+        invalidBanner: {} as HTMLElement,
+        prompt: {} as HTMLElement,
+        voiceStatus: {} as HTMLElement
+      } as never,
+      getSubmitButton: vi.fn(),
+      getVoiceInput: () => ({
+        bindButton: vi.fn(), isListening: () => false, renderWaiting: vi.fn(), resetUi: vi.fn(), stopRecognition: vi.fn()
+      }),
+      getVoiceButton: () => ({} as HTMLButtonElement),
+      hideViews: vi.fn(),
+      setPhaseActionId: vi.fn(),
+      setText: vi.fn(),
+      setTextShown,
+      showView: vi.fn(),
+      submitText: vi.fn()
+    });
+
+    view.render({ textInput: { actionId: "voice", visitId: 2, type: "voice" } }, { isVip: true });
+    expect(setTextShown.mock.calls.some(([target]) => target === inputElement)).toBe(false);
+    view.reset();
+    expect(inputElement.classList.remove).toHaveBeenCalledWith("hidden");
   });
 
   it("clears native input once for a new moment visit and preserves typing on heartbeats", () => {

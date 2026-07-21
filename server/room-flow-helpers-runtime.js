@@ -4,6 +4,7 @@ const {
   flowEventTypeForAction,
   isFlowEventBarrierAction
 } = require("../shared/flow-action-registry");
+const { createRuntimeFault } = require("./runtime-fault-runtime");
 
 function createRoomFlowHelpersRuntime({
   activePlayers,
@@ -68,7 +69,17 @@ function createRoomFlowHelpersRuntime({
     let guard = 0;
     while (guard < 40) {
       const actions = getStateActions(room.flowStateId || room.phase, room);
-      if (room.actionIndex >= actions.length) return null;
+      if (room.actionIndex >= actions.length) {
+        if (room.phase !== "lobby" && room.phase !== "starting") {
+          createRuntimeFault(room, {
+            code: "FLOW_ACTION_MISSING",
+            message: `${room.flowStateId || room.phase} reached the end of its action list without an authored exit.`,
+            expected: "An End Moment or another valid flow action",
+            actual: `Action index ${room.actionIndex}; ${actions.length} authored actions`
+          });
+        }
+        return null;
+      }
       const action = actions[room.actionIndex];
       if (action?.type === "subroutine") {
         enterNestedSubroutine(room, action);
@@ -78,7 +89,16 @@ function createRoomFlowHelpersRuntime({
       if (action?.type === "decision") {
         clearAppliedActionEffects(room);
         const nextActionIndex = resolveDecisionActionIndex(room, action);
-        if (nextActionIndex === null) return null;
+        if (nextActionIndex === null) {
+          createRuntimeFault(room, {
+            code: "DECISION_NO_MATCH",
+            message: `${action.name || action.id || "Decision"} has no matching branch.`,
+            actionId: action.id,
+            expected: "A matching decision branch",
+            actual: room.lastDecisionTrace?.haltReason || "No branch matched"
+          });
+          return null;
+        }
         room.actionIndex = Math.max(0, Math.min(actions.length, nextActionIndex));
         guard += 1;
         continue;
@@ -103,6 +123,26 @@ function createRoomFlowHelpersRuntime({
       activePlayerCount: activePlayers(room).length,
       evaluatedAt: Date.now()
     };
+    createRuntimeFault(room, {
+      code: "FLOW_TARGET_INVALID",
+      message: `${action?.name || action?.id || "The current flow action"} cannot continue: ${haltReason}.`,
+      actionId: action?.id,
+      expected: "A valid authored next target",
+      actual: haltReason
+    });
+  }
+
+  function haltInvalidFlowTarget(room, action, eventType, actual = "No target") {
+    createRuntimeFault(room, {
+      code: "FLOW_TARGET_INVALID",
+      message: `${action?.name || action?.id || "The current flow action"} cannot continue because its ${eventType || "next"} target is invalid.`,
+      actionId: action?.id,
+      expected: "A valid authored flow target",
+      actual
+    });
+    clearActionTimer(room);
+    broadcastLobby(room);
+    return false;
   }
 
   function ensureSubroutineStack(room) {
@@ -177,6 +217,7 @@ function createRoomFlowHelpersRuntime({
   }
 
   function advanceRoomAfterAction(room, action) {
+    if (room.runtimeFault) return false;
     if (action?.routeNodeType === "action" || room.routeActionSession?.currentNodeId === action?.id) {
       advanceRoomFromRouteAction(room, action);
       return;
@@ -185,7 +226,10 @@ function createRoomFlowHelpersRuntime({
       room.subroutinePath = [];
     }
     const target = actionAdvanceTarget(action);
-    if (isNoActionTarget(target)) return;
+    if (isNoActionTarget(target)) {
+      markNoAction(room, action, "No Target");
+      return false;
+    }
     if (isReturnActionTarget(target)) {
       if (Array.isArray(room.subroutineStack) && room.subroutineStack.length) {
         returnFromNestedSubroutine(room, action);
@@ -200,9 +244,11 @@ function createRoomFlowHelpersRuntime({
       return;
     }
     markNoAction(room, action, target ? "Missing Target" : "No Action");
+    return false;
   }
 
   function jumpToAction(room, actionId, sourceAction = currentRoomAction(room)) {
+    if (room.runtimeFault) return false;
     if (room.routeActionSession?.currentNodeId) {
       room.presentedAction = null;
       clearActiveInputFlowEvent(room);
@@ -234,6 +280,7 @@ function createRoomFlowHelpersRuntime({
   }
 
   function emitInputFlowEvent(room, eventType) {
+    if (room.runtimeFault) return false;
     clearAnswersSubmittedAdvanceTimer(room);
     const currentAction = currentRoomAction(room);
     const barrierEventType = flowEventTypeForAction(currentAction);
@@ -247,7 +294,7 @@ function createRoomFlowHelpersRuntime({
     const canUseBarrierFallback = barrierEventType === eventType
       && currentAction.type === "transitionState";
     if (isNoActionTarget(target) && !canUseBarrierFallback) {
-      return false;
+      return haltInvalidFlowTarget(room, currentAction, eventType);
     }
     room.activeInputFlowEventKey = eventKey;
     if (room.craftingTimerRunning) {
@@ -264,7 +311,8 @@ function createRoomFlowHelpersRuntime({
     clearTextInput(room);
     clearVotingInput(room);
     if (isNoActionTarget(target)) {
-      enterGamePhase(room, currentAction.targetState || "intro");
+      if (!currentAction.targetState) return haltInvalidFlowTarget(room, currentAction, eventType);
+      enterGamePhase(room, currentAction.targetState);
       return true;
     }
     jumpToAction(room, target, currentAction);
@@ -278,6 +326,7 @@ function createRoomFlowHelpersRuntime({
   }
 
   function releasePendingFlowEvents(room) {
+    if (room.runtimeFault) return false;
     const action = currentRoomAction(room);
     if (!isFlowEventBarrierAction(action)) return false;
     const eventType = flowEventTypeForAction(action);
@@ -288,10 +337,14 @@ function createRoomFlowHelpersRuntime({
   }
 
   function scheduleAnswersSubmittedAdvance(room) {
+    if (room.runtimeFault) return;
     if (room.answersSubmittedAdvanceTimerId) return;
     const currentAction = currentRoomAction(room);
     const target = flowEventTargetForAction(currentAction, "allPlayersSubmitted");
-    if (isNoActionTarget(target)) return;
+    if (isNoActionTarget(target)) {
+      haltInvalidFlowTarget(room, currentAction, "allPlayersSubmitted");
+      return;
+    }
     room.answersSubmittedAdvanceStartedAt = 0;
     room.answersSubmittedAdvanceEndsAt = 0;
     room.answersSubmittedAdvanceRemainingMs = 0;
@@ -299,10 +352,14 @@ function createRoomFlowHelpersRuntime({
   }
 
   function scheduleMicrophoneAccessAdvance(room) {
+    if (room.runtimeFault) return;
     if (room.answersSubmittedAdvanceTimerId) return;
     const currentAction = currentRoomAction(room);
     const target = flowEventTargetForAction(currentAction, "microphoneAccessGranted");
-    if (isNoActionTarget(target)) return;
+    if (isNoActionTarget(target)) {
+      haltInvalidFlowTarget(room, currentAction, "microphoneAccessGranted");
+      return;
+    }
     emitInputFlowEvent(room, "microphoneAccessGranted");
   }
 
@@ -316,7 +373,7 @@ function createRoomFlowHelpersRuntime({
   }
 
   function resumeAnswersSubmittedAdvanceTimer(room) {
-    if (room.answersSubmittedAdvanceTimerId || room.answersSubmittedAdvanceRemainingMs <= 0) return;
+    if (room.runtimeFault || room.answersSubmittedAdvanceTimerId || room.answersSubmittedAdvanceRemainingMs <= 0) return;
     const currentAction = currentRoomAction(room);
     const target = flowEventTargetForAction(currentAction, "allPlayersSubmitted");
     if (isNoActionTarget(target)) {
@@ -339,14 +396,14 @@ function createRoomFlowHelpersRuntime({
   function countdownTargetState(room) {
     const lobbyState = getFlowState(runtimeGameFlow(room), "lobby");
     const action = lobbyState?.actions.find((item) => item.type === "transitionState" && item.trigger === "onCountdownComplete");
-    return action?.targetState || "intro";
+    return action?.targetState || "";
   }
 
   function completeCountdownTrigger(room) {
     const lobbyState = getFlowState(runtimeGameFlow(room), room.flowStateId || "lobby");
     const barrier = lobbyState?.actions.find((item) => flowEventTypeForAction(item) === "countdownComplete");
     if (!barrier) {
-      enterGamePhase(room, "intro");
+      haltInvalidFlowTarget(room, null, "countdownComplete", "No countdown completion action");
       return;
     }
     pendingFlowEvents(room).add("countdownComplete");

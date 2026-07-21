@@ -78,4 +78,14 @@ describe("action timing completion contract", () => {
     expect(releasePendingFlowEvents).toHaveBeenCalledWith(room);
     expect(broadcastLobby).not.toHaveBeenCalled();
   });
+
+  it("cannot complete or advance while the room has a runtime fault", () => {
+    const action = { id: "show", type: "displayText", timing: { mode: "E+", seconds: 0 } };
+    const { advanceRoomAfterAction, applyRoomActionEffects, room, runtime } = setup(action);
+    room.runtimeFault = { code: "VOTING_SOURCE_INVALID" };
+
+    expect(runtime.completeCurrentAction(room, action.id, "callback")).toBe(false);
+    expect(applyRoomActionEffects).not.toHaveBeenCalled();
+    expect(advanceRoomAfterAction).not.toHaveBeenCalled();
+  });
 });

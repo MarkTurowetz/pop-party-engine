@@ -19,6 +19,8 @@ describe("resetGameSessionState", () => {
       flowVariables: { answer: 42 },
       G: { test: 1 },
       storedPlayerAnswers: { 1: { writing: { p1: { text: "old" } } } },
+      sessionOutputs: { sessionId: 4, byVisit: { "writing@2": { records: { p1: { text: "old" } } } } },
+      runtimeFault: { code: "OLD_FAULT" },
       displayedPlayerAnswers: new Map([["p1", { text: "old" }]]),
       displayedAnswerCorrectness: new Map([["p1", true]]),
       hiddenPlayerAnswerIds: new Set(["p1"]),
@@ -40,6 +42,8 @@ describe("resetGameSessionState", () => {
 
     expect(room.gameSessionId).toBe(5);
     expect(room.storedPlayerAnswers).toEqual({});
+    expect(room.sessionOutputs).toEqual({ sessionId: 5, byVisit: {}, latestByState: {} });
+    expect(room.runtimeFault).toBeNull();
     expect(room.displayedPlayerAnswers.size).toBe(0);
     expect(room.playerAnswerRecords).toEqual({});
     expect(room.choiceInputActionId).toBe("");
