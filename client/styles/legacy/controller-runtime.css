@@ -67,6 +67,12 @@
   display: none !important;
 }
 
+.controller-runtime-booting,
+.controller-art-pending {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .controller-widget-art-host {
   overflow: visible;
 }

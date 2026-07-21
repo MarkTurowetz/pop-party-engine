@@ -583,6 +583,7 @@ function setControllerLayoutButtonText(target: El | null, value: unknown, spec: 
   if (!target) return false;
   const compositionId = controllerWidgetArtCompositionIdForTarget(target);
   if (!compositionId) return false;
+  target.classList.add("controller-art-pending");
   const text = String(value ?? "");
   target.dataset.controllerTextValue = text;
   target.dataset.controllerLayoutArtCompositionId = compositionId;
@@ -615,11 +616,12 @@ function setControllerLayoutButtonText(target: El | null, value: unknown, spec: 
     }
   );
   if (renderer) {
+    target.classList.remove("controller-art-pending");
     setControllerButtonDisabledState(target, target.matches(":disabled"));
     return true;
   }
   target.classList.remove("controller-widget-art-host", "has-controller-widget-art");
-  return false;
+  return true;
 }
 
 function setControllerButtonLifecycleState(target: El | null, state: "Off" | "On"): void {
@@ -632,6 +634,7 @@ function disposeControllerButtonArt(target: El | null): void {
   const rendererKey = target.dataset.layoutRendererKey || controllerRuntimeArtRendererKey(target, "controller-button");
   controllerDynamicArtInstances.clear(rendererKey, target);
   target.classList.remove("controller-widget-art-host", "has-controller-widget-art");
+  target.classList.remove("controller-art-pending");
   delete target.dataset.controllerLayoutArtCompositionId;
   delete target.dataset.controllerTextValue;
   target.style.removeProperty("--controller-local-action-width");

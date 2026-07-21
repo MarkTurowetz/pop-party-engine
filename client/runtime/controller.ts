@@ -39,7 +39,7 @@ declare global {
     applyControllerLayoutForPhase?: (phase: string) => void;
     loadControllerLayouts?: () => Promise<unknown>;
     applyControllerRuntimeTestMessage?: (data: unknown) => void;
-    setupController?: () => void;
+    setupController?: () => void | Promise<void>;
     controllerState?: Dict | null;
     controllerCountdownTimer?: number | null;
     dismissedTextInvalidKey?: string;
@@ -112,7 +112,15 @@ function setControllerTextShown(target: TextTarget | undefined, isShown: boolean
 
 function setControllerButtonText(target: HTMLElement | undefined, value: unknown, spec: Dict = {}): void {
   if (!target) return;
-  if (typeof w.PartyGameLayoutText?.setControllerButtonText === "function" && w.PartyGameLayoutText.setControllerButtonText(target, value, spec)) {
+  const usesAuthoredArt = target.dataset.controllerOption !== undefined
+    || target.classList.contains("controller-local-action-button")
+    || target.classList.contains("choice-option-button");
+  if (usesAuthoredArt) {
+    const text = String(value ?? "");
+    target.dataset.controllerTextValue = text;
+    target.setAttribute("aria-label", text);
+    target.classList.add("controller-art-pending");
+    w.PartyGameLayoutText?.setControllerButtonText?.(target, value, spec);
     return;
   }
   w.PartyGameControllerText?.setButtonText(target, value, spec);
@@ -602,15 +610,27 @@ function reloadControllerArtAssets(): void {
     .catch(() => {});
 }
 
-function setupController(): void {
+let controllerSetupStarted = false;
+
+async function setupController(): Promise<void> {
+  if (controllerSetupStarted) return;
+  controllerSetupStarted = true;
   w.lockControllerViewport!();
   w.bindControllerButtonPressStates!();
+  w.controllerScreen?.classList.add("controller-runtime-booting");
+  w.controllerScreen?.setAttribute("aria-busy", "true");
   w.controllerScreen?.classList.remove("hidden");
-  reloadControllerArtAssets();
+  try {
+    await Promise.all([
+      w.loadArtAssets!(),
+      w.loadControllerLayouts?.() || Promise.reject(new Error("Controller layouts runtime unavailable"))
+    ]);
+  } catch (error) {
+    w.controllerScreen?.setAttribute("data-controller-runtime-error", "true");
+    console.error("Controller authored assets could not be loaded", error);
+    return;
+  }
   w.listenForArtAssetsChanged!(reloadControllerArtAssets);
-  w.loadControllerLayouts?.()
-    .then(() => applyControllerLayoutForPhase("join"))
-    .catch(() => applyControllerLayoutForPhase("join"));
   w.runtimeTestChannel?.addEventListener("message", (event: MessageEvent) => {
     w.applyControllerRuntimeTestMessage?.(event.data);
   });
@@ -673,6 +693,8 @@ function setupController(): void {
       setControllerText(w.controllerMeta, value);
     }
   }).bindAll();
+  w.controllerScreen?.classList.remove("controller-runtime-booting");
+  w.controllerScreen?.setAttribute("aria-busy", "false");
 }
 
 export function installControllerGlobals(target: Window | typeof globalThis = globalThis): void {

@@ -87,6 +87,32 @@ async function main() {
     assert(!staticState.hasIntroState, "legacy controller intro state still exists");
     assert(!staticState.hasPresentHiText, "legacy Present HI THERE art still exists");
 
+    const delayedPage = await browser.newPage();
+    let releaseArtRequest;
+    const artRequestGate = new Promise((resolve) => {
+      releaseArtRequest = resolve;
+    });
+    await delayedPage.route("**/api/art-assets", async (route) => {
+      await artRequestGate;
+      await route.continue();
+    });
+    await delayedPage.goto(`http://${host}:${port}/controller`, { waitUntil: "domcontentloaded" });
+    await delayedPage.waitForFunction(() => document.querySelector("#controllerScreen")?.classList.contains("controller-runtime-booting"));
+    const loadingState = await delayedPage.evaluate(() => ({
+      controllerVisibility: getComputedStyle(document.querySelector("#controllerScreen")).visibility,
+      joinButtonCount: document.querySelectorAll("#joinButton").length,
+      visibleLegacyButtons: Array.from(document.querySelectorAll("button")).filter((button) => {
+        const style = getComputedStyle(button);
+        return style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0";
+      }).length
+    }));
+    assert(loadingState.controllerVisibility === "hidden", "controller became visible before authored art was ready");
+    assert(loadingState.joinButtonCount === 0, "Join button was created before authored art was ready");
+    assert(loadingState.visibleLegacyButtons === 0, `controller exposed ${loadingState.visibleLegacyButtons} legacy buttons while art was loading`);
+    releaseArtRequest();
+    await delayedPage.waitForFunction(() => document.querySelector("#joinButton")?.classList.contains("has-controller-widget-art"));
+    await delayedPage.close();
+
     const page = await browser.newPage();
     await page.goto(`http://${host}:${port}/controller`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(() => document.querySelector("#stageCodeField")?.classList.contains("controller-widget-art-host"));
