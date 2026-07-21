@@ -257,6 +257,42 @@ describe("createControllerTextInputView (ported)", () => {
     expect(voiceInput.bindButton).toHaveBeenCalledWith("voice");
   });
 
+  it("clears native input once for a new moment visit and preserves typing on heartbeats", () => {
+    const inputElement = { removeAttribute: vi.fn(), value: "old answer" } as unknown as HTMLInputElement;
+    const getSubmitButton = vi.fn(() => ({ disabled: false } as HTMLButtonElement));
+    const view = createControllerTextInputView({
+      applyLayoutForPhase: vi.fn(),
+      dismissedInvalidKey: () => "",
+      disposeButton: vi.fn(),
+      elements: {
+        done: {} as HTMLElement,
+        input: inputElement,
+        invalidBanner: {} as HTMLElement,
+        prompt: {} as HTMLElement,
+        voiceStatus: {} as HTMLElement
+      } as never,
+      getSubmitButton,
+      getVoiceInput: () => ({
+        bindButton: vi.fn(), isListening: () => false, renderWaiting: vi.fn(), resetUi: vi.fn(), stopRecognition: vi.fn()
+      }),
+      getVoiceButton: vi.fn(),
+      hideViews: vi.fn(),
+      setPhaseActionId: vi.fn(),
+      setText: vi.fn(),
+      setTextShown: vi.fn(),
+      showView: vi.fn(),
+      submitText: vi.fn()
+    });
+
+    view.render({ textInput: { actionId: "write", visitId: 7, type: "text" } }, {});
+    expect(inputElement.value).toBe("");
+    inputElement.value = "typing now";
+    view.render({ textInput: { actionId: "write", visitId: 7, type: "text" } }, {});
+    expect(inputElement.value).toBe("typing now");
+    view.render({ textInput: { actionId: "write", visitId: 8, type: "text" } }, {});
+    expect(inputElement.value).toBe("");
+  });
+
   it("disposes the local input button after the answer is complete", () => {
     const disposeButton = vi.fn();
     const getSubmitButton = vi.fn();

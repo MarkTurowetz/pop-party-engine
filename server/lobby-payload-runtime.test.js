@@ -34,6 +34,7 @@ describe("lobby payload flow action exposure", () => {
       revision: 1,
       phase,
       flowStateId: "lobby",
+      momentVisitId: 4,
       subroutinePath: ["nested"],
       players: new Map(),
       pendingFlowEvents: new Set()
@@ -41,6 +42,7 @@ describe("lobby payload flow action exposure", () => {
 
     expect(payload.action).toBe(action);
     expect(payload.flowStateId).toBe("lobby");
+    expect(payload.momentVisitId).toBe(4);
     expect(payload.subroutinePath).toEqual(["nested"]);
     expect(payload.debugAction.actionId).toBe("header");
   });

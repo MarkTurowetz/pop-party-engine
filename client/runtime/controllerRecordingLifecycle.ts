@@ -80,8 +80,9 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
 
   let recognition: SpeechRecognitionLike | null = null;
   let state: ControllerRecordingState = "idle";
+  let committedTranscriptSegments: string[] = [];
   let finalTranscriptSegments: string[] = [];
-  let interimTranscript = "";
+  let interimTranscriptSegments: string[] = [];
   let activeActionId = "";
   let previewPromise: Promise<unknown> = Promise.resolve(null);
   let releaseBufferTimer: number | null = null;
@@ -113,28 +114,60 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
   }
 
   function clearCaptureText(): void {
+    committedTranscriptSegments = [];
     finalTranscriptSegments = [];
-    interimTranscript = "";
+    interimTranscriptSegments = [];
+  }
+
+  function clearCurrentRecognitionText(): void {
+    finalTranscriptSegments = [];
+    interimTranscriptSegments = [];
+  }
+
+  function currentRecognitionTranscript(): string {
+    const segmentCount = Math.max(finalTranscriptSegments.length, interimTranscriptSegments.length);
+    const segments: string[] = [];
+    for (let index = 0; index < segmentCount; index += 1) {
+      const segment = finalTranscriptSegments[index] || interimTranscriptSegments[index] || "";
+      if (segment) segments.push(segment);
+    }
+    return segments.join(" ").trim();
   }
 
   function capturedTranscript(): string {
-    const finalTranscript = finalTranscriptSegments.filter(Boolean).join(" ").trim();
-    return (finalTranscript || interimTranscript.trim()).slice(0, MAX_CAPTURED_TRANSCRIPT_CHARACTERS).trim();
+    return [...committedTranscriptSegments, currentRecognitionTranscript()]
+      .filter(Boolean)
+      .join(" ")
+      .slice(0, MAX_CAPTURED_TRANSCRIPT_CHARACTERS)
+      .trim();
+  }
+
+  function commitCurrentRecognitionTranscript(): void {
+    const currentTranscript = currentRecognitionTranscript();
+    if (currentTranscript) committedTranscriptSegments.push(currentTranscript);
+    if (committedTranscriptSegments.length > MAX_CAPTURED_RESULT_SEGMENTS) {
+      committedTranscriptSegments = committedTranscriptSegments.slice(-MAX_CAPTURED_RESULT_SEGMENTS);
+    }
+    clearCurrentRecognitionText();
   }
 
   function updateTranscriptFromResults(results: RecognitionResults, resultIndex = 0): void {
-    const interimParts: string[] = [];
     const startIndex = Math.max(0, Math.min(results.length, Number.isFinite(resultIndex) ? Math.floor(resultIndex) : 0));
     for (let index = startIndex; index < results.length; index += 1) {
-      const resultTranscript = results[index]?.[0]?.transcript || "";
-      if (!resultTranscript.trim()) continue;
-      if (results[index]?.isFinal) finalTranscriptSegments[index] = resultTranscript.trim();
-      else interimParts.push(resultTranscript);
+      const resultTranscript = (results[index]?.[0]?.transcript || "").trim();
+      if (results[index]?.isFinal) {
+        finalTranscriptSegments[index] = resultTranscript;
+        interimTranscriptSegments[index] = "";
+      } else {
+        interimTranscriptSegments[index] = resultTranscript;
+      }
     }
     if (finalTranscriptSegments.length > MAX_CAPTURED_RESULT_SEGMENTS) {
       finalTranscriptSegments.length = MAX_CAPTURED_RESULT_SEGMENTS;
     }
-    interimTranscript = interimParts.join(" ").trim();
+    if (interimTranscriptSegments.length > MAX_CAPTURED_RESULT_SEGMENTS) {
+      interimTranscriptSegments.length = MAX_CAPTURED_RESULT_SEGMENTS;
+    }
   }
 
   function stopActiveRecognition(): void {
@@ -175,16 +208,57 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     await submitText(actionId, text);
   }
 
-  function handleRecognitionEnd(): void {
+  function configureRecognition(activeRecognition: SpeechRecognitionLike): void {
+    activeRecognition.continuous = true;
+    // Interim results are kept locally and never rendered or sent while the
+    // button is held. They recover words that Chrome never promotes to a final
+    // result, which is especially common when an input device changes mode or
+    // the recognition service closes a session early.
+    activeRecognition.interimResults = true;
+    activeRecognition.maxAlternatives = 1;
+    activeRecognition.lang = "en-US";
+    activeRecognition.onresult = (event) => {
+      updateTranscriptFromResults(event.results, event.resultIndex);
+    };
+    activeRecognition.onerror = (event) => handleRecognitionError(event);
+    activeRecognition.onend = () => handleRecognitionEnd(activeRecognition);
+  }
+
+  function startRecognitionSession(Recognition = recognitionConstructor()): boolean {
+    if (!Recognition) return false;
+    const nextRecognition = new Recognition();
+    configureRecognition(nextRecognition);
+    recognition = nextRecognition;
+    try {
+      nextRecognition.start();
+      return true;
+    } catch {
+      detachRecognition(nextRecognition);
+      if (recognition === nextRecognition) recognition = null;
+      return false;
+    }
+  }
+
+  function handleRecognitionEnd(activeRecognition: SpeechRecognitionLike): void {
+    if (recognition !== activeRecognition) return;
     clearReleaseBufferTimer();
+    commitCurrentRecognitionTranscript();
     const finalTranscript = capturedTranscript();
     const actionIdToSubmit = activeActionId;
     const shouldSubmit = (state === "buffering" || state === "stopping") && Boolean(actionIdToSubmit);
-    detachRecognition(recognition);
+    detachRecognition(activeRecognition);
     recognition = null;
+    if (state === "listening" && actionIdToSubmit) {
+      if (startRecognitionSession()) {
+        onStatus("Listening");
+        return;
+      }
+      finishWithoutSubmit("Could not restart microphone");
+      return;
+    }
     activeActionId = "";
-    clearCaptureText();
     if (shouldSubmit && finalTranscript) {
+      clearCaptureText();
       setState("submitting");
       Promise.resolve(submitCapturedTranscript(actionIdToSubmit, finalTranscript)).finally(() => {
         setState("idle");
@@ -196,6 +270,10 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
 
   function handleRecognitionError(event: { error: string }): void {
     const fatalError = event.error === "not-allowed" || event.error === "service-not-allowed" || event.error === "audio-capture";
+    if (state === "listening" && event.error === "no-speech") {
+      onStatus("Listening");
+      return;
+    }
     if ((state === "buffering" || state === "stopping") && !fatalError) {
       onStatus("Finishing transcript");
       return;
@@ -238,37 +316,16 @@ export function createControllerRecordingLifecycle(options: ControllerRecordingL
     clearCaptureText();
     activeActionId = actionId;
     previewPromise = Promise.resolve(null);
-    recognition = new Recognition();
-    recognition.continuous = true;
-    // The controller never renders interim words. Asking Chrome to continuously
-    // produce them creates a high-frequency native recognition + JS event stream
-    // for no visible benefit and can make the entire browser (and mouse) choppy.
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.lang = "en-US";
-    recognition.onresult = (event) => {
-      // SpeechRecognition results are cumulative. resultIndex is the first
-      // changed entry, so processing from zero on every result becomes
-      // quadratic over a longer recording.
-      updateTranscriptFromResults(event.results, event.resultIndex);
-    };
-    recognition.onerror = handleRecognitionError;
-    recognition.onend = handleRecognitionEnd;
-
-    try {
-      setState("listening");
-      onStatus("Listening");
-      recognition.start();
+    setState("listening");
+    onStatus("Listening");
+    if (startRecognitionSession(Recognition)) {
       return true;
-    } catch {
-      detachRecognition(recognition);
-      recognition = null;
-      activeActionId = "";
-      clearCaptureText();
-      setState("idle");
-      onStatus("Could not start microphone");
-      return false;
     }
+    activeActionId = "";
+    clearCaptureText();
+    setState("idle");
+    onStatus("Could not start microphone");
+    return false;
   }
 
   function release(actionId: string): boolean {

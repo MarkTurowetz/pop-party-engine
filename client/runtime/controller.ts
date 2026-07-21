@@ -36,7 +36,7 @@ interface LayoutTextApi {
 declare global {
   interface Window {
     PartyGameLayoutText?: LayoutTextApi;
-    applyControllerLayoutForPhase?: (phase: string) => void;
+    applyControllerLayoutForPhase?: (phase: string, visitKey?: string) => void;
     loadControllerLayouts?: () => Promise<unknown>;
     applyControllerRuntimeTestMessage?: (data: unknown) => void;
     setupController?: () => void | Promise<void>;
@@ -474,11 +474,21 @@ function getControllerSessionRuntime() {
   );
 }
 
+let currentControllerMomentVisitKey = "";
+
 function applyControllerLayoutForPhase(phase: string): void {
+  const visitId = Number((w.controllerState?.lobby as Dict | undefined)?.momentVisitId || 0);
+  const visitKey = visitId > 0 ? `moment:${visitId}` : "";
+  const isNewVisit = Boolean(visitKey && visitKey !== currentControllerMomentVisitKey);
+  if (isNewVisit) {
+    getControllerGlobalActionView().dispose();
+    getControllerLocalButtonRuntime().dispose();
+  }
+  if (visitKey) currentControllerMomentVisitKey = visitKey;
   getControllerGlobalActionView().prepareForLayout(phase);
   if (phase !== controllerLayoutStateIds.voiceInput) getControllerVoiceInput().stopRecognition();
   getControllerLocalButtonRuntime().prepareForLayout(phase === "starting" ? controllerLayoutStateIds.lobby : phase);
-  w.applyControllerLayoutForPhase?.(phase);
+  w.applyControllerLayoutForPhase?.(phase, visitKey);
 }
 
 function updateJoinButton(): void {

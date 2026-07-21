@@ -63,6 +63,7 @@ let stageLayoutGameObjects: Dict | null = null;
 const controllerLayoutVisibilityOverrides = new Map<string, boolean>();
 let controllerLayoutGameObjects: Dict | null = null;
 let currentControllerLayoutStateId = "";
+let currentControllerLayoutVisitKey = "";
 
 function normalizeTextTargetId(value: unknown): string {
   const normalized = String(value || "")
@@ -373,17 +374,21 @@ function clearControllerLayoutTargets(retainedTokens: Set<string> = new Set()): 
   }
 }
 
-function applyControllerLayoutForPhase(phase: string): void {
+function applyControllerLayoutForPhase(phase: string, visitKey = ""): void {
   const controllerScreen = w().controllerScreen;
   const controllerPanel = w().controllerPanel;
   if (!controllerScreen || !controllerPanel) return;
   const state = controllerLayoutStateForPhase(phase);
   if (!state) return;
-  const previousTokens = currentControllerLayoutTokens();
-  const retainedTokens = activeLayoutElementTokens(state, globalControllerLayout());
+  const normalizedVisitKey = String(visitKey || "");
+  const isNewVisit = Boolean(normalizedVisitKey && normalizedVisitKey !== currentControllerLayoutVisitKey);
+  if (isNewVisit) controllerLayoutVisibilityOverrides.clear();
+  const previousTokens = isNewVisit ? new Set<string>() : currentControllerLayoutTokens();
+  const retainedTokens = isNewVisit ? new Set<string>() : activeLayoutElementTokens(state, globalControllerLayout());
   (controllerLayoutGameObjectRegistry() as { beginFrame?: () => void } | null)?.beginFrame?.();
   removeInactiveControllerArtInstances(activeControllerArtInstanceIds(state));
   clearControllerLayoutTargets(retainedTokens);
+  if (normalizedVisitKey) currentControllerLayoutVisitKey = normalizedVisitKey;
   currentControllerLayoutStateId = state.id as string;
   const canvas = w().controllerLayouts.canvas || { width: 390, height: 844 };
   const screenRect = controllerScreen.getBoundingClientRect();

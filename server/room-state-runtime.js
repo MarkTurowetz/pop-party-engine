@@ -7,6 +7,7 @@ function createDefaultRoom(stageCode) {
     startToken: "",
     phase: "lobby",
     flowStateId: "lobby",
+    momentVisitId: 0,
     countdownStartedAt: 0,
     countdownEndsAt: 0,
     countdownRemainingMs: 0,

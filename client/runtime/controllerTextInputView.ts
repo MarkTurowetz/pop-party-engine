@@ -58,6 +58,7 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
     typeof setTextShown === "function"
       ? setTextShown
       : (target: HTMLElement, isShown: boolean) => target?.classList?.toggle("hidden", !isShown);
+  let renderedInputVisitKey = "";
 
   function setInputLimit(limit: number): void {
     if (limit > 0) {
@@ -84,6 +85,11 @@ export function createControllerTextInputView(options: ControllerTextInputViewOp
       return true;
     }
     if (!isVoiceInput) voiceInput.stopRecognition();
+    const inputVisitKey = [input.visitId || "", input.actionId || "", input.type || "", input.mode || ""].join(":");
+    if (renderedInputVisitKey !== inputVisitKey) {
+      (elements.input as HTMLInputElement).value = "";
+      renderedInputVisitKey = inputVisitKey;
+    }
     hideViews();
     setPhaseActionId(input.actionId as string);
     applyLayoutForPhase(controllerTextLayoutStateId(input.type, input.mode));

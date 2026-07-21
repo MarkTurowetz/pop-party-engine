@@ -119,6 +119,7 @@ function createRoomPhaseRuntime({
     clearActionTimer(room);
     room.phase = "lobby";
     room.flowStateId = "lobby";
+    room.momentVisitId = Number(room.momentVisitId || 0) + 1;
     room.controllerLayoutId = "lobby";
     room.isPaused = false;
     room.pausedAt = 0;
@@ -207,6 +208,7 @@ function createRoomPhaseRuntime({
     }
     room.phase = phase;
     room.flowStateId = phase;
+    room.momentVisitId = Number(room.momentVisitId || 0) + 1;
     room.subroutinePath = [];
     room.subroutineStack = [];
     room.controllerLayoutId = phase;

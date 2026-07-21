@@ -46,8 +46,8 @@ export function createControllerChoiceInputView(options: ControllerChoiceInputVi
           if (typeof target !== "string") target?.classList?.toggle("hidden", !isShown);
         };
 
-  function buttonKey(actionId: unknown, option: Dict): string {
-    return [String(actionId || ""), String(option.index ?? ""), String(option.cardId || "")].join(":");
+  function buttonKey(actionId: unknown, visitId: unknown, option: Dict): string {
+    return [String(visitId || ""), String(actionId || ""), String(option.index ?? ""), String(option.cardId || "")].join(":");
   }
 
   function createChoiceButton(key: string): HTMLButtonElement {
@@ -82,7 +82,7 @@ export function createControllerChoiceInputView(options: ControllerChoiceInputVi
 
     const desired: HTMLButtonElement[] = [];
     for (const option of visibleOptions) {
-      const key = buttonKey(input.actionId, option);
+      const key = buttonKey(input.actionId, input.visitId, option);
       const button = existing.get(key) || createChoiceButton(key);
       existing.delete(key);
       const label = String(option.label || option.text || `Option ${Number(option.index) + 1}`);

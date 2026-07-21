@@ -28,6 +28,18 @@ describe("StageRenderOrchestrator flow identity", () => {
     expect(runStageAction).toHaveBeenCalledTimes(2);
   });
 
+  it("replays the same authored action on a new moment visit", () => {
+    const runStageAction = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({ applyStageState: vi.fn(), runStageAction });
+    const action = { id: "show-cards", type: "setVotingCardsShown" };
+
+    orchestrator.render({ revision: 1, phase: "voting", momentVisitId: 3, action });
+    orchestrator.render({ revision: 2, phase: "voting", momentVisitId: 4, action });
+
+    expect(runStageAction).toHaveBeenCalledTimes(2);
+    expect(orchestrator.actionKey()).toBe("voting@4::show-cards:setVotingCardsShown");
+  });
+
   it("does not remove visual game objects merely because the root subroutine changes", () => {
     const clearPointPopups = vi.fn();
     const renderVotingCards = vi.fn();

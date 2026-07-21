@@ -129,6 +129,7 @@ describe("reusable voting moments", () => {
     };
 
     runtime.enterGamePhase(room, "voting-moment");
+    const firstVotingVisitId = room.momentVisitId;
     runtime.enterGamePhase(room, "voice-moment");
     room.playerAnswerRecords = { p1: { text: "JURASSIC PARK" } };
     runtime.enterGamePhase(room, "voting-moment");
@@ -142,5 +143,6 @@ describe("reusable voting moments", () => {
       "voice-moment": { p1: { text: "JURASSIC PARK" } }
     });
     expect(room.lastVotingSourceStateId).toBe("voice-moment");
+    expect(room.momentVisitId).toBe(firstVotingVisitId + 2);
   });
 });

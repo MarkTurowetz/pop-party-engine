@@ -28,7 +28,7 @@ declare global {
     applyStageLayoutForPhase?: (phase: string) => void;
     resetStageMomentLayout?: () => void;
     stageMomentLayoutReadiness?: () => Dict;
-    applyControllerLayoutForPhase?: (phase: string) => void;
+    applyControllerLayoutForPhase?: (phase: string, visitKey?: string) => void;
     setStageLayoutGameObjectShownForAction?: (action: Dict, options?: Dict) => unknown;
     setStageLayoutArtElementShownForAction?: (action: Dict, options?: Dict) => unknown;
     playStageLayoutGameObjectAnimationForAction?: (action: Dict, options?: Dict) => unknown;
@@ -276,9 +276,11 @@ function showPointPopupsForAction(_action: Dict): void {
 
 function votingCardRenderOptions(lobby: Dict): Dict {
   const action = (lobby?.action as Dict) || null;
-  return action && ["setVotingCardsShown", "revealVotingResults", "revealAuthors", "revealVotes", "revealWinningAnswer"].includes(String(action.type || ""))
+  const visitId = Number(lobby?.momentVisitId || 0);
+  const actionOptions = action && ["setVotingCardsShown", "revealVotingResults", "revealAuthors", "revealVotes", "revealWinningAnswer"].includes(String(action.type || ""))
     ? { actionId: action.id || "", actionType: action.type || "", isShown: action.isShown !== false, cardFilter: action.cardFilter || "all" }
     : {};
+  return { ...actionOptions, visitId };
 }
 
 function renderVotingCards(cards: Dict[] = [], options: Dict = {}): void {

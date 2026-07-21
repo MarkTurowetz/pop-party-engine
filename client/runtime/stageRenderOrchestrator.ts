@@ -21,9 +21,11 @@ interface RenderOptions {
 
 function actionKeyForLobby(lobby: Dict = {}): string {
   const phase = (lobby.flowStateId as string) || (lobby.phase as string) || "lobby";
+  const visitId = Number(lobby.momentVisitId);
+  const visitKey = Number.isFinite(visitId) && visitId > 0 ? `@${visitId}` : "";
   const subroutinePath = Array.isArray(lobby.subroutinePath) ? lobby.subroutinePath.map(String).filter(Boolean).join("/") : "";
   const action = (lobby.action as Dict) || {};
-  return `${phase}:${subroutinePath}:${action.id || action.index || ""}:${action.type || ""}`;
+  return `${phase}${visitKey}:${subroutinePath}:${action.id || action.index || ""}:${action.type || ""}`;
 }
 
 class StageRenderOrchestrator {

@@ -648,6 +648,7 @@ class VotingCardRenderer {
   cards = new Map<string, VotingCardView>();
   pendingRemovalIds = new Set<string>();
   hideLayerTimer: number | null = null;
+  visitId = "";
 
   constructor(options: Dict) {
     this.layer = options.layer as El | undefined;
@@ -659,6 +660,11 @@ class VotingCardRenderer {
 
   render(cards: Dict[] = [], options: Dict = {}): void {
     if (!this.layer) return;
+    const nextVisitId = String(options.visitId || "");
+    if (nextVisitId && this.visitId && nextVisitId !== this.visitId) {
+      this.clear({ instant: true });
+    }
+    if (nextVisitId) this.visitId = nextVisitId;
     const list = Array.isArray(cards) ? cards : [];
     if (list.length) this.showLayer();
     const desiredIds = new Set(list.map((card) => String(card.id || "")));

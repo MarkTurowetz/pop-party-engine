@@ -63,6 +63,7 @@ function createControllerInputPayloadRuntime({
       const visibleCards = (room.votingCards || []).filter((card) => card && card.authorPlayerId !== player?.id);
       return {
         actionId: room.choiceInputActionId,
+        visitId: Number(room.momentVisitId || 0),
         type: "vote",
         prompt: room.choiceInputPrompt,
         mode: room.choiceInputMode,
@@ -78,6 +79,7 @@ function createControllerInputPayloadRuntime({
     }
     return {
       actionId: room.choiceInputActionId,
+      visitId: Number(room.momentVisitId || 0),
       type: room.choiceInputKind,
       prompt: room.choiceInputPrompt,
       mode: room.choiceInputMode,
@@ -120,6 +122,7 @@ function createControllerInputPayloadRuntime({
     const grantedPlayerIds = new Set(room.microphoneAccessAnswers?.keys?.() || []);
     return {
       actionId: room.microphoneAccessActionId,
+      visitId: Number(room.momentVisitId || 0),
       type: "microphoneAccess",
       mode: room.microphoneAccessMode,
       vipPlayerId: room.microphoneAccessMode === "vip" ? room.vipPlayerId || "" : "",
@@ -134,6 +137,7 @@ function createControllerInputPayloadRuntime({
     applyTextInputAction(room, currentAction);
     return {
       actionId: room.textInputActionId,
+      visitId: Number(room.momentVisitId || 0),
       type: textAnswerPayloadTypeForMode(room.textInputMode),
       mode: room.textInputMode,
       vipPlayerId: room.textInputMode === "voiceVip" ? room.vipPlayerId || "" : "",

@@ -59,7 +59,7 @@ describe("createControllerRecordingLifecycle (ported)", () => {
     expect(api.state()).toBe("listening");
     expect(recognition.start).toHaveBeenCalled();
     expect(recognition.continuous).toBe(true);
-    expect(recognition.interimResults).toBe(false);
+    expect(recognition.interimResults).toBe(true);
     expect(recognition.maxAlternatives).toBe(1);
     expect(onStatus).toHaveBeenCalledWith("Listening");
   });
@@ -95,6 +95,40 @@ describe("createControllerRecordingLifecycle (ported)", () => {
     recognition.onend?.();
     await vi.waitFor(() => {
       expect(submitText).toHaveBeenCalledWith("act1", "hello world");
+    });
+  });
+
+  it("keeps earlier speech when Chrome ends and restarts recognition while the button is held", async () => {
+    vi.stubGlobal("window", { clearTimeout: vi.fn(), setTimeout: vi.fn(() => 1) });
+    const recognitions = [fakeRecognition(), fakeRecognition()];
+    let recognitionIndex = 0;
+    const submitText = vi.fn(async () => null);
+    const api = createControllerRecordingLifecycle({
+      previewText: vi.fn(async () => null),
+      submitText,
+      recognitionConstructor: () => (function Rec() {
+        return recognitions[recognitionIndex++];
+      }) as unknown as new () => FakeRecognition
+    });
+
+    api.begin("act1");
+    recognitions[0].onresult?.({
+      resultIndex: 0,
+      results: { length: 1, 0: { isFinal: true, 0: { transcript: "the first half" } } }
+    });
+    recognitions[0].onend?.();
+
+    expect(recognitions[1].start).toHaveBeenCalledOnce();
+    expect(api.state()).toBe("listening");
+    recognitions[1].onresult?.({
+      resultIndex: 0,
+      results: { length: 1, 0: { isFinal: false, 0: { transcript: "and the last words" } } }
+    });
+    api.release("act1");
+    recognitions[1].onend?.();
+
+    await vi.waitFor(() => {
+      expect(submitText).toHaveBeenCalledWith("act1", "the first half and the last words");
     });
   });
 
