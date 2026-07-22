@@ -26,9 +26,9 @@
     "./content/environment": "./dist/server/content-store-environment-runtime.js",
     "./content/admin": "./dist/server/content-admin-handlers-runtime.js",
     "./rooms/content-pin": "./src/server/room-content-pin-runtime.js",
-    "./security/admin": "./dist/server/admin-auth-runtime.js",
+    "./security/admin": "./src/server/admin-auth-runtime.js",
     "./security/audit": "./src/server/admin-audit-runtime.js",
-    "./security/runtime-capabilities": "./dist/server/runtime-capability-runtime.js",
+    "./security/runtime-capabilities": "./src/server/runtime-capability-runtime.js",
     "./security/svg": "./src/server/svg-sanitizer.js"
   },
   "files": [

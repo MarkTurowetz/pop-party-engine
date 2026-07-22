@@ -7,7 +7,5 @@
   "server/github-content-bundle-store.js",
   "server/github-app-credential-runtime.js",
   "server/content-store-environment-runtime.js",
-  "server/content-admin-handlers-runtime.js",
-  "server/admin-auth-runtime.js",
-  "server/runtime-capability-runtime.js"
+  "server/content-admin-handlers-runtime.js"
 ]

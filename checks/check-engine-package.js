@@ -38,7 +38,9 @@ try {
   }
   const compatibilityExports = [
     ["room-content-pin-runtime", "@pop-party/engine/rooms/content-pin", "createRoomContentPinRuntime"],
+    ["admin-auth-runtime", "@pop-party/engine/security/admin", "createAdminAuthRuntime"],
     ["admin-audit-runtime", "@pop-party/engine/security/audit", "createAdminAuditRuntime"],
+    ["runtime-capability-runtime", "@pop-party/engine/security/runtime-capabilities", "createRuntimeCapabilityRuntime"],
     ["svg-sanitizer", "@pop-party/engine/security/svg", "assertSafeSvg"]
   ];
   for (const [legacyModule, specifier, exportName] of compatibilityExports) {
