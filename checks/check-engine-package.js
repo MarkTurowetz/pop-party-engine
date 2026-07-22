@@ -73,7 +73,8 @@ try {
     ["admin-audit-runtime", "@pop-party/engine/security/audit", "createAdminAuditRuntime"],
     ["runtime-capability-runtime", "@pop-party/engine/security/runtime-capabilities", "createRuntimeCapabilityRuntime"],
     ["svg-sanitizer", "@pop-party/engine/security/svg", "assertSafeSvg"],
-    ["stage-test-config-handler-runtime", "@pop-party/engine/testing", "createStageTestConfigHandlerRuntime"]
+    ["stage-test-config-handler-runtime", "@pop-party/engine/testing", "createStageTestConfigHandlerRuntime"],
+    ["art-composition-dependency-runtime", "@pop-party/engine/tooling", "createArtCompositionDependencyReport"]
   ];
   for (const [legacyModule, specifier, exportName] of compatibilityExports) {
     if (require(path.join(root, "server", legacyModule))[exportName] !== localRequire(specifier)[exportName]) {
