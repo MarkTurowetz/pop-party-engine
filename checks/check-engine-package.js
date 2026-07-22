@@ -102,7 +102,12 @@ try {
     ["local-json-store", "readJsonFile"],
     ["router-runtime", "createRouterRuntime"],
     ["static-files-runtime", "createStaticFilesRuntime"],
-    ["stage-events-runtime", "createStageEventsRuntime"]
+    ["stage-events-runtime", "createStageEventsRuntime"],
+    ["inactive-player-sweep-runtime", "createInactivePlayerSweepRuntime"],
+    ["player-answers-runtime", "createPlayerAnswersRuntime"],
+    ["room-broadcast-runtime", "createRoomBroadcastRuntime"],
+    ["room-state-runtime", "createRoomStateRuntime"],
+    ["voting-runtime", "createVotingRuntime"]
   ];
   for (const [legacyModule, exportName] of serverKernelCompatibility) {
     if (require(path.join(root, "server", legacyModule))[exportName] !== serverKernel[exportName]) {

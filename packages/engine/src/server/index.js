@@ -24,5 +24,10 @@ module.exports = Object.freeze({
   ...require("./local-json-store"),
   ...require("./router-runtime"),
   ...require("./static-files-runtime"),
-  ...require("./stage-events-runtime")
+  ...require("./stage-events-runtime"),
+  ...require("./inactive-player-sweep-runtime"),
+  ...require("./player-answers-runtime"),
+  ...require("./room-broadcast-runtime"),
+  ...require("./room-state-runtime"),
+  ...require("./voting-runtime")
 });
