@@ -6,6 +6,7 @@ const { createAdminAuditRuntime } = require("@pop-party/engine/security/audit");
 const {
   backupJsonFile,
   contentTypeForFile,
+  createActionCompletionRuntime,
   createActionEffectStateRuntime,
   createCountdownRuntime,
   createControllerInputPayloadRuntime,
@@ -29,9 +30,11 @@ const {
   createPlayerSessionHandlersRuntime,
   createPlayerStateRuntime,
   createRoomBroadcastRuntime,
+  createRoomActionEffectsRuntime,
   createRoomPhaseRuntime,
   createRoomStateRuntime,
   createRouterRuntime,
+  createStageActionHandlersRuntime,
   createStageEventsRuntime,
   createStaticFilesRuntime,
   createStartHandlersRuntime,
@@ -57,7 +60,6 @@ const {
   createToolGithubSourcesRuntime,
   createToolSourceStoresRuntime
 } = require("@pop-party/engine/tooling");
-const { createActionCompletionRuntime } = require("./server/action-completion-runtime");
 const { createContentAdminHandlersRuntime } = require("@pop-party/engine/content/admin");
 const { createContentStoreEnvironmentRuntime } = require("@pop-party/engine/content/environment");
 const { createControllerLayoutNormalizationRuntime } = require("./server/controller-layout-normalization-runtime");
@@ -68,12 +70,10 @@ const { createFlowActionPublicRuntime } = require("./server/flow-action-public-r
 const { createGameConstantsRuntime } = require("./server/game-constants-runtime");
 const { createGameFlowNormalizationRuntime } = require("./server/game-flow-normalization-runtime");
 const { createLayoutNormalizationRuntime } = require("./server/layout-normalization-runtime");
-const { createRoomActionEffectsRuntime } = require("./server/room-action-effects-runtime");
 const { createRoomFlowHelpersRuntime } = require("./server/room-flow-helpers-runtime");
 const { createRoomContentPinRuntime } = require("@pop-party/engine/rooms/content-pin");
 const { createRuntimeCapabilityRuntime } = require("@pop-party/engine/security/runtime-capabilities");
 const { createStageTestConfigHandlerRuntime } = require("@pop-party/engine/testing");
-const { createStageActionHandlersRuntime } = require("./server/stage-action-handlers-runtime");
 const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout-normalization-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
 const { createToolPersistenceRuntime } = require("./server/tool-persistence-runtime");
