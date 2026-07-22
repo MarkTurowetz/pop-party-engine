@@ -163,6 +163,7 @@ try {
     ["layout-sync-runtime", "createLayoutSyncRuntime"],
     ["local-draft-runtime", "createLocalDraftRuntime"],
     ["tool-data-read-runtime", "createToolDataReadRuntime"],
+    ["tool-source-readers-runtime", "createToolSourceReadersRuntime"],
     ["tool-source-stores-runtime", "createToolSourceStoresRuntime"],
     ["github-storage-runtime", "createGithubStorageRuntime"],
     ["tool-github-sources-runtime", "createToolGithubSourcesRuntime"],

@@ -738,17 +738,11 @@ const {
   readLocalHostAudiosSource,
   readLocalStageLayoutsSource
 } = createToolSourceReadersRuntime({
-  cloneJson,
   controllerLayoutsFile: CONTROLLER_LAYOUTS_FILE,
-  defaultControllerLayouts,
   defaultControllerLayoutsFile: DEFAULT_CONTROLLER_LAYOUTS_FILE,
-  defaultGameConstants,
   defaultGameConstantsFile: DEFAULT_GAME_CONSTANTS_FILE,
-  defaultGameFlow,
   defaultGameFlowFile: DEFAULT_GAME_FLOW_FILE,
-  defaultHostAudios,
   defaultHostAudiosFile: DEFAULT_HOST_AUDIOS_FILE,
-  defaultStageLayouts,
   defaultStageLayoutsFile: DEFAULT_STAGE_LAYOUTS_FILE,
   gameConstantsFile: GAME_CONSTANTS_FILE,
   gameFlowFile: GAME_FLOW_FILE,
