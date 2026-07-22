@@ -10,12 +10,40 @@ const ROOT = path.resolve(__dirname, "..");
 const DEFAULT_OUTPUT_ROOT = path.join(ROOT, "outputs", "engine-split-baseline");
 const CONTENT_PATH_PATTERN = /(?:^|\/)(?:art-manifest|game-flow|game-constants|stage-layouts|controller-layouts|host-audios)(?:\.default)?\.json$/i;
 const PRIVATE_GAME_PATTERN = /(?:^|[\/_ -])flip[\s_-]*7(?:$|[\/_ .-])/i;
-const SECRET_PATH_PATTERN = /(?:^|\/)(?:\.env(?:\..*)?|.*(?:secret|credential|private[-_]?key|access[-_]?token).*)$/i;
+const SECRET_DATA_EXTENSION_PATTERN = /\.(?:json|ya?ml|toml|txt|pem|key|p8|p12|pfx)$/i;
+const SECRET_DATA_BASENAME_PATTERN = /(?:^|[-_.])(?:credentials?|secrets?|private[-_]?key|access[-_]?token)(?:$|[-_.])/i;
+const KNOWN_NON_SECRET_LITERALS = new Set(["installation-token", "local-development"]);
 const SECRET_CONTENT_PATTERNS = Object.freeze([
   { code: "GITHUB_TOKEN", pattern: /gh[opusr]_[A-Za-z0-9_]{20,}/g },
-  { code: "PRIVATE_KEY", pattern: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g },
-  { code: "GENERIC_SECRET_ASSIGNMENT", pattern: /(?:secret|token|password)\s*[:=]\s*["'][^"'\n]{16,}["']/gi }
+  { code: "PRIVATE_KEY", pattern: /-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----/g },
+  {
+    code: "GENERIC_SECRET_ASSIGNMENT",
+    pattern: /["']?[\w-]*(?:secret|token|password)[\w-]*["']?\s*[:=]\s*["']([^"'\n]{16,})["']/gi,
+    isFinding: (match) => !KNOWN_NON_SECRET_LITERALS.has(String(match[1] || "").toLowerCase())
+  }
 ]);
+
+function isSensitiveCredentialPath(logicalPath) {
+  const basename = path.posix.basename(String(logicalPath || ""));
+  if (/^\.env(?:\..*)?$/i.test(basename)) return true;
+  return SECRET_DATA_EXTENSION_PATTERN.test(basename) && SECRET_DATA_BASENAME_PATTERN.test(basename);
+}
+
+function secretContentFindingCodes(text) {
+  const codes = [];
+  for (const secretPattern of SECRET_CONTENT_PATTERNS) {
+    secretPattern.pattern.lastIndex = 0;
+    let match;
+    while ((match = secretPattern.pattern.exec(text))) {
+      if (!secretPattern.isFinding || secretPattern.isFinding(match)) {
+        codes.push(secretPattern.code);
+        break;
+      }
+      if (!secretPattern.pattern.global) break;
+    }
+  }
+  return codes;
+}
 
 function git(args, options = {}) {
   return childProcess.execFileSync("git", args, {
@@ -92,7 +120,7 @@ function scanReachableHistory() {
     if (PRIVATE_GAME_PATTERN.test(logicalPath)) {
       findings.push({ severity: "block", code: "FLIP7_HISTORY", path: logicalPath, objectId });
     }
-    if (SECRET_PATH_PATTERN.test(logicalPath)) {
+    if (isSensitiveCredentialPath(logicalPath)) {
       findings.push({ severity: "block", code: "SECRET_PATH", path: logicalPath, objectId });
     }
     if (CONTENT_PATH_PATTERN.test(logicalPath) && !isApprovedStarterContentPath(logicalPath)) {
@@ -124,11 +152,8 @@ function scanReachableHistory() {
     offset = contentStart + size + 1;
     if (bytes.includes(0)) continue;
     const text = bytes.toString("utf8");
-    for (const secretPattern of SECRET_CONTENT_PATTERNS) {
-      secretPattern.pattern.lastIndex = 0;
-      if (secretPattern.pattern.test(text)) {
-        findings.push({ severity: "block", code: secretPattern.code, path: pathByObject.get(objectId) || "", objectId });
-      }
+    for (const code of secretContentFindingCodes(text)) {
+      findings.push({ severity: "block", code, path: pathByObject.get(objectId) || "", objectId });
     }
   }
   return findings;
@@ -204,9 +229,11 @@ if (require.main === module) {
 
 module.exports = {
   isApprovedStarterContentPath,
+  isSensitiveCredentialPath,
   normalizedLogicalPath,
   parseArgs,
   scanReachableHistory,
+  secretContentFindingCodes,
   sha256,
   writeBaseline
 };
