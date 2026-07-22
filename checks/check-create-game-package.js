@@ -59,6 +59,13 @@ try {
   });
   execFileSync("npm", ["test"], { cwd: targetRoot, stdio: "pipe" });
   execFileSync("npm", ["run", "build"], { cwd: targetRoot, stdio: "pipe" });
+  const gameBuild = JSON.parse(fs.readFileSync(path.join(targetRoot, "dist", "pop-party-build.json"), "utf8"));
+  if (gameBuild.gameId !== "generated-fixture" || gameBuild.engineVersion !== "1.0.0") {
+    throw new Error("Generated game build manifest does not identify the exact game and engine");
+  }
+  if (gameBuild.contentRevision !== generatedSnapshot.revision) {
+    throw new Error("Generated game build manifest is not pinned to the validated content revision");
+  }
   console.log(`Packed create-game fixture passed: ${packed.filename} (${packed.files.length} files).`);
 } finally {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });

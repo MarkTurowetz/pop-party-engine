@@ -3,4 +3,9 @@
 
 const { runCli } = require("../src/tooling/cli");
 
-process.exitCode = runCli();
+runCli().then((exitCode) => {
+  process.exitCode = exitCode;
+}).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

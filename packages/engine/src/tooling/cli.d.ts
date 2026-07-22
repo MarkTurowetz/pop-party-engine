@@ -7,4 +7,9 @@ export interface PopPartyCliOutput {
 
 export const HELP_TEXT: string;
 export function validateContentBundle(contentRoot: string, output?: PopPartyCliOutput): ContentSnapshot;
-export function runCli(argv?: string[], options?: { cwd?: string; output?: PopPartyCliOutput }): number;
+export function runCli(argv?: string[], options?: {
+  cwd?: string;
+  output?: PopPartyCliOutput;
+  engineVersion?: string;
+  outputDirectory?: string;
+}): Promise<number>;

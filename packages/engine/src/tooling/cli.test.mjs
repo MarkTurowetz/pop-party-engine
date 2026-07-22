@@ -46,21 +46,23 @@ afterEach(() => {
 });
 
 describe("pop-party CLI", () => {
-  it("validates a complete local bundle", () => {
+  it("validates a complete local bundle", async () => {
     const messages = [];
     const output = { log: (message) => messages.push(message), error: (message) => messages.push(message) };
-    expect(runCli(["validate", validBundle()], { output })).toBe(0);
+    expect(await runCli(["validate", validBundle()], { output })).toBe(0);
     expect(messages).toContain("Content bundle valid: cli-fixture");
   });
 
-  it("fails closed for an incomplete bundle and unknown commands", () => {
+  it("fails closed for an incomplete bundle and unknown commands", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-cli-invalid-"));
     temporaryRoots.push(root);
     const errors = [];
     const output = { log() {}, error: (message) => errors.push(message) };
-    expect(runCli(["validate", root], { output })).toBe(1);
-    expect(runCli(["publish"], { output })).toBe(1);
+    expect(await runCli(["validate", root], { output })).toBe(1);
+    expect(await runCli(["build"], { cwd: root, output, engineVersion: "1.0.0" })).toBe(1);
+    expect(await runCli(["publish"], { output })).toBe(1);
     expect(errors.some((message) => message.includes("Content bundle invalid"))).toBe(true);
+    expect(errors.some((message) => message.includes("Game build invalid"))).toBe(true);
     expect(errors.some((message) => message.includes("Unknown pop-party command"))).toBe(true);
   });
 });

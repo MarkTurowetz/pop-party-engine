@@ -116,7 +116,7 @@ function generateGame(options = {}) {
       description: `${displayName} built with Pop Party Engine.`,
       engines: { node: ">=22" },
       scripts: {
-        build: "npm run validate",
+        build: "pop-party build",
         test: "node --test",
         validate: "pop-party validate content"
       },
@@ -131,7 +131,7 @@ function generateGame(options = {}) {
     writeText(stagingRoot, "src/tools/index.js", generatedContributionSource("authenticated tool panel"));
     writeText(stagingRoot, "src/plugin/index.js", generatedPluginSource(pluginNamespace));
     writeText(stagingRoot, "tests/config.test.js", generatedConfigTestSource({ engineVersion, gameId, pluginNamespace }));
-    writeText(stagingRoot, ".gitignore", "node_modules/\n.env\noutputs/\n");
+    writeText(stagingRoot, ".gitignore", "node_modules/\n.env\ndist/\noutputs/\n");
     writeText(stagingRoot, "README.md", `# ${displayName}\n\nIndependent Pop Party game using \`@pop-party/engine@${engineVersion}\`.\n\nGame-owned contributions live under \`src/actions\`, \`src/stage\`, \`src/controller\`, and \`src/tools\`. Register them through the namespaced plugin in \`src/plugin\`. Content and starter blobs under \`content\` are independent copies owned by this game.\n`);
     writeText(stagingRoot, "LICENSE", fs.readFileSync(path.join(__dirname, "..", "LICENSE"), "utf8"));
     writeText(stagingRoot, "CONTENT-LICENSE", "Canonical starter art and content were copied into this game under CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/). This copy is owned and editable by this game.\n");

@@ -40,8 +40,10 @@ describe("create-game generator", () => {
     const result = generateGame({ displayName: "Flip 7", engineVersion: "1.0.0", starterRoot, targetRoot });
 
     expect(result.gameId).toBe("flip-7");
-    expect(JSON.parse(fs.readFileSync(path.join(targetRoot, "package.json"), "utf8")).dependencies)
+    const generatedPackage = JSON.parse(fs.readFileSync(path.join(targetRoot, "package.json"), "utf8"));
+    expect(generatedPackage.dependencies)
       .toEqual({ "@pop-party/engine": "1.0.0" });
+    expect(generatedPackage.scripts.build).toBe("pop-party build");
     expect(fs.readFileSync(path.join(targetRoot, "content", "blobs", "asset.bin")))
       .toEqual(Buffer.from([0, 1, 2, 255]));
     expect(JSON.parse(fs.readFileSync(path.join(targetRoot, "content", "content-bundle.json"), "utf8")).gameId)

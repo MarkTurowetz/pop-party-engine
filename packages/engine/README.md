@@ -12,6 +12,12 @@ cannot reach back into the reference app or repository-root compatibility files.
 
 Consumers must pin an exact released version.
 
+`pop-party build` loads the game-owned `game.config.js`, verifies the exact
+engine/plugin/active-content release tuple and the complete semantic-role graph,
+then writes `dist/pop-party-build.json`. Invalid content does not produce a
+build manifest, and the manifest pins the immutable content revision that was
+actually validated.
+
 Public runtime boundaries include `@pop-party/engine/server`,
 `@pop-party/engine/tooling`, and `@pop-party/engine/testing`. Public art authoring
 contracts are exposed through `@pop-party/engine/art/lifecycle`,
