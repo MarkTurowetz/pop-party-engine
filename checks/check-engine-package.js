@@ -233,7 +233,7 @@ try {
   if (clientApi.controllerLayoutStateIds !== clientLayoutStatesApi.controllerLayoutStateIds) {
     throw new Error("Packed engine client entry point does not expose the canonical controller layout states");
   }
-  for (const exportName of ["createActionCompletionBarrier", "createControllerHeartbeatRuntime", "createControllerModuleCache", "createControllerRecordingLifecycle", "createControllerSessionRuntime", "createControllerStateRuntime", "createControllerSubmitApi", "createControllerViewState", "createControllerVoiceInput", "controllerViewVisitKey", "distributedContainerItemPositions", "effectiveVisibilityTimeline", "resolveControllerSubmissionConfirmation", "shouldDeferVoiceHeartbeat"]) {
+  for (const exportName of ["createActionCompletionBarrier", "createControllerHeartbeatRuntime", "createControllerLocalButtonRuntime", "createControllerModuleCache", "createControllerRecordingLifecycle", "createControllerSessionRuntime", "createControllerStateRuntime", "createControllerSubmitApi", "createControllerViewState", "createControllerVoiceInput", "controllerViewVisitKey", "distributedContainerItemPositions", "effectiveVisibilityTimeline", "resolveControllerSubmissionConfirmation", "shouldDeferVoiceHeartbeat"]) {
     if (typeof clientApi[exportName] !== "function") throw new Error(`Packed engine client entry point is missing ${exportName}`);
   }
   for (const exportName of ["createToolPersistenceRuntime", "createToolSourceReadersRuntime"]) {
@@ -263,7 +263,7 @@ try {
     'import { REQUIRED_GAME_DATA_KEYS } from "@pop-party/engine";',
     'import { defineGame } from "@pop-party/engine/game";',
     'import { defineGamePlugin } from "@pop-party/engine/plugin";',
-    'import { controllerLayoutStateIds, controllerViewVisitKey, createActionCompletionBarrier, createApiClient, createControllerHeartbeatRuntime, createControllerModuleCache, createControllerRecordingLifecycle, createControllerSessionRuntime, createControllerStateRuntime, createControllerSubmitApi, createControllerViewState, createControllerVoiceInput, distributedContainerItemPositions, effectiveVisibilityTimeline, resolveControllerSubmissionConfirmation } from "@pop-party/engine/client";',
+    'import { controllerLayoutStateIds, controllerViewVisitKey, createActionCompletionBarrier, createApiClient, createControllerHeartbeatRuntime, createControllerLocalButtonRuntime, createControllerModuleCache, createControllerRecordingLifecycle, createControllerSessionRuntime, createControllerStateRuntime, createControllerSubmitApi, createControllerViewState, createControllerVoiceInput, distributedContainerItemPositions, effectiveVisibilityTimeline, resolveControllerSubmissionConfirmation } from "@pop-party/engine/client";',
     'import { createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime } from "@pop-party/engine/server";',
     'import { createStageTestConfigHandlerRuntime } from "@pop-party/engine/testing";',
     'import { blockingArtArchitectureIssues, compositionSaveConflict, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, createToolPersistenceRuntime, createToolSourceReadersRuntime, exportLegacyContentBundle, manifestRevision, normalizeArtAssetReplacementsDraft, normalizeArtOrganization, parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys, revisionMatches, runCli, validateContentBundle } from "@pop-party/engine/tooling";',

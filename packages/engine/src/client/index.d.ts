@@ -1,6 +1,7 @@
 export * from "../shared/controller-layout-states";
 export * from "./action-completion-barrier";
 export * from "./controller-heartbeat-runtime";
+export * from "./controller-local-button-runtime";
 export * from "./controller-module-cache";
 export * from "./controller-recording-lifecycle";
 export * from "./controller-session-runtime";

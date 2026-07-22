@@ -4,6 +4,7 @@ module.exports = Object.freeze({
   ...require("../shared/controller-layout-states"),
   ...require("./action-completion-barrier"),
   ...require("./controller-heartbeat-runtime"),
+  ...require("./controller-local-button-runtime"),
   ...require("./controller-module-cache"),
   ...require("./controller-recording-lifecycle"),
   ...require("./controller-session-runtime"),
