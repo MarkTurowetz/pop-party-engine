@@ -43,6 +43,10 @@
       "types": "./src/client/text-runtime.d.ts",
       "default": "./src/client/text-runtime.js"
     },
+    "./client/qr-code": {
+      "types": "./src/client/qr-code-runtime.d.ts",
+      "default": "./src/client/qr-code-runtime.js"
+    },
     "./testing": {
       "types": "./src/testing/index.d.ts",
       "default": "./src/testing/index.js"

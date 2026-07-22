@@ -15,3 +15,4 @@ export * from "./distributed-container-layout";
 export * from "./effective-timeline";
 export * from "./http";
 export * from "./text-runtime";
+export * from "./qr-code-runtime";

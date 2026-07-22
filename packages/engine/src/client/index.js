@@ -2,6 +2,7 @@
 
 module.exports = Object.freeze({
   ...require("./text-runtime"),
+  ...require("./qr-code-runtime"),
   ...require("../shared/controller-layout-states"),
   ...require("./action-completion-barrier"),
   ...require("./controller-heartbeat-runtime"),
