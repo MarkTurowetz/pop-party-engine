@@ -85,6 +85,12 @@
             throw new Error("gameMigrationLevel must be a non-negative integer");
         }
         const semanticRolesPath = normalizeBundlePath(input.semanticRolesPath || "semantic-roles.json");
+        const parentRevision = String(input.parentRevision || "").toLowerCase();
+        const publishedRevision = String(input.publishedRevision || "").toLowerCase();
+        if (parentRevision && !SHA256_PATTERN.test(parentRevision))
+            throw new Error("parentRevision must be SHA-256 when present");
+        if (publishedRevision && !SHA256_PATTERN.test(publishedRevision))
+            throw new Error("publishedRevision must be SHA-256 when present");
         const fileInputs = Array.isArray(input.files) ? input.files : [];
         const seenExact = new Set();
         const seenPortable = new Set();
@@ -125,6 +131,8 @@
             flowExpressionLanguageVersion,
             gameMigrationLevel,
             semanticRolesPath,
+            parentRevision,
+            publishedRevision,
             files: Object.freeze(files),
             rootHash
         });

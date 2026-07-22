@@ -9,6 +9,7 @@ const {
   normalizeManifest,
   rootHashInput
 } = require("../shared/content-bundle-schema");
+const { createContentSnapshot } = require("./content-snapshot-runtime");
 
 function sha256(bytes) {
   return crypto.createHash("sha256").update(bytes).digest("hex");
@@ -68,24 +69,7 @@ function createLocalContentBundleProvider(options = {}) {
     }
     const actualRootHash = sha256(Buffer.from(rootHashInput(manifest.files), "utf8"));
     if (actualRootHash !== manifest.rootHash) throw new Error("Content bundle rootHash mismatch");
-    return Object.freeze({
-      revision: manifest.rootHash,
-      manifest,
-      readBytes(logicalPath) {
-        const normalizedPath = normalizeBundlePath(logicalPath);
-        const bytes = bytesByPath.get(normalizedPath);
-        if (!bytes) throw new Error(`Content bundle file is not declared: ${normalizedPath}`);
-        return Buffer.from(bytes);
-      },
-      readJson(logicalPath) {
-        const normalizedPath = normalizeBundlePath(logicalPath);
-        try {
-          return JSON.parse(this.readBytes(normalizedPath).toString("utf8"));
-        } catch (error) {
-          throw new Error(`Content bundle JSON is invalid at ${normalizedPath}: ${error.message}`);
-        }
-      }
-    });
+    return createContentSnapshot({ manifest, files: bytesByPath });
   }
 
   function loadPublishedRevision(expectedRevision = "") {

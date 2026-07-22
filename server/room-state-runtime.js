@@ -5,6 +5,8 @@ function createDefaultRoom(stageCode) {
     stageCapabilityHash: "",
     stageEventTicketHashes: new Map(),
     playerCapabilityHashes: new Map(),
+    releasePin: null,
+    contentSnapshot: null,
     players: new Map(),
     vipPlayerId: "",
     startToken: "",

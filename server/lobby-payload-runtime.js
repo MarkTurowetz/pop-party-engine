@@ -36,6 +36,14 @@ function createLobbyPayloadRuntime({
       phase: room.phase,
       flowStateId: room.flowStateId || room.phase,
       gameSessionId: Number(room.gameSessionId || 0),
+      release: room.releasePin ? {
+        gameId: String(room.releasePin.gameId || ""),
+        gameBuild: String(room.releasePin.gameBuild || ""),
+        engineVersion: String(room.releasePin.engineVersion || ""),
+        pluginVersion: String(room.releasePin.pluginVersion || ""),
+        contentRevision: String(room.releasePin.contentRevision || ""),
+        releaseRevision: String(room.releasePin.releaseRevision || "")
+      } : null,
       momentVisitId: Number(room.momentVisitId || 0),
       runtimeFault,
       subroutinePath: Array.isArray(room.subroutinePath) ? [...room.subroutinePath] : [],
