@@ -87,6 +87,7 @@ const {
   normalizeVotingCardFilter
 } = require("./server/value-normalizers");
 const { createVotingRuntime } = require("./server/voting-runtime");
+const GAME_DEFINITION = require("./game.config");
 const {
   acceptedArtTypes,
   defaultArtCompositions,
@@ -102,7 +103,7 @@ const {
   defaultPlayerColors,
   defaultStageLayouts,
   multipleChoicePrompts
-} = require("./shared/game-data");
+} = GAME_DEFINITION.gameData;
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -1149,6 +1150,7 @@ const {
   router
 } = createRouterRuntime({
   clonePrompt,
+  gameDefinition: GAME_DEFINITION,
   handleActionEffect,
   handleAdvancePresentation,
   handleCancelStart,

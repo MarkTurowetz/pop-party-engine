@@ -29,6 +29,8 @@
     "smoke:build-assets": "node checks/check-vite-assets.js",
     "smoke:routes": "node checks/smoke-routes.js",
     "sync-game-data": "node sync-game-data.js",
+    "split:baseline": "node checks/split-baseline.js",
+    "split:audit-history": "node checks/split-baseline.js --audit-history",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

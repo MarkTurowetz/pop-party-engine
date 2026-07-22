@@ -2,6 +2,7 @@
 
 function createRouterRuntime({
   clonePrompt,
+  gameDefinition,
   handleActionEffect,
   handleAdvancePresentation,
   handleCancelStart,
@@ -58,7 +59,17 @@ function createRouterRuntime({
     }
 
     if (req.method === "GET" && url.pathname === "/api/health") {
-      sendJson(res, 200, { ok: true, rooms: rooms.size });
+      sendJson(res, 200, {
+        ok: true,
+        rooms: rooms.size,
+        game: {
+          id: gameDefinition?.gameId || "",
+          name: gameDefinition?.displayName || "",
+          version: gameDefinition?.version || "",
+          engineCompatibility: gameDefinition?.engineCompatibility || "",
+          contentMode: gameDefinition?.content?.mode || ""
+        }
+      });
       return;
     }
 

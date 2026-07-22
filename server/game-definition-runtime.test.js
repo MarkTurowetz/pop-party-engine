@@ -1,0 +1,66 @@
+import { createRequire } from "node:module";
+import { describe, expect, it } from "vitest";
+
+const require = createRequire(import.meta.url);
+const { defineGame } = require("./game-definition-runtime");
+const { defineGamePlugin } = require("./game-plugin-runtime");
+
+const requiredGameData = Object.fromEntries([
+  "acceptedArtTypes",
+  "artAssets",
+  "artGroups",
+  "availableFlowActionTypes",
+  "availableFlowTransitions",
+  "avatarShapes",
+  "defaultArtCompositions",
+  "defaultControllerLayouts",
+  "defaultGameConstants",
+  "defaultGameFlow",
+  "defaultHostAudios",
+  "defaultPlayerColors",
+  "defaultStageLayouts",
+  "multipleChoicePrompts"
+].map((key) => [key, {}]));
+
+function validDefinition(overrides = {}) {
+  return {
+    gameId: "example-game",
+    displayName: "Example Game",
+    version: "0.1.0",
+    engineCompatibility: "1.0.0",
+    content: { mode: "bundle", schemaVersion: 1 },
+    gameData: requiredGameData,
+    plugin: defineGamePlugin({ namespace: "example", register() {} }),
+    ...overrides
+  };
+}
+
+describe("defineGame", () => {
+  it("creates an immutable game boundary and installs namespaced registrations", () => {
+    const plugin = defineGamePlugin({
+      namespace: "example",
+      register(registry) {
+        registry.actions("example.roll", { execute: () => 7 });
+      }
+    });
+    const game = defineGame(validDefinition({ plugin }));
+
+    expect(game.gameId).toBe("example-game");
+    expect(game.registrations.actions.map((entry) => entry.id)).toEqual(["example.roll"]);
+    expect(Object.isFrozen(game)).toBe(true);
+  });
+
+  it("rejects incomplete game-owned data instead of inventing defaults", () => {
+    expect(() => defineGame(validDefinition({ gameData: {} }))).toThrow(/missing gameData/);
+  });
+
+  it("rejects plugin ids outside the plugin namespace", () => {
+    const plugin = defineGamePlugin({
+      namespace: "example",
+      register(registry) {
+        registry.actions("engine.roll", {});
+      }
+    });
+    expect(() => defineGame(validDefinition({ plugin }))).toThrow(/may only register ids/);
+  });
+});
