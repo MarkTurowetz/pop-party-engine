@@ -35,6 +35,8 @@ const {
   createStageEventsRuntime,
   createStaticFilesRuntime,
   createStartHandlersRuntime,
+  createToolDataReadRuntime,
+  createToolSourceStoresRuntime,
   createTriviaContentRuntime,
   createVotingRuntime,
   flowStateHasActionType,
@@ -71,11 +73,9 @@ const { createStageActionHandlersRuntime } = require("./server/stage-action-hand
 const { createStageTestConfigHandlerRuntime } = require("./server/stage-test-config-handler-runtime");
 const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout-normalization-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
-const { createToolDataReadRuntime } = require("./server/tool-data-read-runtime");
 const { createToolGithubSourcesRuntime } = require("./server/tool-github-sources-runtime");
 const { createToolPersistenceRuntime } = require("./server/tool-persistence-runtime");
 const { createToolSourceReadersRuntime } = require("./server/tool-source-readers-runtime");
-const { createToolSourceStoresRuntime } = require("./server/tool-source-stores-runtime");
 const {
   cleanChoiceOptions,
   cleanFlowText,

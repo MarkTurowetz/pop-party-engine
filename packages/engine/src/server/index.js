@@ -39,5 +39,7 @@ module.exports = Object.freeze({
   ...require("./host-audio-runtime"),
   ...require("./trivia-content-runtime"),
   ...require("./layout-sync-runtime"),
-  ...require("./local-draft-runtime")
+  ...require("./local-draft-runtime"),
+  ...require("./tool-data-read-runtime"),
+  ...require("./tool-source-stores-runtime")
 });

@@ -117,7 +117,9 @@ try {
     ["host-audio-runtime", "createHostAudioRuntime"],
     ["trivia-content-runtime", "createTriviaContentRuntime"],
     ["layout-sync-runtime", "createLayoutSyncRuntime"],
-    ["local-draft-runtime", "createLocalDraftRuntime"]
+    ["local-draft-runtime", "createLocalDraftRuntime"],
+    ["tool-data-read-runtime", "createToolDataReadRuntime"],
+    ["tool-source-stores-runtime", "createToolSourceStoresRuntime"]
   ];
   for (const [legacyModule, exportName] of serverKernelCompatibility) {
     if (require(path.join(root, "server", legacyModule))[exportName] !== serverKernel[exportName]) {
