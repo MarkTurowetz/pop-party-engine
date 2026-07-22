@@ -165,6 +165,7 @@ try {
     ["tool-data-read-runtime", "createToolDataReadRuntime"],
     ["tool-source-readers-runtime", "createToolSourceReadersRuntime"],
     ["tool-source-stores-runtime", "createToolSourceStoresRuntime"],
+    ["tool-persistence-runtime", "createToolPersistenceRuntime"],
     ["github-storage-runtime", "createGithubStorageRuntime"],
     ["tool-github-sources-runtime", "createToolGithubSourcesRuntime"],
     ["save-handlers-runtime", "createSaveHandlersRuntime"]

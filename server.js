@@ -800,6 +800,7 @@ const {
   gameConstantsStore,
   gameFlowBackupDir: GAME_FLOW_BACKUP_DIR,
   gameFlowFile: GAME_FLOW_FILE,
+  gameFlowGithubPath: GAME_FLOW_GITHUB_PATH,
   gameFlowStore,
   githubToken: GAME_FLOW_GITHUB_TOKEN,
   hostAudiosBackupDir: HOST_AUDIOS_BACKUP_DIR,
@@ -1287,37 +1288,35 @@ server.on("error", (error) => {
   throw error;
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(`Party Game Template server running at http://localhost:${PORT}`);
-  for (const url of getLanUrls()) {
-    console.log(`LAN URL: ${url}`);
-  }
-  loadGameFlowSource({ refresh: true })
-    .then(() => {
-      console.log(`Game flow storage: ${gameFlowStore.storageKind}${gameFlowStore.error ? ` (${gameFlowStore.error})` : ""}`);
-    })
-    .catch((error) => {
-      console.error(`Game flow storage failed: ${error.message}`);
+async function initializeAuthoritativeToolSources() {
+  await Promise.all([
+    loadGameFlowSource({ refresh: true }),
+    loadGameConstantsSource({ refresh: true }),
+    loadStageLayoutsSource({ refresh: true }),
+    loadControllerLayoutsSource({ refresh: true }),
+    loadHostAudiosSource({ refresh: true }),
+    loadArtManifestSource({ refresh: true })
+  ]);
+}
+
+function logToolStorage(label, store) {
+  console.log(`${label} storage: ${store.storageKind}`);
+}
+
+initializeAuthoritativeToolSources()
+  .then(() => {
+    server.listen(PORT, HOST, () => {
+      console.log(`Party Game Template server running at http://localhost:${PORT}`);
+      for (const url of getLanUrls()) console.log(`LAN URL: ${url}`);
+      logToolStorage("Game flow", gameFlowStore);
+      logToolStorage("Game constants", gameConstantsStore);
+      logToolStorage("Stage layouts", stageLayoutsStore);
+      logToolStorage("Controller layouts", controllerLayoutsStore);
+      logToolStorage("Host audio", hostAudiosStore);
+      logToolStorage("Art manifest", artManifestStore);
     });
-  loadGameConstantsSource({ refresh: true })
-    .then(() => {
-      console.log(`Game constants storage: ${gameConstantsStore.storageKind}${gameConstantsStore.error ? ` (${gameConstantsStore.error})` : ""}`);
-    })
-    .catch((error) => {
-      console.error(`Game constants storage failed: ${error.message}`);
-    });
-  loadHostAudiosSource({ refresh: true })
-    .then(() => {
-      console.log(`Host audio storage: ${hostAudiosStore.storageKind}${hostAudiosStore.error ? ` (${hostAudiosStore.error})` : ""}`);
-    })
-    .catch((error) => {
-      console.error(`Host audio storage failed: ${error.message}`);
-    });
-  loadArtManifestSource({ refresh: true })
-    .then(() => {
-      console.log(`Art manifest storage: ${artManifestStore.storageKind}${artManifestStore.error ? ` (${artManifestStore.error})` : ""}`);
-    })
-    .catch((error) => {
-      console.error(`Art manifest storage failed: ${error.message}`);
-    });
-});
+  })
+  .catch((error) => {
+    console.error(`Authoritative game content failed to initialize: ${error.message}`);
+    process.exit(1);
+  });
