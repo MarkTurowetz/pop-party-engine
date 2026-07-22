@@ -27,6 +27,10 @@
       "types": "./src/server/web-service-runtime.d.ts",
       "default": "./src/server/web-service-runtime.js"
     },
+    "./server/readiness": {
+      "types": "./src/server/game-readiness-runtime.d.ts",
+      "default": "./src/server/game-readiness-runtime.js"
+    },
     "./client": {
       "types": "./src/client/index.d.ts",
       "default": "./src/client/index.js"
