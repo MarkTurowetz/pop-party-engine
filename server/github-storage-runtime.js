@@ -77,7 +77,6 @@ function createGithubStorageRuntime({
     const {
       filePath,
       messagePrefix = "Save JSON",
-      retryConflict = true,
       sha = ""
     } = options;
     await ensureBranch();
@@ -87,18 +86,12 @@ function createGithubStorageRuntime({
       branch
     };
     if (sha) payload.sha = sha;
-    try {
-      const result = await request(`${repoPath()}/contents/${contentPath(filePath)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      return { data, sha: result?.content?.sha || "" };
-    } catch (error) {
-      if (!retryConflict || error.status !== 409 || !sha) throw error;
-      const latest = await readJson(filePath);
-      return writeJson(data, { filePath, messagePrefix, retryConflict, sha: latest?.sha || "" });
-    }
+    const result = await request(`${repoPath()}/contents/${contentPath(filePath)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    return { data, sha: result?.content?.sha || "" };
   }
 
   return {

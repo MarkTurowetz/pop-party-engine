@@ -7,8 +7,8 @@ function createToolGithubSourcesRuntime({
     return githubStorage.readJson(filePath);
   }
 
-  async function writeGithubJsonSource(data, sha = "", filePath = gameFlowPath, messagePrefix = "Save JSON", retryConflict = true) {
-    return githubStorage.writeJson(data, { filePath, messagePrefix, retryConflict, sha });
+  async function writeGithubJsonSource(data, sha = "", filePath = gameFlowPath, messagePrefix = "Save JSON") {
+    return githubStorage.writeJson(data, { filePath, messagePrefix, sha });
   }
 
   async function readGithubGameFlowSource() {
