@@ -19,6 +19,7 @@
     "check:stage-background-authority": "node checks/check-stage-background-authority.js",
     "content:validate": "node checks/validate-content-bundle.js",
     "content:export-legacy": "node checks/export-legacy-content-bundle.js",
+    "content:bootstrap-github": "node checks/bootstrap-github-content-store.js",
     "check-text-rendering": "node checks/check-text-rendering.js",
     "lint": "eslint \"client/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"client/**/*.{ts,tsx}\" --fix",
