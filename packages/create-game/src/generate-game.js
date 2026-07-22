@@ -115,6 +115,7 @@ function generateGame(options = {}) {
     writeText(stagingRoot, "game.config.js", generatedConfigSource({ displayName, engineVersion, gameId, pluginNamespace }));
     writeText(stagingRoot, ".gitignore", "node_modules/\n.env\noutputs/\n");
     writeText(stagingRoot, "README.md", `# ${displayName}\n\nIndependent Pop Party game using \`@pop-party/engine@${engineVersion}\`.\n`);
+    writeText(stagingRoot, "LICENSE", fs.readFileSync(path.join(__dirname, "..", "LICENSE"), "utf8"));
     writeText(stagingRoot, "CONTENT-LICENSE", "Canonical starter art and content were copied into this game under CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/). This copy is owned and editable by this game.\n");
     writeText(
       stagingRoot,

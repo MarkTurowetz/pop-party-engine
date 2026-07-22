@@ -19,3 +19,10 @@ contracts are exposed through `@pop-party/engine/art/lifecycle`,
 The generic component vocabulary and normalizers are available from
 `@pop-party/engine/art/components`. Games should use these exported surfaces
 instead of importing package-internal files.
+
+Node applications can own their router while delegating initialization,
+binding, cleanup scheduling, and shutdown to
+`@pop-party/engine/server/web-service`. Browser applications use the
+side-effect-free `@pop-party/engine/client/text` and
+`@pop-party/engine/client/qr-code` rendering primitives; compatibility globals
+belong only in a game adapter.

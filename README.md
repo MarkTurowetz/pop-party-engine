@@ -2,6 +2,12 @@
 
 A server-backed toolkit for building stage/controller party games. Use it as the core package for future games: stages, controllers, durable game flow data, art management, constants, layouts, and controller-spawning tools are all part of the template.
 
+The repository is being separated into the public MIT-licensed
+`@pop-party/engine`, the public `@pop-party/create-game` generator, and a thin
+reference application. Generated games own independent copies of their flow,
+layouts, prompts, art, audio, constants, and starter blobs. See `PLAN.md` for
+the locked extraction and Flip 7 cutover plan.
+
 ## Local
 
 ```bash

@@ -35,6 +35,7 @@ try {
   const targetRoot = path.join(fixtureRoot, "generated-game");
   generateGame({ displayName: "Generated Fixture", engineVersion: "1.0.0", targetRoot });
   const generatedManifest = JSON.parse(fs.readFileSync(path.join(targetRoot, "package.json"), "utf8"));
+  if (!fs.readFileSync(path.join(targetRoot, "LICENSE"), "utf8").startsWith("MIT License\n")) throw new Error("Generated game is missing its MIT code license");
   if (!fs.existsSync(path.join(targetRoot, "STARTER-ASSET-NOTICES.json"))) throw new Error("Generated game is missing starter asset notices");
   if (generatedManifest.dependencies?.["@pop-party/engine"] !== "1.0.0") throw new Error("Generated game did not pin the exact engine version");
   if (JSON.stringify(generatedManifest).includes("file:") || JSON.stringify(generatedManifest).includes("workspace:")) {
