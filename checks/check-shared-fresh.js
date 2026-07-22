@@ -12,6 +12,7 @@ const { execFileSync } = require("child_process");
 const repoRoot = path.resolve(__dirname, "..");
 const sharedDir = path.join(repoRoot, "shared");
 const engineSharedDir = path.join(repoRoot, "packages", "engine", "src", "shared");
+const referenceAppDir = path.join(repoRoot, "apps", "reference");
 
 function fail(message) {
   console.error("shared/*.js freshness check failed:");
@@ -20,7 +21,7 @@ function fail(message) {
 }
 
 function main() {
-  const sourceDirectories = [sharedDir, engineSharedDir];
+  const sourceDirectories = [sharedDir, engineSharedDir, referenceAppDir];
   const tsSources = sourceDirectories.flatMap((directory) => fs.readdirSync(directory)
     .filter((name) => name.endsWith(".ts") && !name.endsWith(".d.ts") && !name.endsWith(".test.ts"))
     .map((name) => path.relative(repoRoot, path.join(directory, name))));

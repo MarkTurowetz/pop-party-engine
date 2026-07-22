@@ -16,6 +16,9 @@ try {
   if (!referenceConfig.includes('require("@pop-party/engine/game")') || !referenceConfig.includes('require("@pop-party/engine/plugin")')) {
     throw new Error("Reference game configuration must consume the public engine package subpaths");
   }
+  if (!referenceConfig.includes('require("./game-data")')) {
+    throw new Error("Reference game configuration must consume app-owned game data");
+  }
   const referenceServer = fs.readFileSync(path.join(root, "server.js"), "utf8");
   if (!referenceServer.includes('require("./apps/reference/game.config")')) {
     throw new Error("Reference server must load the app-owned game configuration directly");
@@ -35,6 +38,9 @@ try {
   const localRequire = createRequire(path.join(root, "package.json"));
   if (require(path.join(root, "game.config")) !== require(path.join(root, "apps", "reference", "game.config"))) {
     throw new Error("Root game configuration is not a reference-app compatibility export");
+  }
+  if (require(path.join(root, "shared", "game-data")) !== require(path.join(root, "apps", "reference", "game-data"))) {
+    throw new Error("Legacy game-data path is not a reference-app compatibility export");
   }
   if (require(path.join(root, "server", "game-definition-runtime")).defineGame !== localRequire("@pop-party/engine/game").defineGame) {
     throw new Error("Legacy game-definition path is not a package compatibility re-export");
@@ -68,7 +74,7 @@ try {
   const packOutput = JSON.parse(execFileSync("npm", ["pack", packageRoot, "--json", "--pack-destination", fixtureRoot], { cwd: root, encoding: "utf8", env: commandEnvironment }));
   const packed = packOutput[0];
   if (!packed?.filename) throw new Error("npm pack did not return a tarball");
-  const forbidden = packed.files.filter((file) => file.path.startsWith("dist/") || (file.path.endsWith(".ts") && !file.path.endsWith(".d.ts")) || /(?:^|\/)(?:game-flow|art|controller-layouts|stage-layouts)(?:\/|\.|$)/i.test(file.path));
+  const forbidden = packed.files.filter((file) => file.path.startsWith("dist/") || (file.path.endsWith(".ts") && !file.path.endsWith(".d.ts")) || /(?:^|\/)(?:game-(?:flow|data|constants)|art|controller-layouts|stage-layouts|host-audios|prompts)(?:\/|\.|$)/i.test(file.path));
   if (forbidden.length) throw new Error(`Game-owned files leaked into engine tarball: ${forbidden.map((file) => file.path).join(", ")}`);
   const packageOwnedModules = compatibilityExports.map(([legacyModule]) => `src/server/${legacyModule}.js`);
   packageOwnedModules.push("src/shared/content-bundle-schema.js");

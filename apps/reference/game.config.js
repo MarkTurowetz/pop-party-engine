@@ -2,7 +2,7 @@
 
 const { defineGame } = require("@pop-party/engine/game");
 const { defineGamePlugin } = require("@pop-party/engine/plugin");
-const gameData = require("../../shared/game-data");
+const gameData = require("./game-data");
 
 const referencePlugin = defineGamePlugin({
   namespace: "reference",

@@ -14,6 +14,6 @@
     "declaration": false,
     "noEmitOnError": true
   },
-  "include": ["shared/**/*.ts", "packages/engine/src/shared/**/*.ts"],
-  "exclude": ["shared/**/*.test.ts", "packages/engine/src/shared/**/*.test.ts"]
+  "include": ["shared/**/*.ts", "packages/engine/src/shared/**/*.ts", "apps/reference/**/*.ts"],
+  "exclude": ["shared/**/*.test.ts", "packages/engine/src/shared/**/*.test.ts", "apps/reference/**/*.test.ts"]
 }
