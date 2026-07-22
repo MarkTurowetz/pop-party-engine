@@ -219,6 +219,9 @@ try {
   if (clientApi.createApiClient !== clientHttpApi.createApiClient) {
     throw new Error("Packed engine client entry point does not expose the canonical HTTP API");
   }
+  for (const exportName of ["createActionCompletionBarrier", "controllerViewVisitKey", "distributedContainerItemPositions", "effectiveVisibilityTimeline"]) {
+    if (typeof clientApi[exportName] !== "function") throw new Error(`Packed engine client entry point is missing ${exportName}`);
+  }
   for (const specifier of [
     ...requiredServerImports,
     "@pop-party/engine/art/lifecycle",
@@ -243,7 +246,7 @@ try {
     'import { REQUIRED_GAME_DATA_KEYS } from "@pop-party/engine";',
     'import { defineGame } from "@pop-party/engine/game";',
     'import { defineGamePlugin } from "@pop-party/engine/plugin";',
-    'import { createApiClient } from "@pop-party/engine/client";',
+    'import { controllerViewVisitKey, createActionCompletionBarrier, createApiClient, distributedContainerItemPositions, effectiveVisibilityTimeline } from "@pop-party/engine/client";',
     'import { createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime } from "@pop-party/engine/server";',
     'import { createStageTestConfigHandlerRuntime } from "@pop-party/engine/testing";',
     'import { blockingArtArchitectureIssues, compositionSaveConflict, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, exportLegacyContentBundle, manifestRevision, normalizeArtAssetReplacementsDraft, normalizeArtOrganization, parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys, revisionMatches } from "@pop-party/engine/tooling";',
@@ -271,7 +274,7 @@ try {
     'const timeline: TimelineDocument | null = normalizeTimeline({ fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] });',
     'const organization = normalizeArtOrganization();',
     'const manifest = { compositions: {} };',
-    'void [createApiClient, createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime, createStageTestConfigHandlerRuntime, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, exportLegacyContentBundle, organization, normalizeArtAssetReplacementsDraft(), parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys(organization, []), manifestRevision(manifest), revisionMatches({}, manifest), compositionSaveConflict(), blockingArtArchitectureIssues([], []), lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeComponentKind, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
+    'void [controllerViewVisitKey({}, {}, "lobby"), createActionCompletionBarrier(), createApiClient, distributedContainerItemPositions({}, [], "horizontal"), effectiveVisibilityTimeline(null), createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime, createStageTestConfigHandlerRuntime, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, exportLegacyContentBundle, organization, normalizeArtAssetReplacementsDraft(), parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys(organization, []), manifestRevision(manifest), revisionMatches({}, manifest), compositionSaveConflict(), blockingArtArchitectureIssues([], []), lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeComponentKind, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
   ].join("\n"));
   execFileSync(process.execPath, [path.join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "--strict", "--target", "ES2022", "--module", "Node16", "--moduleResolution", "Node16", "consumer.ts"], { cwd: fixtureRoot, stdio: "pipe" });
   console.log(`Packed engine fixture passed: ${packed.filename} (${packed.files.length} files).`);
