@@ -1,6 +1,7 @@
 "use strict";
 
 module.exports = Object.freeze({
+  ...require("./cli"),
   ...require("../server/layout-sync-runtime"),
   ...require("../server/legacy-content-bundle-exporter"),
   ...require("../server/local-draft-runtime"),

@@ -6,6 +6,9 @@
   "type": "commonjs",
   "main": "index.js",
   "types": "index.d.ts",
+  "bin": {
+    "pop-party": "bin/pop-party.js"
+  },
   "exports": {
     ".": "./index.js",
     "./game": {
@@ -114,6 +117,7 @@
     }
   },
   "files": [
+    "bin/*.js",
     "src/**/*.js",
     "src/**/*.d.ts",
     "index.js",

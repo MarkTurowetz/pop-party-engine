@@ -1,3 +1,4 @@
+export * from "./cli";
 export function createLayoutSyncRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function exportLegacyContentBundle(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLocalDraftRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
