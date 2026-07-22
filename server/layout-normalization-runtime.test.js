@@ -25,4 +25,9 @@ describe("layout normalization", () => {
 
     expect(element.tags).toEqual(["Phase One", "Review"]);
   });
+
+  it("normalizes the explicit background/content layer contract", () => {
+    expect(runtime().normalizeLayoutElement({ id: "background", layoutLayer: "BACKGROUND" }, 0).layoutLayer).toBe("background");
+    expect(runtime().normalizeLayoutElement({ id: "content", layoutLayer: "unexpected" }, 1).layoutLayer).toBe("content");
+  });
 });

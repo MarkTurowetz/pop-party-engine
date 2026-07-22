@@ -22,11 +22,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  background:
-    radial-gradient(circle at 15% 18%, rgba(255, 225, 86, 0.95) 0 8rem, transparent 8.2rem),
-    radial-gradient(circle at 86% 20%, rgba(34, 211, 238, 0.78) 0 8rem, transparent 8.2rem),
-    radial-gradient(circle at 72% 86%, rgba(255, 79, 163, 0.68) 0 10rem, transparent 10.2rem),
-    linear-gradient(135deg, #24115f 0%, #5b1bbd 46%, #ff4fa3 100%);
+  background: #211350;
   overflow-x: hidden;
 }
 

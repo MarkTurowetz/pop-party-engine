@@ -243,7 +243,7 @@ export function LayoutEditor({
       opacity: hidden ? (selected ? 0.28 : 0.08) : 1,
       overflow: "visible",
       boxSizing: "border-box",
-      zIndex: Math.max(1, total - index),
+      zIndex: get(element, "layoutLayer") === "background" ? 0 : Math.max(1, total - index),
       pointerEvents: locked || hidden ? "none" : "auto"
     };
     const compositionCanvas = composition?.canvas || { width, height };
@@ -630,6 +630,19 @@ function LayoutElementInspector({
           onChange={(event) => commit({ locked: event.target.checked } as Partial<LayoutElement>)}
         />
       </label>
+      {mode === "stage" ? (
+        <label className="flow-react-field" data-layout-field="layoutLayer">
+          <span>Layout Layer</span>
+          <select
+            value={get(element, "layoutLayer") === "background" ? "background" : "content"}
+            data-layout-element-field="layoutLayer"
+            onChange={(event) => commit({ layoutLayer: event.target.value } as Partial<LayoutElement>)}
+          >
+            <option value="content">Content</option>
+            <option value="background">Background</option>
+          </select>
+        </label>
+      ) : null}
       {mode === "controller" ? (
         <>
           <label className="flow-react-field" data-layout-field="defaultAnimationState">

@@ -75,6 +75,7 @@ function createLayoutNormalizationRuntime({
       selector: shouldPromoteTextToArt ? "" : selector,
       kind,
       artCompositionId: kind === "art" ? artCompositionId : "",
+      layoutLayer: String(element.layoutLayer || "").trim().toLowerCase() === "background" ? "background" : "content",
       hidden: element.hidden === true,
       locked: element.locked === true,
       x: normalizeLayoutNumber(element.x, defaultCanvas.width / 2, -5000, 15000),

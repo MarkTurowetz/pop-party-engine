@@ -23,11 +23,7 @@
   transform: translate(-50%, -50%) scale(var(--stage-board-scale, 1));
   transform-origin: center;
   isolation: isolate;
-  background:
-    radial-gradient(circle at 15% 18%, rgba(255, 225, 86, 0.95) 0 8rem, transparent 8.2rem),
-    radial-gradient(circle at 86% 20%, rgba(34, 211, 238, 0.78) 0 8rem, transparent 8.2rem),
-    radial-gradient(circle at 72% 86%, rgba(255, 79, 163, 0.68) 0 10rem, transparent 10.2rem),
-    linear-gradient(135deg, #24115f 0%, #5b1bbd 46%, #ff4fa3 100%);
+  background: transparent;
 }
 
 .stage-layout-target {
@@ -97,6 +93,11 @@
 
 .stage-global-layout-target {
   z-index: 7 !important;
+}
+
+.stage-background-layout-target {
+  z-index: -1 !important;
+  pointer-events: none !important;
 }
 
 .stage-code-badge {
@@ -223,38 +224,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.stage-board::before,
-.stage-board::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  border-radius: 999px;
-  opacity: 0.24;
-  filter: blur(2px);
-}
-
-.stage-board::before {
-  width: 42vmax;
-  height: 42vmax;
-  left: -18vmax;
-  bottom: -20vmax;
-  background: repeating-conic-gradient(from 9deg, #fff 0 10deg, transparent 10deg 22deg);
-  animation: spin 44s linear infinite;
-}
-
-.stage-board::after {
-  width: 38vmax;
-  height: 38vmax;
-  right: -18vmax;
-  top: -19vmax;
-  background: repeating-conic-gradient(from 0deg, #fff 0 8deg, transparent 8deg 18deg);
-  animation: spin 36s linear reverse infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 .stage-main {

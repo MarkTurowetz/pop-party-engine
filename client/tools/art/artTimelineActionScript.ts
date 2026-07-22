@@ -21,6 +21,7 @@ function scriptCommandToLine(command: TimelineCommand): string {
   if (command.type === "setVisible") return `visible = ${command.target === "false" ? "false" : "true"};`;
   if (command.type === "gotoAndPlay") return `gotoAndPlay(${quoteScriptString(command.target || "")});`;
   if (command.type === "gotoAndStop") return `gotoAndStop(${quoteScriptString(command.target || "")});`;
+  if (command.type === "loop") return `loop(${quoteScriptString(command.target || "")});`;
   if (command.type === "playComponent") {
     if (command.target && SCRIPT_IDENTIFIER_PATTERN.test(command.target)) {
       return `${command.target}.gotoAndPlay(${quoteScriptString(command.event || "")});`;
@@ -100,7 +101,7 @@ function parseScriptStatement(statement: string): ScriptCommand | string {
     if (args.length > 0) return "stop() does not take arguments.";
     return { type: "stop" };
   }
-  if (type === "gotoAndPlay" || type === "gotoAndStop") {
+  if (type === "gotoAndPlay" || type === "gotoAndStop" || type === "loop") {
     if (args.length !== 1 || !args[0]) return `${type}() needs one quoted frame label.`;
     return { type, target: args[0] };
   }

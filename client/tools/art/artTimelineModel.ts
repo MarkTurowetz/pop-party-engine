@@ -158,7 +158,7 @@ function sortTimeline(timeline: TimelineDocument): TimelineDocument {
 }
 
 function remappedTimelineCommandTarget(command: TimelineCommand, labelNameBySource: Map<string, string>): string | undefined {
-  if ((command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target && labelNameBySource.has(command.target)) {
+  if ((command.type === "gotoAndPlay" || command.type === "gotoAndStop" || command.type === "loop") && command.target && labelNameBySource.has(command.target)) {
     return labelNameBySource.get(command.target);
   }
   return command.target;
@@ -478,7 +478,7 @@ export function updateTimelineLabel(
     ...current,
     labels: nextLabels,
     commands: current.commands.map((command) =>
-      (command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target === currentName
+      (command.type === "gotoAndPlay" || command.type === "gotoAndStop" || command.type === "loop") && command.target === currentName
         ? { ...command, target: nextName }
         : command
     )
@@ -951,11 +951,35 @@ function cleanTimelineEasing(value: unknown): string | undefined {
   return ["linear", "easeIn", "easeOut", "easeInOut", "hold"].includes(easing) ? easing : undefined;
 }
 
+function cleanTimelineRotationDirection(value: unknown): TimelineKeyframe["rotationDirection"] | undefined {
+  const direction = String(value || "").trim().toLowerCase();
+  return direction === "clockwise" || direction === "counterclockwise" ? direction : undefined;
+}
+
+function cleanTimelineRotationTurns(value: unknown): number | undefined {
+  const turns = Number(value);
+  return Number.isFinite(turns) ? Math.max(0, Math.min(1000, Number(turns.toFixed(3)))) : undefined;
+}
+
+function cleanTimelineRotationFields(keyframe: TimelineKeyframe): TimelineKeyframe {
+  const next = { ...keyframe };
+  const direction = cleanTimelineRotationDirection(keyframe.rotationDirection);
+  const turns = cleanTimelineRotationTurns(keyframe.rotationTurns);
+  if (direction) next.rotationDirection = direction;
+  else delete next.rotationDirection;
+  if (direction && turns !== undefined) next.rotationTurns = turns;
+  else delete next.rotationTurns;
+  return next;
+}
+
 export type TimelineTweenSpan = {
   targetId: string;
   startFrame: number;
   endFrame: number;
   easing: string;
+  hasRotation: boolean;
+  rotationDirection: "" | "clockwise" | "counterclockwise";
+  rotationTurns: number;
 };
 
 export function timelineTweenSpanAtFrame(
@@ -978,7 +1002,10 @@ export function timelineTweenSpanAtFrame(
     targetId: cleanTargetId,
     startFrame: previous.frame,
     endFrame: next.frame,
-    easing: cleanTimelineEasing(previous.easing) || "hold"
+    easing: cleanTimelineEasing(previous.easing) || "hold",
+    hasRotation: typeof previous.props.rotation === "number" && typeof next.props.rotation === "number",
+    rotationDirection: cleanTimelineRotationDirection(previous.rotationDirection) || "",
+    rotationTurns: cleanTimelineRotationTurns(previous.rotationTurns) || 0
   };
 }
 
@@ -1050,6 +1077,8 @@ export function addTransformKeyframe(
     props: componentTimelinePropsFor(component),
     easing: cleanTimelineEasing(existingKeyframe?.easing) || splitTweenEasing || "hold"
   };
+  if (existingKeyframe?.rotationDirection) keyframe.rotationDirection = existingKeyframe.rotationDirection;
+  if (existingKeyframe?.rotationTurns !== undefined) keyframe.rotationTurns = existingKeyframe.rotationTurns;
   const nextTrack = existingTrack
     ? upsertKeyframe(existingTrack, keyframe)
     : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };
@@ -1079,6 +1108,8 @@ export function addTimelinePropertyKeyframe(
     props: cleanTimelineProps({ ...(existingKeyframe?.props || {}), ...props })
   };
   keyframe.easing = existingKeyframe?.easing || "hold";
+  if (existingKeyframe?.rotationDirection) keyframe.rotationDirection = existingKeyframe.rotationDirection;
+  if (existingKeyframe?.rotationTurns !== undefined) keyframe.rotationTurns = existingKeyframe.rotationTurns;
   const nextTrack = existingTrack
     ? upsertKeyframe(existingTrack, keyframe)
     : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };
@@ -1110,6 +1141,8 @@ export function upsertTimelineKeyframeProps(
   };
   const easing = cleanTimelineEasing(existingKeyframe?.easing || options.defaultEasing);
   if (easing) keyframe.easing = easing;
+  if (existingKeyframe?.rotationDirection) keyframe.rotationDirection = existingKeyframe.rotationDirection;
+  if (existingKeyframe?.rotationTurns !== undefined) keyframe.rotationTurns = existingKeyframe.rotationTurns;
   const nextTrack = existingTrack
     ? upsertKeyframe(existingTrack, keyframe)
     : { id: `track-${cleanTargetId}`, targetId: cleanTargetId, keyframes: [keyframe] };
@@ -1141,7 +1174,9 @@ export function updateTimelineKeyframe(
   timeline: TimelineDocument | null | undefined,
   targetId: string,
   frame: number,
-  patch: Partial<Pick<TimelineKeyframe, "frame" | "props" | "easing">>
+  patch: Partial<Pick<TimelineKeyframe, "frame" | "props" | "easing" | "rotationTurns">> & {
+    rotationDirection?: TimelineKeyframe["rotationDirection"] | "";
+  }
 ): TimelineDocument {
   const current = artTimelineOrDefault(timeline);
   const cleanTargetId = String(targetId || "").trim();
@@ -1165,6 +1200,17 @@ export function updateTimelineKeyframe(
       if (easing) nextKeyframe.easing = easing;
       else delete nextKeyframe.easing;
     }
+    if (patch.rotationDirection !== undefined) {
+      const direction = cleanTimelineRotationDirection(patch.rotationDirection);
+      if (direction) nextKeyframe.rotationDirection = direction;
+      else delete nextKeyframe.rotationDirection;
+    }
+    if (patch.rotationTurns !== undefined) {
+      const turns = cleanTimelineRotationTurns(patch.rotationTurns);
+      if (turns !== undefined && (patch.rotationDirection || nextKeyframe.rotationDirection)) nextKeyframe.rotationTurns = turns;
+      else delete nextKeyframe.rotationTurns;
+    }
+    if (!nextKeyframe.rotationDirection) delete nextKeyframe.rotationTurns;
     return upsertKeyframe({ ...track, keyframes: track.keyframes.filter((keyframe) => keyframe.frame !== currentFrame) }, nextKeyframe);
   });
   return changed ? sortTimeline({ ...current, tracks }) : current;
@@ -1182,12 +1228,14 @@ export function copyTimelineKeyframe(
   const cleanTargetId = String(targetTargetId || "").trim();
   if (!sourceKeyframe || !cleanTargetId) return current;
   const cleanFrameValue = cleanFrame(targetFrame, current.frameCount);
-  const nextKeyframe: TimelineKeyframe = {
+  const nextKeyframe: TimelineKeyframe = cleanTimelineRotationFields({
     id: `key-${cleanTargetId}-${cleanFrameValue}`,
     frame: cleanFrameValue,
     props: cleanTimelineProps(sourceKeyframe.props),
-    easing: cleanTimelineEasing(sourceKeyframe.easing)
-  };
+    easing: cleanTimelineEasing(sourceKeyframe.easing),
+    rotationDirection: cleanTimelineRotationDirection(sourceKeyframe.rotationDirection),
+    rotationTurns: cleanTimelineRotationTurns(sourceKeyframe.rotationTurns)
+  });
   const existingTrack = current.tracks.find((track) => track.targetId === cleanTargetId);
   const nextTrack = existingTrack
     ? upsertKeyframe(existingTrack, nextKeyframe)

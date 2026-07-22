@@ -926,7 +926,7 @@ function clearStageLayoutTargets(retainedTokens: Set<string> = new Set()): void 
     if (elementId) {
       deactivateLayoutEntity(stageLayoutEntityForElementId(elementId, target));
     }
-    target.classList.remove("stage-layout-target", "stage-global-layout-target", "stage-layout-hidden", "stage-layout-visual-update", "stage-layout-visual-instant", "stage-layout-transition-suppressed");
+    target.classList.remove("stage-layout-target", "stage-global-layout-target", "stage-background-layout-target", "stage-layout-hidden", "stage-layout-visual-update", "stage-layout-visual-instant", "stage-layout-transition-suppressed");
     for (const prop of ["--stage-layout-x", "--stage-layout-y", "--stage-layout-w", "--stage-layout-h", "--stage-layout-scale", "--stage-layout-rotation", "--stage-object-visible-scale", "--stage-text-color", "--stage-text-font-size", "color", "font-size"]) {
       target.style.removeProperty(prop);
     }
@@ -1007,6 +1007,7 @@ function applyStageElementLayout(element: Dict, isGlobal: boolean, shouldInitial
     targetClass: "stage-layout-target", hiddenClass: "stage-layout-hidden", suppressedClass: "stage-layout-transition-suppressed"
   });
   if (isGlobal) target.classList.add("stage-global-layout-target");
+  target.classList.toggle("stage-background-layout-target", element.layoutLayer === "background");
   target.dataset.stageLayoutElementId = (entity.id as string) || "";
   target.dataset.stageLayoutArtCompositionId = (element.artCompositionId as string) || "";
   target.dataset.stageLayoutVisibilityKey = entity.visibilityKey as string;

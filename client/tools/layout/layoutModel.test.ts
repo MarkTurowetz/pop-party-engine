@@ -28,6 +28,18 @@ function layouts(defaultAnimationState?: string): StageLayoutCollection {
   } as StageLayoutCollection;
 }
 
+function stageLayouts(layoutLayer?: string): StageLayoutCollection {
+  return {
+    canvas: { width: 1920, height: 1080 },
+    global: {
+      id: "global",
+      name: "Global",
+      elements: [{ id: "background", name: "Background", kind: "art", layoutLayer, x: 960, y: 540, width: 1920, height: 1080 }]
+    },
+    states: []
+  } as StageLayoutCollection;
+}
+
 describe("controller layout initial state", () => {
   it("defaults controller elements to On and preserves explicit Off", () => {
     expect(controllerInitialAnimationState(undefined)).toBe("On");
@@ -46,5 +58,10 @@ describe("controller layout initial state", () => {
       "Phase One",
       "Review"
     ]);
+  });
+
+  it("serializes the stage background layer separately from normal content", () => {
+    expect(serializeLayoutsForSave(stageLayouts("BACKGROUND"), "stage").global.elements[0].layoutLayer).toBe("background");
+    expect(serializeLayoutsForSave(stageLayouts(), "stage").global.elements[0].layoutLayer).toBe("content");
   });
 });

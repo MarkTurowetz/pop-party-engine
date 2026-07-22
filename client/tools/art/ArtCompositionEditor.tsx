@@ -472,6 +472,7 @@ function timelineCommandLabel(command: TimelineCommand): string {
   if (command.type === "setVisible") return command.target === "false" ? "visible false" : "visible true";
   if (command.type === "gotoAndPlay") return command.target ? `play ${command.target}` : "play";
   if (command.type === "gotoAndStop") return command.target ? `stop at ${command.target}` : "stop at";
+  if (command.type === "loop") return command.target ? `loop ${command.target}` : "loop";
   if (command.type === "playComponent") {
     if (command.target && command.event) return `play ${command.event}`;
     return "play component";
@@ -2099,7 +2100,7 @@ function ArtTimelineCommandOverlay({ overlay }: { overlay: TimelineCommandOverla
         />
       </label>
       <small className="art-timeline-script-help">
-        Use stop(), gotoAndPlay("label"), bubble.gotoAndPlay("label"), bubble.gotoAndStop("label"), emit("event"), or visible = false.
+        Use stop(), gotoAndPlay("label"), loop("label"), bubble.gotoAndPlay("label"), bubble.gotoAndStop("label"), emit("event"), or visible = false.
       </small>
       {overlay.error ? <strong className="art-timeline-script-error">{overlay.error}</strong> : null}
     </aside>
@@ -2604,6 +2605,19 @@ function ArtTimelinePanel({
     setSelectedKeyframeCells([{ targetId: selectedTweenSpan.targetId, frame: selectedTweenSpan.startFrame }]);
     selectTimelineCell({ kind: "keyframe", targetId: selectedTweenSpan.targetId, frame: selectionFrame });
     previewFrame(selectionFrame);
+  }
+
+  function updateSelectedTweenRotation(direction: string, turns = selectedTweenSpan?.rotationTurns || 0): void {
+    if (!selectedTweenSpan?.hasRotation) return;
+    const rotationDirection = direction === "clockwise" || direction === "counterclockwise" ? direction : "";
+    const nextTimeline = updateTimelineKeyframe(current, selectedTweenSpan.targetId, selectedTweenSpan.startFrame, {
+      rotationDirection,
+      rotationTurns: rotationDirection ? Math.max(0, Number(turns) || 0) : 0
+    });
+    if (nextTimeline === current) return;
+    stopPlayback();
+    onChange(nextTimeline);
+    previewFrame(selectedTimelineCellFrame);
   }
 
   useEffect(() => {
@@ -3246,6 +3260,31 @@ function ArtTimelinePanel({
                 ))}
               </select>
             </label>
+            <label className="flow-react-field">
+              <span>Rotation Direction</span>
+              <select
+                disabled={!selectedTweenSpan?.hasRotation}
+                value={selectedTweenSpan?.rotationDirection || "shortest"}
+                onChange={(event) => updateSelectedTweenRotation(event.target.value)}
+              >
+                <option value="shortest">Shortest Path</option>
+                <option value="clockwise">Rotate Clockwise</option>
+                <option value="counterclockwise">Rotate Counterclockwise</option>
+              </select>
+            </label>
+            {selectedTweenSpan?.hasRotation && selectedTweenSpan.rotationDirection ? (
+              <label className="flow-react-field">
+                <span>Full Rotations</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1000}
+                  step={1}
+                  value={selectedTweenSpan.rotationTurns}
+                  onChange={(event) => updateSelectedTweenRotation(selectedTweenSpan.rotationDirection, Number(event.target.value))}
+                />
+              </label>
+            ) : null}
             <small>
               {selectedTweenSpan ? `${selectedTweenSpan.startFrame}-${selectedTweenSpan.endFrame} · ${selectedTweenSpan.targetId}` : "No tween selected"}
             </small>

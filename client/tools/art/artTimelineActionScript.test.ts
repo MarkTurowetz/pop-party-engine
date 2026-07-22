@@ -9,11 +9,12 @@ describe("artTimelineActionScript", () => {
       { frame: 5, type: "gotoAndPlay", target: "appear" },
       { frame: 6, type: "emit", event: "done" },
       { frame: 7, type: "playComponent", target: "name-card", event: "pop" },
-      { frame: 8, type: "setVisible", target: "false" }
+      { frame: 8, type: "setVisible", target: "false" },
+      { frame: 9, type: "loop", target: "idle" }
     ];
 
     expect(timelineCommandsToActionScript(commands)).toBe(
-      ['stop();', 'gotoAndPlay("appear");', 'emit("done");', 'playComponent("name-card", "pop");', "visible = false;"].join("\n")
+      ['stop();', 'gotoAndPlay("appear");', 'emit("done");', 'playComponent("name-card", "pop");', "visible = false;", 'loop("idle");'].join("\n")
     );
   });
 
@@ -40,6 +41,7 @@ describe("artTimelineActionScript", () => {
         { type: "setVisible", target: "true" }
       ]
     });
+    expect(parseTimelineActionScript('loop("Idle");')).toEqual({ commands: [{ type: "loop", target: "Idle" }] });
   });
 
   it("rejects unknown commands without returning partial writes", () => {

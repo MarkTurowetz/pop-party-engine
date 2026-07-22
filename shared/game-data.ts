@@ -176,7 +176,8 @@ const defaultStageLayouts = {
     elements: [
       { id: "stageCodeBadge", name: "Small Room Code Widget", selector: "#stageCodeBadge", kind: "art", artCompositionId: "stage-code-widget", x: 108, y: 70, width: 170, height: 82, scale: 1 },
       { id: "presentClickWidget", name: "Cursor Widget", selector: "#presentClickWidget", kind: "art", artCompositionId: "presentation-click-prompt", x: 1780, y: 930, width: 90, height: 90, scale: 1 },
-      { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 935, width: 1320, height: 150, scale: 1 }
+      { id: "playerLobby", name: "Player Avatars", selector: "#playerLobby", x: 960, y: 935, width: 1320, height: 150, scale: 1 },
+      { id: "stageBackground", name: "Background Layer", kind: "art", artCompositionId: "stage-background", layoutLayer: "background", x: 960, y: 540, width: 1920, height: 1080, scale: 1, defaultAnimationState: "On" }
     ]
   },
   states: [
@@ -693,7 +694,239 @@ function controllerOnOffTimeline() {
   };
 }
 
+function stageBackgroundReference(id, name, artCompositionId, x, y, scale = 1) {
+  return {
+    id,
+    name,
+    instanceLabel: id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()),
+    kind: "reference",
+    artCompositionId,
+    referenceSizeMode: "intrinsic",
+    x,
+    y,
+    scale,
+    rotation: 0,
+    opacity: 1,
+    visible: true,
+    transformOrigin: "center",
+    defaultAnimationState: "On"
+  };
+}
+
+function stageBackgroundShape(id, name, width, height, options: Record<string, any> = {}) {
+  return {
+    id,
+    name,
+    instanceLabel: id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()),
+    kind: "shape",
+    x: width / 2,
+    y: height / 2,
+    width,
+    height,
+    scale: 1,
+    rotation: 0,
+    opacity: options.opacity ?? 1,
+    visible: true,
+    transformOrigin: "center",
+    defaultAnimationState: "On",
+    shapeStyle: options.shapeStyle || "rectangle",
+    fillColor: options.fillColor || "transparent",
+    fillCss: options.fillCss || "",
+    borderColor: "transparent",
+    borderWidth: 0,
+    borderRadius: options.borderRadius || 0
+  };
+}
+
+function stageBackgroundComposition(id, name, description, canvas, components, timeline: Record<string, any> | null = null, compositionKind = "prefab") {
+  return {
+    id,
+    name,
+    description,
+    surface: "stage",
+    compositionKind,
+    timelineArchitectureVersion: 2,
+    canvas,
+    components,
+    ...(timeline ? { timeline } : {})
+  };
+}
+
+function stageBackgroundFanTimeline(targetId, durationFrames, rotationDirection) {
+  const endFrame = 2 + durationFrames;
+  return {
+    fps: 30,
+    frameCount: endFrame + 1,
+    labels: [
+      { name: "Off", frame: 0 },
+      { name: "On", frame: 1 },
+      { name: "Idle", frame: 2 }
+    ],
+    commandFrames: [0, 1, 2, endFrame],
+    commands: [
+      { id: "stop-0", frame: 0, type: "stop" },
+      { id: "visible-0", frame: 0, type: "setVisible", target: "false" },
+      { id: "stop-1", frame: 1, type: "stop" },
+      { id: "visible-1", frame: 1, type: "setVisible", target: "true" },
+      { id: "visible-2", frame: 2, type: "setVisible", target: "true" },
+      { id: "loop-idle", frame: endFrame, type: "loop", target: "Idle" }
+    ],
+    tracks: [{
+      id: `track-${targetId}`,
+      targetId,
+      keyframes: [
+        { id: `key-${targetId}-2`, frame: 2, props: { rotation: 0 }, easing: "linear", rotationDirection, rotationTurns: 1 },
+        { id: `key-${targetId}-${endFrame}`, frame: endFrame, props: { rotation: 0 }, easing: "hold" }
+      ]
+    }]
+  };
+}
+
+function stageBackgroundSceneTimeline() {
+  return {
+    fps: 30,
+    frameCount: 2,
+    labels: [{ name: "Off", frame: 0 }, { name: "On", frame: 1 }],
+    commandFrames: [0, 1],
+    commands: [
+      { id: "stop-0", frame: 0, type: "stop" },
+      { id: "visible-0", frame: 0, type: "setVisible", target: "false" },
+      { id: "stop-1", frame: 1, type: "stop" },
+      { id: "visible-1", frame: 1, type: "setVisible", target: "true" },
+      { id: "play-left-fan", frame: 1, type: "playComponent", target: "fan-left", event: "Idle" },
+      { id: "play-right-fan", frame: 1, type: "playComponent", target: "fan-right", event: "Idle" }
+    ],
+    tracks: []
+  };
+}
+
+function stageBackgroundSelectorTimeline() {
+  return {
+    fps: 30,
+    frameCount: 3,
+    labels: [{ name: "Off", frame: 0 }, { name: "On", frame: 1 }, { name: "Default", frame: 2 }],
+    commandFrames: [0, 1, 2],
+    commands: [
+      { id: "stop-0", frame: 0, type: "stop" },
+      { id: "visible-0", frame: 0, type: "setVisible", target: "false" },
+      { id: "visible-1", frame: 1, type: "setVisible", target: "true" },
+      { id: "select-default-background", frame: 1, type: "gotoAndStop", target: "Default" },
+      { id: "stop-default", frame: 2, type: "stop" },
+      { id: "visible-default", frame: 2, type: "setVisible", target: "true" },
+      { id: "play-default-background", frame: 2, type: "playComponent", target: "background-default", event: "On" }
+    ],
+    tracks: []
+  };
+}
+
+function defaultStageBackgroundCompositions() {
+  const fanLeftSize = 806;
+  const fanRightSize = 730;
+  return [
+    stageBackgroundComposition(
+      "stage-background-gradient-plane",
+      "Background Gradient Plane",
+      "Base gradient plane for the default stage background.",
+      { width: 1920, height: 1080 },
+      [stageBackgroundShape("gradient-plane", "Gradient Plane", 1920, 1080, {
+        fillCss: "linear-gradient(135deg, #24115f 0%, #5b1bbd 46%, #ff4fa3 100%)"
+      })]
+    ),
+    stageBackgroundComposition(
+      "stage-background-orb-yellow",
+      "Background Yellow Orb",
+      "Top-left translucent yellow background orb.",
+      { width: 256, height: 256 },
+      [stageBackgroundShape("yellow-orb", "Yellow Orb", 256, 256, {
+        shapeStyle: "circle",
+        fillColor: "#ffe156f2"
+      })]
+    ),
+    stageBackgroundComposition(
+      "stage-background-orb-cyan",
+      "Background Cyan Orb",
+      "Top-right translucent cyan background orb.",
+      { width: 256, height: 256 },
+      [stageBackgroundShape("cyan-orb", "Cyan Orb", 256, 256, {
+        shapeStyle: "circle",
+        fillColor: "#22d3eec7"
+      })]
+    ),
+    stageBackgroundComposition(
+      "stage-background-orb-pink",
+      "Background Pink Orb",
+      "Bottom-right translucent pink background orb.",
+      { width: 320, height: 320 },
+      [stageBackgroundShape("pink-orb", "Pink Orb", 320, 320, {
+        shapeStyle: "circle",
+        fillColor: "#ff4fa3ad"
+      })]
+    ),
+    stageBackgroundComposition(
+      "stage-background-fan-left-art",
+      "Background Left Fan Art",
+      "Editable repeating-conic fan artwork for the lower-left background.",
+      { width: fanLeftSize, height: fanLeftSize },
+      [stageBackgroundShape("fan-art", "Left Fan", fanLeftSize, fanLeftSize, {
+        shapeStyle: "circle",
+        fillCss: "repeating-conic-gradient(from 9deg, rgba(255, 255, 255, 0.24) 0deg 10deg, transparent 10deg 22deg)"
+      })]
+    ),
+    stageBackgroundComposition(
+      "stage-background-fan-right-art",
+      "Background Right Fan Art",
+      "Editable repeating-conic fan artwork for the upper-right background.",
+      { width: fanRightSize, height: fanRightSize },
+      [stageBackgroundShape("fan-art", "Right Fan", fanRightSize, fanRightSize, {
+        shapeStyle: "circle",
+        fillCss: "repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.24) 0deg 8deg, transparent 8deg 18deg)"
+      })]
+    ),
+    stageBackgroundComposition(
+      "stage-background-fan-left-mc",
+      "Background Left Fan MC",
+      "Lifecycle wrapper whose Idle animation rotates the lower-left fan clockwise.",
+      { width: fanLeftSize, height: fanLeftSize },
+      [stageBackgroundReference("fan-art", "Left Fan Art", "stage-background-fan-left-art", fanLeftSize / 2, fanLeftSize / 2)],
+      stageBackgroundFanTimeline("fan-art", 1320, "clockwise")
+    ),
+    stageBackgroundComposition(
+      "stage-background-fan-right-mc",
+      "Background Right Fan MC",
+      "Lifecycle wrapper whose Idle animation rotates the upper-right fan counterclockwise.",
+      { width: fanRightSize, height: fanRightSize },
+      [stageBackgroundReference("fan-art", "Right Fan Art", "stage-background-fan-right-art", fanRightSize / 2, fanRightSize / 2)],
+      stageBackgroundFanTimeline("fan-art", 1080, "counterclockwise")
+    ),
+    stageBackgroundComposition(
+      "stage-background-default",
+      "Default Stage Background",
+      "Compound default background scene with independently animated fan children.",
+      { width: 1920, height: 1080 },
+      [
+        stageBackgroundReference("fan-left", "Left Fan", "stage-background-fan-left-mc", 58, 1061),
+        stageBackgroundReference("fan-right", "Right Fan", "stage-background-fan-right-mc", 1900, 0),
+        stageBackgroundReference("orb-yellow", "Yellow Orb", "stage-background-orb-yellow", 288, 194),
+        stageBackgroundReference("orb-cyan", "Cyan Orb", "stage-background-orb-cyan", 1651, 216),
+        stageBackgroundReference("orb-pink", "Pink Orb", "stage-background-orb-pink", 1382, 929),
+        stageBackgroundReference("gradient-plane", "Gradient Plane", "stage-background-gradient-plane", 960, 540)
+      ],
+      stageBackgroundSceneTimeline()
+    ),
+    stageBackgroundComposition(
+      "stage-background",
+      "Stage Background",
+      "Top-level background selector. Each labeled frame can activate a different nested background scene.",
+      { width: 1920, height: 1080 },
+      [stageBackgroundReference("background-default", "Default Background", "stage-background-default", 960, 540)],
+      stageBackgroundSelectorTimeline(),
+      "gameObject"
+    )
+  ];
+}
+
 const defaultArtCompositions = [
+  ...defaultStageBackgroundCompositions(),
   ...defaultLayoutTextFieldCompositions(),
   defaultControllerComposition(
     "controller-primary-button",

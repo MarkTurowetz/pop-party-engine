@@ -4448,11 +4448,7 @@ body.is-resizing-art-timeline {
   overflow: hidden;
   border: 5px solid var(--ink);
   border-radius: 16px;
-  background:
-    radial-gradient(circle at 15% 18%, rgba(255, 225, 86, 0.95) 0 8%, transparent 8.5%),
-    radial-gradient(circle at 86% 20%, rgba(34, 211, 238, 0.78) 0 8%, transparent 8.5%),
-    radial-gradient(circle at 72% 86%, rgba(255, 79, 163, 0.68) 0 10%, transparent 10.5%),
-    linear-gradient(135deg, #24115f 0%, #5b1bbd 46%, #ff4fa3 100%);
+  background: transparent;
   box-shadow: var(--shadow);
   touch-action: none;
 }

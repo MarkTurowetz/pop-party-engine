@@ -44,6 +44,14 @@ function cleanPropertyValue(value) {
         return value;
     return undefined;
 }
+function cleanRotationDirection(value) {
+    const direction = cleanText(value, "", 40).toLowerCase();
+    return direction === "clockwise" || direction === "counterclockwise" ? direction : undefined;
+}
+function cleanRotationTurns(value) {
+    const turns = Number(value);
+    return Number.isFinite(turns) ? Math.max(0, Math.min(1000, Number(turns.toFixed(3)))) : undefined;
+}
 function timelineCommandAcceptsTarget(type) {
     return String(type || "") !== "stop";
 }
@@ -121,12 +129,19 @@ function normalizeTimeline(raw, fallback = null) {
             .slice(0, MAX_KEYFRAMES_PER_TRACK)
             .map((keyframe) => {
             const frameEntry = keyframe && typeof keyframe === "object" && !Array.isArray(keyframe) ? keyframe : {};
-            return {
+            const normalizedKeyframe = {
                 id: cleanText(frameEntry.id, "", 80) || undefined,
                 frame: cleanFrame(frameEntry.frame, 0, maxFrame),
                 props: normalizeProps(frameEntry.props),
                 easing: cleanText(frameEntry.easing, "", 40) || undefined
             };
+            const rotationDirection = cleanRotationDirection(frameEntry.rotationDirection);
+            const rotationTurns = cleanRotationTurns(frameEntry.rotationTurns);
+            if (rotationDirection)
+                normalizedKeyframe.rotationDirection = rotationDirection;
+            if (rotationDirection && rotationTurns !== undefined)
+                normalizedKeyframe.rotationTurns = rotationTurns;
+            return normalizedKeyframe;
         })
             .filter((keyframe) => Object.keys(keyframe.props).length > 0)
             .sort((a, b) => a.frame - b.frame);

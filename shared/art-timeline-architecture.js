@@ -59,7 +59,7 @@ function canonicalizeTimeline(timeline) {
         labels: timeline.labels.map((label) => ({ ...label, name: (0, lifecycle_labels_1.normalizeLifecycleLabel)(label.name) })),
         commands: timeline.commands.map((command) => {
             const next = { ...command };
-            if ((command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target) {
+            if ((command.type === "gotoAndPlay" || command.type === "gotoAndStop" || command.type === "loop") && command.target) {
                 next.target = (0, lifecycle_labels_1.normalizeLifecycleLabel)(command.target);
             }
             if ((command.type === "playComponent" || command.type === "stopComponent") && command.event) {
@@ -142,7 +142,7 @@ function collectArtArchitectureIssues(compositions) {
             }
         }
         for (const command of timeline?.commands || []) {
-            if (command.type === "gotoAndPlay" || command.type === "gotoAndStop") {
+            if (command.type === "gotoAndPlay" || command.type === "gotoAndStop" || command.type === "loop") {
                 const requestedLifecycle = (0, lifecycle_labels_1.canonicalLifecycleLabel)(command.target);
                 const matches = (timeline?.labels || []).filter((label) => requestedLifecycle
                     ? (0, lifecycle_labels_1.canonicalLifecycleLabel)(label.name) === requestedLifecycle

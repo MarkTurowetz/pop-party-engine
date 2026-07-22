@@ -6,6 +6,7 @@ import {
   type TimelineCommand,
   timelineSegmentFor,
   type TimelineDocument,
+  type TimelineKeyframe,
   type TimelineProperties,
   type TimelinePropertyValue,
   type TimelineTrack
@@ -77,6 +78,18 @@ function interpolateValue(
   return previous ?? next;
 }
 
+function interpolateRotation(previous: number, next: number, progress: number, keyframe: TimelineKeyframe): number {
+  const direction = keyframe.rotationDirection;
+  if (!direction) return Number((previous + (next - previous) * progress).toFixed(3));
+  const turns = Math.max(0, Number(keyframe.rotationTurns || 0));
+  const positiveDelta = ((next - previous) % 360 + 360) % 360;
+  const negativeDelta = ((previous - next) % 360 + 360) % 360;
+  const delta = direction === "clockwise"
+    ? positiveDelta + turns * 360
+    : -(negativeDelta + turns * 360);
+  return Number((previous + delta * progress).toFixed(3));
+}
+
 function easedProgress(progress: number, easing?: string): number {
   const t = Math.max(0, Math.min(1, progress));
   if (!easing || easing === "hold") return 0;
@@ -105,7 +118,11 @@ function keyframeSnapshotForTrack(track: TimelineTrack, frame: number): Timeline
   const keys = new Set([...Object.keys(previous.props), ...Object.keys(next.props)]);
   const props: TimelineProperties = {};
   for (const key of keys) {
-    const value = interpolateValue(previous.props[key], next.props[key], progress);
+    const previousValue = previous.props[key];
+    const nextValue = next.props[key];
+    const value = key === "rotation" && isNumericValue(previousValue) && isNumericValue(nextValue)
+      ? interpolateRotation(previousValue, nextValue, progress, previous)
+      : interpolateValue(previousValue, nextValue, progress);
     if (value !== undefined) props[key] = value;
   }
   return props;
@@ -385,6 +402,12 @@ export class TimelinePlayer {
       } else if (command.type === "gotoAndPlay" && command.target) {
         if (!this.canRedirectFrameCommand(frame, commandCount + 1)) return false;
         this.gotoAndPlayInternal(command.target, { complete }, commandCount + 1);
+        return true;
+      } else if (command.type === "loop" && command.target) {
+        // A loop is an intentional authored cycle, not a redirect chain. Reset
+        // the redirect counter on each pass so idle animations remain active
+        // until their owning GameObject is stopped or removed.
+        this.gotoAndPlayInternal(command.target, { complete }, 0);
         return true;
       }
     }

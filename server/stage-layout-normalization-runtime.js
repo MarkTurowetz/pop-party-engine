@@ -26,6 +26,14 @@ function createStageLayoutNormalizationRuntime({
       }
     }
     const globalElements = [...(migrated.global?.elements || [])];
+    const defaultBackgroundElements = (normalizedDefaultGlobal.elements || []).filter((element) => element.layoutLayer === "background");
+    if (!globalElements.some((element) => element.layoutLayer === "background")) {
+      for (const backgroundElement of [...defaultBackgroundElements].reverse()) {
+        const existingIndex = globalElements.findIndex((element) => element.id === backgroundElement.id);
+        if (existingIndex >= 0) globalElements[existingIndex] = { ...globalElements[existingIndex], layoutLayer: "background" };
+        else globalElements.push(cloneJson(backgroundElement));
+      }
+    }
     return {
       canvas,
       global: {

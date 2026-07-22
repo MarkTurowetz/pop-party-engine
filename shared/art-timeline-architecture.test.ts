@@ -120,4 +120,28 @@ describe("Art timeline architecture", () => {
 
     expect(issues.map((issue) => issue.code)).toContain("reference-dimension-keyframe");
   });
+
+  it("validates authored loop targets against local animation labels", () => {
+    const issues = collectArtArchitectureIssues([
+      {
+        id: "fan",
+        timelineArchitectureVersion: ART_TIMELINE_ARCHITECTURE_VERSION,
+        timeline: {
+          fps: 30,
+          frameCount: 3,
+          labels: [{ name: "Idle", frame: 1 }],
+          commands: [
+            { frame: 2, type: "loop", target: "Idle" },
+            { frame: 2, type: "loop", target: "Missing" }
+          ],
+          tracks: []
+        },
+        components: []
+      }
+    ]);
+
+    expect(issues.filter((issue) => issue.code === "invalid-command-label")).toEqual([
+      expect.objectContaining({ message: expect.stringContaining("Missing") })
+    ]);
+  });
 });

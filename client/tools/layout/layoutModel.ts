@@ -34,6 +34,7 @@ function serializeElement(raw: LayoutElement, mode: LayoutMode): LayoutElement {
     selector: String(element.selector || ""),
     kind,
     artCompositionId,
+    layoutLayer: mode === "stage" && String(element.layoutLayer || "").toLowerCase() === "background" ? "background" : "content",
     hidden: element.hidden === true,
     locked: element.locked === true,
     x: num(element.x, 0),

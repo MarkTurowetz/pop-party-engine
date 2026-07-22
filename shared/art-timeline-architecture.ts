@@ -92,7 +92,7 @@ function canonicalizeTimeline(timeline: TimelineDocument): TimelineDocument {
     labels: timeline.labels.map((label) => ({ ...label, name: normalizeLifecycleLabel(label.name) })),
     commands: timeline.commands.map((command) => {
       const next: TimelineCommand = { ...command };
-      if ((command.type === "gotoAndPlay" || command.type === "gotoAndStop") && command.target) {
+      if ((command.type === "gotoAndPlay" || command.type === "gotoAndStop" || command.type === "loop") && command.target) {
         next.target = normalizeLifecycleLabel(command.target);
       }
       if ((command.type === "playComponent" || command.type === "stopComponent") && command.event) {
@@ -172,7 +172,7 @@ export function collectArtArchitectureIssues(compositions: ArtArchitectureCompos
       }
     }
     for (const command of timeline?.commands || []) {
-      if (command.type === "gotoAndPlay" || command.type === "gotoAndStop") {
+      if (command.type === "gotoAndPlay" || command.type === "gotoAndStop" || command.type === "loop") {
         const requestedLifecycle = canonicalLifecycleLabel(command.target);
         const matches = (timeline?.labels || []).filter((label) => requestedLifecycle
           ? canonicalLifecycleLabel(label.name) === requestedLifecycle

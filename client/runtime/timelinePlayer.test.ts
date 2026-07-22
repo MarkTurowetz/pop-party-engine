@@ -25,6 +25,52 @@ describe("TimelinePlayer", () => {
     expect(timelineSnapshotAt(timeline!, 5).targets.card.scale).toBe(0.75);
   });
 
+  it("normalizes and applies explicit clockwise and counterclockwise full rotations", () => {
+    const clockwise = normalizeTimeline({
+      fps: 30,
+      frameCount: 11,
+      labels: [],
+      commands: [],
+      tracks: [{ targetId: "fan", keyframes: [
+        { frame: 0, easing: "linear", props: { rotation: 0 }, rotationDirection: "clockwise", rotationTurns: 2 },
+        { frame: 10, props: { rotation: 0 } }
+      ] }]
+    })!;
+    const counterclockwise = normalizeTimeline({
+      ...clockwise,
+      tracks: [{ targetId: "fan", keyframes: [
+        { frame: 0, easing: "linear", props: { rotation: 0 }, rotationDirection: "counterclockwise", rotationTurns: 2 },
+        { frame: 10, props: { rotation: 0 } }
+      ] }]
+    })!;
+
+    expect(clockwise.tracks[0].keyframes[0]).toMatchObject({ rotationDirection: "clockwise", rotationTurns: 2 });
+    expect(timelineSnapshotAtPosition(clockwise, 5).targets.fan.rotation).toBe(360);
+    expect(timelineSnapshotAtPosition(counterclockwise, 5).targets.fan.rotation).toBe(-360);
+    expect(timelineSnapshotAt(clockwise, 10).targets.fan.rotation).toBe(0);
+  });
+
+  it("restarts an authored loop without exhausting redirect protection", () => {
+    const frames: number[] = [];
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 2,
+      labels: [{ name: "Idle", frame: 0 }],
+      commands: [{ frame: 1, type: "loop", target: "Idle" }],
+      tracks: [{ targetId: "fan", keyframes: [
+        { frame: 0, easing: "linear", props: { rotation: 0 }, rotationDirection: "clockwise", rotationTurns: 1 },
+        { frame: 1, props: { rotation: 0 } }
+      ] }]
+    });
+    const player = new TimelinePlayer({ timeline, onFrame: (snapshot) => frames.push(snapshot.frame), maxCommandRedirects: 1 });
+
+    player.gotoAndPlay("Idle");
+    vi.advanceTimersByTime(350);
+    player.stop();
+    expect(frames.filter((frame) => frame === 0).length).toBeGreaterThanOrEqual(3);
+    expect(frames.filter((frame) => frame === 1).length).toBeGreaterThanOrEqual(3);
+  });
+
   it("normalizes command target and event fields by command type", () => {
     const timeline = normalizeTimeline({
       fps: 30,

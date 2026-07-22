@@ -939,7 +939,10 @@ describe("artTimelineModel", () => {
       targetId: "title",
       startFrame: 1,
       endFrame: 10,
-      easing: "hold"
+      easing: "hold",
+      hasRotation: false,
+      rotationDirection: "",
+      rotationTurns: 0
     });
 
     const tweened = toggleTimelineTweenAtFrame(timeline, "title", 4);
@@ -986,6 +989,40 @@ describe("artTimelineModel", () => {
         props: timeline.tracks[0].keyframes[0].props
       }
     ]);
+  });
+
+  it("edits and copies explicit directional multi-turn rotation tween metadata", () => {
+    const timeline: TimelineDocument = {
+      fps: 30,
+      frameCount: 20,
+      labels: [],
+      commands: [],
+      tracks: [{
+        targetId: "fan",
+        keyframes: [
+          { frame: 1, easing: "linear", props: { rotation: 0 } },
+          { frame: 10, easing: "hold", props: { rotation: 0 } }
+        ]
+      }]
+    };
+    const directed = updateTimelineKeyframe(timeline, "fan", 1, { rotationDirection: "clockwise", rotationTurns: 2 });
+    expect(timelineTweenSpanAtFrame(directed, "fan", 4)).toEqual({
+      targetId: "fan",
+      startFrame: 1,
+      endFrame: 10,
+      easing: "linear",
+      hasRotation: true,
+      rotationDirection: "clockwise",
+      rotationTurns: 2
+    });
+    const copied = copyTimelineKeyframe(directed, "fan", 1, "fan", 12);
+    expect(copied.tracks[0].keyframes.find((keyframe) => keyframe.frame === 12)).toMatchObject({
+      rotationDirection: "clockwise",
+      rotationTurns: 2
+    });
+    const cleared = updateTimelineKeyframe(directed, "fan", 1, { rotationDirection: "" });
+    expect(cleared.tracks[0].keyframes[0].rotationDirection).toBeUndefined();
+    expect(cleared.tracks[0].keyframes[0].rotationTurns).toBeUndefined();
   });
 
   it("recaptures an existing keyframe from component state while preserving easing", () => {
