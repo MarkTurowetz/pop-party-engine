@@ -444,7 +444,8 @@ const {
   defaultCanvas: defaultStageLayouts.canvas,
   normalizeColor,
   normalizeFlowId,
-  normalizeLayoutNumber
+  normalizeLayoutNumber,
+  semanticRoles: GAME_DEFINITION.semanticRoles
 });
 
 const {
@@ -462,7 +463,8 @@ const {
   cloneJson,
   defaultControllerLayouts,
   normalizeLayoutNumber,
-  normalizeLayoutState
+  normalizeLayoutState,
+  semanticRoles: GAME_DEFINITION.semanticRoles
 });
 
 const {
@@ -528,7 +530,7 @@ const {
       stageLayouts: localDraftStore.layouts || stageLayouts,
       controllerLayouts: localDraftStore.controllerLayouts || controllerLayouts,
       flow: localDraftStore.flow || flow,
-      runtimeReferences: artRuntimeReferences()
+      runtimeReferences: artRuntimeReferences(GAME_DEFINITION.semanticRoles)
     };
   },
   localDraftStore,

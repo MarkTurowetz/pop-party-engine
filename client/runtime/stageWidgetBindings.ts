@@ -12,7 +12,7 @@ interface WidgetDefinition {
 
 const definitions: Record<string, WidgetDefinition> = {
   stageCodePanel: {
-    compositionId: "stage-code-panel",
+    get compositionId() { return runtimeSemanticCompositionId("engine.stage.roomCodePanel"); },
     layoutElementId: "stagecodepanel",
     previewTextOverrides: { "panel-code": "NUZ7" }
   },
@@ -28,17 +28,17 @@ const definitions: Record<string, WidgetDefinition> = {
     previewTextOverrides: {}
   },
   joinWidget: {
-    compositionId: "join-widget",
+    get compositionId() { return runtimeSemanticCompositionId("engine.stage.joinPrompt"); },
     layoutElementId: "joinprompt",
     previewTextOverrides: { "join-text": "Join the Lobby at bit.ly/popcontroller" }
   },
   waitingStatus: {
-    compositionId: "waiting-status-widget",
+    get compositionId() { return runtimeSemanticCompositionId("engine.stage.waitingStatus"); },
     layoutElementId: "waitingstatus",
     previewTextOverrides: { "status-text": "Waiting for Ava to start the game" }
   },
   countdownPopup: {
-    compositionId: "countdown-popup",
+    get compositionId() { return runtimeSemanticCompositionId("engine.stage.countdown"); },
     layoutElementId: "startpopup",
     previewTextOverrides: { "popup-text": "Starting in 3" }
   },
@@ -53,7 +53,7 @@ const definitions: Record<string, WidgetDefinition> = {
     previewTextOverrides: {}
   },
   presentationClickPrompt: {
-    compositionId: "presentation-click-prompt",
+    get compositionId() { return runtimeSemanticCompositionId("engine.stage.presentationAdvancePrompt"); },
     layoutElementId: "presentclickwidget",
     previewTextOverrides: {}
   }

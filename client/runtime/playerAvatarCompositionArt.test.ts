@@ -1,11 +1,20 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AVATARS_COMPOSITION_ID,
-  PLAYER_AVATAR_MC_COMPOSITION_ID,
   avatarTimelineLabelForSpecies,
   playerAvatarCompositionArt,
   type PlayerAvatarArtComposition
 } from "./playerAvatarCompositionArt";
+
+const PLAYER_AVATAR_MC_COMPOSITION_ID = "test-player-avatar";
+
+beforeEach(() => {
+  globalThis.__POP_PARTY_RUNTIME_CONFIG__ = {
+    semanticRoles: {
+      "engine.shared.playerAvatar": { compositionId: PLAYER_AVATAR_MC_COMPOSITION_ID }
+    }
+  };
+});
 
 function authoredAvatarCompositions(): PlayerAvatarArtComposition[] {
   return [

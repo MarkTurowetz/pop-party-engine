@@ -83,11 +83,11 @@ function normalizeTextTargetId(value: unknown): string {
   return normalized;
 }
 
-const layoutTextArtCompositionId = "layout-text-field";
+const layoutTextArtCompositionId = () => runtimeSemanticCompositionId("engine.stage.layoutText");
 const layoutTextArtComponentId = "text";
 const layoutTextArtNestedCompositionId = "prefab-layout-text-field-text";
 const layoutTextArtNestedComponentPath = `${layoutTextArtNestedCompositionId}/${layoutTextArtComponentId}`;
-const layoutTextArtLegacyComponentPath = `${layoutTextArtCompositionId}/${layoutTextArtComponentId}`;
+const layoutTextArtLegacyComponentPath = () => `${layoutTextArtCompositionId()}/${layoutTextArtComponentId}`;
 const controllerPrimaryButtonArtCompositionId = () => runtimeSemanticCompositionId("engine.controller.submitControl");
 const controllerChoiceOptionArtCompositionId = () => runtimeSemanticCompositionId("engine.controller.choiceControl");
 const controllerPlayerBannerArtCompositionId = () => runtimeSemanticCompositionId("engine.controller.playerIdentity");
@@ -155,11 +155,11 @@ function controllerRuntimeArtRendererKey(target: El, prefix: string): string {
 
 function isLayoutTextArtElement(element: Dict | null): boolean {
   const id = compactLayoutTextId(element?.id);
-  return element?.artCompositionId === layoutTextArtCompositionId || legacyLayoutTextElementIds.has(id) || id.endsWith("momenttext") || id.endsWith("controllertext");
+  return element?.artCompositionId === layoutTextArtCompositionId() || legacyLayoutTextElementIds.has(id) || id.endsWith("momenttext") || id.endsWith("controllertext");
 }
 
 function layoutTextArtUsesNestedPrefab(): boolean {
-  const composition = w().artComposition?.(layoutTextArtCompositionId) as Dict | null | undefined;
+  const composition = w().artComposition?.(layoutTextArtCompositionId()) as Dict | null | undefined;
   const components = [...(((composition?.components as Dict[]) || []))];
   while (components.length) {
     const component = components.shift();
@@ -178,8 +178,8 @@ function layoutTextArtRenderOptions(element: Dict | null, textOverride: unknown 
   const usesNestedTextPrefab = layoutTextArtUsesNestedPrefab();
   const componentId = usesNestedTextPrefab ? layoutTextArtNestedComponentPath : layoutTextArtComponentId;
   const textOverrides = usesNestedTextPrefab
-    ? { [layoutTextArtNestedComponentPath]: text, [layoutTextArtLegacyComponentPath]: "" }
-    : { [layoutTextArtLegacyComponentPath]: text, [layoutTextArtComponentId]: text };
+    ? { [layoutTextArtNestedComponentPath]: text, [layoutTextArtLegacyComponentPath()]: "" }
+    : { [layoutTextArtLegacyComponentPath()]: text, [layoutTextArtComponentId]: text };
   return {
     textOverrides,
     textStyle: { componentId, fontSize: Number(element?.fontSize || 58), fontColor: normalizeUiColor(element?.fontColor) || "#ffffff" }

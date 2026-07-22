@@ -3,6 +3,24 @@ import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { createLayoutNormalizationRuntime } = require("./layout-normalization-runtime");
+const semanticRoles = {
+  "engine.stage.roomCode": { compositionId: "stage-code-widget" },
+  "engine.stage.joinQrCode": { compositionId: "join-qr-code" },
+  "engine.stage.timer": { compositionId: "crafting-timer-widget" },
+  "engine.stage.roomCodePanel": { compositionId: "stage-code-panel" },
+  "engine.stage.joinPrompt": { compositionId: "join-widget" },
+  "engine.stage.waitingStatus": { compositionId: "waiting-status-widget" },
+  "engine.stage.countdown": { compositionId: "countdown-popup" },
+  "engine.stage.presentationAdvancePrompt": { compositionId: "presentation-click-prompt" },
+  "engine.stage.layoutText": { compositionId: "layout-text-field" },
+  "engine.controller.avatarChoice": { compositionId: "controller-avatar-button" },
+  "engine.controller.invalidSubmission": { compositionId: "controller-invalid-banner" },
+  "engine.controller.submitControl": { compositionId: "controller-primary-button" },
+  "engine.controller.playerIdentity": { compositionId: "controller-player-banner" },
+  "engine.controller.textInput": { compositionId: "controller-text-input-field" },
+  "engine.controller.playerNameInput": { compositionId: "controller-player-name-field" },
+  "engine.controller.stageCodeInput": { compositionId: "controller-stage-code-field" }
+};
 
 function runtime() {
   return createLayoutNormalizationRuntime({
@@ -12,7 +30,8 @@ function runtime() {
     defaultCanvas: { width: 390, height: 844 },
     normalizeColor: (value) => String(value || ""),
     normalizeFlowId: (value, fallback = "") => String(value || fallback),
-    normalizeLayoutNumber: (value, fallback) => Number(value ?? fallback)
+    normalizeLayoutNumber: (value, fallback) => Number(value ?? fallback),
+    semanticRoles
   });
 }
 

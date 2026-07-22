@@ -83,9 +83,9 @@
     },
     {
       "path": "semantic-roles.json",
-      "sha256": "2b8b3d65c95a68e2aa5e559fde554e48978d75184249ca528bef5219f7605b97",
-      "bytes": 1856
+      "sha256": "f47cda5ab48cae4a292adf8e69c125864b3341fb4ac681a780e0171720424189",
+      "bytes": 2469
     }
   ],
-  "rootHash": "e3319ccbf45f9287c9bad8387c00e423a1b41a9637cc25aab3bddb4f0b1fd1fe"
+  "rootHash": "f64673eb65277aaa3caad553efbf34891954aaf164d0057755d68cc54bddaaed"
 }

@@ -50,6 +50,7 @@ const PLAYER_WIDGET_ROLE = "engine.stage.playerIdentityWidget";
 const PLAYER_ANSWER_BUBBLE_ROLE = "engine.stage.playerAnswerBubble";
 const POINT_POPUP_CONTAINER_ROLE = "engine.stage.playerPointsPopupContainer";
 const POINT_POPUP_ROLE = "engine.stage.playerPointsPopup";
+const PLAYER_AVATAR_ROLE = "engine.shared.playerAvatar";
 const PLAYER_ANSWER_BUBBLE_STATE_ID = "playerAnswerBubble";
 const PLAYER_AVATAR_MC_ID = "playerAvatarMC";
 const PLAYER_AVATAR_BEHAVIORS_ID = "playerAvatarBehaviors";
@@ -396,7 +397,7 @@ class PlayerRosterRenderer {
       }
       if (id === "player-name-widget") return runtimePlayerNameWidgetComposition(composition, player);
       if (id === "player-vip-widget") return runtimePlayerVipWidgetComposition(composition);
-      if (id === "prefab-player-avatar-mc") return runtimePlayerAvatarMcComposition(composition, player);
+      if (id === this.roleCompositionId(PLAYER_AVATAR_ROLE)) return runtimePlayerAvatarMcComposition(composition, player);
       if (id === "avatars") return runtimeAvatarsComposition(composition, player);
       return cloneArtComposition(composition, (component) => applyRuntimePlayerColor(component, color));
     };

@@ -9,7 +9,12 @@ beforeEach(() => {
       "engine.stage.roomCode": { compositionId: "stage-code-widget" },
       "engine.stage.joinQrCode": { compositionId: "join-qr-code" },
       "engine.stage.timer": { compositionId: "crafting-timer-widget" },
-      "engine.stage.transition": { compositionId: "wipe-widget-mc" }
+      "engine.stage.transition": { compositionId: "wipe-widget-mc" },
+      "engine.stage.roomCodePanel": { compositionId: "stage-code-panel" },
+      "engine.stage.joinPrompt": { compositionId: "join-widget" },
+      "engine.stage.waitingStatus": { compositionId: "waiting-status-widget" },
+      "engine.stage.countdown": { compositionId: "countdown-popup" },
+      "engine.stage.presentationAdvancePrompt": { compositionId: "presentation-click-prompt" }
     }
   };
 });

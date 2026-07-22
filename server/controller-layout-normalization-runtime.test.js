@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const { createControllerLayoutNormalizationRuntime } = require("./controller-layout-normalization-runtime");
 const { createControllerLayoutNormalizationRuntime: createEngineControllerLayoutNormalizationRuntime } = require("@pop-party/engine/server");
+const semanticRoles = { "engine.controller.playerIdentity": { compositionId: "controller-player-banner" } };
 
 function runtime() {
   const defaults = {
@@ -15,7 +16,8 @@ function runtime() {
     cloneJson: (value) => JSON.parse(JSON.stringify(value)),
     defaultControllerLayouts: defaults,
     normalizeLayoutNumber: (value, fallback) => Number(value || fallback),
-    normalizeLayoutState: (state) => state ? JSON.parse(JSON.stringify(state)) : null
+    normalizeLayoutState: (state) => state ? JSON.parse(JSON.stringify(state)) : null,
+    semanticRoles
   });
 }
 
@@ -241,7 +243,8 @@ describe("controller layout normalization", () => {
           ...element,
           tags: ["Phase One", "Review"]
         }))
-      } : null
+      } : null,
+      semanticRoles
     });
 
     const layouts = customRuntime.normalizeControllerLayouts({

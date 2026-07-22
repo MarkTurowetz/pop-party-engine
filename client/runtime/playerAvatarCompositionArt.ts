@@ -1,3 +1,5 @@
+import { runtimeSemanticCompositionId } from "./semanticRoleRuntime";
+
 type Dict = Record<string, unknown>;
 
 export interface PlayerAvatarArtComposition extends Dict {
@@ -18,7 +20,6 @@ export interface PlayerAvatarCompositionArtOptions {
   normalizeShapeStyle?(style?: string, kind?: string): string;
 }
 
-export const PLAYER_AVATAR_MC_COMPOSITION_ID = "prefab-player-avatar-mc";
 export const AVATARS_COMPOSITION_ID = "avatars";
 
 function number(value: unknown, fallback = 0): number {
@@ -156,8 +157,9 @@ function renderCompositionComponents(
 }
 
 export function playerAvatarCompositionArt(options: PlayerAvatarCompositionArtOptions): string | null {
-  const composition = options.getComposition(PLAYER_AVATAR_MC_COMPOSITION_ID);
+  const playerAvatarCompositionId = runtimeSemanticCompositionId("engine.shared.playerAvatar");
+  const composition = options.getComposition(playerAvatarCompositionId);
   if (!composition) return null;
-  const components = renderCompositionComponents(composition, options, new Set([PLAYER_AVATAR_MC_COMPOSITION_ID]));
-  return `<span class="player-avatar-art-composition" data-player-avatar-source="${PLAYER_AVATAR_MC_COMPOSITION_ID}">${components}</span>`;
+  const components = renderCompositionComponents(composition, options, new Set([playerAvatarCompositionId]));
+  return `<span class="player-avatar-art-composition" data-player-avatar-source="${playerAvatarCompositionId}">${components}</span>`;
 }

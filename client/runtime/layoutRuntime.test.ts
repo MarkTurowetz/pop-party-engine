@@ -9,6 +9,7 @@ const previousArtComposition = globals.artComposition;
 beforeEach(() => {
   globalThis.__POP_PARTY_RUNTIME_CONFIG__ = {
     semanticRoles: {
+      "engine.stage.layoutText": { compositionId: "layout-text-field" },
       "engine.controller.playerIdentity": { compositionId: "controller-player-banner" },
       "engine.controller.textInput": { compositionId: "controller-text-input-field" },
       "engine.controller.submitControl": { compositionId: "controller-primary-button" },

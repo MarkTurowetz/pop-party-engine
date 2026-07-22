@@ -37,6 +37,27 @@
     "engine.stage.roomCode": {
       "compositionId": "stage-code-widget"
     },
+    "engine.stage.roomCodePanel": {
+      "compositionId": "stage-code-panel"
+    },
+    "engine.stage.joinPrompt": {
+      "compositionId": "join-widget"
+    },
+    "engine.stage.waitingStatus": {
+      "compositionId": "waiting-status-widget"
+    },
+    "engine.stage.countdown": {
+      "compositionId": "countdown-popup"
+    },
+    "engine.stage.presentationAdvancePrompt": {
+      "compositionId": "presentation-click-prompt"
+    },
+    "engine.stage.layoutText": {
+      "compositionId": "layout-text-field"
+    },
+    "engine.shared.playerAvatar": {
+      "compositionId": "prefab-player-avatar-mc"
+    },
     "engine.controller.playerIdentity": {
       "compositionId": "controller-player-banner"
     },

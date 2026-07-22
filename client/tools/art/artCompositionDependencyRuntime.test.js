@@ -32,7 +32,11 @@ describe("art composition dependency report", () => {
   });
 
   it("tracks the authored player prefabs without retaining legacy player compositions", () => {
-    const runtimeIds = artRuntimeReferences().map((reference) => reference.compositionId);
+    const runtimeIds = artRuntimeReferences({
+      "engine.stage.playerIdentityWidget": { compositionId: "prefab-player-widget-mc" },
+      "engine.shared.playerAvatar": { compositionId: "prefab-player-avatar-mc" },
+      "engine.stage.transition": { compositionId: "wipe-widget-mc" }
+    }).map((reference) => reference.compositionId);
     expect(runtimeIds).toContain("prefab-player-widget-mc");
     expect(runtimeIds).toContain("prefab-player-avatar-mc");
     expect(runtimeIds).toContain("wipe-widget-mc");

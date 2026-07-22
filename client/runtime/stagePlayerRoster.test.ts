@@ -24,7 +24,8 @@ beforeEach(() => {
       "engine.stage.playerIdentityWidget": { compositionId: PLAYER_WIDGET_COMPOSITION_ID },
       "engine.stage.playerAnswerBubble": { compositionId: PLAYER_WIDGET_COMPOSITION_ID, instancePath: ["playerAnswerBubbleMC"] },
       "engine.stage.playerPointsPopup": { compositionId: "test-player-points-popup" },
-      "engine.stage.playerPointsPopupContainer": { compositionId: PLAYER_WIDGET_COMPOSITION_ID, instancePath: ["pointPopupContainer"] }
+      "engine.stage.playerPointsPopupContainer": { compositionId: PLAYER_WIDGET_COMPOSITION_ID, instancePath: ["pointPopupContainer"] },
+      "engine.shared.playerAvatar": { compositionId: "prefab-player-avatar-mc" }
     }
   };
 });
