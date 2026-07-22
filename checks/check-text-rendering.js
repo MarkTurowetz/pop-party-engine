@@ -101,7 +101,11 @@ if (!/normalized === "presentation"\) return "stagepresentationtext"/.test(layou
 }
 
 const layoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/layout-normalization-runtime.js"), "utf8");
-if (!/element\.autoFitText === true/.test(layoutNormalizerSource)
+const engineLayoutNormalizerSource = fs.readFileSync(
+  path.join(repoRoot, "packages/engine/src/server/layout-normalization-runtime.js"),
+  "utf8"
+);
+if (!/element\.autoFitText === true/.test(engineLayoutNormalizerSource)
   || !/layoutTextArtCompositionId/.test(layoutNormalizerSource)) {
   console.error("Text rendering regression check failed:");
   console.error("- server layout normalization must promote legacy layout text while preserving explicit auto-fit opt-in");

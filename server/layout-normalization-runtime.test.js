@@ -17,6 +17,14 @@ function runtime() {
 }
 
 describe("layout normalization", () => {
+  it("keeps reference-game widget policy in the adapter", () => {
+    expect(runtime().normalizeLayoutElement({ id: "startpopup" }, 0)).toMatchObject({
+      artCompositionId: "countdown-popup",
+      defaultAnimationState: "Park",
+      kind: "art"
+    });
+  });
+
   it("normalizes and preserves configuration tags on saved elements", () => {
     const element = runtime().normalizeLayoutElement({
       id: "voicePrompt",
