@@ -1,61 +1,13 @@
-function createStageLayoutNormalizationRuntime({
-  cloneJson,
-  defaultStageLayouts,
-  normalizeLayoutNumber,
-  normalizeLayoutState
-}) {
-  function normalizeStageLayouts(layouts) {
-    const incomingCanvas = layouts?.canvas || defaultStageLayouts.canvas;
-    const canvas = {
-      width: normalizeLayoutNumber(incomingCanvas.width, defaultStageLayouts.canvas.width, 640, 10000),
-      height: normalizeLayoutNumber(incomingCanvas.height, defaultStageLayouts.canvas.height, 360, 10000)
-    };
-    const incomingStates = Array.isArray(layouts?.states) ? layouts.states : defaultStageLayouts.states;
-    const normalizedDefaultGlobal = normalizeLayoutState(defaultStageLayouts.global, -1);
-    const normalizedDefaultStates = defaultStageLayouts.states.map((state, index) => normalizeLayoutState(state, index)).filter(Boolean);
-    const defaultStatesById = new Map(normalizedDefaultStates.map((state) => [state.id, state]));
-    const normalizedIncomingStates = incomingStates.map((state, stateIndex) => normalizeLayoutState(state, stateIndex)).filter(Boolean);
-    const hasIncomingGlobal = layouts && Object.prototype.hasOwnProperty.call(layouts, "global");
-    const incomingGlobal = normalizeLayoutState(hasIncomingGlobal ? layouts.global : defaultStageLayouts.global, -1);
-    const migrated = migrateStageLayoutStates(normalizedIncomingStates, incomingGlobal, normalizedDefaultGlobal, Boolean(incomingGlobal));
-    const migratedStates = migrated.states;
-    const normalizedStates = [...migratedStates];
-    for (const defaultState of normalizedDefaultStates) {
-      if (!normalizedStates.some((state) => state.id === defaultState.id)) {
-        normalizedStates.push(cloneJson(defaultState));
-      }
-    }
-    const globalElements = [...(migrated.global?.elements || [])];
-    const defaultBackgroundElements = (normalizedDefaultGlobal.elements || []).filter((element) => element.layoutLayer === "background");
-    if (!globalElements.some((element) => element.layoutLayer === "background")) {
-      for (const backgroundElement of [...defaultBackgroundElements].reverse()) {
-        const existingIndex = globalElements.findIndex((element) => element.id === backgroundElement.id);
-        if (existingIndex >= 0) globalElements[existingIndex] = { ...globalElements[existingIndex], layoutLayer: "background" };
-        else globalElements.push(cloneJson(backgroundElement));
-      }
-    }
-    return {
-      canvas,
-      global: {
-        ...normalizedDefaultGlobal,
-        ...(migrated.global || {}),
-        id: "global",
-        name: migrated.global?.name || normalizedDefaultGlobal.name,
-        elements: globalElements
-      },
-      states: normalizedStates.map((state) => {
-        const defaultState = defaultStatesById.get(state.id);
-        if (!defaultState) return state;
-        const hiddenGlobals = Array.isArray(state.hiddenGlobals) ? state.hiddenGlobals : defaultState.hiddenGlobals || [];
-        return {
-          ...state,
-          hiddenGlobals
-        };
-      })
-    };
-  }
+"use strict";
 
-  function migrateStageLayoutStates(states, global, defaultGlobal, hasExplicitGlobal = false) {
+const {
+  createStageLayoutNormalizationRuntime: createEngineStageLayoutNormalizationRuntime
+} = require("../packages/engine/src/server/stage-layout-normalization-runtime");
+
+function createStageLayoutNormalizationRuntime(options) {
+  const { cloneJson, defaultStageLayouts } = options;
+
+  function migrateStageLayoutStates({ states, global, defaultGlobal, hasExplicitGlobal }) {
     const migratedGlobal = global ? cloneJson(global) : cloneJson(defaultGlobal);
     migratedGlobal.id = "global";
     migratedGlobal.name = migratedGlobal.name || "Global Layout";
@@ -87,9 +39,29 @@ function createStageLayoutNormalizationRuntime({
     return { states, global: migratedGlobal };
   }
 
-  return {
+  function normalizeGlobalElements({ defaultGlobal, globalElements }) {
+    const defaultBackgroundElements = (defaultGlobal.elements || []).filter((element) => element.layoutLayer === "background");
+    if (!globalElements.some((element) => element.layoutLayer === "background")) {
+      for (const backgroundElement of [...defaultBackgroundElements].reverse()) {
+        const existingIndex = globalElements.findIndex((element) => element.id === backgroundElement.id);
+        if (existingIndex >= 0) globalElements[existingIndex] = { ...globalElements[existingIndex], layoutLayer: "background" };
+        else globalElements.push(cloneJson(backgroundElement));
+      }
+    }
+    return globalElements;
+  }
+
+  const runtime = createEngineStageLayoutNormalizationRuntime({
+    ...options,
+    includeMissingDefaultStates: true,
     migrateStageLayoutStates,
-    normalizeStageLayouts
+    normalizeGlobalElements
+  });
+
+  return {
+    ...runtime,
+    migrateStageLayoutStates: (states, global, defaultGlobal, hasExplicitGlobal = false) =>
+      migrateStageLayoutStates({ states, global, defaultGlobal, hasExplicitGlobal })
   };
 }
 

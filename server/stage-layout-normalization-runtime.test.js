@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { createStageLayoutNormalizationRuntime } = require("./stage-layout-normalization-runtime");
+const { createStageLayoutNormalizationRuntime: createEngineStageLayoutNormalizationRuntime } = require("@pop-party/engine/server");
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
@@ -30,6 +31,22 @@ function runtime() {
 }
 
 describe("stage background layout migration", () => {
+  it("keeps default-state resurrection out of the neutral engine policy", () => {
+    const defaultStageLayouts = {
+      canvas: { width: 1920, height: 1080 },
+      global: { id: "global", name: "Global", elements: [] },
+      states: [{ id: "lobby", name: "Lobby", elements: [] }]
+    };
+    const engine = createEngineStageLayoutNormalizationRuntime({
+      cloneJson,
+      defaultStageLayouts,
+      normalizeLayoutNumber: (value, fallback) => Number(value ?? fallback),
+      normalizeLayoutState: (state) => state ? cloneJson(state) : null
+    });
+
+    expect(engine.normalizeStageLayouts({ global: defaultStageLayouts.global, states: [] }).states).toEqual([]);
+  });
+
   it("adds the authored background layer to an older saved global layout exactly once", () => {
     const layouts = runtime().normalizeStageLayouts({
       canvas: { width: 1920, height: 1080 },
