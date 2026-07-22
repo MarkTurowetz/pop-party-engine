@@ -14,6 +14,7 @@ const {
   createFlowNavigationRuntime,
   createFlowTargetRuntime,
   createGameFlowMergeRuntime,
+  createHostAudioRuntime,
   createInactivePlayerSweepRuntime,
   createInputStateRuntime,
   createLobbyControlHandlersRuntime,
@@ -32,6 +33,7 @@ const {
   createStageEventsRuntime,
   createStaticFilesRuntime,
   createStartHandlersRuntime,
+  createTriviaContentRuntime,
   createVotingRuntime,
   flowStateHasActionType,
   isCraftingStateId,
@@ -57,7 +59,6 @@ const { createFlowActionPublicRuntime } = require("./server/flow-action-public-r
 const { createGameConstantsRuntime } = require("./server/game-constants-runtime");
 const { createGameFlowNormalizationRuntime } = require("./server/game-flow-normalization-runtime");
 const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
-const { createHostAudioRuntime } = require("./server/host-audio-runtime");
 const { createLayoutNormalizationRuntime } = require("./server/layout-normalization-runtime");
 const { createLayoutSyncRuntime } = require("./server/layout-sync-runtime");
 const { createLocalDraftRuntime } = require("./server/local-draft-runtime");
@@ -75,7 +76,6 @@ const { createToolGithubSourcesRuntime } = require("./server/tool-github-sources
 const { createToolPersistenceRuntime } = require("./server/tool-persistence-runtime");
 const { createToolSourceReadersRuntime } = require("./server/tool-source-readers-runtime");
 const { createToolSourceStoresRuntime } = require("./server/tool-source-stores-runtime");
-const { createTriviaContentRuntime } = require("./server/trivia-content-runtime");
 const {
   cleanChoiceOptions,
   cleanFlowText,

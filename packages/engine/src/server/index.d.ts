@@ -54,3 +54,5 @@ export function createLobbyControlHandlersRuntime(options: Record<string, unknow
 export function createStartHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createPlayerSessionHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLobbyPayloadRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createHostAudioRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createTriviaContentRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

@@ -113,7 +113,9 @@ try {
     ["lobby-control-handlers-runtime", "createLobbyControlHandlersRuntime"],
     ["start-handlers-runtime", "createStartHandlersRuntime"],
     ["player-session-handlers-runtime", "createPlayerSessionHandlersRuntime"],
-    ["lobby-payload-runtime", "createLobbyPayloadRuntime"]
+    ["lobby-payload-runtime", "createLobbyPayloadRuntime"],
+    ["host-audio-runtime", "createHostAudioRuntime"],
+    ["trivia-content-runtime", "createTriviaContentRuntime"]
   ];
   for (const [legacyModule, exportName] of serverKernelCompatibility) {
     if (require(path.join(root, "server", legacyModule))[exportName] !== serverKernel[exportName]) {
