@@ -36,6 +36,7 @@ const {
   normalizeArtAssetReplacementsDraft: normalizeArtAssetReplacementDraftCollection,
   parseArtAssetReplacement
 } = require("./art-asset-replacement-runtime");
+const { createArtFileRuntime } = require("./art-file-runtime");
 const { createArtManifestStoreRuntime } = require("./art-manifest-store-runtime");
 const { normalizeArtOrganization, removeDeletedCompositionOrganizationKeys } = require("./art-organization-runtime");
 const { compositionSaveConflict, manifestRevision, revisionMatches } = require("./art-revision-runtime");
@@ -67,6 +68,15 @@ function createArtAssetsRuntime({
     manifestFile,
     normalizeManifest: (source) => migrateLegacyArtManifestSchema(source).manifest,
     writeSource: writeArtManifestSource
+  });
+  const { publicArtAsset, serveArtFile } = createArtFileRuntime({
+    acceptedArtTypes,
+    contentTypeForFile,
+    customDir,
+    defaultDir,
+    readDraftReplacement: (assetId) => localDraftStore?.artAssetReplacements?.[assetId] || null,
+    sendJson,
+    svgResponseHeaders
   });
 
   function cleanNumber(value, fallback, min = -Infinity, max = Infinity) {
@@ -584,49 +594,6 @@ function createArtAssetsRuntime({
     return [...byId.values()];
   }
 
-  function cacheBustFileUrl(filePath, urlPath) {
-    try {
-      const version = Math.round(fs.statSync(filePath).mtimeMs);
-      return `${urlPath}?v=${version}`;
-    } catch (error) {
-      return urlPath;
-    }
-  }
-
-  function publicArtAsset(asset, manifest) {
-    const custom = manifest[asset.id] || null;
-    const defaultFilePath = path.join(defaultDir, asset.defaultFile);
-    const defaultUrl = cacheBustFileUrl(defaultFilePath, `/art/default/${asset.defaultFile}`);
-    const customFile = custom?.fileName ? path.basename(custom.fileName) : "";
-    const customFilePath = customFile ? path.join(customDir, customFile) : "";
-    const hasCustom = Boolean(customFile && fs.existsSync(customFilePath));
-    const currentUrl = hasCustom ? cacheBustFileUrl(customFilePath, `/art/custom/${customFile}`) : defaultUrl;
-    const publicAsset = {
-      id: asset.id,
-      name: asset.name,
-      category: asset.category,
-      parent: asset.parent,
-      use: asset.use,
-      sharedBy: asset.sharedBy || [],
-      expectedTypes: Object.keys(acceptedArtTypes),
-      defaultUrl,
-      currentUrl,
-      hasCustom,
-      fileName: hasCustom ? customFile : asset.defaultFile,
-      updatedAt: hasCustom ? custom.updatedAt : null
-    };
-    const draftReplacement = localDraftStore?.artAssetReplacements?.[asset.id] || null;
-    if (!draftReplacement) return publicAsset;
-    return {
-      ...publicAsset,
-      currentUrl: draftReplacement.dataUrl,
-      hasCustom: true,
-      hasDraft: true,
-      fileName: draftReplacement.fileName || publicAsset.fileName,
-      updatedAt: draftReplacement.updatedAt || null
-    };
-  }
-
   async function sendArtAssetList(res) {
     const manifest = await loadArtManifest();
     const compositions = allPublicArtCompositions(manifest);
@@ -1024,29 +991,6 @@ function createArtAssetsRuntime({
     }
     onArtAssetsChanged({ type: "asset", id: asset.id, updatedAt });
     sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, savedManifest), revision: manifestRevision(savedManifest) });
-  }
-
-  function serveArtFile(res, kind, fileName) {
-    const safeName = path.basename(fileName || "");
-    const dir = kind === "custom" ? customDir : defaultDir;
-    const filePath = path.join(dir, safeName);
-    if (!safeName || !filePath.startsWith(dir) || !fs.existsSync(filePath)) {
-      sendJson(res, 404, { ok: false, error: "Art file not found" });
-      return;
-    }
-    fs.readFile(filePath, (error, data) => {
-      if (error) {
-        sendJson(res, 500, { ok: false, error: "Could not read art file" });
-        return;
-      }
-      res.writeHead(200, {
-        "Content-Type": contentTypeForFile(filePath),
-        "Content-Length": data.length,
-        "Cache-Control": "no-cache",
-        ...(path.extname(filePath).toLowerCase() === ".svg" ? svgResponseHeaders() : { "X-Content-Type-Options": "nosniff" })
-      });
-      res.end(data);
-    });
   }
 
   return {
