@@ -64,6 +64,9 @@ concepts into focused modules.
     conflicts fail visibly and are never reloaded and retried as an overwrite.
   - `github-git-data-runtime.js` owns immutable Git blob/tree/commit operations and compare-and-swap
     branch updates for the revisioned content provider.
+  - `github-content-bundle-store.js` persists complete bundle snapshots on content/draft refs and
+    advances a separate active-release record only through expected-revision compare-and-swap.
+    Its draft, publish, and rollback idempotency records survive server restarts.
   - `tool-source-readers-runtime.js` owns default/local JSON source loading for tool data.
   - `tool-source-stores-runtime.js` owns source-of-truth store object creation for tool data.
   - `trivia-content-runtime.js` owns trivia prompt cloning, random selection, and action content preparation.
