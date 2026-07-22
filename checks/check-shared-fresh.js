@@ -22,7 +22,7 @@ function fail(message) {
 function main() {
   const sourceDirectories = [sharedDir, engineSharedDir];
   const tsSources = sourceDirectories.flatMap((directory) => fs.readdirSync(directory)
-    .filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"))
+    .filter((name) => name.endsWith(".ts") && !name.endsWith(".d.ts") && !name.endsWith(".test.ts"))
     .map((name) => path.relative(repoRoot, path.join(directory, name))));
   if (tsSources.length === 0) {
     console.log("shared/*.js freshness check passed (no shared/*.ts yet).");

@@ -62,7 +62,7 @@ try {
   const packOutput = JSON.parse(execFileSync("npm", ["pack", packageRoot, "--json", "--pack-destination", fixtureRoot], { cwd: root, encoding: "utf8", env: commandEnvironment }));
   const packed = packOutput[0];
   if (!packed?.filename) throw new Error("npm pack did not return a tarball");
-  const forbidden = packed.files.filter((file) => file.path.startsWith("dist/") || /(?:^|\/)(?:game-flow|art|controller-layouts|stage-layouts)(?:\/|\.|$)/i.test(file.path));
+  const forbidden = packed.files.filter((file) => file.path.startsWith("dist/") || (file.path.endsWith(".ts") && !file.path.endsWith(".d.ts")) || /(?:^|\/)(?:game-flow|art|controller-layouts|stage-layouts)(?:\/|\.|$)/i.test(file.path));
   if (forbidden.length) throw new Error(`Game-owned files leaked into engine tarball: ${forbidden.map((file) => file.path).join(", ")}`);
   const packageOwnedModules = compatibilityExports.map(([legacyModule]) => `src/server/${legacyModule}.js`);
   packageOwnedModules.push("src/shared/content-bundle-schema.js");
@@ -96,11 +96,26 @@ try {
     'import { REQUIRED_GAME_DATA_KEYS } from "@pop-party/engine";',
     'import { defineGame } from "@pop-party/engine/game";',
     'import { defineGamePlugin } from "@pop-party/engine/plugin";',
+    'import { normalizeBundlePath } from "@pop-party/engine/content/schema";',
+    'import { createContentSnapshot } from "@pop-party/engine/content/snapshot";',
+    'import { createRevisionedContentStoreRuntime } from "@pop-party/engine/content/store";',
+    'import { createLocalContentBundleProvider } from "@pop-party/engine/content/local";',
+    'import { createGithubContentBundleStore } from "@pop-party/engine/content/github";',
+    'import { createGithubAppCredentialRuntime } from "@pop-party/engine/content/github-app";',
+    'import { createGithubGitDataRuntime } from "@pop-party/engine/content/github-git";',
+    'import { createContentStoreEnvironmentRuntime } from "@pop-party/engine/content/environment";',
+    'import { createContentAdminHandlersRuntime } from "@pop-party/engine/content/admin";',
+    'import { createRoomContentPinRuntime } from "@pop-party/engine/rooms/content-pin";',
+    'import { createAdminAuthRuntime } from "@pop-party/engine/security/admin";',
+    'import { createAdminAuditRuntime } from "@pop-party/engine/security/audit";',
+    'import { createRuntimeCapabilityRuntime } from "@pop-party/engine/security/runtime-capabilities";',
+    'import { assertSafeSvg } from "@pop-party/engine/security/svg";',
     'const plugin = defineGamePlugin({ namespace: "typed", register(registry) { registry.actions("typed.action", {}); } });',
     'const gameData = Object.fromEntries(REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));',
-    'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, gameData, plugin });'
+    'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, gameData, plugin });',
+    'void [normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
   ].join("\n"));
-  execFileSync(process.execPath, [path.join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "--target", "ES2022", "--module", "Node16", "--moduleResolution", "Node16", "consumer.ts"], { cwd: fixtureRoot, stdio: "pipe" });
+  execFileSync(process.execPath, [path.join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "--strict", "--target", "ES2022", "--module", "Node16", "--moduleResolution", "Node16", "consumer.ts"], { cwd: fixtureRoot, stdio: "pipe" });
   console.log(`Packed engine fixture passed: ${packed.filename} (${packed.files.length} files).`);
 } finally {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
