@@ -2,6 +2,7 @@ export * from "../shared/controller-layout-states";
 export * from "./action-completion-barrier";
 export * from "./controller-heartbeat-runtime";
 export * from "./controller-module-cache";
+export * from "./controller-recording-lifecycle";
 export * from "./controller-session-runtime";
 export * from "./controller-state-runtime";
 export * from "./controller-submission-confirmation";
