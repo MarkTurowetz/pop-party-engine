@@ -51,6 +51,7 @@ const { createRoomBroadcastRuntime } = require("./server/room-broadcast-runtime"
 const { createRoomFlowHelpersRuntime } = require("./server/room-flow-helpers-runtime");
 const { createRoomPhaseRuntime } = require("./server/room-phase-runtime");
 const { createRoomStateRuntime } = require("./server/room-state-runtime");
+const { createRoomContentPinRuntime } = require("./server/room-content-pin-runtime");
 const { createRuntimeCapabilityRuntime } = require("./server/runtime-capability-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStageActionHandlersRuntime } = require("./server/stage-action-handlers-runtime");
@@ -201,6 +202,13 @@ const {
   getRoom
 } = createRoomStateRuntime({ rooms });
 
+const roomContentPins = GAME_DEFINITION.content.store
+  ? createRoomContentPinRuntime({
+      contentStore: GAME_DEFINITION.content.store,
+      gameId: GAME_DEFINITION.gameId
+    })
+  : null;
+
 const runtimeCapabilities = createRuntimeCapabilityRuntime({
   mode: RUNTIME_CAPABILITY_MODE,
   getExistingRoom,
@@ -208,7 +216,9 @@ const runtimeCapabilities = createRuntimeCapabilityRuntime({
   normalizePlayerId,
   normalizeStageCode,
   readJson,
-  sendJson
+  sendJson,
+  pinNewRoom: roomContentPins?.pinNewRoom,
+  deleteRoom: (stageCode) => rooms.delete(stageCode)
 });
 
 const {

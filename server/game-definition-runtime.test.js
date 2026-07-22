@@ -63,4 +63,10 @@ describe("defineGame", () => {
     });
     expect(() => defineGame(validDefinition({ plugin }))).toThrow(/may only register ids/);
   });
+
+  it("preserves a revision provider without letting the engine invent one", () => {
+    const store = { getActiveRelease() {}, loadPublishedRevision() {} };
+    expect(defineGame(validDefinition({ content: { mode: "bundle", schemaVersion: 1, store } })).content.store).toBe(store);
+    expect(() => defineGame(validDefinition({ content: { mode: "bundle", schemaVersion: 1, store: {} } }))).toThrow(/content store/);
+  });
 });

@@ -8,7 +8,7 @@ function request({ method = "POST", headers = {}, remoteAddress = "127.0.0.1" } 
   return { method, headers, socket: { remoteAddress } };
 }
 
-function createHarness({ mode = "required", payload = {}, eventTicketMaxAgeMs } = {}) {
+function createHarness({ mode = "required", payload = {}, eventTicketMaxAgeMs, pinNewRoom = vi.fn(async () => {}) } = {}) {
   const rooms = new Map();
   const response = {};
   const sendJson = vi.fn((_res, status, body) => Object.assign(response, { status, body }));
@@ -29,6 +29,8 @@ function createHarness({ mode = "required", payload = {}, eventTicketMaxAgeMs } 
     normalizeStageCode: (value) => String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6),
     readJson: async () => payload,
     sendJson,
+    pinNewRoom,
+    deleteRoom: (stageCode) => rooms.delete(stageCode),
     eventTicketMaxAgeMs
   });
   return { getRoom, response, rooms, runtime, sendJson };
@@ -109,5 +111,27 @@ describe("runtime capability authorization", () => {
     const harness = createHarness({ mode: "legacy" });
     const url = new URL("http://test/api/controller-text-submit");
     expect(harness.runtime.authorizeRequest(request(), {}, url)).toBe(true);
+  });
+
+  it("fails closed and removes a room when its content revision cannot pin", async () => {
+    const harness = createHarness({
+      payload: { stageCode: "ABCD" },
+      pinNewRoom: vi.fn(async () => { throw Object.assign(new Error("invalid"), { code: "ACTIVE_RELEASE_INCOMPATIBLE" }); })
+    });
+    await harness.runtime.handleCreateRoom(request(), {});
+    expect(harness.response).toMatchObject({ status: 503, body: { errorCode: "ACTIVE_RELEASE_INCOMPATIBLE" } });
+    expect(harness.rooms.has("ABCD")).toBe(false);
+  });
+
+  it("refuses to construct strict mode without a content pinner", () => {
+    expect(() => createRuntimeCapabilityRuntime({
+      mode: "required",
+      getExistingRoom: () => null,
+      getRoom: () => ({}),
+      normalizePlayerId: String,
+      normalizeStageCode: String,
+      readJson: async () => ({}),
+      sendJson: vi.fn()
+    })).toThrow(/content pinner/);
   });
 });

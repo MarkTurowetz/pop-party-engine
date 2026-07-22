@@ -46,10 +46,14 @@ function defineGame(definition = {}) {
   const registrations = pluginRegistry.install(definition.plugin);
   const content = Object.freeze({
     mode: String(definition.content?.mode || "").trim(),
-    schemaVersion: Number(definition.content?.schemaVersion || 0)
+    schemaVersion: Number(definition.content?.schemaVersion || 0),
+    store: definition.content?.store || null
   });
   if (content.mode !== "legacy-monolith" && content.mode !== "bundle") {
     throw new Error(`Unsupported game content mode: ${content.mode || "(empty)"}`);
+  }
+  if (content.store && (typeof content.store.getActiveRelease !== "function" || typeof content.store.loadPublishedRevision !== "function")) {
+    throw new Error("Game content store must implement getActiveRelease and loadPublishedRevision");
   }
 
   return Object.freeze({

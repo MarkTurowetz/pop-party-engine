@@ -29,8 +29,13 @@ function createRuntimeCapabilityRuntime(options = {}) {
   const normalizeStageCode = options.normalizeStageCode;
   const readJson = options.readJson;
   const sendJson = options.sendJson;
+  const pinNewRoom = options.pinNewRoom;
+  const deleteRoom = typeof options.deleteRoom === "function" ? options.deleteRoom : () => {};
   const eventTicketMaxAgeMs = Number(options.eventTicketMaxAgeMs || 30_000);
   const createWindowsByAddress = new Map();
+  if (mode === "required" && typeof pinNewRoom !== "function") {
+    throw new Error("Required runtime capabilities need an immutable room content pinner");
+  }
 
   function issueToken() {
     return crypto.randomBytes(32).toString("base64url");
@@ -155,7 +160,22 @@ function createRuntimeCapabilityRuntime(options = {}) {
       deny(res, "ROOM_ALREADY_EXISTS", "That room already exists in another stage session", 409);
       return;
     }
-    if (!room) room = getRoom(stageCode);
+    if (!room) {
+      room = getRoom(stageCode);
+      if (mode === "required") {
+        try {
+          await pinNewRoom(room);
+        } catch (error) {
+          deleteRoom(stageCode);
+          sendJson(res, 503, {
+            ok: false,
+            error: "Room could not pin the active content release",
+            errorCode: error.code || "ROOM_CONTENT_PIN_FAILED"
+          });
+          return;
+        }
+      }
+    }
     if (!capability || !verifyStage(req, room)) capability = issueStageCapability(room);
     sendJson(res, 200, { ok: true, stageCode, stageCapability: capability });
   }

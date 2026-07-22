@@ -26,6 +26,8 @@ OAuth authenticates the administrator. It must not be reused as the credential t
 - `legacy`: compatibility mode; credentials are issued but existing uncredentialed runtime routes continue to work.
 - `required`: a stage explicitly creates its room and receives a room-scoped capability. Each player receives a separate player-and-room-scoped capability. Stage and player mutations require the matching capability. Stage event streams use short-lived, one-use tickets so capabilities are never put in URLs.
 
+Strict mode refuses to start unless the game supplies an immutable content store. Room creation must successfully pin and validate the active release before a stage capability is issued; a pin failure removes the partial room and returns a visible diagnostic.
+
 The browser stores runtime capabilities only in per-window `sessionStorage`. They must never be copied to shared cookies, `localStorage`, lobby payloads, logs, or another controller identity.
 
 Do not enable `github` or `required` in production until OAuth secrets, callback URLs, asset isolation, room teardown invalidation, and the deployment security checklist are complete.
