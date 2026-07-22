@@ -1,45 +1,9 @@
 // Typed port of the legacy client/controller-view-state.js IIFE. Installs
 // window.createControllerViewState for the legacy controller runtime.
 
-export interface ControllerViewState {
-  hideAll(): void;
-  setShown(viewId: string, isShown: boolean): HTMLElement | null;
-  show(viewId: string): HTMLElement | null;
-  view(viewId: string): HTMLElement | null;
-}
-
-export function createControllerViewState(views: Record<string, HTMLElement | null | undefined> = {}): ControllerViewState {
-  function allViews(): HTMLElement[] {
-    return Object.values(views).filter(Boolean) as HTMLElement[];
-  }
-
-  function hideAll(): void {
-    for (const view of allViews()) {
-      view.classList.add("hidden");
-    }
-  }
-
-  function show(viewId: string): HTMLElement | null {
-    const view = views[viewId] || null;
-    if (!view) return null;
-    view.classList.remove("hidden");
-    return view;
-  }
-
-  function setShown(viewId: string, isShown: boolean): HTMLElement | null {
-    const view = views[viewId] || null;
-    if (!view) return null;
-    view.classList.toggle("hidden", isShown === false);
-    return view;
-  }
-
-  return {
-    hideAll,
-    setShown,
-    show,
-    view: (viewId: string) => views[viewId] || null
-  };
-}
+import { createControllerViewState } from "@pop-party/engine/client";
+export { createControllerViewState } from "@pop-party/engine/client";
+export type { ControllerViewState } from "@pop-party/engine/client";
 
 declare global {
   interface Window {
