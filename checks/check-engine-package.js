@@ -12,6 +12,11 @@ const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-engine-fixt
 const commandEnvironment = { ...process.env, npm_config_cache: path.join(fixtureRoot, ".npm-cache") };
 
 try {
+  const engineManifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"));
+  const referenceManifest = JSON.parse(fs.readFileSync(path.join(root, "apps", "reference", "package.json"), "utf8"));
+  if (referenceManifest.dependencies?.["@pop-party/engine"] !== engineManifest.version) {
+    throw new Error("Reference app must pin the exact local engine package version");
+  }
   const referenceConfig = fs.readFileSync(path.join(root, "apps", "reference", "game.config.js"), "utf8");
   if (!referenceConfig.includes('require("@pop-party/engine/game")') || !referenceConfig.includes('require("@pop-party/engine/plugin")')) {
     throw new Error("Reference game configuration must consume the public engine package subpaths");
@@ -38,6 +43,9 @@ try {
   const localRequire = createRequire(path.join(root, "package.json"));
   if (require(path.join(root, "game.config")) !== require(path.join(root, "apps", "reference", "game.config"))) {
     throw new Error("Root game configuration is not a reference-app compatibility export");
+  }
+  if (require(path.join(root, "apps", "reference", "game.config")).engineCompatibility !== engineManifest.version) {
+    throw new Error("Reference game engine compatibility must match its exact engine dependency");
   }
   if (require(path.join(root, "shared", "game-data")) !== require(path.join(root, "apps", "reference", "game-data"))) {
     throw new Error("Legacy game-data path is not a reference-app compatibility export");

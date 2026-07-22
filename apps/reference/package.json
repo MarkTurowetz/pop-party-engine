@@ -1,0 +1,12 @@
+{
+  "name": "@pop-party/reference",
+  "version": "1.0.17",
+  "private": true,
+  "description": "Thin reference game for @pop-party/engine.",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@pop-party/engine": "1.0.0"
+  }
+}
