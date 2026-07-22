@@ -95,7 +95,14 @@ try {
     ["flow-state-kind-runtime", "flowStateHasActionType"],
     ["decision-runtime", "createDecisionRuntime"],
     ["decision-action-normalization-runtime", "createDecisionActionNormalizationRuntime"],
-    ["game-flow-merge-runtime", "createGameFlowMergeRuntime"]
+    ["game-flow-merge-runtime", "createGameFlowMergeRuntime"],
+    ["app-version", "readAppVersion"],
+    ["http-utils", "sendJson"],
+    ["network-urls-runtime", "createNetworkUrlsRuntime"],
+    ["local-json-store", "readJsonFile"],
+    ["router-runtime", "createRouterRuntime"],
+    ["static-files-runtime", "createStaticFilesRuntime"],
+    ["stage-events-runtime", "createStageEventsRuntime"]
   ];
   for (const [legacyModule, exportName] of serverKernelCompatibility) {
     if (require(path.join(root, "server", legacyModule))[exportName] !== serverKernel[exportName]) {

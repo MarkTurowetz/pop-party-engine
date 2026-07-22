@@ -17,5 +17,12 @@ module.exports = Object.freeze({
   ...require("./flow-state-kind-runtime"),
   ...require("./decision-runtime"),
   ...require("./decision-action-normalization-runtime"),
-  ...require("./game-flow-merge-runtime")
+  ...require("./game-flow-merge-runtime"),
+  ...require("./app-version"),
+  ...require("./http-utils"),
+  ...require("./network-urls-runtime"),
+  ...require("./local-json-store"),
+  ...require("./router-runtime"),
+  ...require("./static-files-runtime"),
+  ...require("./stage-events-runtime")
 });
