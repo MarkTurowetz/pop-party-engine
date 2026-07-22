@@ -54,6 +54,25 @@ describe("local content bundle provider", () => {
     expect(() => snapshot.readJson("unlisted.json")).toThrow(/not declared/);
   });
 
+  it("exposes a complete active release for room pinning and game definitions", () => {
+    const { root, manifest } = writeFixture();
+    const provider = createLocalContentBundleProvider({
+      root,
+      gameBuild: "0.1.0",
+      engineVersion: "1.0.0",
+      pluginVersion: "0.1.0"
+    });
+
+    expect(provider.getActiveRelease()).toMatchObject({
+      gameId: "example-game",
+      gameBuild: "0.1.0",
+      engineVersion: "1.0.0",
+      pluginVersion: "0.1.0",
+      contentRevision: manifest.rootHash
+    });
+    expect(provider.getActiveRelease().releaseRevision).toMatch(/^[a-f0-9]{64}$/);
+  });
+
   it("fails closed on changed bytes", () => {
     const { root } = writeFixture(({ root }) => {
       fs.writeFileSync(path.join(root, "flow.json"), "changed\n");

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "gameId": "pop-party-reference",
+  "engineContentSchemaVersion": "1.0.0",
+  "flowExpressionLanguageVersion": 1,
+  "gameMigrationLevel": 0,
+  "semanticRolesPath": "semantic-roles.json",
+  "files": [
+    {
+      "path": "art/manifest.json",
+      "sha256": "27eea66c3e9e68b99f6846424814d36b4ae00d750fbf44eeeda4701f8ead749f",
+      "bytes": 278342
+    },
+    {
+      "path": "audio/host-audios.json",
+      "sha256": "2450d81b9ef4ab3d964e4074c97068fb46c1ed3737b0cd3e8f7dc3deec3f506a",
+      "bytes": 23
+    },
+    {
+      "path": "blobs/1c14e1db26cfb96105b2cbf60591a18329834078cc65e14373715d4ec06f07ef.svg",
+      "sha256": "1c14e1db26cfb96105b2cbf60591a18329834078cc65e14373715d4ec06f07ef",
+      "bytes": 280
+    },
+    {
+      "path": "blobs/2d1298fc8597b4b13dc74c8a4093ce7c8d6027ef955c4af31ed6a6d03034d527.svg",
+      "sha256": "2d1298fc8597b4b13dc74c8a4093ce7c8d6027ef955c4af31ed6a6d03034d527",
+      "bytes": 174
+    },
+    {
+      "path": "blobs/4d1b3ad12d64d7f145e282dc44b2c510d8cc36c0a609fcef831fe9c59270bf35.svg",
+      "sha256": "4d1b3ad12d64d7f145e282dc44b2c510d8cc36c0a609fcef831fe9c59270bf35",
+      "bytes": 370
+    },
+    {
+      "path": "blobs/7a3a06ea1280a916254e2af034762e798b11e45f5eb7a1f4e0ba1a3ad4b8af48.svg",
+      "sha256": "7a3a06ea1280a916254e2af034762e798b11e45f5eb7a1f4e0ba1a3ad4b8af48",
+      "bytes": 130
+    },
+    {
+      "path": "blobs/8785460bf8b2311bfd2a5c06e97f9faac0deafd584b8f3de428c38399e2df16d.svg",
+      "sha256": "8785460bf8b2311bfd2a5c06e97f9faac0deafd584b8f3de428c38399e2df16d",
+      "bytes": 332
+    },
+    {
+      "path": "blobs/8dbc40965debd1f9f516461ed2b6ca0dd95557f8a762dbeaf67459e4b343497a.svg",
+      "sha256": "8dbc40965debd1f9f516461ed2b6ca0dd95557f8a762dbeaf67459e4b343497a",
+      "bytes": 377
+    },
+    {
+      "path": "blobs/a531c3ee6f5bfa5b478b6ecda5799f1031ceea367ca9d93585545b3de0ed34d7.svg",
+      "sha256": "a531c3ee6f5bfa5b478b6ecda5799f1031ceea367ca9d93585545b3de0ed34d7",
+      "bytes": 328
+    },
+    {
+      "path": "blobs/d54e3eae53b88a705370aa028c3ea55297d549e3521aca6a41435f87e4a18167.svg",
+      "sha256": "d54e3eae53b88a705370aa028c3ea55297d549e3521aca6a41435f87e4a18167",
+      "bytes": 325
+    },
+    {
+      "path": "constants.json",
+      "sha256": "3697f8564f6b3d78d948613f23e7a15231b75013002bc4acc923fa4c5a4ad828",
+      "bytes": 198
+    },
+    {
+      "path": "flow.json",
+      "sha256": "fa8d18f055dd2f4e8d2e0b20dde032d8e05813d49526a70663482fd50a4dd8a4",
+      "bytes": 42838
+    },
+    {
+      "path": "layouts/controller.json",
+      "sha256": "813dd0abe675735b122c460cef54bad554c0e7ca34c231dfc4eb3a31512aef13",
+      "bytes": 14992
+    },
+    {
+      "path": "layouts/stage.json",
+      "sha256": "4823bad15042d262d3b7c1a4d61c1ae8ab1705a25b68eadd48857867be2fd3f7",
+      "bytes": 4348
+    },
+    {
+      "path": "prompts/prompts.json",
+      "sha256": "9be35091164c689d2517bc66536d1a0016460379451c7670cc4c46cdc549e71f",
+      "bytes": 2440
+    },
+    {
+      "path": "semantic-roles.json",
+      "sha256": "33b3ee5753265d16abd8680dc62b0514bcafca32d2a9f777328ee42c5a65a705",
+      "bytes": 18
+    }
+  ],
+  "rootHash": "591122fdccb56d1cf016199a6f416e5e0dd9ff956de836cb85a58425eada753c"
+}

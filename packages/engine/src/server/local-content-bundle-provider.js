@@ -10,6 +10,7 @@ const {
   rootHashInput
 } = require("../shared/content-bundle-schema");
 const { createContentSnapshot } = require("./content-snapshot-runtime");
+const { createReleaseRecord } = require("./revisioned-content-store-runtime");
 
 function sha256(bytes) {
   return crypto.createHash("sha256").update(bytes).digest("hex");
@@ -37,6 +38,11 @@ function createLocalContentBundleProvider(options = {}) {
   const root = path.resolve(options.root || "");
   const maxFileBytes = Number(options.maxFileBytes || 5 * 1024 * 1024);
   const maxBundleBytes = Number(options.maxBundleBytes || 25 * 1024 * 1024);
+  const releaseMetadata = Object.freeze({
+    gameBuild: String(options.gameBuild || "development"),
+    engineVersion: String(options.engineVersion || "development"),
+    pluginVersion: String(options.pluginVersion || "development")
+  });
   if (!root || !fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
     throw new Error(`Local content bundle root is not a directory: ${root}`);
   }
@@ -80,7 +86,16 @@ function createLocalContentBundleProvider(options = {}) {
     return snapshot;
   }
 
-  return Object.freeze({ kind: "local-bundle", loadPublishedRevision });
+  function getActiveRelease() {
+    const snapshot = loadSnapshot();
+    return createReleaseRecord({
+      ...releaseMetadata,
+      gameId: snapshot.manifest.gameId,
+      contentRevision: snapshot.revision
+    });
+  }
+
+  return Object.freeze({ getActiveRelease, kind: "local-bundle", loadPublishedRevision });
 }
 
 module.exports = { assertContainedFile, createLocalContentBundleProvider, sha256 };

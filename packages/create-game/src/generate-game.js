@@ -70,7 +70,7 @@ function generatedGameDataSource() {
 }
 
 function generatedConfigSource({ displayName, engineVersion, gameId, pluginNamespace }) {
-  return `"use strict";\n\nconst path = require("node:path");\nconst { createLocalContentBundleProvider } = require("@pop-party/engine");\nconst { defineGame } = require("@pop-party/engine/game");\nconst { defineGamePlugin } = require("@pop-party/engine/plugin");\nconst gameData = require("./game-data");\n\nconst plugin = defineGamePlugin({\n  namespace: ${JSON.stringify(pluginNamespace)},\n  register() {}\n});\n\nmodule.exports = defineGame({\n  gameId: ${JSON.stringify(gameId)},\n  displayName: ${JSON.stringify(displayName)},\n  version: "0.1.0",\n  engineCompatibility: ${JSON.stringify(engineVersion)},\n  content: {\n    mode: "bundle",\n    schemaVersion: 1,\n    store: createLocalContentBundleProvider({ root: path.join(__dirname, "content") })\n  },\n  gameData,\n  plugin,\n  semanticRoles: {}\n});\n`;
+  return `"use strict";\n\nconst path = require("node:path");\nconst { createLocalContentBundleProvider } = require("@pop-party/engine");\nconst { defineGame } = require("@pop-party/engine/game");\nconst { defineGamePlugin } = require("@pop-party/engine/plugin");\nconst gameData = require("./game-data");\n\nconst plugin = defineGamePlugin({\n  namespace: ${JSON.stringify(pluginNamespace)},\n  register() {}\n});\n\nmodule.exports = defineGame({\n  gameId: ${JSON.stringify(gameId)},\n  displayName: ${JSON.stringify(displayName)},\n  version: "0.1.0",\n  engineCompatibility: ${JSON.stringify(engineVersion)},\n  content: {\n    mode: "bundle",\n    schemaVersion: 1,\n    store: createLocalContentBundleProvider({\n      root: path.join(__dirname, "content"),\n      gameBuild: "0.1.0",\n      engineVersion: ${JSON.stringify(engineVersion)},\n      pluginVersion: "0.1.0"\n    })\n  },\n  gameData,\n  plugin,\n  semanticRoles: {}\n});\n`;
 }
 
 function rewriteBundleGameId(contentRoot, gameId) {
@@ -115,7 +115,7 @@ function generateGame(options = {}) {
     writeText(stagingRoot, "game.config.js", generatedConfigSource({ displayName, engineVersion, gameId, pluginNamespace }));
     writeText(stagingRoot, ".gitignore", "node_modules/\n.env\noutputs/\n");
     writeText(stagingRoot, "README.md", `# ${displayName}\n\nIndependent Pop Party game using \`@pop-party/engine@${engineVersion}\`.\n`);
-    writeText(stagingRoot, "CONTENT-LICENSE", "Canonical starter art and content were copied into this game under CC0-1.0. This copy is owned and editable by this game.\n");
+    writeText(stagingRoot, "CONTENT-LICENSE", "Canonical starter art and content were copied into this game under CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/). This copy is owned and editable by this game.\n");
     if (fs.existsSync(targetRoot)) fs.rmdirSync(targetRoot);
     fs.renameSync(stagingRoot, targetRoot);
   } catch (error) {

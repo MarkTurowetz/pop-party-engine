@@ -1,0 +1,1594 @@
+{
+  "states": [
+    {
+      "id": "lobby",
+      "name": "Lobby Game State",
+      "nodePosition": {
+        "x": 90,
+        "y": 80
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 1276
+      },
+      "entryTargetActionId": "lobby-action-mqojohry",
+      "nextStateTargetId": "route-action-mqqwadxk-oji3m",
+      "actions": [
+        {
+          "id": "lobby-countdown-complete",
+          "name": "On Countdown Complete",
+          "type": "transitionState",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "lobby-action-mqprlx3p",
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "subActions": [],
+          "trigger": "onCountdownComplete",
+          "targetState": "intro"
+        },
+        {
+          "id": "lobby-action-mqojohry",
+          "name": "Setup Game",
+          "type": "setupGame",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "lobby-action-mqpt9z90"
+        },
+        {
+          "id": "lobby-action-mqprlx3p",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          },
+          "nextTargetActionId": "return"
+        },
+        {
+          "id": "lobby-action-mqpt9z90",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "nextTargetActionId": "lobby-countdown-complete"
+        }
+      ]
+    },
+    {
+      "id": "intro",
+      "name": "Game Intro Game State",
+      "nodePosition": {
+        "x": 90,
+        "y": 300
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 1022
+      },
+      "entryTargetActionId": "intro-action-mqprm6ln",
+      "nextStateTargetId": "round-intro-game-state",
+      "actions": [
+        {
+          "id": "intro-present-1",
+          "name": "Present Intro Text",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "intro-action-mqprim01",
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "subActions": [],
+          "text": "This is the Game Intro State",
+          "textTarget": "stagepresentationtext",
+          "isShown": true,
+          "instant": false,
+          "stageClickTargetActionId": "intro-action-mqprim01"
+        },
+        {
+          "id": "intro-action-mqprim01",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "nextTargetActionId": "return"
+        },
+        {
+          "id": "intro-action-mqprm6ln",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "intro-present-1"
+        }
+      ]
+    },
+    {
+      "id": "round-intro-game-state",
+      "name": "Round Intro Game State",
+      "nodePosition": {
+        "x": 90,
+        "y": 520
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 1022
+      },
+      "entryTargetActionId": "round-intro-game-state-action-mqprj88i",
+      "nextStateTargetId": "crafting-game-state",
+      "actions": [
+        {
+          "id": "round-intro-action-mqkg361r",
+          "name": "Present Text",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "round-intro-game-state-action-mqprjpxb",
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "subActions": [],
+          "text": "Round <ROUND_NUMBER>",
+          "textTarget": "roundintrotext",
+          "isShown": true,
+          "instant": false,
+          "stageClickTargetActionId": "round-intro-game-state-action-mqprjpxb"
+        },
+        {
+          "id": "round-intro-game-state-action-mqprj88i",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "round-intro-action-mqkg361r"
+        },
+        {
+          "id": "round-intro-game-state-action-mqprjpxb",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "nextTargetActionId": "return"
+        }
+      ]
+    },
+    {
+      "id": "crafting-game-state",
+      "name": "Crafting Game State",
+      "nodePosition": {
+        "x": 90,
+        "y": 750
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 3658
+      },
+      "entryTargetActionId": "crafting-game-state-action-mqprk697",
+      "nextStateTargetId": "presentation-game-state",
+      "actions": [
+        {
+          "id": "crafting-game-state-action-mqlafl8m",
+          "name": "Present Text",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4qzpm",
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "subActions": [],
+          "text": "We are in the Crafting State",
+          "textTarget": "crafting-game-statemomenttext",
+          "isShown": true,
+          "instant": false,
+          "stageClickTargetActionId": "crafting-game-state-action-mqn4qzpm"
+        },
+        {
+          "id": "crafting-game-state-action-mqn4qzpm",
+          "name": "Get Random Multiple Choice Content",
+          "type": "getRandomMultipleChoiceContent",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlrgs0y",
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "subActions": [],
+          "variableName": "multipleChoicePrompt"
+        },
+        {
+          "id": "crafting-game-state-action-mqlrgs0y",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlronl5",
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          },
+          "subActions": [],
+          "isShown": true,
+          "instant": false
+        },
+        {
+          "id": "crafting-game-state-action-mqlronl5",
+          "name": "Start Crafting Timer",
+          "type": "startCraftingTimer",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlrlkp0",
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          },
+          "subActions": []
+        },
+        {
+          "id": "crafting-game-state-action-mqlrlkp0",
+          "name": "Trivia Input",
+          "type": "triviaInput",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 670,
+            "y": 1530
+          },
+          "subActions": [
+            {
+              "id": "crafting-game-state-sub-action-mqlsquow",
+              "name": "Sub-Action 1",
+              "type": "displayText",
+              "category": "standard",
+              "timing": {
+                "mode": "S+",
+                "seconds": 1
+              },
+              "nextTargetActionId": "",
+              "nodePosition": null,
+              "subActions": [],
+              "text": "Answer the prompt on your device now!",
+              "textTarget": "stageprompttext",
+              "isShown": true,
+              "instant": false
+            }
+          ],
+          "contentVariable": "multipleChoicePrompt",
+          "inputMode": "submitOnce",
+          "locked": false,
+          "randomizeOptions": true,
+          "timerEndTargetActionId": "crafting-game-state-action-mqmxj25v",
+          "answersSubmittedTargetActionId": "crafting-game-state-action-mqmxj25v"
+        },
+        {
+          "id": "crafting-game-state-action-mqmxj25v",
+          "name": "Display Text",
+          "type": "displayText",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0.5
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4u54c",
+          "nodePosition": {
+            "x": 670,
+            "y": 1832
+          },
+          "subActions": [
+            {
+              "id": "crafting-game-state-sub-action-mqnagmsc",
+              "name": "Sub-Action 1",
+              "type": "setTimerShown",
+              "category": "standard",
+              "timing": {
+                "mode": "S+",
+                "seconds": 0
+              },
+              "nextTargetActionId": "",
+              "nodePosition": null,
+              "subActions": [],
+              "isShown": false,
+              "instant": false
+            }
+          ],
+          "text": "Presented text",
+          "textTarget": "stageprompttext",
+          "isShown": false,
+          "instant": false
+        },
+        {
+          "id": "crafting-game-state-action-mqn4u54c",
+          "name": "Set Player Answers Shown",
+          "type": "setPlayerAnswersShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1.5
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn9u17o",
+          "nodePosition": {
+            "x": 670,
+            "y": 2134
+          },
+          "subActions": [],
+          "isShown": true,
+          "instant": false,
+          "playerFilter": "all"
+        },
+        {
+          "id": "crafting-game-state-action-mqn9u17o",
+          "name": "Reveal Player Answer Correctness",
+          "type": "revealPlayerAnswerCorrectness",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4uouf",
+          "nodePosition": {
+            "x": 670,
+            "y": 2388
+          },
+          "subActions": []
+        },
+        {
+          "id": "crafting-game-state-action-mqn4uouf",
+          "name": "Set Player Answers Shown 1",
+          "type": "setPlayerAnswersShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0.5
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4v75w",
+          "nodePosition": {
+            "x": 670,
+            "y": 2642
+          },
+          "subActions": [],
+          "isShown": false,
+          "instant": false,
+          "playerFilter": "wrong"
+        },
+        {
+          "id": "crafting-game-state-action-mqn4v75w",
+          "name": "Show Points",
+          "type": "showPoints",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqn4xkyp",
+          "nodePosition": {
+            "x": 670,
+            "y": 2896
+          },
+          "subActions": [],
+          "playerFilter": "correct",
+          "points": 0
+        },
+        {
+          "id": "crafting-game-state-action-mqn4xkyp",
+          "name": "Set Player Answers Shown 2",
+          "type": "setPlayerAnswersShown",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqprkq1k",
+          "nodePosition": {
+            "x": 670,
+            "y": 3150
+          },
+          "subActions": [],
+          "isShown": false,
+          "instant": false,
+          "playerFilter": "all"
+        },
+        {
+          "id": "crafting-game-state-action-mqprk697",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "crafting-game-state-action-mqlafl8m"
+        },
+        {
+          "id": "crafting-game-state-action-mqprkq1k",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 3404
+          },
+          "nextTargetActionId": "return"
+        }
+      ]
+    },
+    {
+      "id": "presentation-game-state",
+      "name": "Presentation Game State",
+      "nodePosition": {
+        "x": 90,
+        "y": 960
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 1674
+      },
+      "entryTargetActionId": "presentation-game-state-action-mqpt8zt1",
+      "nextStateTargetId": "scoreboard-game-state",
+      "actions": [
+        {
+          "id": "presentation-game-state-action-mqlahhim",
+          "name": "Present Text",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "presentation-game-state-action-mqlstve7",
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "subActions": [],
+          "text": "We are in the Presentation Game State",
+          "textTarget": "presentation-game-statemomenttext",
+          "isShown": true,
+          "instant": false,
+          "stageClickTargetActionId": "presentation-game-state-action-mqlstve7"
+        },
+        {
+          "id": "presentation-game-state-action-mqlstve7",
+          "name": "Decision",
+          "type": "decision",
+          "category": "standard",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "",
+          "nodePosition": {
+            "x": 640,
+            "y": 768
+          },
+          "subActions": [],
+          "variable": "players.length",
+          "valueType": "int",
+          "branches": [
+            {
+              "id": "legacy-hit",
+              "type": "hit",
+              "value": "3",
+              "code": "x < 3",
+              "targetActionId": "presentation-game-state-action-mqmt6c5d"
+            },
+            {
+              "id": "code-mqmt62zz-g9t5x",
+              "type": "code",
+              "value": "",
+              "code": "x > 3",
+              "targetActionId": "presentation-game-state-action-mqmt6p8z"
+            },
+            {
+              "id": "no-match",
+              "type": "noMatch",
+              "value": "",
+              "code": "x < 3",
+              "targetActionId": "presentation-game-state-action-mqpt4iz8"
+            }
+          ]
+        },
+        {
+          "id": "presentation-game-state-action-mqmt6c5d",
+          "name": "Present Text 1",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 490,
+            "y": 1166
+          },
+          "subActions": [],
+          "text": "there are 3 players",
+          "textTarget": "presentation-game-statemomenttext",
+          "isShown": true,
+          "instant": false,
+          "stageClickTargetActionId": "presentation-game-state-action-mqpt4iz8"
+        },
+        {
+          "id": "presentation-game-state-action-mqmt6p8z",
+          "name": "Present Text 2",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "return",
+          "nodePosition": {
+            "x": 850,
+            "y": 1166
+          },
+          "subActions": [],
+          "text": "there are more than 3 players",
+          "textTarget": "presentation-game-statemomenttext",
+          "isShown": true,
+          "instant": false,
+          "stageClickTargetActionId": "presentation-game-state-action-mqpt4iz8"
+        },
+        {
+          "id": "presentation-game-state-action-mqpt4iz8",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1420
+          },
+          "nextTargetActionId": "return"
+        },
+        {
+          "id": "presentation-game-state-action-mqpt8zt1",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "presentation-game-state-action-mqlahhim"
+        }
+      ]
+    },
+    {
+      "id": "scoreboard-game-state",
+      "name": "Scoreboard Game State",
+      "nodePosition": {
+        "x": 90,
+        "y": 1180
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 1022
+      },
+      "entryTargetActionId": "scoreboard-game-state-action-mqpt5dmx",
+      "nextStateTargetId": "writing-moment",
+      "actions": [
+        {
+          "id": "scoreboard-game-state-action-mqlaj01s",
+          "name": "Present Text",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "scoreboard-game-state-action-mqlajev8",
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "subActions": [],
+          "text": "We are in the Scoreboard State",
+          "textTarget": "scoreboard-game-statemomenttext",
+          "isShown": true,
+          "instant": false,
+          "stageClickTargetActionId": "scoreboard-game-state-action-mqpt5mx5"
+        },
+        {
+          "id": "scoreboard-game-state-action-mqpt5dmx",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "scoreboard-game-state-action-mqlaj01s"
+        },
+        {
+          "id": "scoreboard-game-state-action-mqpt5mx5",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "nextTargetActionId": "return"
+        }
+      ]
+    },
+    {
+      "id": "post-game-state",
+      "name": "Post Game State",
+      "nodePosition": {
+        "x": 1652,
+        "y": 1474
+      },
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 1022
+      },
+      "entryTargetActionId": "post-game-state-action-mqpt63ca",
+      "nextStateTargetId": "lobby",
+      "actions": [
+        {
+          "id": "post-game-state-action-mqlak7zw",
+          "name": "Present Text",
+          "type": "presentText",
+          "category": "input",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "post-game-state-action-mqlakl0m",
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          },
+          "subActions": [],
+          "text": "We are in the Post Game State",
+          "textTarget": "post-game-statemomenttext",
+          "isShown": true,
+          "instant": false,
+          "stageClickTargetActionId": "post-game-state-action-mqpt6apm"
+        },
+        {
+          "id": "post-game-state-action-mqpt63ca",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "post-game-state-action-mqlak7zw"
+        },
+        {
+          "id": "post-game-state-action-mqpt6apm",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          },
+          "nextTargetActionId": "return"
+        }
+      ]
+    },
+    {
+      "id": "writing-moment",
+      "name": "Writing Moment",
+      "nextStateTargetId": "voting-moment",
+      "entryTargetActionId": "writing-moment-action-mqpsey1p",
+      "nodePositions": {
+        "start": {
+          "x": 360,
+          "y": 60
+        },
+        "return": {
+          "x": 360,
+          "y": 860
+        },
+        "writing-show-prompt": {
+          "x": 320,
+          "y": 190
+        },
+        "writing-show-timer": {
+          "x": 320,
+          "y": 340
+        },
+        "writing-start-timer": {
+          "x": 320,
+          "y": 490
+        },
+        "writing-text-input": {
+          "x": 320,
+          "y": 640
+        },
+        "writing-prepare-cards": {
+          "x": 700,
+          "y": 640
+        },
+        "writing-to-voting": {
+          "x": 700,
+          "y": 790
+        }
+      },
+      "actions": [
+        {
+          "id": "writing-show-prompt",
+          "name": "Display Text",
+          "type": "displayText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "textTarget": "writing-moment-moment-text",
+          "text": "What is your favorite movie?",
+          "isShown": true,
+          "instant": false,
+          "nextTargetActionId": "writing-show-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          }
+        },
+        {
+          "id": "writing-show-timer",
+          "name": "Show Writing Timer",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "isShown": true,
+          "instant": false,
+          "nextTargetActionId": "writing-start-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          }
+        },
+        {
+          "id": "writing-start-timer",
+          "name": "Start Writing Timer",
+          "type": "startCraftingTimer",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "writing-text-input",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          }
+        },
+        {
+          "id": "writing-text-input",
+          "name": "Write Favorite Movie",
+          "type": "textSubmissionInput",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "prompt": "What is your favorite movie?",
+          "placeholder": "Write a movie title",
+          "characterLimit": 80,
+          "timerEndTargetActionId": "writing-moment-action-mqork62r",
+          "answersSubmittedTargetActionId": "writing-moment-action-mqork62r",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          }
+        },
+        {
+          "id": "writing-moment-action-mqork62r",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1530
+          },
+          "nextTargetActionId": "writing-moment-action-mqpt6uvj"
+        },
+        {
+          "id": "writing-moment-action-mqpsey1p",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "writing-show-prompt"
+        },
+        {
+          "id": "writing-moment-action-mqpt6uvj",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1784
+          },
+          "nextTargetActionId": "return"
+        }
+      ],
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 2038
+      },
+      "nodePosition": {
+        "x": 461,
+        "y": 1422
+      }
+    },
+    {
+      "id": "voice-moment",
+      "name": "Voice Moment",
+      "nextStateTargetId": "voting-moment",
+      "entryTargetActionId": "voice-mic-access",
+      "nodePositions": {
+        "start": {
+          "x": 360,
+          "y": 60
+        },
+        "return": {
+          "x": 360,
+          "y": 860
+        },
+        "voice-mic-access": {
+          "x": 320,
+          "y": 40
+        },
+        "voice-show-prompt": {
+          "x": 320,
+          "y": 190
+        },
+        "voice-show-timer": {
+          "x": 320,
+          "y": 340
+        },
+        "voice-start-timer": {
+          "x": 320,
+          "y": 490
+        },
+        "voice-text-input": {
+          "x": 320,
+          "y": 640
+        },
+        "voice-prepare-cards": {
+          "x": 700,
+          "y": 640
+        },
+        "voice-to-voting": {
+          "x": 700,
+          "y": 790
+        }
+      },
+      "actions": [
+        {
+          "id": "voice-mic-access",
+          "name": "Request Microphone Access",
+          "type": "requestMicrophoneAccessInput",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "prompt": "Give microphone access to the game",
+          "buttonLabel": "Yes",
+          "microphoneAccessMode": "vip",
+          "microphoneAccessGrantedTargetActionId": "voice-moment-action-mqpsey1p",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 6
+          }
+        },
+        {
+          "id": "voice-show-prompt",
+          "name": "Display Text",
+          "type": "displayText",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "textTarget": "voice-moment-moment-text",
+          "text": "What is your favorite movie?",
+          "isShown": true,
+          "instant": false,
+          "nextTargetActionId": "voice-show-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          }
+        },
+        {
+          "id": "voice-show-timer",
+          "name": "Show Voice Timer",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "isShown": true,
+          "instant": false,
+          "nextTargetActionId": "voice-start-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          }
+        },
+        {
+          "id": "voice-start-timer",
+          "name": "Start Voice Timer",
+          "type": "startCraftingTimer",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voice-text-input",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          }
+        },
+        {
+          "id": "voice-text-input",
+          "name": "Say Favorite Movie",
+          "type": "voiceSubmissionInput",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "prompt": "What is your favorite movie?",
+          "placeholder": "Speak a movie title",
+          "characterLimit": 80,
+          "timerEndTargetActionId": "voice-moment-action-mqork62r",
+          "answersSubmittedTargetActionId": "voice-moment-action-mqork62r",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          }
+        },
+        {
+          "id": "voice-moment-action-mqork62r",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1530
+          },
+          "nextTargetActionId": "voice-moment-action-mqpt6uvj"
+        },
+        {
+          "id": "voice-moment-action-mqpsey1p",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "voice-show-prompt"
+        },
+        {
+          "id": "voice-moment-action-mqpt6uvj",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1784
+          },
+          "nextTargetActionId": "return"
+        }
+      ],
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 2038
+      },
+      "nodePosition": {
+        "x": 811,
+        "y": 1424
+      }
+    },
+    {
+      "id": "voting-moment",
+      "name": "Voting Moment",
+      "entryTargetActionId": "voting-moment-action-mqpt7alu",
+      "nodePositions": {
+        "start": {
+          "x": 420,
+          "y": 60
+        },
+        "return": {
+          "x": 420,
+          "y": 1180
+        },
+        "voting-show-cards": {
+          "x": 380,
+          "y": 190
+        },
+        "voting-show-timer": {
+          "x": 380,
+          "y": 340
+        },
+        "voting-start-timer": {
+          "x": 380,
+          "y": 490
+        },
+        "voting-input": {
+          "x": 380,
+          "y": 640
+        },
+        "voting-reveal-results": {
+          "x": 380,
+          "y": 790
+        },
+        "voting-hide-losing-cards": {
+          "x": 380,
+          "y": 940
+        },
+        "voting-show-winner-points": {
+          "x": 120,
+          "y": 1090
+        },
+        "voting-bank-points": {
+          "x": 640,
+          "y": 1090
+        }
+      },
+      "actions": [
+        {
+          "id": "voting-show-cards",
+          "name": "Set Voting Cards Shown 1",
+          "type": "setVotingCardsShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "isShown": true,
+          "cardFilter": "all",
+          "instant": false,
+          "nextTargetActionId": "voting-show-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 514
+          }
+        },
+        {
+          "id": "voting-show-timer",
+          "name": "Show Voting Timer",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "isShown": true,
+          "instant": false,
+          "nextTargetActionId": "voting-start-timer",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 768
+          }
+        },
+        {
+          "id": "voting-start-timer",
+          "name": "Start Voting Timer",
+          "type": "startCraftingTimer",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voting-input",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1022
+          }
+        },
+        {
+          "id": "voting-input",
+          "name": "Vote On Favorite Answer",
+          "type": "voteOnAnswersInput",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "prompt": "Vote for your favorite movie answer",
+          "timerEndTargetActionId": "voting-moment-action-mqoipyj9",
+          "answersSubmittedTargetActionId": "voting-moment-action-mqoipyj9",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1276
+          },
+          "nextTargetActionId": "voting-moment-action-mqoipyj9"
+        },
+        {
+          "id": "voting-show-winner-points",
+          "name": "Show Winner Points",
+          "type": "showPoints",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "playerFilter": "votingWinner",
+          "points": 500,
+          "nextTargetActionId": "voting-bank-points",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 2546
+          }
+        },
+        {
+          "id": "voting-bank-points",
+          "name": "Bank Winner Points",
+          "type": "givePendingPoints",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "nextTargetActionId": "voting-moment-action-mqoit5wq",
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 2800
+          }
+        },
+        {
+          "id": "voting-moment-action-mqoipyj9",
+          "name": "Set Timer Shown",
+          "type": "setTimerShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1530
+          },
+          "nextTargetActionId": "voting-moment-action-mqoir6xh"
+        },
+        {
+          "id": "voting-moment-action-mqoir6xh",
+          "name": "Reveal Authors",
+          "type": "revealAuthors",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 1784
+          },
+          "nextTargetActionId": "voting-moment-action-mqoirmjb"
+        },
+        {
+          "id": "voting-moment-action-mqoirmjb",
+          "name": "Reveal Votes",
+          "type": "revealVotes",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 2038
+          },
+          "nextTargetActionId": "voting-moment-action-mqoirt4e"
+        },
+        {
+          "id": "voting-moment-action-mqoirt4e",
+          "name": "Reveal Winning Answer",
+          "type": "revealWinningAnswer",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1.5
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 2292
+          },
+          "nextTargetActionId": "voting-show-winner-points"
+        },
+        {
+          "id": "voting-moment-action-mqoit5wq",
+          "name": "Set Voting Cards Shown",
+          "type": "setVotingCardsShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 1
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 3054
+          },
+          "cardFilter": "all",
+          "nextTargetActionId": "voting-moment-action-mqpt7iwq"
+        },
+        {
+          "id": "voting-moment-action-mqpt7alu",
+          "name": "Set Wipe Shown",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": false,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 260
+          },
+          "nextTargetActionId": "voting-show-cards"
+        },
+        {
+          "id": "voting-moment-action-mqpt7iwq",
+          "name": "Set Wipe Shown 1",
+          "type": "setWipeShown",
+          "timing": {
+            "mode": "E+",
+            "seconds": 0
+          },
+          "text": "Presented text",
+          "textTarget": "",
+          "instant": false,
+          "isShown": true,
+          "subActions": [],
+          "nodePosition": {
+            "x": 670,
+            "y": 3308
+          },
+          "nextTargetActionId": "return"
+        }
+      ],
+      "nextStateTargetId": "post-game-state",
+      "startNodePosition": {
+        "x": 715,
+        "y": 70
+      },
+      "returnNodePosition": {
+        "x": 705,
+        "y": 3562
+      },
+      "nodePosition": {
+        "x": 589,
+        "y": 1814
+      }
+    }
+  ],
+  "routeNodes": [
+    {
+      "id": "route-action-mqqwadxk-oji3m",
+      "routeNodeType": "action",
+      "name": "Decision",
+      "type": "decision",
+      "timing": {
+        "mode": "E+",
+        "seconds": 0
+      },
+      "text": "Presented text",
+      "textTarget": "",
+      "instant": false,
+      "isShown": true,
+      "subActions": [],
+      "nextTargetNodeId": "",
+      "nodePosition": {
+        "x": 624,
+        "y": 1129
+      },
+      "variable": "activePlayerCount",
+      "valueType": "int",
+      "branches": [
+        {
+          "id": "legacy-hit",
+          "type": "code",
+          "value": "3",
+          "code": "x <= 3",
+          "targetNodeId": "voice-moment"
+        },
+        {
+          "id": "no-match",
+          "type": "noMatch",
+          "value": "",
+          "code": "x < 3",
+          "targetNodeId": "writing-moment"
+        }
+      ]
+    }
+  ]
+}
