@@ -64,4 +64,37 @@ describe("createControllerHeartbeatRuntime (ported)", () => {
     await pending;
     expect(renderState).not.toHaveBeenCalled();
   });
+
+  it("invalidates the controller identity when the server ends its game session", async () => {
+    const runtimeOptions = options();
+    const joinButton = { disabled: true } as HTMLButtonElement;
+    runtimeOptions.getControllerState = () => ({ playerId: "p1" });
+    runtimeOptions.getJoinButton = () => joinButton;
+    runtimeOptions.sendHeartbeat = vi.fn(async () => {
+      throw Object.assign(new Error("Game ended"), { code: "KICKED_TO_LOBBY" });
+    });
+    const runtime = createControllerHeartbeatRuntime(runtimeOptions);
+
+    await runtime.poll();
+
+    expect(runtimeOptions.setControllerState).toHaveBeenCalledWith(null);
+    expect(runtimeOptions.closeAvatarPicker).toHaveBeenCalledWith({ commit: false });
+    expect(runtimeOptions.hideViews).toHaveBeenCalledOnce();
+    expect(runtimeOptions.showView).toHaveBeenCalledWith("join");
+    expect(runtimeOptions.applyLayoutForPhase).toHaveBeenCalledWith("join");
+    expect(joinButton.disabled).toBe(false);
+  });
+
+  it("surfaces a reconnecting state for transient heartbeat failures", async () => {
+    const runtimeOptions = options();
+    const setText = vi.fn();
+    runtimeOptions.getControllerState = () => ({ playerId: "p1" });
+    runtimeOptions.sendHeartbeat = vi.fn(async () => { throw new Error("offline"); });
+    runtimeOptions.setText = setText;
+
+    await createControllerHeartbeatRuntime(runtimeOptions).poll();
+
+    expect(setText).toHaveBeenCalledWith(runtimeOptions.elements.meta, "Reconnecting to lobby");
+    expect(runtimeOptions.setControllerState).not.toHaveBeenCalled();
+  });
 });

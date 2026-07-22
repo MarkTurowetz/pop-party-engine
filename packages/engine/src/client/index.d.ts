@@ -1,4 +1,5 @@
 export * from "./action-completion-barrier";
+export * from "./controller-heartbeat-runtime";
 export * from "./controller-module-cache";
 export * from "./controller-session-runtime";
 export * from "./controller-submission-confirmation";

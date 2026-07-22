@@ -2,6 +2,7 @@
 
 module.exports = Object.freeze({
   ...require("./action-completion-barrier"),
+  ...require("./controller-heartbeat-runtime"),
   ...require("./controller-module-cache"),
   ...require("./controller-session-runtime"),
   ...require("./controller-submission-confirmation"),
