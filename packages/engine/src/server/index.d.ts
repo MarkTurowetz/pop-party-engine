@@ -52,3 +52,5 @@ export function resolveVotingAnswerSource(room: Record<string, unknown>, options
 export function createMomentRouteRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLobbyControlHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createStartHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createPlayerSessionHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createLobbyPayloadRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

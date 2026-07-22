@@ -111,7 +111,9 @@ try {
     ["room-phase-runtime", "createRoomPhaseRuntime"],
     ["moment-route-runtime", "createMomentRouteRuntime"],
     ["lobby-control-handlers-runtime", "createLobbyControlHandlersRuntime"],
-    ["start-handlers-runtime", "createStartHandlersRuntime"]
+    ["start-handlers-runtime", "createStartHandlersRuntime"],
+    ["player-session-handlers-runtime", "createPlayerSessionHandlersRuntime"],
+    ["lobby-payload-runtime", "createLobbyPayloadRuntime"]
   ];
   for (const [legacyModule, exportName] of serverKernelCompatibility) {
     if (require(path.join(root, "server", legacyModule))[exportName] !== serverKernel[exportName]) {

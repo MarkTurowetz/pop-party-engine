@@ -33,5 +33,7 @@ module.exports = Object.freeze({
   ...require("./room-phase-runtime"),
   ...require("./moment-route-runtime"),
   ...require("./lobby-control-handlers-runtime"),
-  ...require("./start-handlers-runtime")
+  ...require("./start-handlers-runtime"),
+  ...require("./player-session-handlers-runtime"),
+  ...require("./lobby-payload-runtime")
 });
