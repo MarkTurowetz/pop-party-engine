@@ -9,6 +9,7 @@ module.exports = Object.freeze({
   ...require("../server/tool-github-sources-runtime"),
   ...require("../server/save-handlers-runtime"),
   ...require("../server/art-asset-replacement-runtime"),
+  ...require("../server/art-composition-catalog-runtime"),
   ...require("../server/art-composition-dependency-runtime"),
   ...require("../server/art-file-runtime"),
   ...require("../server/art-manifest-store-runtime"),

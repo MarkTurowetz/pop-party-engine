@@ -7,6 +7,7 @@ export function createToolGithubSourcesRuntime(options: Record<string, unknown>)
 export function createSaveHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function normalizeArtAssetReplacementsDraft(source?: Record<string, unknown>, options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function parseArtAssetReplacement(source?: Record<string, unknown>, options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createArtCompositionCatalogRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function compositionRevision(composition: unknown): string;
 export function createArtCompositionDependencyReport(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createArtFileRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;

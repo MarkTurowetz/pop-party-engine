@@ -31,6 +31,7 @@ const { controllerButtonOverride } = require("../shared/controller-button-art");
 const { controllerPlayerBannerOverride } = require("./controller-player-banner-art-runtime");
 const { stageBackgroundOverride } = require("./stage-background-art-runtime");
 const { migratePlayerWidgetPointPopupAnchorComponents } = require("./player-widget-point-popup-anchor-runtime");
+const { createArtCompositionCatalogRuntime } = require("./art-composition-catalog-runtime");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
 const {
   normalizeArtAssetReplacementsDraft: normalizeArtAssetReplacementDraftCollection,
@@ -62,7 +63,6 @@ function createArtAssetsRuntime({
   writeArtManifestSource = null
 }) {
   artCompositions = artCompositions.map((composition) => migrateLegacyArtCompositionSchema(JSON.parse(JSON.stringify(composition))));
-  const knownCompositionIds = new Set(artCompositions.map((composition) => composition.id));
   const { loadArtManifest, readArtManifest, saveArtManifest } = createArtManifestStoreRuntime({
     directories: [artRoot, customDir],
     loadSource: loadArtManifestSource,
@@ -526,20 +526,26 @@ function createArtAssetsRuntime({
     return normalizeComposition(composition, explicitOverride || migratedChildOverride);
   }
 
-  function artCompositionManifestRecord(composition, updatedAt = null) {
-    return {
-      name: composition.name,
-      description: composition.description,
-      surface: composition.surface,
-      compositionKind: composition.compositionKind,
-      isCustom: composition.isCustom,
-      timelineArchitectureVersion: composition.timelineArchitectureVersion,
-      canvas: composition.canvas,
-      components: composition.components,
-      ...(composition.timeline ? { timeline: composition.timeline } : {}),
-      updatedAt: updatedAt || composition.updatedAt || new Date().toISOString()
-    };
-  }
+  const {
+    allPublicArtCompositions,
+    artCompositionManifestRecord,
+    deletedCompositionIds,
+    hasBaseComposition
+  } = createArtCompositionCatalogRuntime({
+    baseCompositions: artCompositions,
+    createCustomDefinition: (id, composition) => ({
+      id,
+      name: cleanText(composition?.name, "Art Asset"),
+      description: cleanText(composition?.description, "Editable art asset.", 240),
+      surface: normalizeCompositionSurface(composition?.surface),
+      compositionKind: normalizeCompositionKind(composition?.compositionKind),
+      isCustom: true,
+      canvas: composition?.canvas || { width: 560, height: 230 },
+      components: []
+    }),
+    normalizeComposition: publicArtComposition,
+    readDraftCompositions: () => localDraftStore?.artCompositions
+  });
 
   function materializeLegacyLobbyWidgetChild(manifest, parentCompositionId) {
     const childId = lobbyWidgetChildIdForParent(parentCompositionId);
@@ -551,48 +557,6 @@ function createArtAssetsRuntime({
     if (!derivedOverride || !childDefinition) return;
     const normalizedChild = normalizeComposition(childDefinition, derivedOverride);
     manifest.compositions[childId] = artCompositionManifestRecord(normalizedChild, derivedOverride.updatedAt);
-  }
-
-  function deletedCompositionIds(manifest) {
-    return new Set(Array.isArray(manifest.deletedCompositionIds)
-      ? manifest.deletedCompositionIds.map(cleanId).filter(Boolean)
-      : []);
-  }
-
-  function customArtCompositionDefinitions(manifest) {
-    const definitions = [];
-    const manifestCompositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
-    const deletedIds = deletedCompositionIds(manifest);
-    for (const [compositionId, composition] of Object.entries(manifestCompositions)) {
-      const id = cleanId(compositionId);
-      if (!id || knownCompositionIds.has(id) || deletedIds.has(id)) continue;
-      definitions.push({
-        id,
-        name: cleanText(composition?.name, "Art Asset"),
-        description: cleanText(composition?.description, "Editable art asset.", 240),
-        surface: normalizeCompositionSurface(composition?.surface),
-        compositionKind: normalizeCompositionKind(composition?.compositionKind),
-        isCustom: true,
-        canvas: composition?.canvas || { width: 560, height: 230 },
-        components: []
-      });
-    }
-    return definitions;
-  }
-
-  function allPublicArtCompositions(manifest) {
-    const deletedIds = deletedCompositionIds(manifest);
-    const compositions = [
-      ...artCompositions.filter((composition) => !deletedIds.has(composition.id)).map((composition) => publicArtComposition(composition, manifest)),
-      ...customArtCompositionDefinitions(manifest).map((composition) => publicArtComposition(composition, manifest))
-    ];
-    if (!Array.isArray(localDraftStore?.artCompositions)) return compositions;
-    const byId = new Map(compositions.map((composition) => [composition.id, composition]));
-    for (const composition of localDraftStore.artCompositions) {
-      if (!composition?.id || deletedIds.has(composition.id)) continue;
-      byId.set(composition.id, composition);
-    }
-    return [...byId.values()];
   }
 
   async function sendArtAssetList(res) {
@@ -812,7 +776,7 @@ function createArtAssetsRuntime({
     manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
     delete manifest.compositions[safeCompositionId];
     const deletedIds = deletedCompositionIds(manifest);
-    if (knownCompositionIds.has(safeCompositionId)) deletedIds.add(safeCompositionId);
+    if (hasBaseComposition(safeCompositionId)) deletedIds.add(safeCompositionId);
     manifest.deletedCompositionIds = [...deletedIds];
     const savedManifest = await saveArtManifest(manifest);
     if (Array.isArray(localDraftStore?.artCompositions)) {
@@ -884,7 +848,7 @@ function createArtAssetsRuntime({
     const deletedIds = deletedCompositionIds(candidate);
     for (const id of requestedIds) {
       delete candidate.compositions[id];
-      if (knownCompositionIds.has(id)) deletedIds.add(id);
+      if (hasBaseComposition(id)) deletedIds.add(id);
     }
     candidate.deletedCompositionIds = [...deletedIds];
     candidate.organization = removeDeletedCompositionOrganizationKeys(candidate.organization, deleting);
