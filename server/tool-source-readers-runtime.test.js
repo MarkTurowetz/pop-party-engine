@@ -7,6 +7,7 @@ const { createToolSourceReadersRuntime } = require("./tool-source-readers-runtim
 function runtime({ existing = [], readJsonFile = (file) => ({ file }) } = {}) {
   const normalize = (value) => ({ normalized: value });
   return createToolSourceReadersRuntime({
+    artManifestFile: "art-local.json",
     controllerLayoutsFile: "controller-local.json",
     defaultControllerLayoutsFile: "controller-seed.json",
     defaultGameConstantsFile: "constants-seed.json",
@@ -27,6 +28,16 @@ function runtime({ existing = [], readJsonFile = (file) => ({ file }) } = {}) {
 }
 
 describe("tool source reader provenance", () => {
+  it("allows an absent optional art override but rejects an invalid existing manifest", () => {
+    expect(runtime().readLocalArtManifestSource()).toEqual({});
+
+    const readers = runtime({
+      existing: ["art-local.json"],
+      readJsonFile: () => []
+    });
+    expect(() => readers.readLocalArtManifestSource()).toThrow(/Art manifest must be a JSON object/);
+  });
+
   it("uses a tracked game seed only when the optional local override is absent", () => {
     const readJsonFile = vi.fn((file) => ({ file }));
     const readers = runtime({ existing: ["flow-seed.json"], readJsonFile });

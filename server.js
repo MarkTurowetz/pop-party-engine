@@ -727,6 +727,7 @@ function cloneJson(value) {
 }
 
 const {
+  readLocalArtManifestSource,
   readDefaultControllerLayoutsSource,
   readDefaultGameConstantsSource,
   readDefaultGameFlowSource,
@@ -738,6 +739,7 @@ const {
   readLocalHostAudiosSource,
   readLocalStageLayoutsSource
 } = createToolSourceReadersRuntime({
+  artManifestFile: ART_MANIFEST_FILE,
   controllerLayoutsFile: CONTROLLER_LAYOUTS_FILE,
   defaultControllerLayoutsFile: DEFAULT_CONTROLLER_LAYOUTS_FILE,
   defaultGameConstantsFile: DEFAULT_GAME_CONSTANTS_FILE,
@@ -940,15 +942,6 @@ const {
 
 function readGameFlowSource() {
   return cloneJson(gameFlowStore.source || readDefaultGameFlowSource());
-}
-
-function readLocalArtManifestSource() {
-  try {
-    const manifest = readJsonFile(ART_MANIFEST_FILE);
-    return manifest && typeof manifest === "object" && !Array.isArray(manifest) ? manifest : {};
-  } catch (error) {
-    return {};
-  }
 }
 
 function readArtManifestSource() {

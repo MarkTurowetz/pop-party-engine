@@ -3,6 +3,7 @@
 const fs = require("fs");
 
 function createToolSourceReadersRuntime({
+  artManifestFile,
   controllerLayoutsFile,
   defaultControllerLayoutsFile,
   defaultGameConstantsFile,
@@ -56,6 +57,15 @@ function createToolSourceReadersRuntime({
     return readLocalOrSeed(gameFlowFile, readDefaultGameFlowSource);
   }
 
+  function readLocalArtManifestSource() {
+    if (!sourceFileExists(artManifestFile)) return {};
+    const manifest = readJsonFile(artManifestFile);
+    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+      throw new Error(`Art manifest must be a JSON object: ${artManifestFile}`);
+    }
+    return manifest;
+  }
+
   function readLocalGameConstantsSource() {
     return readLocalOrSeed(gameConstantsFile, readDefaultGameConstantsSource, normalizeGameConstants);
   }
@@ -78,6 +88,7 @@ function createToolSourceReadersRuntime({
     readDefaultGameFlowSource,
     readDefaultHostAudiosSource,
     readDefaultStageLayoutsSource,
+    readLocalArtManifestSource,
     readLocalControllerLayoutsSource,
     readLocalGameConstantsSource,
     readLocalGameFlowSource,

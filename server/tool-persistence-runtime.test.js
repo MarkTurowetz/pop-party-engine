@@ -49,6 +49,27 @@ describe("game flow persistence safeguards", () => {
     expect(gameFlowStore.loadedAt).toBe(0);
   });
 
+  it("rejects an invalid authoritative art manifest shape", async () => {
+    const artManifestStore = {
+      storageKind: "github",
+      source: {},
+      loadedAt: 0,
+      remoteSha: "",
+      error: ""
+    };
+    const runtime = createToolPersistenceRuntime({
+      artManifestGithubPath: "art-manifest.json",
+      artManifestStore,
+      githubToken: "token",
+      readArtManifestSource: () => artManifestStore.source,
+      readGithubJsonSource: vi.fn(async () => ({ data: [], sha: "bad" }))
+    });
+
+    await expect(runtime.loadArtManifestSource({ refresh: true })).rejects.toThrow(/Art manifest must be a JSON object/);
+    expect(artManifestStore.loadedAt).toBe(0);
+    expect(artManifestStore.remoteSha).toBe("");
+  });
+
   it("rejects duplicate nested action ids", () => {
     expect(() =>
       assertUniqueGameFlowIds({

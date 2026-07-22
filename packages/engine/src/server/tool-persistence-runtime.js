@@ -58,7 +58,10 @@ function createToolPersistenceRuntime({
   writeJsonFile,
 }) {
   function normalizeArtManifest(manifest) {
-    return manifest && typeof manifest === "object" && !Array.isArray(manifest) ? manifest : {};
+    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+      throw new Error("Art manifest must be a JSON object.");
+    }
+    return manifest;
   }
 
   async function loadSource({
