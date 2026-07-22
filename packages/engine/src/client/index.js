@@ -12,6 +12,7 @@ module.exports = Object.freeze({
   ...require("./controller-submit-api"),
   ...require("./controller-view-visit"),
   ...require("./controller-view-state"),
+  ...require("./controller-voice-input"),
   ...require("./distributed-container-layout"),
   ...require("./effective-timeline"),
   ...require("./http")

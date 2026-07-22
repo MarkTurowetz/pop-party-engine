@@ -9,6 +9,7 @@ export * from "./controller-submission-confirmation";
 export * from "./controller-submit-api";
 export * from "./controller-view-visit";
 export * from "./controller-view-state";
+export * from "./controller-voice-input";
 export * from "./distributed-container-layout";
 export * from "./effective-timeline";
 export * from "./http";
