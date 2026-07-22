@@ -82,6 +82,7 @@ try {
   }
   const serverKernel = localRequire("@pop-party/engine/server");
   const serverKernelCompatibility = [
+    ["value-normalizers", "normalizeStageCode"],
     ["runtime-fault-runtime", "createRuntimeFault"],
     ["action-effect-state-runtime", "createActionEffectStateRuntime"],
     ["dynamic-game-state-runtime", "applyDynamicGameStateCode"],

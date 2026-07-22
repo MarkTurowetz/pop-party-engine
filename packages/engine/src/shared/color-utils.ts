@@ -1,5 +1,5 @@
-// TypeScript source for the dual-use color helpers. Built to shared/color-utils.js via
-// `npm run build:shared`; the emitted .js is committed so a plain `node server.js` deploy
+// TypeScript source for the dual-use color helpers. Built inside the engine via
+// `npm run build:shared`; the emitted .js is mirrored to shared/ so a plain `node server.js` deploy
 // needs no build step. Authored as a classic script (IIFE, no top-level import/export) so
 // the emitted .js works as BOTH a CommonJS module (server require) and a browser global
 // (client bootLegacySurface), matching the rest of shared/.

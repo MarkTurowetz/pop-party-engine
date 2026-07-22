@@ -5,6 +5,12 @@ const { createAdminAuthRuntime } = require("@pop-party/engine/security/admin");
 const { createAdminAuditRuntime } = require("@pop-party/engine/security/audit");
 const {
   backupJsonFile,
+  cleanChoiceOptions,
+  cleanFlowText,
+  cleanLayoutSelector,
+  cleanLayoutText,
+  cleanPlayerName,
+  cleanSubmittedText,
   contentTypeForFile,
   createActionCompletionRuntime,
   createActionEffectStateRuntime,
@@ -48,6 +54,20 @@ const {
   isCraftingStateId,
   isRoundIntroStateId,
   mirrorJsonFile,
+  normalizeCharacterLimit,
+  normalizeChoiceInputMode,
+  normalizeColor,
+  normalizeConstantFloat,
+  normalizeConstantInteger,
+  normalizeConstantString,
+  normalizeDurationSeconds,
+  normalizeFlowId,
+  normalizeFlowVariableName,
+  normalizeLayoutNumber,
+  normalizePlayerFilter,
+  normalizePlayerId,
+  normalizeStageCode,
+  normalizeVotingCardFilter,
   readAppVersion,
   readJson,
   readJsonFile,
@@ -78,28 +98,6 @@ const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
 const { createToolPersistenceRuntime } = require("./server/tool-persistence-runtime");
 const { createToolSourceReadersRuntime } = require("./server/tool-source-readers-runtime");
-const {
-  cleanChoiceOptions,
-  cleanFlowText,
-  cleanLayoutSelector,
-  cleanLayoutText,
-  cleanPlayerName,
-  cleanSubmittedText,
-  normalizeCharacterLimit,
-  normalizeChoiceInputMode,
-  normalizeColor,
-  normalizeConstantFloat,
-  normalizeConstantInteger,
-  normalizeConstantString,
-  normalizeDurationSeconds,
-  normalizeFlowId,
-  normalizeFlowVariableName,
-  normalizeLayoutNumber,
-  normalizePlayerFilter,
-  normalizePlayerId,
-  normalizeStageCode,
-  normalizeVotingCardFilter
-} = require("./server/value-normalizers");
 const GAME_DEFINITION = require("./apps/reference/game.config");
 const {
   acceptedArtTypes,

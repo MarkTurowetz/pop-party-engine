@@ -1,6 +1,7 @@
 "use strict";
 
 module.exports = Object.freeze({
+  ...require("./value-normalizers"),
   ...require("./runtime-fault-runtime"),
   ...require("./action-effect-state-runtime"),
   ...require("./dynamic-game-state-runtime"),
