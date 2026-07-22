@@ -11,7 +11,36 @@ const packageRoot = path.join(root, "packages", "engine");
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-engine-fixture-"));
 const commandEnvironment = { ...process.env, npm_config_cache: path.join(fixtureRoot, ".npm-cache") };
 
+function filesUnder(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = path.join(directory, entry.name);
+    return entry.isDirectory() ? filesUnder(entryPath) : [entryPath];
+  });
+}
+
+function assertPackageImportQuarantine() {
+  const packagePrefix = `${path.resolve(packageRoot)}${path.sep}`;
+  const sourceFiles = filesUnder(path.join(packageRoot, "src")).filter((file) => /\.(?:js|ts)$/.test(file));
+  const violations = [];
+  const importPattern = /(?:require\(\s*|from\s+|import\(\s*)["']([^"']+)["']/g;
+  for (const file of sourceFiles) {
+    const source = fs.readFileSync(file, "utf8");
+    for (const match of source.matchAll(importPattern)) {
+      const specifier = match[1];
+      if (!specifier.startsWith(".")) continue;
+      const resolved = path.resolve(path.dirname(file), specifier);
+      if (!resolved.startsWith(packagePrefix)) {
+        violations.push(`${path.relative(root, file)} -> ${specifier}`);
+      }
+    }
+  }
+  if (violations.length) {
+    throw new Error(`Engine source imports files outside its package quarantine: ${violations.join(", ")}`);
+  }
+}
+
 try {
+  assertPackageImportQuarantine();
   const engineManifest = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"));
   const referenceManifest = JSON.parse(fs.readFileSync(path.join(root, "apps", "reference", "package.json"), "utf8"));
   if (referenceManifest.dependencies?.["@pop-party/engine"] !== engineManifest.version) {

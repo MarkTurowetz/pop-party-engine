@@ -6,6 +6,10 @@ Games own their flow, layouts, prompts, art, audio, constants, plugin registrati
 
 Package runtime source lives canonically under `src`; legacy monolith paths are temporary compatibility exports to this package. The packed-artifact contract installs the npm tarball outside the repository and rejects generated `dist` copies or game-owned content.
 
+The package check also rejects any relative source import that escapes the engine
+package directory. Reference-app adapters may import engine APIs, but engine code
+cannot reach back into the reference app or repository-root compatibility files.
+
 Consumers must pin an exact released version.
 
 Public runtime boundaries include `@pop-party/engine/server`,
