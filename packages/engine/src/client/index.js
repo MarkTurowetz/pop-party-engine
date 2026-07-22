@@ -6,6 +6,7 @@ module.exports = Object.freeze({
   ...require("./controller-heartbeat-runtime"),
   ...require("./controller-module-cache"),
   ...require("./controller-session-runtime"),
+  ...require("./controller-state-runtime"),
   ...require("./controller-submission-confirmation"),
   ...require("./controller-submit-api"),
   ...require("./controller-view-visit"),

@@ -87,6 +87,31 @@ describe("createControllerStateRuntime (ported)", () => {
     };
   }
 
+  it("gives an authoritative runtime fault precedence over every playable state", () => {
+    const renderMessage = vi.fn(() => null);
+    const choiceView = { render: vi.fn(() => true) };
+    const runtime = createControllerStateRuntime(options({
+      getChoiceInputView: () => choiceView,
+      getGlobalActionView: () => ({ render: vi.fn(() => true), renderMessage })
+    }));
+
+    const result = runtime.render({
+      input: { actionId: "choice-1", options: ["A", "B"] },
+      isPaused: true,
+      microphoneAccess: { actionId: "mic-1" },
+      phase: "voting-moment",
+      runtimeFault: { id: "fault-1", code: "ANSWERS_REQUIRED", message: "No answers were produced" }
+    }, {});
+
+    expect(result.id).toBe("runtimeFault");
+    expect(renderMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      "No answers were produced (ANSWERS_REQUIRED)",
+      expect.objectContaining({ id: "runtimeFault:fault-1", showButton: false })
+    );
+    expect(choiceView.render).not.toHaveBeenCalled();
+  });
+
   it("routes a paused mid-game lobby to the paused spec", () => {
     const runtime = createControllerStateRuntime(options());
     const result = runtime.render({ isPaused: true, phase: "intro" }, {});
