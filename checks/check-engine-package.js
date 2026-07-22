@@ -107,7 +107,11 @@ try {
     ["player-answers-runtime", "createPlayerAnswersRuntime"],
     ["room-broadcast-runtime", "createRoomBroadcastRuntime"],
     ["room-state-runtime", "createRoomStateRuntime"],
-    ["voting-runtime", "createVotingRuntime"]
+    ["voting-runtime", "createVotingRuntime"],
+    ["room-phase-runtime", "createRoomPhaseRuntime"],
+    ["moment-route-runtime", "createMomentRouteRuntime"],
+    ["lobby-control-handlers-runtime", "createLobbyControlHandlersRuntime"],
+    ["start-handlers-runtime", "createStartHandlersRuntime"]
   ];
   for (const [legacyModule, exportName] of serverKernelCompatibility) {
     if (require(path.join(root, "server", legacyModule))[exportName] !== serverKernel[exportName]) {

@@ -47,3 +47,8 @@ export function createRoomBroadcastRuntime(options: Record<string, unknown>): Re
 export function createDefaultRoom(stageCode: string): Record<string, unknown>;
 export function createRoomStateRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createVotingRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createRoomPhaseRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function resolveVotingAnswerSource(room: Record<string, unknown>, options?: Record<string, unknown>): unknown;
+export function createMomentRouteRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createLobbyControlHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createStartHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
