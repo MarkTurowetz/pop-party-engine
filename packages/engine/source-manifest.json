@@ -1,7 +1,5 @@
 [
   "shared/content-bundle-schema.js",
-  "server/game-plugin-runtime.js",
-  "server/game-definition-runtime.js",
   "server/content-snapshot-runtime.js",
   "server/revisioned-content-store-runtime.js",
   "server/local-content-bundle-provider.js",

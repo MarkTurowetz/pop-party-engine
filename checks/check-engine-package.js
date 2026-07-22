@@ -12,6 +12,17 @@ const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-engine-fixt
 const commandEnvironment = { ...process.env, npm_config_cache: path.join(fixtureRoot, ".npm-cache") };
 
 try {
+  const referenceConfig = fs.readFileSync(path.join(root, "game.config.js"), "utf8");
+  if (!referenceConfig.includes('require("@pop-party/engine/game")') || !referenceConfig.includes('require("@pop-party/engine/plugin")')) {
+    throw new Error("Reference game configuration must consume the public engine package subpaths");
+  }
+  const localRequire = createRequire(path.join(root, "package.json"));
+  if (require(path.join(root, "server", "game-definition-runtime")).defineGame !== localRequire("@pop-party/engine/game").defineGame) {
+    throw new Error("Legacy game-definition path is not a package compatibility re-export");
+  }
+  if (require(path.join(root, "server", "game-plugin-runtime")).defineGamePlugin !== localRequire("@pop-party/engine/plugin").defineGamePlugin) {
+    throw new Error("Legacy game-plugin path is not a package compatibility re-export");
+  }
   execFileSync(process.execPath, [path.join(root, "scripts", "build-engine-package.js")], { cwd: root, stdio: "inherit" });
   const packOutput = JSON.parse(execFileSync("npm", ["pack", packageRoot, "--json", "--pack-destination", fixtureRoot], { cwd: root, encoding: "utf8", env: commandEnvironment }));
   const packed = packOutput[0];
@@ -23,6 +34,11 @@ try {
   execFileSync("npm", ["install", tarball, "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: fixtureRoot, stdio: "pipe", env: commandEnvironment });
   const fixtureRequire = createRequire(path.join(fixtureRoot, "fixture.js"));
   const engine = fixtureRequire("@pop-party/engine");
+  const gameApi = fixtureRequire("@pop-party/engine/game");
+  const pluginApi = fixtureRequire("@pop-party/engine/plugin");
+  if (gameApi.defineGame !== engine.defineGame || pluginApi.defineGamePlugin !== engine.defineGamePlugin) {
+    throw new Error("Packed engine subpath contracts do not match the root public API");
+  }
   const plugin = engine.defineGamePlugin({ namespace: "fixture", register(registry) { registry.actions("fixture.action", {}); } });
   const gameData = Object.fromEntries(engine.REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));
   const game = engine.defineGame({
@@ -37,7 +53,9 @@ try {
   if (game.registrations.actions[0]?.id !== "fixture.action") throw new Error("Packed engine public contract failed");
   fixtureRequire("@pop-party/engine/content/github");
   fs.writeFileSync(path.join(fixtureRoot, "consumer.ts"), [
-    'import { defineGame, defineGamePlugin, REQUIRED_GAME_DATA_KEYS } from "@pop-party/engine";',
+    'import { REQUIRED_GAME_DATA_KEYS } from "@pop-party/engine";',
+    'import { defineGame } from "@pop-party/engine/game";',
+    'import { defineGamePlugin } from "@pop-party/engine/plugin";',
     'const plugin = defineGamePlugin({ namespace: "typed", register(registry) { registry.actions("typed.action", {}); } });',
     'const gameData = Object.fromEntries(REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));',
     'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, gameData, plugin });'

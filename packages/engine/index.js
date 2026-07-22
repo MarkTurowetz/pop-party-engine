@@ -1,8 +1,8 @@
 "use strict";
 
 module.exports = Object.freeze({
-  ...require("./dist/server/game-definition-runtime"),
-  ...require("./dist/server/game-plugin-runtime"),
+  ...require("./src/server/game-definition-runtime"),
+  ...require("./src/server/game-plugin-runtime"),
   contentSchema: require("./dist/shared/content-bundle-schema"),
   contentSnapshots: require("./dist/server/content-snapshot-runtime"),
   contentStores: require("./dist/server/revisioned-content-store-runtime"),

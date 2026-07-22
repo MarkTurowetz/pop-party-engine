@@ -54,6 +54,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@pop-party/engine": "file:packages/engine",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "vite": "^8.1.0"

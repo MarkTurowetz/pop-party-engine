@@ -41,6 +41,7 @@ export interface ContentStore {
 
 export function defineGamePlugin(definition: GamePlugin): GamePlugin;
 export function defineGame<TGameData extends Record<string, unknown>>(definition: GameDefinitionInput<TGameData>): Readonly<GameDefinitionInput<TGameData> & { registrations: Readonly<Record<string, readonly unknown[]>> }>;
+export const GAME_ID_PATTERN: RegExp;
 export const REQUIRED_GAME_DATA_KEYS: readonly string[];
 export const REGISTRATION_KINDS: readonly string[];
 export function createGamePluginRegistry(): unknown;

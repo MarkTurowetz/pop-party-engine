@@ -1,7 +1,7 @@
 "use strict";
 
-const { defineGame } = require("./server/game-definition-runtime");
-const { defineGamePlugin } = require("./server/game-plugin-runtime");
+const { defineGame } = require("@pop-party/engine/game");
+const { defineGamePlugin } = require("@pop-party/engine/plugin");
 const gameData = require("./shared/game-data");
 
 const referencePlugin = defineGamePlugin({

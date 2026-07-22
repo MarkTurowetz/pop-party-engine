@@ -8,8 +8,14 @@
   "types": "index.d.ts",
   "exports": {
     ".": "./index.js",
-    "./game": "./dist/server/game-definition-runtime.js",
-    "./plugin": "./dist/server/game-plugin-runtime.js",
+    "./game": {
+      "types": "./src/server/game-definition-runtime.d.ts",
+      "default": "./src/server/game-definition-runtime.js"
+    },
+    "./plugin": {
+      "types": "./src/server/game-plugin-runtime.d.ts",
+      "default": "./src/server/game-plugin-runtime.js"
+    },
     "./content/schema": "./dist/shared/content-bundle-schema.js",
     "./content/snapshot": "./dist/server/content-snapshot-runtime.js",
     "./content/store": "./dist/server/revisioned-content-store-runtime.js",
@@ -26,6 +32,7 @@
   },
   "files": [
     "dist",
+    "src",
     "index.js",
     "index.d.ts",
     "LICENSE",
