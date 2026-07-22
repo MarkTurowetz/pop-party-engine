@@ -54,6 +54,7 @@ export function createGithubContentBundleStore(options: Record<string, unknown>)
 export function createGithubGitDataRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGithubAppCredentialRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createContentStoreEnvironmentRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createContentAdminHandlersRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createRoomContentPinRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createAdminAuthRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createAdminAuditRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;

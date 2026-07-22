@@ -1,10 +1,8 @@
 "use strict";
 
-// Guards the committed shared/*.js against drift from their shared/*.ts sources.
-// shared/*.js is built (npm run build:shared) and committed so a plain `node server.js`
-// deploy needs no build step — but that means a stale commit could ship JS that doesn't
-// match the TS. This recompiles the TS to a temp dir and asserts each emitted file equals
-// the committed one byte-for-byte. Also surfaces any shared/*.ts type error (noEmitOnError).
+// Guards committed dual-use JavaScript against drift from its TypeScript source,
+// including package-owned shared contracts. This recompiles to a temp directory and
+// compares every emitted file byte-for-byte with the adjacent committed JavaScript.
 
 const fs = require("fs");
 const os = require("os");
@@ -13,6 +11,7 @@ const { execFileSync } = require("child_process");
 
 const repoRoot = path.resolve(__dirname, "..");
 const sharedDir = path.join(repoRoot, "shared");
+const engineSharedDir = path.join(repoRoot, "packages", "engine", "src", "shared");
 
 function fail(message) {
   console.error("shared/*.js freshness check failed:");
@@ -21,7 +20,10 @@ function fail(message) {
 }
 
 function main() {
-  const tsSources = fs.readdirSync(sharedDir).filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"));
+  const sourceDirectories = [sharedDir, engineSharedDir];
+  const tsSources = sourceDirectories.flatMap((directory) => fs.readdirSync(directory)
+    .filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"))
+    .map((name) => path.relative(repoRoot, path.join(directory, name))));
   if (tsSources.length === 0) {
     console.log("shared/*.js freshness check passed (no shared/*.ts yet).");
     return;
@@ -39,20 +41,20 @@ function main() {
       fail(`shared/*.ts did not compile:\n${error.stdout?.toString() || ""}${error.stderr?.toString() || ""}`);
     }
 
-    for (const tsName of tsSources) {
-      const jsName = tsName.replace(/\.ts$/, ".js");
-      const committedPath = path.join(sharedDir, jsName);
-      const freshPath = path.join(tmpDir, jsName);
+    for (const tsPath of tsSources) {
+      const jsPath = tsPath.replace(/\.ts$/, ".js");
+      const committedPath = path.join(repoRoot, jsPath);
+      const freshPath = path.join(tmpDir, jsPath);
       if (!fs.existsSync(freshPath)) {
-        fail(`${jsName} was not emitted from ${tsName} — check tsconfig.shared.json include/outputs.`);
+        fail(`${jsPath} was not emitted from ${tsPath} — check tsconfig.shared.json include/outputs.`);
       }
       if (!fs.existsSync(committedPath)) {
-        fail(`${jsName} is missing — run \`npm run build:shared\` and commit it.`);
+        fail(`${jsPath} is missing — run \`npm run build:shared\` and commit it.`);
       }
       const fresh = fs.readFileSync(freshPath, "utf8");
       const committed = fs.readFileSync(committedPath, "utf8");
       if (fresh !== committed) {
-        fail(`${jsName} is out of date with ${tsName} — run \`npm run build:shared\` and commit the result.`);
+        fail(`${jsPath} is out of date with ${tsPath} — run \`npm run build:shared\` and commit the result.`);
       }
     }
 

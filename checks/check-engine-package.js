@@ -37,6 +37,14 @@ try {
     throw new Error("Legacy game-plugin path is not a package compatibility re-export");
   }
   const compatibilityExports = [
+    ["content-snapshot-runtime", "@pop-party/engine/content/snapshot", "createContentSnapshot"],
+    ["revisioned-content-store-runtime", "@pop-party/engine/content/store", "createRevisionedContentStoreRuntime"],
+    ["local-content-bundle-provider", "@pop-party/engine/content/local", "createLocalContentBundleProvider"],
+    ["github-git-data-runtime", "@pop-party/engine/content/github-git", "createGithubGitDataRuntime"],
+    ["github-content-bundle-store", "@pop-party/engine/content/github", "createGithubContentBundleStore"],
+    ["github-app-credential-runtime", "@pop-party/engine/content/github-app", "createGithubAppCredentialRuntime"],
+    ["content-store-environment-runtime", "@pop-party/engine/content/environment", "createContentStoreEnvironmentRuntime"],
+    ["content-admin-handlers-runtime", "@pop-party/engine/content/admin", "createContentAdminHandlersRuntime"],
     ["room-content-pin-runtime", "@pop-party/engine/rooms/content-pin", "createRoomContentPinRuntime"],
     ["admin-auth-runtime", "@pop-party/engine/security/admin", "createAdminAuthRuntime"],
     ["admin-audit-runtime", "@pop-party/engine/security/audit", "createAdminAuditRuntime"],
@@ -48,13 +56,16 @@ try {
       throw new Error(`Legacy ${legacyModule} path is not a package compatibility re-export`);
     }
   }
-  execFileSync(process.execPath, [path.join(root, "scripts", "build-engine-package.js")], { cwd: root, stdio: "inherit" });
+  if (require(path.join(root, "shared", "content-bundle-schema")) !== localRequire("@pop-party/engine/content/schema")) {
+    throw new Error("Legacy content schema path is not a package compatibility re-export");
+  }
   const packOutput = JSON.parse(execFileSync("npm", ["pack", packageRoot, "--json", "--pack-destination", fixtureRoot], { cwd: root, encoding: "utf8", env: commandEnvironment }));
   const packed = packOutput[0];
   if (!packed?.filename) throw new Error("npm pack did not return a tarball");
-  const forbidden = packed.files.filter((file) => /(?:^|\/)(?:game-flow|art|controller-layouts|stage-layouts)(?:\/|\.|$)/i.test(file.path));
+  const forbidden = packed.files.filter((file) => file.path.startsWith("dist/") || /(?:^|\/)(?:game-flow|art|controller-layouts|stage-layouts)(?:\/|\.|$)/i.test(file.path));
   if (forbidden.length) throw new Error(`Game-owned files leaked into engine tarball: ${forbidden.map((file) => file.path).join(", ")}`);
   const packageOwnedModules = compatibilityExports.map(([legacyModule]) => `src/server/${legacyModule}.js`);
+  packageOwnedModules.push("src/shared/content-bundle-schema.js");
   const missingPackageOwnedModules = packageOwnedModules.filter((expected) => !packed.files.some((file) => file.path === expected));
   if (missingPackageOwnedModules.length) throw new Error(`Canonical package modules are missing: ${missingPackageOwnedModules.join(", ")}`);
   const tarball = path.join(fixtureRoot, packed.filename);

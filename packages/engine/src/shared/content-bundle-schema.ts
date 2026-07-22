@@ -1,6 +1,7 @@
 // Dual-use content bundle schema. Built to content-bundle-schema.js for the
 // plain Node server and exposed as PartyGameContentBundleSchema in browsers.
 
+
 (function (root: Record<string, unknown>, factory: () => unknown): void {
   const api = factory();
   if (typeof module !== "undefined" && module.exports) module.exports = api;

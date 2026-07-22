@@ -4,4 +4,6 @@ Public, game-neutral runtime and authoring infrastructure for Pop Party stage/co
 
 Games own their flow, layouts, prompts, art, audio, constants, plugin registrations, deployment, and exact engine dependency. The engine supplies versioned contracts and does not read assets from the reference application.
 
-This package is currently built and packed from the migration repository. Consumers must pin an exact released version.
+Package runtime source lives canonically under `src`; legacy monolith paths are temporary compatibility exports to this package. The packed-artifact contract installs the npm tarball outside the repository and rejects generated `dist` copies or game-owned content.
+
+Consumers must pin an exact released version.
