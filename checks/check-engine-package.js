@@ -223,6 +223,7 @@ try {
   }
   const clientHttpApi = fixtureRequire("@pop-party/engine/client/http");
   const clientLayoutStatesApi = fixtureRequire("@pop-party/engine/client/layout-states");
+  const toolingApi = fixtureRequire("@pop-party/engine/tooling");
   if (gameApi.defineGame !== engine.defineGame || pluginApi.defineGamePlugin !== engine.defineGamePlugin) {
     throw new Error("Packed engine subpath contracts do not match the root public API");
   }
@@ -234,6 +235,9 @@ try {
   }
   for (const exportName of ["createActionCompletionBarrier", "createControllerHeartbeatRuntime", "createControllerModuleCache", "createControllerRecordingLifecycle", "createControllerSessionRuntime", "createControllerStateRuntime", "createControllerSubmitApi", "createControllerViewState", "createControllerVoiceInput", "controllerViewVisitKey", "distributedContainerItemPositions", "effectiveVisibilityTimeline", "resolveControllerSubmissionConfirmation", "shouldDeferVoiceHeartbeat"]) {
     if (typeof clientApi[exportName] !== "function") throw new Error(`Packed engine client entry point is missing ${exportName}`);
+  }
+  for (const exportName of ["createToolPersistenceRuntime", "createToolSourceReadersRuntime"]) {
+    if (typeof toolingApi[exportName] !== "function") throw new Error(`Packed engine tooling entry point is missing ${exportName}`);
   }
   for (const specifier of [
     ...requiredServerImports,
@@ -262,7 +266,7 @@ try {
     'import { controllerLayoutStateIds, controllerViewVisitKey, createActionCompletionBarrier, createApiClient, createControllerHeartbeatRuntime, createControllerModuleCache, createControllerRecordingLifecycle, createControllerSessionRuntime, createControllerStateRuntime, createControllerSubmitApi, createControllerViewState, createControllerVoiceInput, distributedContainerItemPositions, effectiveVisibilityTimeline, resolveControllerSubmissionConfirmation } from "@pop-party/engine/client";',
     'import { createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime } from "@pop-party/engine/server";',
     'import { createStageTestConfigHandlerRuntime } from "@pop-party/engine/testing";',
-    'import { blockingArtArchitectureIssues, compositionSaveConflict, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, exportLegacyContentBundle, manifestRevision, normalizeArtAssetReplacementsDraft, normalizeArtOrganization, parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys, revisionMatches, runCli, validateContentBundle } from "@pop-party/engine/tooling";',
+    'import { blockingArtArchitectureIssues, compositionSaveConflict, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, createToolPersistenceRuntime, createToolSourceReadersRuntime, exportLegacyContentBundle, manifestRevision, normalizeArtAssetReplacementsDraft, normalizeArtOrganization, parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys, revisionMatches, runCli, validateContentBundle } from "@pop-party/engine/tooling";',
     'import { lifecycleLabels } from "@pop-party/engine/art/lifecycle";',
     'import { normalizeTimeline, type TimelineDocument } from "@pop-party/engine/art/timeline";',
     'import { collectArtArchitectureIssues } from "@pop-party/engine/art/architecture";',

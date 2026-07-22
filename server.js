@@ -82,6 +82,8 @@ const {
   createSaveHandlersRuntime,
   createToolDataReadRuntime,
   createToolGithubSourcesRuntime,
+  createToolPersistenceRuntime,
+  createToolSourceReadersRuntime,
   createToolSourceStoresRuntime
 } = require("@pop-party/engine/tooling");
 const { createContentAdminHandlersRuntime } = require("@pop-party/engine/content/admin");
@@ -96,8 +98,6 @@ const { createRuntimeCapabilityRuntime } = require("@pop-party/engine/security/r
 const { createStageTestConfigHandlerRuntime } = require("@pop-party/engine/testing");
 const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout-normalization-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
-const { createToolPersistenceRuntime } = require("./server/tool-persistence-runtime");
-const { createToolSourceReadersRuntime } = require("./server/tool-source-readers-runtime");
 const GAME_DEFINITION = require("./apps/reference/game.config");
 const {
   acceptedArtTypes,

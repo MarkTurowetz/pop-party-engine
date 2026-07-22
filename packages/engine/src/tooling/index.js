@@ -6,6 +6,8 @@ module.exports = Object.freeze({
   ...require("../server/legacy-content-bundle-exporter"),
   ...require("../server/local-draft-runtime"),
   ...require("../server/tool-data-read-runtime"),
+  ...require("../server/tool-persistence-runtime"),
+  ...require("../server/tool-source-readers-runtime"),
   ...require("../server/tool-source-stores-runtime"),
   ...require("../server/github-storage-runtime"),
   ...require("../server/tool-github-sources-runtime"),
