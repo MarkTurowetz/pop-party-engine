@@ -211,7 +211,11 @@ try {
   const engine = fixtureRequire("@pop-party/engine");
   const gameApi = fixtureRequire("@pop-party/engine/game");
   const pluginApi = fixtureRequire("@pop-party/engine/plugin");
+  delete globalThis.createControllerSubmitApi;
   const clientApi = fixtureRequire("@pop-party/engine/client");
+  if (globalThis.createControllerSubmitApi !== undefined) {
+    throw new Error("Packed engine client entry point installed a legacy browser global as an import side effect");
+  }
   const clientHttpApi = fixtureRequire("@pop-party/engine/client/http");
   if (gameApi.defineGame !== engine.defineGame || pluginApi.defineGamePlugin !== engine.defineGamePlugin) {
     throw new Error("Packed engine subpath contracts do not match the root public API");
@@ -219,7 +223,7 @@ try {
   if (clientApi.createApiClient !== clientHttpApi.createApiClient) {
     throw new Error("Packed engine client entry point does not expose the canonical HTTP API");
   }
-  for (const exportName of ["createActionCompletionBarrier", "createControllerModuleCache", "createControllerViewState", "controllerViewVisitKey", "distributedContainerItemPositions", "effectiveVisibilityTimeline", "resolveControllerSubmissionConfirmation"]) {
+  for (const exportName of ["createActionCompletionBarrier", "createControllerModuleCache", "createControllerSubmitApi", "createControllerViewState", "controllerViewVisitKey", "distributedContainerItemPositions", "effectiveVisibilityTimeline", "resolveControllerSubmissionConfirmation"]) {
     if (typeof clientApi[exportName] !== "function") throw new Error(`Packed engine client entry point is missing ${exportName}`);
   }
   for (const specifier of [
@@ -246,7 +250,7 @@ try {
     'import { REQUIRED_GAME_DATA_KEYS } from "@pop-party/engine";',
     'import { defineGame } from "@pop-party/engine/game";',
     'import { defineGamePlugin } from "@pop-party/engine/plugin";',
-    'import { controllerViewVisitKey, createActionCompletionBarrier, createApiClient, createControllerModuleCache, createControllerViewState, distributedContainerItemPositions, effectiveVisibilityTimeline, resolveControllerSubmissionConfirmation } from "@pop-party/engine/client";',
+    'import { controllerViewVisitKey, createActionCompletionBarrier, createApiClient, createControllerModuleCache, createControllerSubmitApi, createControllerViewState, distributedContainerItemPositions, effectiveVisibilityTimeline, resolveControllerSubmissionConfirmation } from "@pop-party/engine/client";',
     'import { createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime } from "@pop-party/engine/server";',
     'import { createStageTestConfigHandlerRuntime } from "@pop-party/engine/testing";',
     'import { blockingArtArchitectureIssues, compositionSaveConflict, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, exportLegacyContentBundle, manifestRevision, normalizeArtAssetReplacementsDraft, normalizeArtOrganization, parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys, revisionMatches } from "@pop-party/engine/tooling";',
@@ -274,7 +278,7 @@ try {
     'const timeline: TimelineDocument | null = normalizeTimeline({ fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] });',
     'const organization = normalizeArtOrganization();',
     'const manifest = { compositions: {} };',
-    'void [controllerViewVisitKey({}, {}, "lobby"), createActionCompletionBarrier(), createApiClient, createControllerModuleCache(), createControllerViewState(), distributedContainerItemPositions({}, [], "horizontal"), effectiveVisibilityTimeline(null), resolveControllerSubmissionConfirmation({}, {}), createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime, createStageTestConfigHandlerRuntime, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, exportLegacyContentBundle, organization, normalizeArtAssetReplacementsDraft(), parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys(organization, []), manifestRevision(manifest), revisionMatches({}, manifest), compositionSaveConflict(), blockingArtArchitectureIssues([], []), lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeComponentKind, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
+    'void [controllerViewVisitKey({}, {}, "lobby"), createActionCompletionBarrier(), createApiClient, createControllerModuleCache(), createControllerSubmitApi({ getControllerState: () => null, postJson: async () => null }), createControllerViewState(), distributedContainerItemPositions({}, [], "horizontal"), effectiveVisibilityTimeline(null), resolveControllerSubmissionConfirmation({}, {}), createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime, createStageTestConfigHandlerRuntime, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, exportLegacyContentBundle, organization, normalizeArtAssetReplacementsDraft(), parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys(organization, []), manifestRevision(manifest), revisionMatches({}, manifest), compositionSaveConflict(), blockingArtArchitectureIssues([], []), lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeComponentKind, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
   ].join("\n"));
   execFileSync(process.execPath, [path.join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "--strict", "--target", "ES2022", "--module", "Node16", "--moduleResolution", "Node16", "consumer.ts"], { cwd: fixtureRoot, stdio: "pipe" });
   console.log(`Packed engine fixture passed: ${packed.filename} (${packed.files.length} files).`);

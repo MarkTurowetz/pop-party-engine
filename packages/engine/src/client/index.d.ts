@@ -1,6 +1,7 @@
 export * from "./action-completion-barrier";
 export * from "./controller-module-cache";
 export * from "./controller-submission-confirmation";
+export * from "./controller-submit-api";
 export * from "./controller-view-visit";
 export * from "./controller-view-state";
 export * from "./distributed-container-layout";
