@@ -177,9 +177,14 @@ async function main() {
       document.querySelector("#controllerTextState")?.classList.remove("hidden");
       window.controllerState = {
         phase: "controller-text-input",
-        lobby: { controllerLayoutId: "controller-text-input" }
+        lobby: { controllerLayoutId: "controller-text-input" },
+        player: { id: "p-banner", name: "BEN", avatar: { shape: "trike", color: "#ff4fa3" } }
       };
       window.applyControllerLayoutForPhase("controller-text-input");
+      window.PartyGameLayoutText.setControllerPlayerBannerArt(
+        document.querySelector("#controllerPlayerBanner"),
+        window.controllerState.player
+      );
     });
     await textInputPage.waitForFunction(() => Boolean(document.querySelector("#controllerTextInput")?.closest("[data-controller-art-selector-host-for]")));
     const textInputState = await textInputPage.evaluate(() => {
@@ -193,7 +198,16 @@ async function main() {
         display: input ? getComputedStyle(input).display : "missing",
         width: rect?.width || 0,
         height: rect?.height || 0,
-        hitTargetId: document.elementFromPoint(centerX, centerY)?.id || ""
+        hitTargetId: document.elementFromPoint(centerX, centerY)?.id || "",
+        playerBannerName: Array.from(document.querySelectorAll("#controllerPlayerBanner [data-art-component-id='name-text']"))
+          .map((element) => element.textContent.trim())
+          .find(Boolean) || "",
+        playerBannerAvatarTints: Array.from(document.querySelectorAll("#controllerPlayerBanner [data-art-component-id='avatar']"))
+          .map((element) => element.style.getPropertyValue("--component-sprite-tint")),
+        playerBannerCompositionId: document.querySelector("#controllerPlayerBanner")?.dataset.controllerLayoutArtCompositionId || "",
+        playerBannerLegacyLayers: document.querySelectorAll(
+          "#controllerPlayerBanner [data-art-component-id='banner-name'], #controllerPlayerBanner [data-art-component-id='banner-card']"
+        ).length
       };
     });
     assert(textInputState.isWrapped, "Writing Moment textarea was not mounted in its authored widget host");
@@ -201,6 +215,12 @@ async function main() {
     assert(textInputState.display !== "none", "Writing Moment textarea is not displayed");
     assert(textInputState.width > 0 && textInputState.height > 0, "Writing Moment textarea has no interactive hit box");
     assert(textInputState.hitTargetId === "controllerTextInput", `Writing Moment textarea is covered by ${textInputState.hitTargetId || "an unknown element"}`);
+    assert(textInputState.playerBannerName === "BEN", `Player Banner rendered ${textInputState.playerBannerName || "no player name"}`);
+    assert(
+      textInputState.playerBannerAvatarTints.includes("#ff4fa3"),
+      `Player Banner used ${textInputState.playerBannerAvatarTints.join(", ") || "no avatar color"} in ${textInputState.playerBannerCompositionId || "no composition"}`
+    );
+    assert(textInputState.playerBannerLegacyLayers === 0, `Player Banner retained ${textInputState.playerBannerLegacyLayers} legacy art layers`);
     await textInputPage.locator("#controllerTextInput").fill("Interactive writing answer");
     assert(
       (await textInputPage.locator("#controllerTextInput").evaluate((input) => input.value)) === "Interactive writing answer",

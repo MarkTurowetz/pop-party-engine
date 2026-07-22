@@ -11,11 +11,22 @@ describe("resetGameSessionState", () => {
       name: "Ava",
       avatar: { shape: "rex", color: "blue" },
       points: 900,
-      pendingPoints: 50
+      pendingPoints: 50,
+      active: true,
+      gameSessionId: 4
+    };
+    const disconnectedPlayer = {
+      id: "p2",
+      name: "Ben",
+      avatar: { shape: "stego", color: "green" },
+      points: 100,
+      pendingPoints: 10,
+      active: false,
+      gameSessionId: 4
     };
     const room = {
       gameSessionId: 4,
-      players: new Map([[player.id, player]]),
+      players: new Map([[player.id, player], [disconnectedPlayer.id, disconnectedPlayer]]),
       flowVariables: { answer: 42 },
       G: { test: 1 },
       storedPlayerAnswers: { 1: { writing: { p1: { text: "old" } } } },
@@ -58,5 +69,7 @@ describe("resetGameSessionState", () => {
     expect(room.G).toEqual({});
     expect(room.microphoneAccessGrantedPlayerIds.size).toBe(0);
     expect(player).toMatchObject({ id: "p1", name: "Ava", avatar: { shape: "rex", color: "blue" }, points: 0, pendingPoints: 0 });
+    expect(player.gameSessionId).toBe(5);
+    expect(disconnectedPlayer).toMatchObject({ points: 0, pendingPoints: 0, gameSessionId: 4 });
   });
 });

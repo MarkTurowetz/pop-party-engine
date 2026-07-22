@@ -212,8 +212,29 @@ function controllerLayoutArtDefaultText(element: Dict | null, host: El | null): 
 
 function controllerLayoutArtRenderOptions(element: Dict | null, host: El | null): Dict {
   if (isLayoutTextArtElement(element)) return layoutTextArtRenderOptions(element, host?.dataset.textFitSource);
+  if (element?.artCompositionId === controllerPlayerBannerArtCompositionId) {
+    return controllerPlayerBannerRenderOptions({
+      name: host?.dataset.controllerPlayerName,
+      avatar: { color: host?.dataset.controllerPlayerAvatarColor }
+    });
+  }
   const text = controllerLayoutArtDefaultText(element, host);
   return controllerWidgetTextRenderOptions(element?.artCompositionId, text);
+}
+
+function controllerPlayerBannerRenderOptions(player: Dict = {}): Dict {
+  const avatar = (player.avatar as Dict) || {};
+  const name = String(player.name || "Player");
+  const color = String(avatar.color || "#22d3ee");
+  return {
+    textOverrides: {
+      [controllerPlayerBannerNameTextPath]: name,
+      [`${controllerPlayerBannerArtCompositionId}/banner-name`]: name
+    },
+    componentOverrides: {
+      "avatars/avatar": { imageTint: color }
+    }
+  };
 }
 
 function layoutTextDefault(element: Dict | null): string {
@@ -770,10 +791,17 @@ function controllerLayoutArtKeepElements(host: El | null): El[] {
 function syncControllerPlayerBannerChildren(target: El | null): void {
   if (!target || target.dataset.controllerLayoutArtCompositionId !== controllerPlayerBannerArtCompositionId) return;
   const renderer = artRendererForLayoutHost(target);
-  if (!renderer) return;
-  renderer.stopAtComponent?.(controllerPlayerBannerAvatarComponentId, "On", { instant: true });
-  renderer.stopAtComponent?.(controllerPlayerBannerNameComponentId, "On", { instant: true });
-  renderer.stopAtComponent?.("avatar", avatarTimelineLabelForShape(target.dataset.controllerPlayerAvatarShape), { instant: true });
+  if (renderer) {
+    renderer.stopAtComponent?.(controllerPlayerBannerAvatarComponentId, "On", { instant: true });
+    renderer.stopAtComponent?.(controllerPlayerBannerNameComponentId, "On", { instant: true });
+    renderer.stopAtComponent?.("avatar", avatarTimelineLabelForShape(target.dataset.controllerPlayerAvatarShape), { instant: true });
+  }
+  // The avatar-shape timeline owns which sprite frame is visible and can
+  // restore that frame's authored `currentColor` tint. Re-apply the player's
+  // semantic color directly to the deepest sprite after stopping the timeline.
+  for (const avatarSprite of Array.from(target.querySelectorAll("[data-art-component-id='avatar']"))) {
+    (avatarSprite as El).style.setProperty("--component-sprite-tint", target.dataset.controllerPlayerAvatarColor || "#22d3ee");
+  }
 }
 
 function setControllerPlayerBannerArt(target: El | null, player: Dict = {}): void {
@@ -786,7 +814,7 @@ function setControllerPlayerBannerArt(target: El | null, player: Dict = {}): voi
   const element = controllerLayoutElementForTarget(target);
   if (element?.artCompositionId === controllerPlayerBannerArtCompositionId && target.dataset.controllerLayoutVisibilityKey) {
     renderControllerArtInstance(element, target, target.dataset.controllerLayoutVisibilityKey, {
-      ...controllerLayoutArtRenderOptions(element, target),
+      ...controllerPlayerBannerRenderOptions(player),
       keepElements: controllerLayoutArtKeepElements(target)
     });
   }
@@ -1291,4 +1319,4 @@ Object.assign(w(), {
   stageLayoutTargetByElementId, stageLayoutTargetElement, stageLayoutTextDefault, stageMomentLayoutReadiness, textFieldPadding
 });
 
-export { layoutTextArtRenderOptions, layoutTextArtUsesNestedPrefab };
+export { controllerPlayerBannerRenderOptions, layoutTextArtRenderOptions, layoutTextArtUsesNestedPrefab };

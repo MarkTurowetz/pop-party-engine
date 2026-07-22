@@ -53,6 +53,10 @@ function resetGameSessionState(room) {
   for (const player of room.players?.values?.() || []) {
     player.points = 0;
     player.pendingPoints = 0;
+    // Connected controllers retain their identity into the new session.
+    // Players that were already disconnected keep their old session marker,
+    // preventing a stale controller from being resurrected in a later game.
+    if (player.active) player.gameSessionId = room.gameSessionId;
   }
 }
 

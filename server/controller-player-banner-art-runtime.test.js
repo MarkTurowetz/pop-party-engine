@@ -41,4 +41,24 @@ describe("controller Player Banner art migration", () => {
 
     expect(controllerPlayerBannerOverride(current, { "controller-player-banner": saved })).toBe(saved);
   });
+
+  it("removes legacy layers from a mixed compound save without discarding authored child placement or animation", () => {
+    const saved = {
+      components: [
+        { id: "banner-card", kind: "shape" },
+        { id: "player-avatar-mc", artCompositionId: "prefab-player-avatar-mc", x: 51 },
+        { id: "banner-name", kind: "text", defaultText: "PLAYER" },
+        { id: "player-name-mc", artCompositionId: "prefab-player-name-mc", x: 214 }
+      ],
+      timeline: { frameCount: 33, labels: [{ name: "On", frame: 12 }] }
+    };
+
+    const migrated = controllerPlayerBannerOverride(current, { "controller-player-banner": saved });
+
+    expect(migrated.components).toEqual([
+      { id: "player-avatar-mc", artCompositionId: "prefab-player-avatar-mc", x: 51 },
+      { id: "player-name-mc", artCompositionId: "prefab-player-name-mc", x: 214 }
+    ]);
+    expect(migrated.timeline).toBe(saved.timeline);
+  });
 });

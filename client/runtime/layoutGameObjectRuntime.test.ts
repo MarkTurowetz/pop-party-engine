@@ -108,6 +108,26 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     });
   });
 
+  it("applies data overrides to the deepest scoped component without replacing authored children", () => {
+    const component = PartyGameLayoutGameObjects.cloneLayoutArtComponent(
+      {
+        id: "avatar",
+        kind: "sprite",
+        imageTint: "currentColor",
+        children: [{ id: "mask", kind: "shape", fillColor: "#ffffff" }]
+      },
+      {
+        componentOverrides: {
+          "avatars/avatar": { imageTint: "#ff4fa3", children: [] }
+        }
+      },
+      "avatars"
+    );
+
+    expect(component).toMatchObject({ imageTint: "#ff4fa3" });
+    expect(component.children).toEqual([{ id: "mask", kind: "shape", fillColor: "#ffffff", children: [] }]);
+  });
+
   it("activeDynamicLayoutArtInstanceIds collects dynamic state + non-hidden global ids", () => {
     const isDynamic = (el: { dynamic?: boolean }) => el.dynamic === true;
     const ids = PartyGameLayoutGameObjects.activeDynamicLayoutArtInstanceIds(

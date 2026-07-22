@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { layoutTextArtRenderOptions, layoutTextArtUsesNestedPrefab } from "./layoutRuntime";
+import { controllerPlayerBannerRenderOptions, layoutTextArtRenderOptions, layoutTextArtUsesNestedPrefab } from "./layoutRuntime";
 
 const globals = globalThis as typeof globalThis & {
   artComposition?: (id: string) => Record<string, unknown> | null;
@@ -41,6 +41,23 @@ describe("layout text art runtime targeting", () => {
     expect(layoutTextArtRenderOptions({ defaultText: "Round Intro" }).textOverrides).toEqual({
       "prefab-layout-text-field-text/text": "Round Intro",
       "layout-text-field/text": ""
+    });
+  });
+});
+
+describe("controller Player Banner runtime targeting", () => {
+  it("binds identity to the nested name and deepest avatar sprite", () => {
+    expect(controllerPlayerBannerRenderOptions({
+      name: "Ava",
+      avatar: { shape: "trike", color: "#ff4fa3" }
+    })).toEqual({
+      textOverrides: {
+        "player-name-widget/name-text": "Ava",
+        "controller-player-banner/banner-name": "Ava"
+      },
+      componentOverrides: {
+        "avatars/avatar": { imageTint: "#ff4fa3" }
+      }
     });
   });
 });

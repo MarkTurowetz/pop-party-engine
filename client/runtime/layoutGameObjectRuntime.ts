@@ -137,16 +137,28 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
 }
 
 function cloneLayoutArtComponent(component: Dict, options: Dict = {}, compositionId = ""): Dict {
-  const clone: Dict = { ...component, children: ((component.children as Dict[]) || []).map((child) => cloneLayoutArtComponent(child, options, compositionId)) };
-  const textOverrides = (options.textOverrides as Dict) || {};
-  const kind = String(clone.kind || "").toLowerCase();
-  const componentTargets = [clone.id, clone.instanceLabel]
+  const componentTargets = [component.id, component.instanceLabel]
     .map((value) => String(value || "").trim())
     .filter(Boolean);
-  const textOverrideKey = [
+  const qualifiedTargets = [
     ...componentTargets.map((value) => compositionId ? `${compositionId}/${value}` : ""),
     ...componentTargets
-  ].find((value) => value && Object.prototype.hasOwnProperty.call(textOverrides, value));
+  ].filter(Boolean);
+  const componentOverrides = (options.componentOverrides as Dict) || {};
+  const componentOverrideKey = qualifiedTargets.find((value) => Object.prototype.hasOwnProperty.call(componentOverrides, value));
+  const componentOverride = componentOverrideKey && typeof componentOverrides[componentOverrideKey] === "object"
+    ? componentOverrides[componentOverrideKey] as Dict
+    : {};
+  const clone: Dict = {
+    ...component,
+    ...componentOverride,
+    children: ((component.children as Dict[]) || []).map((child) => cloneLayoutArtComponent(child, options, compositionId))
+  };
+  const textOverrides = (options.textOverrides as Dict) || {};
+  const kind = String(clone.kind || "").toLowerCase();
+  const textOverrideKey = [
+    ...qualifiedTargets
+  ].find((value) => Object.prototype.hasOwnProperty.call(textOverrides, value));
   if ((kind === "text" || kind === "badge") && textOverrideKey) {
     clone.defaultText = String(textOverrides[textOverrideKey] ?? "");
   }
@@ -156,10 +168,7 @@ function cloneLayoutArtComponent(component: Dict, options: Dict = {}, compositio
     (kind === "text" || kind === "badge") &&
     textStyle &&
     textStyleTarget &&
-    [
-      ...componentTargets.map((value) => compositionId ? `${compositionId}/${value}` : ""),
-      ...componentTargets
-    ].includes(textStyleTarget)
+    qualifiedTargets.includes(textStyleTarget)
   ) {
     clone.fontSize = textStyle.fontSize;
     clone.fontColor = textStyle.fontColor;

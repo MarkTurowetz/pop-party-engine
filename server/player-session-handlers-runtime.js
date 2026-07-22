@@ -34,7 +34,10 @@ function createPlayerSessionHandlersRuntime({
 
     const room = getRoom(stageCode);
     let player = room.players.get(playerId);
-    if (player && player.active && player.name !== playerName) {
+    const staleDisconnectedPlayer = player
+      && !player.active
+      && Number(player.gameSessionId || 0) !== Number(room.gameSessionId || 0);
+    if (player && (staleDisconnectedPlayer || (player.active && player.name !== playerName))) {
       playerId = `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       player = null;
     }
@@ -49,7 +52,8 @@ function createPlayerSessionHandlersRuntime({
         points: 0,
         pendingPoints: 0,
         joinedAt: Date.now(),
-        lastSeen: Date.now()
+        lastSeen: Date.now(),
+        gameSessionId: Number(room.gameSessionId || 0)
       };
       room.players.set(playerId, player);
     } else {
@@ -57,6 +61,7 @@ function createPlayerSessionHandlersRuntime({
       player.active = true;
       player.kickedFromGame = false;
       player.lastSeen = Date.now();
+      player.gameSessionId = Number(room.gameSessionId || 0);
     }
 
     selectVip(room);
@@ -85,10 +90,15 @@ function createPlayerSessionHandlersRuntime({
       sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "Player was returned to the join screen" });
       return;
     }
+    if (!player.active && Number(player.gameSessionId || 0) !== Number(room.gameSessionId || 0)) {
+      sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "This controller belongs to an earlier game session" });
+      return;
+    }
 
     const wasInactive = !player.active;
     player.active = true;
     player.lastSeen = Date.now();
+    player.gameSessionId = Number(room.gameSessionId || 0);
     selectVip(room);
     if (wasInactive) broadcastLobby(room);
     sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room) });
@@ -120,6 +130,10 @@ function createPlayerSessionHandlersRuntime({
       sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "Player was returned to the join screen" });
       return;
     }
+    if (!player.active && Number(player.gameSessionId || 0) !== Number(room.gameSessionId || 0)) {
+      sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "This controller belongs to an earlier game session" });
+      return;
+    }
 
     player.avatar = {
       color: player.avatar?.color || randomArrayItem(gameConstants().playerColors),
@@ -127,6 +141,7 @@ function createPlayerSessionHandlersRuntime({
     };
     player.active = true;
     player.lastSeen = Date.now();
+    player.gameSessionId = Number(room.gameSessionId || 0);
     broadcastLobby(room);
     sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room) });
   }
