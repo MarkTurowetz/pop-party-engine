@@ -46,6 +46,11 @@ describe("create-game generator", () => {
       .toEqual(Buffer.from([0, 1, 2, 255]));
     expect(JSON.parse(fs.readFileSync(path.join(targetRoot, "content", "content-bundle.json"), "utf8")).gameId)
       .toBe("flip-7");
+    expect(fs.readFileSync(path.join(targetRoot, "src", "plugin", "index.js"), "utf8")).toContain('namespace: "flip-7"');
+    for (const contribution of ["actions", "stage", "controller", "tools"]) {
+      expect(fs.readFileSync(path.join(targetRoot, "src", contribution, "index.js"), "utf8")).toContain("Object.freeze([])");
+    }
+    expect(fs.readFileSync(path.join(targetRoot, "tests", "config.test.js"), "utf8")).toContain("node:test");
 
     fs.writeFileSync(path.join(targetRoot, "content", "blobs", "asset.bin"), Buffer.from([9]));
     expect(fs.readFileSync(path.join(starterRoot, "blobs", "asset.bin"))).toEqual(Buffer.from([0, 1, 2, 255]));

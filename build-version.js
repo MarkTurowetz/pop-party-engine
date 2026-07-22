@@ -34,14 +34,33 @@ function readExistingBuildInfo() {
   }
 }
 
+function readCommittedBuildInfo() {
+  try {
+    return JSON.parse(gitOutput(["show", "HEAD:build-info.json"]) || "{}");
+  } catch (error) {
+    return {};
+  }
+}
+
+function resolveBuildNumber({ committedBuildNumber, existingBuildNumber, headCount, useNextCommit }) {
+  const countedBuildNumber = Number.isFinite(headCount) && headCount > 0
+    ? headCount + (useNextCommit ? 1 : 0)
+    : 0;
+  const alreadyStampedNextBuild = existingBuildNumber > committedBuildNumber ? existingBuildNumber : 0;
+  return useNextCommit
+    ? Math.max(countedBuildNumber, committedBuildNumber + 1, alreadyStampedNextBuild)
+    : Math.max(countedBuildNumber, committedBuildNumber, existingBuildNumber);
+}
+
 function buildInfo() {
   const existing = readExistingBuildInfo();
+  const committed = readCommittedBuildInfo();
   const baseVersion = readPackageVersion();
   const headCount = Number(gitOutput(["rev-list", "--count", "HEAD"]));
   const useNextCommit = process.argv.includes("--next");
-  const buildNumber = Number.isFinite(headCount) && headCount > 0
-    ? headCount + (useNextCommit ? 1 : 0)
-    : Number(existing.buildNumber || 0);
+  const existingBuildNumber = Number(existing.buildNumber || 0);
+  const committedBuildNumber = Number(committed.buildNumber || 0);
+  const buildNumber = resolveBuildNumber({ committedBuildNumber, existingBuildNumber, headCount, useNextCommit });
   const commit = gitOutput(["rev-parse", "--short", "HEAD"]) || existing.commit || "";
   const branch = gitOutput(["branch", "--show-current"]) || existing.branch || "";
 
@@ -55,6 +74,10 @@ function buildInfo() {
   };
 }
 
-const info = buildInfo();
-fs.writeFileSync(BUILD_INFO_FILE, `${JSON.stringify(info, null, 2)}\n`);
-console.log(`Build version: ${info.version}`);
+if (require.main === module) {
+  const info = buildInfo();
+  fs.writeFileSync(BUILD_INFO_FILE, `${JSON.stringify(info, null, 2)}\n`);
+  console.log(`Build version: ${info.version}`);
+}
+
+module.exports = { buildInfo, resolveBuildNumber };
