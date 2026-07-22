@@ -1,0 +1,41 @@
+{
+  "name": "@pop-party/engine",
+  "version": "1.0.0",
+  "description": "Public runtime and authoring infrastructure for Pop Party games.",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": "./index.js",
+    "./game": "./dist/server/game-definition-runtime.js",
+    "./plugin": "./dist/server/game-plugin-runtime.js",
+    "./content/schema": "./dist/shared/content-bundle-schema.js",
+    "./content/snapshot": "./dist/server/content-snapshot-runtime.js",
+    "./content/store": "./dist/server/revisioned-content-store-runtime.js",
+    "./content/local": "./dist/server/local-content-bundle-provider.js",
+    "./content/github": "./dist/server/github-content-bundle-store.js",
+    "./content/github-app": "./dist/server/github-app-credential-runtime.js",
+    "./content/github-git": "./dist/server/github-git-data-runtime.js",
+    "./content/environment": "./dist/server/content-store-environment-runtime.js",
+    "./rooms/content-pin": "./dist/server/room-content-pin-runtime.js",
+    "./security/admin": "./dist/server/admin-auth-runtime.js",
+    "./security/audit": "./dist/server/admin-audit-runtime.js",
+    "./security/runtime-capabilities": "./dist/server/runtime-capability-runtime.js",
+    "./security/svg": "./dist/server/svg-sanitizer.js"
+  },
+  "files": [
+    "dist",
+    "index.js",
+    "index.d.ts",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
