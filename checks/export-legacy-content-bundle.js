@@ -2,7 +2,7 @@
 "use strict";
 
 const path = require("path");
-const gameDefinition = require("../game.config");
+const gameDefinition = require("../apps/reference/game.config");
 const { exportLegacyContentBundle } = require("../server/legacy-content-bundle-exporter");
 
 const outputFlag = process.argv.indexOf("--output");

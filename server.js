@@ -93,7 +93,7 @@ const {
   normalizeVotingCardFilter
 } = require("./server/value-normalizers");
 const { createVotingRuntime } = require("./server/voting-runtime");
-const GAME_DEFINITION = require("./game.config");
+const GAME_DEFINITION = require("./apps/reference/game.config");
 const {
   acceptedArtTypes,
   defaultArtCompositions,

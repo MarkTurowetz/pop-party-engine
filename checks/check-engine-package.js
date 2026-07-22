@@ -12,11 +12,14 @@ const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-engine-fixt
 const commandEnvironment = { ...process.env, npm_config_cache: path.join(fixtureRoot, ".npm-cache") };
 
 try {
-  const referenceConfig = fs.readFileSync(path.join(root, "game.config.js"), "utf8");
+  const referenceConfig = fs.readFileSync(path.join(root, "apps", "reference", "game.config.js"), "utf8");
   if (!referenceConfig.includes('require("@pop-party/engine/game")') || !referenceConfig.includes('require("@pop-party/engine/plugin")')) {
     throw new Error("Reference game configuration must consume the public engine package subpaths");
   }
   const referenceServer = fs.readFileSync(path.join(root, "server.js"), "utf8");
+  if (!referenceServer.includes('require("./apps/reference/game.config")')) {
+    throw new Error("Reference server must load the app-owned game configuration directly");
+  }
   const requiredServerImports = [
     "@pop-party/engine/security/admin",
     "@pop-party/engine/security/audit",
@@ -30,6 +33,9 @@ try {
     throw new Error(`Reference server is missing public engine imports: ${missingServerImports.join(", ")}`);
   }
   const localRequire = createRequire(path.join(root, "package.json"));
+  if (require(path.join(root, "game.config")) !== require(path.join(root, "apps", "reference", "game.config"))) {
+    throw new Error("Root game configuration is not a reference-app compatibility export");
+  }
   if (require(path.join(root, "server", "game-definition-runtime")).defineGame !== localRequire("@pop-party/engine/game").defineGame) {
     throw new Error("Legacy game-definition path is not a package compatibility re-export");
   }
