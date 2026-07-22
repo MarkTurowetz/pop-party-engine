@@ -1,6 +1,7 @@
 "use strict";
 // TypeScript source for the dual-use flow action registry (server require + client global).
-// Built to shared/flow-action-registry.js via `npm run build:shared` (committed output).
+// Built to packages/engine/src/shared/flow-action-registry.js via `npm run build:shared`.
+// The emitted JavaScript is mirrored to shared/ for direct browser loading.
 // Body wrapped in a bare block so its top-level names stay local to the shared/*.ts
 // compilation (they don't leak into the global script scope shared with game-data.ts).
 {

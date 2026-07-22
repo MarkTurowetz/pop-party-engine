@@ -15,6 +15,7 @@ const engineSharedDir = path.join(repoRoot, "packages", "engine", "src", "shared
 const referenceAppDir = path.join(repoRoot, "apps", "reference");
 const browserMirrorFiles = [
   "choice-input-action-config.js",
+  "flow-action-registry.js",
   "microphone-access-action-config.js",
   "text-answer-action-config.js"
 ];
