@@ -40,6 +40,10 @@
       "types": "./src/shared/art-timeline-architecture.d.ts",
       "default": "./src/shared/art-timeline-architecture.js"
     },
+    "./art/components": {
+      "types": "./src/shared/art-component-schema.d.ts",
+      "default": "./src/shared/art-component-schema.js"
+    },
     "./content/schema": {
       "types": "./src/shared/content-bundle-schema.d.ts",
       "default": "./src/shared/content-bundle-schema.js"

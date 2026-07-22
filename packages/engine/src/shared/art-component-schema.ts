@@ -1,6 +1,6 @@
-// Dual-use (server require + client global) art component schema + normalizers. Built to
-// shared/art-component-schema.js via `npm run build:shared` (committed output). Wrapped in
-// an IIFE so declarations stay local to the shared compilation's script scope.
+// Dual-use (server require + client global) art component schema + normalizers. The
+// package-owned JavaScript is mirrored to shared/art-component-schema.js for the
+// legacy browser manifest. Wrapped in an IIFE so declarations stay local.
 
 (function (): void {
   "use strict";

@@ -12,5 +12,6 @@ Public runtime boundaries include `@pop-party/engine/server`,
 `@pop-party/engine/tooling`, and `@pop-party/engine/testing`. Public art authoring
 contracts are exposed through `@pop-party/engine/art/lifecycle`,
 `@pop-party/engine/art/timeline`, and `@pop-party/engine/art/architecture`.
-Games should use these exported surfaces instead of importing package-internal
-files.
+The generic component vocabulary and normalizers are available from
+`@pop-party/engine/art/components`. Games should use these exported surfaces
+instead of importing package-internal files.

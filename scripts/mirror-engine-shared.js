@@ -5,6 +5,7 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const filenames = [
+  "art-component-schema.js",
   "color-utils.js",
   "choice-input-action-config.js",
   "flow-action-registry.js",

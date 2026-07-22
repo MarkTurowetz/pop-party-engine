@@ -14,6 +14,7 @@ const sharedDir = path.join(repoRoot, "shared");
 const engineSharedDir = path.join(repoRoot, "packages", "engine", "src", "shared");
 const referenceAppDir = path.join(repoRoot, "apps", "reference");
 const browserMirrorFiles = [
+  "art-component-schema.js",
   "color-utils.js",
   "choice-input-action-config.js",
   "flow-action-registry.js",

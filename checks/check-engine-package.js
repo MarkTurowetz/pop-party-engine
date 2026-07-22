@@ -171,7 +171,8 @@ try {
     ...requiredServerImports,
     "@pop-party/engine/art/lifecycle",
     "@pop-party/engine/art/timeline",
-    "@pop-party/engine/art/architecture"
+    "@pop-party/engine/art/architecture",
+    "@pop-party/engine/art/components"
   ]) fixtureRequire(specifier);
   const plugin = engine.defineGamePlugin({ namespace: "fixture", register(registry) { registry.actions("fixture.action", {}); } });
   const gameData = Object.fromEntries(engine.REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));
@@ -196,6 +197,7 @@ try {
     'import { lifecycleLabels } from "@pop-party/engine/art/lifecycle";',
     'import { normalizeTimeline, type TimelineDocument } from "@pop-party/engine/art/timeline";',
     'import { collectArtArchitectureIssues } from "@pop-party/engine/art/architecture";',
+    'import { normalizeComponentKind } from "@pop-party/engine/art/components";',
     'import { normalizeBundlePath } from "@pop-party/engine/content/schema";',
     'import { createContentSnapshot } from "@pop-party/engine/content/snapshot";',
     'import { createRevisionedContentStoreRuntime } from "@pop-party/engine/content/store";',
@@ -214,7 +216,7 @@ try {
     'const gameData = Object.fromEntries(REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));',
     'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, gameData, plugin });',
     'const timeline: TimelineDocument | null = normalizeTimeline({ fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] });',
-    'void [createInputStateRuntime, createStageTestConfigHandlerRuntime, createLayoutSyncRuntime, lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
+    'void [createInputStateRuntime, createStageTestConfigHandlerRuntime, createLayoutSyncRuntime, lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeComponentKind, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
   ].join("\n"));
   execFileSync(process.execPath, [path.join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "--strict", "--target", "ES2022", "--module", "Node16", "--moduleResolution", "Node16", "consumer.ts"], { cwd: fixtureRoot, stdio: "pipe" });
   console.log(`Packed engine fixture passed: ${packed.filename} (${packed.files.length} files).`);
