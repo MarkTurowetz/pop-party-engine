@@ -9,3 +9,6 @@ export function compositionRevision(composition: unknown): string;
 export function createArtCompositionDependencyReport(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function normalizeArtOrganization(source?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function removeDeletedCompositionOrganizationKeys(organization: unknown, deletedIds: Iterable<string>): Readonly<Record<string, unknown>>;
+export function manifestRevision(manifest: unknown): string;
+export function revisionMatches(payload: unknown, manifest: unknown): boolean;
+export function compositionSaveConflict(options?: Record<string, unknown>): Readonly<Record<string, unknown>> | null;

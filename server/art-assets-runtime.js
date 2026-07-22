@@ -33,6 +33,7 @@ const { stageBackgroundOverride } = require("./stage-background-art-runtime");
 const { migratePlayerWidgetPointPopupAnchorComponents } = require("./player-widget-point-popup-anchor-runtime");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
 const { normalizeArtOrganization, removeDeletedCompositionOrganizationKeys } = require("./art-organization-runtime");
+const { compositionSaveConflict, manifestRevision, revisionMatches } = require("./art-revision-runtime");
 const { assertSafeSvg, svgResponseHeaders } = require("./svg-sanitizer");
 
 function createArtAssetsRuntime({
@@ -55,15 +56,6 @@ function createArtAssetsRuntime({
 }) {
   artCompositions = artCompositions.map((composition) => migrateLegacyArtCompositionSchema(JSON.parse(JSON.stringify(composition))));
   const knownCompositionIds = new Set(artCompositions.map((composition) => composition.id));
-
-  function manifestRevision(manifest) {
-    return crypto.createHash("sha256").update(JSON.stringify(manifest || {})).digest("hex");
-  }
-
-  function revisionMatches(payload, manifest) {
-    const expected = cleanText(payload?.revision, "", 128);
-    return !expected || expected === manifestRevision(manifest);
-  }
 
   function readArtManifest() {
     try {
@@ -621,31 +613,6 @@ function createArtAssetsRuntime({
     return [...byId.values()];
   }
 
-  function compositionSaveConflict(payload, manifest, compositionIds = []) {
-    if (revisionMatches(payload, manifest)) return null;
-    const expected = payload?.expectedCompositionRevisions && typeof payload.expectedCompositionRevisions === "object"
-      ? payload.expectedCompositionRevisions
-      : null;
-    const currentById = new Map(allPublicArtCompositions(manifest).map((composition) => [composition.id, composition]));
-    const currentRevisions = Object.fromEntries(compositionIds.map((id) => {
-      const current = currentById.get(id);
-      return [id, current ? compositionRevision(current) : ""];
-    }));
-    const conflicts = compositionIds.filter((id) =>
-      !expected || !Object.prototype.hasOwnProperty.call(expected, id) || String(expected[id] || "") !== currentRevisions[id]
-    );
-    if (!conflicts.length) return null;
-    return {
-      ok: false,
-      error: conflicts.length === 1
-        ? "Art composition changed; reload before saving"
-        : "Art compositions changed; reload before saving",
-      conflictCompositionIds: conflicts,
-      compositionRevisions: currentRevisions,
-      revision: manifestRevision(manifest)
-    };
-  }
-
   function cacheBustFileUrl(filePath, urlPath) {
     try {
       const version = Math.round(fs.statSync(filePath).mtimeMs);
@@ -807,7 +774,12 @@ function createArtAssetsRuntime({
     }
 
     const manifest = await loadArtManifest();
-    const saveConflict = compositionSaveConflict(payload, manifest, [safeCompositionId]);
+    const saveConflict = compositionSaveConflict({
+      payload,
+      manifest,
+      compositionIds: [safeCompositionId],
+      currentCompositions: allPublicArtCompositions(manifest)
+    });
     if (saveConflict) {
       sendJson(res, 409, saveConflict);
       return;
@@ -872,7 +844,12 @@ function createArtAssetsRuntime({
     }
     const manifest = await loadArtManifest();
     const requestedIds = payload.compositions.map((composition) => cleanId(composition?.id)).filter(Boolean);
-    const saveConflict = compositionSaveConflict(payload, manifest, requestedIds);
+    const saveConflict = compositionSaveConflict({
+      payload,
+      manifest,
+      compositionIds: requestedIds,
+      currentCompositions: allPublicArtCompositions(manifest)
+    });
     if (saveConflict) {
       sendJson(res, 409, saveConflict);
       return;
