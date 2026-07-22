@@ -28,6 +28,10 @@
       "types": "./src/client/http.d.ts",
       "default": "./src/client/http.js"
     },
+    "./client/layout-states": {
+      "types": "./src/shared/controller-layout-states.d.ts",
+      "default": "./src/shared/controller-layout-states.js"
+    },
     "./testing": {
       "types": "./src/testing/index.d.ts",
       "default": "./src/testing/index.js"

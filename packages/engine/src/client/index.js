@@ -1,6 +1,7 @@
 "use strict";
 
 module.exports = Object.freeze({
+  ...require("../shared/controller-layout-states"),
   ...require("./action-completion-barrier"),
   ...require("./controller-heartbeat-runtime"),
   ...require("./controller-module-cache"),

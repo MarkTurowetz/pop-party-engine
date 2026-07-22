@@ -17,6 +17,8 @@ const browserMirrorFiles = [
   "art-component-schema.js",
   "color-utils.js",
   "choice-input-action-config.js",
+  "controller-layout-states.d.ts",
+  "controller-layout-states.js",
   "flow-action-registry.js",
   "game-constants-schema.js",
   "lifecycle-labels.d.ts",
