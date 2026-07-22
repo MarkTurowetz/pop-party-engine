@@ -11,7 +11,7 @@ const {
 const { normalizeColor } = require("../shared/color-utils");
 const { normalizeTimeline } = require("../shared/timeline-model");
 const { migratePlayerPointPopupTimeline } = require("../shared/player-point-popup-timeline");
-const { ART_TIMELINE_ARCHITECTURE_VERSION, collectArtArchitectureIssues } = require("../shared/art-timeline-architecture");
+const { ART_TIMELINE_ARCHITECTURE_VERSION } = require("../shared/art-timeline-architecture");
 const { canonicalLifecycleLabel } = require("../shared/lifecycle-labels");
 const {
   migrateLayoutTextFieldWidgetComponents,
@@ -40,6 +40,7 @@ const { createArtFileRuntime } = require("./art-file-runtime");
 const { createArtManifestStoreRuntime } = require("./art-manifest-store-runtime");
 const { normalizeArtOrganization, removeDeletedCompositionOrganizationKeys } = require("./art-organization-runtime");
 const { compositionSaveConflict, manifestRevision, revisionMatches } = require("./art-revision-runtime");
+const { blockingArtArchitectureIssues } = require("./art-validation-runtime");
 const { assertSafeSvg, svgResponseHeaders } = require("./svg-sanitizer");
 
 function createArtAssetsRuntime({
@@ -651,18 +652,6 @@ function createArtAssetsRuntime({
 
   function normalizeArtAssetReplacementsDraft(source = {}) {
     return normalizeArtAssetReplacementDraftCollection(source, { acceptedArtTypes, artAssets });
-  }
-
-  function architectureIssueKey(issue) {
-    return [issue?.compositionId, issue?.code, issue?.message].map((value) => String(value || "")).join("\u0000");
-  }
-
-  function blockingArtArchitectureIssues(beforeCompositions, afterCompositions, touchedCompositionIds = []) {
-    const previousIssueKeys = new Set(collectArtArchitectureIssues(beforeCompositions).map(architectureIssueKey));
-    const touchedIds = new Set([...touchedCompositionIds].map(cleanId).filter(Boolean));
-    return collectArtArchitectureIssues(afterCompositions).filter((issue) =>
-      touchedIds.has(cleanId(issue?.compositionId)) || !previousIssueKeys.has(architectureIssueKey(issue))
-    );
   }
 
   async function handleSaveArtComposition(req, res, compositionId) {

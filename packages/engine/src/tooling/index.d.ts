@@ -16,3 +16,5 @@ export function removeDeletedCompositionOrganizationKeys(organization: unknown, 
 export function manifestRevision(manifest: unknown): string;
 export function revisionMatches(payload: unknown, manifest: unknown): boolean;
 export function compositionSaveConflict(options?: Record<string, unknown>): Readonly<Record<string, unknown>> | null;
+export function architectureIssueKey(issue: unknown): string;
+export function blockingArtArchitectureIssues(beforeCompositions: readonly unknown[], afterCompositions: readonly unknown[], touchedCompositionIds?: Iterable<string>): readonly unknown[];

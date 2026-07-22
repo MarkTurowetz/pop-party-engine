@@ -13,5 +13,6 @@ module.exports = Object.freeze({
   ...require("../server/art-file-runtime"),
   ...require("../server/art-manifest-store-runtime"),
   ...require("../server/art-organization-runtime"),
-  ...require("../server/art-revision-runtime")
+  ...require("../server/art-revision-runtime"),
+  ...require("../server/art-validation-runtime")
 });
