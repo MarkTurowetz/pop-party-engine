@@ -37,5 +37,7 @@ module.exports = Object.freeze({
   ...require("./player-session-handlers-runtime"),
   ...require("./lobby-payload-runtime"),
   ...require("./host-audio-runtime"),
-  ...require("./trivia-content-runtime")
+  ...require("./trivia-content-runtime"),
+  ...require("./layout-sync-runtime"),
+  ...require("./local-draft-runtime")
 });
