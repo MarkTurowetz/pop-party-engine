@@ -24,6 +24,7 @@
     "./content/github-app": "./dist/server/github-app-credential-runtime.js",
     "./content/github-git": "./dist/server/github-git-data-runtime.js",
     "./content/environment": "./dist/server/content-store-environment-runtime.js",
+    "./content/admin": "./dist/server/content-admin-handlers-runtime.js",
     "./rooms/content-pin": "./dist/server/room-content-pin-runtime.js",
     "./security/admin": "./dist/server/admin-auth-runtime.js",
     "./security/audit": "./dist/server/admin-audit-runtime.js",

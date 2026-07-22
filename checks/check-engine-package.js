@@ -16,6 +16,19 @@ try {
   if (!referenceConfig.includes('require("@pop-party/engine/game")') || !referenceConfig.includes('require("@pop-party/engine/plugin")')) {
     throw new Error("Reference game configuration must consume the public engine package subpaths");
   }
+  const referenceServer = fs.readFileSync(path.join(root, "server.js"), "utf8");
+  const requiredServerImports = [
+    "@pop-party/engine/security/admin",
+    "@pop-party/engine/security/audit",
+    "@pop-party/engine/content/admin",
+    "@pop-party/engine/content/environment",
+    "@pop-party/engine/rooms/content-pin",
+    "@pop-party/engine/security/runtime-capabilities"
+  ];
+  const missingServerImports = requiredServerImports.filter((specifier) => !referenceServer.includes(`require("${specifier}")`));
+  if (missingServerImports.length) {
+    throw new Error(`Reference server is missing public engine imports: ${missingServerImports.join(", ")}`);
+  }
   const localRequire = createRequire(path.join(root, "package.json"));
   if (require(path.join(root, "server", "game-definition-runtime")).defineGame !== localRequire("@pop-party/engine/game").defineGame) {
     throw new Error("Legacy game-definition path is not a package compatibility re-export");
@@ -39,6 +52,7 @@ try {
   if (gameApi.defineGame !== engine.defineGame || pluginApi.defineGamePlugin !== engine.defineGamePlugin) {
     throw new Error("Packed engine subpath contracts do not match the root public API");
   }
+  for (const specifier of requiredServerImports) fixtureRequire(specifier);
   const plugin = engine.defineGamePlugin({ namespace: "fixture", register(registry) { registry.actions("fixture.action", {}); } });
   const gameData = Object.fromEntries(engine.REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));
   const game = engine.defineGame({
@@ -64,5 +78,4 @@ try {
   console.log(`Packed engine fixture passed: ${packed.filename} (${packed.files.length} files).`);
 } finally {
   fs.rmSync(fixtureRoot, { recursive: true, force: true });
-  fs.rmSync(path.join(packageRoot, "dist"), { recursive: true, force: true });
 }
