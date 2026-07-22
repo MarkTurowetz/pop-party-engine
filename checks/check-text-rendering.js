@@ -138,7 +138,10 @@ if (!/component\.autoFitText !== false/.test(artToolSource)) {
   process.exit(1);
 }
 
-const artNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/art-assets-runtime.js"), "utf8");
+const artNormalizerSource = fs.readFileSync(
+  path.join(repoRoot, "packages/engine/src/server/art-component-normalization-runtime.js"),
+  "utf8"
+);
 if (!/normalized\.autoFitText = typeof source\.autoFitText === "boolean"\s*\? source\.autoFitText\s*: base\.autoFitText !== false/.test(artNormalizerSource)) {
   console.error("Text rendering regression check failed:");
   console.error("- server art normalization must preserve explicit autoFitText changes and only use the saved default when omitted");
