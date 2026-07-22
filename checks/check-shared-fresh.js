@@ -16,6 +16,7 @@ const referenceAppDir = path.join(repoRoot, "apps", "reference");
 const browserMirrorFiles = [
   "choice-input-action-config.js",
   "flow-action-registry.js",
+  "game-constants-schema.js",
   "microphone-access-action-config.js",
   "text-answer-action-config.js"
 ];

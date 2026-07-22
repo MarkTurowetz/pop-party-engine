@@ -47,6 +47,7 @@ module.exports = Object.freeze({
   ...require("./flow-action-public-runtime"),
   ...require("./game-flow-normalization-runtime"),
   ...require("./room-flow-helpers-runtime"),
+  ...require("./game-constants-runtime"),
   ...require("./layout-sync-runtime"),
   ...require("./local-draft-runtime"),
   ...require("./tool-data-read-runtime"),

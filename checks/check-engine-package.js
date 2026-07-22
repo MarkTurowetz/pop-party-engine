@@ -128,6 +128,7 @@ try {
     ["flow-action-public-runtime", "createFlowActionPublicRuntime"],
     ["game-flow-normalization-runtime", "createGameFlowNormalizationRuntime"],
     ["room-flow-helpers-runtime", "createRoomFlowHelpersRuntime"],
+    ["game-constants-runtime", "createGameConstantsRuntime"],
     ["layout-sync-runtime", "createLayoutSyncRuntime"],
     ["local-draft-runtime", "createLocalDraftRuntime"],
     ["tool-data-read-runtime", "createToolDataReadRuntime"],

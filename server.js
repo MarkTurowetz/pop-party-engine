@@ -19,6 +19,7 @@ const {
   createFlowTargetRuntime,
   createGameFlowMergeRuntime,
   createGameFlowNormalizationRuntime,
+  createGameConstantsRuntime,
   createHostAudioRuntime,
   createInactivePlayerSweepRuntime,
   createInputStateRuntime,
@@ -69,7 +70,6 @@ const { createControllerLayoutNormalizationRuntime } = require("./server/control
 const { createControllerLayoutStateRuntime } = require("./server/controller-layout-state-runtime");
 const { createArtAssetsRuntime } = require("./server/art-assets-runtime");
 const { artRuntimeReferences } = require("./server/art-runtime-dependencies");
-const { createGameConstantsRuntime } = require("./server/game-constants-runtime");
 const { createLayoutNormalizationRuntime } = require("./server/layout-normalization-runtime");
 const { createRoomContentPinRuntime } = require("@pop-party/engine/rooms/content-pin");
 const { createRuntimeCapabilityRuntime } = require("@pop-party/engine/security/runtime-capabilities");

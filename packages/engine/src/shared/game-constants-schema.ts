@@ -1,5 +1,6 @@
 // Dual-use (server require + client global) custom game-constants schema/normalizers.
-// Built to shared/game-constants-schema.js via `npm run build:shared` (committed output).
+// Built to packages/engine/src/shared/game-constants-schema.js via `npm run build:shared`.
+// The emitted JavaScript is mirrored to shared/ for direct browser loading.
 
 (function (root: Record<string, unknown>, factory: () => unknown): void {
   const api = factory();
