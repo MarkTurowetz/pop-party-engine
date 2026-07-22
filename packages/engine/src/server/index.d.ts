@@ -56,6 +56,13 @@ export function createPlayerSessionHandlersRuntime(options: Record<string, unkno
 export function createLobbyPayloadRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createHostAudioRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createTriviaContentRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export const TEXT_ANSWER_ACTION_CONFIGS: Readonly<Record<string, unknown>>;
+export function isTextAnswerAction(actionOrType: unknown): boolean;
+export function textAnswerActionConfig(actionOrType: unknown): Readonly<Record<string, unknown>> | null;
+export function textAnswerPayloadTypeForMode(mode: unknown): string;
+export function createControllerInputPayloadRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function controllerInputStaleError(payload: Record<string, unknown>, room: Record<string, unknown>, inputVisitId: number, label: string): string;
+export function createControllerSubmitHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLayoutSyncRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLocalDraftRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createToolDataReadRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

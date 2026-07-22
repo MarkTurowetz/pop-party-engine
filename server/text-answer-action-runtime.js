@@ -1,1 +1,3 @@
-module.exports = require("../shared/text-answer-action-config");
+"use strict";
+
+module.exports = require("../packages/engine/src/server/text-answer-action-runtime");
