@@ -1,5 +1,6 @@
 // Dual-use (server require + client global) text-answer action config. Built to
-// shared/text-answer-action-config.js via `npm run build:shared` (committed output).
+// packages/engine/src/shared/text-answer-action-config.js via `npm run build:shared`.
+// The emitted JavaScript is mirrored to shared/ for direct browser loading.
 
 (function (root: Record<string, unknown>, factory: () => unknown): void {
   const api = factory();

@@ -13,6 +13,11 @@ const repoRoot = path.resolve(__dirname, "..");
 const sharedDir = path.join(repoRoot, "shared");
 const engineSharedDir = path.join(repoRoot, "packages", "engine", "src", "shared");
 const referenceAppDir = path.join(repoRoot, "apps", "reference");
+const browserMirrorFiles = [
+  "choice-input-action-config.js",
+  "microphone-access-action-config.js",
+  "text-answer-action-config.js"
+];
 
 function fail(message) {
   console.error("shared/*.js freshness check failed:");
@@ -56,6 +61,17 @@ function main() {
       const committed = fs.readFileSync(committedPath, "utf8");
       if (fresh !== committed) {
         fail(`${jsPath} is out of date with ${tsPath} — run \`npm run build:shared\` and commit the result.`);
+      }
+    }
+
+    for (const filename of browserMirrorFiles) {
+      const canonicalPath = path.join(engineSharedDir, filename);
+      const mirrorPath = path.join(sharedDir, filename);
+      if (!fs.existsSync(canonicalPath) || !fs.existsSync(mirrorPath)) {
+        fail(`${filename} is missing from the engine source or browser mirror.`);
+      }
+      if (fs.readFileSync(canonicalPath, "utf8") !== fs.readFileSync(mirrorPath, "utf8")) {
+        fail(`shared/${filename} is not an exact mirror of packages/engine/src/shared/${filename}.`);
       }
     }
 
