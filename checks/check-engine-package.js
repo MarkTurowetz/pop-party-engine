@@ -66,7 +66,8 @@ try {
     "@pop-party/engine/security/runtime-capabilities",
     "@pop-party/engine/testing",
     "@pop-party/engine/tooling",
-    "@pop-party/engine/server"
+    "@pop-party/engine/server",
+    "@pop-party/engine/server/web-service"
   ];
   const missingServerImports = requiredServerImports.filter((specifier) => !referenceServer.includes(`require("${specifier}")`));
   if (missingServerImports.length) {
@@ -146,6 +147,7 @@ try {
     ["app-version", "readAppVersion"],
     ["http-utils", "sendJson"],
     ["network-urls-runtime", "createNetworkUrlsRuntime"],
+    ["web-service-runtime", "createWebServiceRuntime"],
     ["local-json-store", "readJsonFile"],
     ["router-runtime", "createRouterRuntime"],
     ["static-files-runtime", "createStaticFilesRuntime"],

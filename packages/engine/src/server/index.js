@@ -22,6 +22,7 @@ module.exports = Object.freeze({
   ...require("./app-version"),
   ...require("./http-utils"),
   ...require("./network-urls-runtime"),
+  ...require("./web-service-runtime"),
   ...require("./local-json-store"),
   ...require("./router-runtime"),
   ...require("./static-files-runtime"),

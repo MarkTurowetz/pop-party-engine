@@ -1,5 +1,3 @@
-const http = require("http");
-const os = require("os");
 const path = require("path");
 const { createAdminAuthRuntime } = require("@pop-party/engine/security/admin");
 const { createAdminAuditRuntime } = require("@pop-party/engine/security/audit");
@@ -32,7 +30,6 @@ const {
   createLobbyControlHandlersRuntime,
   createLobbyPayloadRuntime,
   createMomentRouteRuntime,
-  createNetworkUrlsRuntime,
   createPauseRuntime,
   createPlayerPublicRuntime,
   createPlayerAnswersRuntime,
@@ -75,6 +72,7 @@ const {
   sendJson,
   writeJsonFile
 } = require("@pop-party/engine/server");
+const { createWebServiceRuntime } = require("@pop-party/engine/server/web-service");
 const {
   createGithubStorageRuntime,
   createLayoutSyncRuntime,
@@ -1262,25 +1260,6 @@ const {
   selectVip
 });
 
-const {
-  getLanUrls
-} = createNetworkUrlsRuntime({
-  networkInterfaces: os.networkInterfaces,
-  port: PORT
-});
-
-setInterval(sweepInactivePlayers, 2000);
-
-const server = http.createServer(router);
-
-server.on("error", (error) => {
-  if (error.code === "EADDRINUSE") {
-    console.error(`Port ${PORT} is already in use. Try PORT=${PORT + 1} npm start`);
-    process.exit(1);
-  }
-  throw error;
-});
-
 async function initializeAuthoritativeToolSources() {
   await Promise.all([
     loadGameFlowSource({ refresh: true }),
@@ -1296,20 +1275,31 @@ function logToolStorage(label, store) {
   console.log(`${label} storage: ${store.storageKind}`);
 }
 
-initializeAuthoritativeToolSources()
-  .then(() => {
-    server.listen(PORT, HOST, () => {
-      console.log(`Party Game Template server running at http://localhost:${PORT}`);
-      for (const url of getLanUrls()) console.log(`LAN URL: ${url}`);
+const webService = createWebServiceRuntime({
+  router,
+  port: PORT,
+  host: HOST,
+  initialize: initializeAuthoritativeToolSources,
+  sweep: sweepInactivePlayers,
+  sweepIntervalMs: 2000,
+  onStarted({ localUrl, lanUrls }) {
+      console.log(`Party Game Template server running at ${localUrl}`);
+      for (const url of lanUrls) console.log(`LAN URL: ${url}`);
       logToolStorage("Game flow", gameFlowStore);
       logToolStorage("Game constants", gameConstantsStore);
       logToolStorage("Stage layouts", stageLayoutsStore);
       logToolStorage("Controller layouts", controllerLayoutsStore);
       logToolStorage("Host audio", hostAudiosStore);
       logToolStorage("Art manifest", artManifestStore);
-    });
-  })
+  }
+});
+
+webService.start()
   .catch((error) => {
+    if (error.code === "EADDRINUSE") {
+      console.error(`Port ${PORT} is already in use. Try PORT=${PORT + 1} npm start`);
+      process.exit(1);
+    }
     console.error(`Authoritative game content failed to initialize: ${error.message}`);
     process.exit(1);
   });

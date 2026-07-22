@@ -54,6 +54,7 @@ export function contentTypeForFile(filePath: string): string;
 export function readJson(request: Record<string, unknown>, maxBytes?: number): Promise<unknown>;
 export function sendJson(response: Record<string, unknown>, status: number, payload: unknown): void;
 export function createNetworkUrlsRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export * from "./web-service-runtime";
 export function backupJsonFile(filePath: string, backupDirectory: string, prefix: string): void;
 export function mirrorJsonFile(filePath: string, data: unknown): void;
 export function readJsonFile(filePath: string): unknown;
