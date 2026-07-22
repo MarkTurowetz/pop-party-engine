@@ -3,6 +3,8 @@
 function createRouterRuntime({
   adminAuth,
   clonePrompt,
+  contentAdmin,
+  contentStatus,
   gameDefinition,
   handleActionEffect,
   handleAdvancePresentation,
@@ -68,6 +70,20 @@ function createRouterRuntime({
 
     if (runtimeCapabilities && !runtimeCapabilities.authorizeRequest(req, res, url)) return;
 
+    if (contentAdmin) {
+      if (req.method === "GET" && url.pathname === "/api/content/draft") return void contentAdmin.handleReadDraft(req, res, url);
+      if (req.method === "POST" && url.pathname === "/api/content/draft") return void contentAdmin.handleWriteDraft(req, res, url);
+      if (req.method === "POST" && url.pathname === "/api/content/validate") return void contentAdmin.handleValidateDraft(req, res, url);
+      if (req.method === "POST" && url.pathname === "/api/content/publish") return void contentAdmin.handlePublish(req, res, url);
+      if (req.method === "POST" && url.pathname === "/api/content/rollback") return void contentAdmin.handleRollback(req, res);
+      if (req.method === "GET" && url.pathname === "/api/content/active-release") return void contentAdmin.handleActiveRelease(req, res);
+      if (req.method === "GET" && url.pathname === "/api/content/revisions") return void contentAdmin.handleListRevisions(req, res);
+    }
+    if (url.pathname.startsWith("/api/content/")) {
+      sendJson(res, 404, { ok: false, error: "Revisioned content authoring is not enabled", errorCode: "CONTENT_AUTHORING_DISABLED" });
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/stage/rooms") {
       runtimeCapabilities.handleCreateRoom(req, res);
       return;
@@ -85,7 +101,8 @@ function createRouterRuntime({
           contentMode: gameDefinition?.content?.mode || ""
         },
         adminAuth: adminAuth?.publicStatus() || { mode: "unknown", protected: false },
-        runtimeCapabilities: runtimeCapabilities?.publicStatus() || { mode: "unknown", protected: false }
+        runtimeCapabilities: runtimeCapabilities?.publicStatus() || { mode: "unknown", protected: false },
+        contentStore: contentStatus || { mode: "disabled", remoteAuthoring: "disabled", enabled: false }
       });
       return;
     }

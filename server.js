@@ -7,6 +7,8 @@ const { createActionCompletionRuntime } = require("./server/action-completion-ru
 const { createActionEffectStateRuntime } = require("./server/action-effect-state-runtime");
 const { readAppVersion } = require("./server/app-version");
 const { createControllerInputPayloadRuntime } = require("./server/controller-input-payload-runtime");
+const { createContentAdminHandlersRuntime } = require("./server/content-admin-handlers-runtime");
+const { createContentStoreEnvironmentRuntime } = require("./server/content-store-environment-runtime");
 const { resetGameSessionState } = require("./server/game-session-reset-runtime");
 const { createControllerSubmitHandlersRuntime } = require("./server/controller-submit-handlers-runtime");
 const { createCountdownRuntime } = require("./server/countdown-runtime");
@@ -175,6 +177,20 @@ const adminAuth = createAdminAuthRuntime({
   secureCookies: process.env.NODE_ENV === "production",
   audit: (req, event) => adminAudit.record(req, event)
 });
+const contentEnvironment = createContentStoreEnvironmentRuntime({
+  env: process.env,
+  isProduction: process.env.NODE_ENV === "production",
+  adminAuthMode: ADMIN_AUTH_MODE
+});
+const contentStore = GAME_DEFINITION.content.store || contentEnvironment.contentStore;
+const contentAdmin = contentEnvironment.remoteAuthoring === "enabled"
+  ? createContentAdminHandlersRuntime({
+      contentStore,
+      readJson,
+      sendJson,
+      audit: (req, event) => adminAudit.record(req, event)
+    })
+  : null;
 
 const {
   normalizeGameConstants
@@ -202,9 +218,9 @@ const {
   getRoom
 } = createRoomStateRuntime({ rooms });
 
-const roomContentPins = GAME_DEFINITION.content.store
+const roomContentPins = contentStore
   ? createRoomContentPinRuntime({
-      contentStore: GAME_DEFINITION.content.store,
+      contentStore,
       gameId: GAME_DEFINITION.gameId
     })
   : null;
@@ -1188,6 +1204,12 @@ const {
 } = createRouterRuntime({
   adminAuth,
   clonePrompt,
+  contentAdmin,
+  contentStatus: {
+    mode: contentEnvironment.mode,
+    remoteAuthoring: contentEnvironment.remoteAuthoring,
+    enabled: contentEnvironment.enabled
+  },
   gameDefinition: GAME_DEFINITION,
   handleActionEffect,
   handleAdvancePresentation,

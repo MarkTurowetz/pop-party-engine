@@ -129,6 +129,7 @@ function createAdminAuthRuntime(options = {}) {
     if (url.pathname === "/api/admin/session") return false;
     if (ADMIN_API_PATHS.has(url.pathname)) return req.method !== "GET" || url.pathname === "/api/local-draft" || url.pathname === "/api/tool-drafts";
     if (/^\/api\/art-(?:assets|compositions)\/[a-z0-9-]+$/i.test(url.pathname)) return req.method === "POST" || req.method === "DELETE";
+    if (url.pathname.startsWith("/api/content/")) return true;
     return false;
   }
 

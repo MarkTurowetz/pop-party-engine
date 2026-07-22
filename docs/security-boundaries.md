@@ -19,6 +19,8 @@ GitHub mode requires all of:
 
 OAuth authenticates the administrator. It must not be reused as the credential that writes game content. Content publication uses a separately provisioned, least-privileged GitHub App credential.
 
+The writer exchanges a short-lived signed GitHub App JWT for a cached installation token. It refreshes before expiry, coalesces concurrent refreshes, and fails closed when GitHub refuses or returns an expired credential. The private key is supplied only through deployment secrets and is never written to game content or logs.
+
 ## Public runtime capabilities
 
 `PARTY_GAME_RUNTIME_CAPABILITIES` accepts:
@@ -31,6 +33,8 @@ Strict mode refuses to start unless the game supplies an immutable content store
 The browser stores runtime capabilities only in per-window `sessionStorage`. They must never be copied to shared cookies, `localStorage`, lobby payloads, logs, or another controller identity.
 
 Do not enable `github` or `required` in production until OAuth secrets, callback URLs, asset isolation, room teardown invalidation, and the deployment security checklist are complete.
+
+The revisioned GitHub provider and its routes are separately gated. `PARTY_GAME_CONTENT_STORE=github` constructs the read/pin provider, while `PARTY_GAME_REMOTE_AUTHORING=enabled` exposes authenticated draft, validation, publish, and rollback APIs. Production refuses the latter unless GitHub administrator authentication is also enabled. Both settings default to `disabled`.
 
 ## Authored SVG
 
