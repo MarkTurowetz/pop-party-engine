@@ -20,6 +20,10 @@
       "types": "./src/server/index.d.ts",
       "default": "./src/server/index.js"
     },
+    "./testing": {
+      "types": "./src/testing/index.d.ts",
+      "default": "./src/testing/index.js"
+    },
     "./content/schema": {
       "types": "./src/shared/content-bundle-schema.d.ts",
       "default": "./src/shared/content-bundle-schema.js"
