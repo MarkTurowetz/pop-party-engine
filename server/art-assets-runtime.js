@@ -32,6 +32,7 @@ const { controllerPlayerBannerOverride } = require("./controller-player-banner-a
 const { stageBackgroundOverride } = require("./stage-background-art-runtime");
 const { migratePlayerWidgetPointPopupAnchorComponents } = require("./player-widget-point-popup-anchor-runtime");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
+const { assertSafeSvg, svgResponseHeaders } = require("./svg-sanitizer");
 
 function createArtAssetsRuntime({
   acceptedArtTypes,
@@ -1178,6 +1179,14 @@ function createArtAssetsRuntime({
       sendJson(res, 400, { ok: false, error: "Replacement art must be under 5 MB." });
       return;
     }
+    if (mimeType === "image/svg+xml") {
+      try {
+        assertSafeSvg(buffer);
+      } catch (error) {
+        sendJson(res, 400, { ok: false, error: error.message });
+        return;
+      }
+    }
 
     fs.mkdirSync(customDir, { recursive: true });
     const manifest = await loadArtManifest();
@@ -1233,7 +1242,8 @@ function createArtAssetsRuntime({
       res.writeHead(200, {
         "Content-Type": contentTypeForFile(filePath),
         "Content-Length": data.length,
-        "Cache-Control": "no-cache"
+        "Cache-Control": "no-cache",
+        ...(path.extname(filePath).toLowerCase() === ".svg" ? svgResponseHeaders() : { "X-Content-Type-Options": "nosniff" })
       });
       res.end(data);
     });

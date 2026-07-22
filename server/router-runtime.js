@@ -1,6 +1,7 @@
 "use strict";
 
 function createRouterRuntime({
+  adminAuth,
   clonePrompt,
   gameDefinition,
   handleActionEffect,
@@ -36,6 +37,7 @@ function createRouterRuntime({
   multipleChoicePrompts,
   normalizeStageCode,
   rooms,
+  runtimeCapabilities,
   sendArtAssetList,
   sendControllerLayouts,
   sendGameConstants,
@@ -53,8 +55,21 @@ function createRouterRuntime({
   function router(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
 
+    if (adminAuth?.tryHandle(req, res, url)) return;
+
     if (req.method === "OPTIONS" && url.pathname.startsWith("/api/")) {
       sendJson(res, 200, { ok: true });
+      return;
+    }
+
+    if (adminAuth?.isAdminApiRequest(req, url)) {
+      if (!adminAuth.requireApi(req, res, { mutation: req.method !== "GET" })) return;
+    }
+
+    if (runtimeCapabilities && !runtimeCapabilities.authorizeRequest(req, res, url)) return;
+
+    if (req.method === "POST" && url.pathname === "/api/stage/rooms") {
+      runtimeCapabilities.handleCreateRoom(req, res);
       return;
     }
 
@@ -68,7 +83,9 @@ function createRouterRuntime({
           version: gameDefinition?.version || "",
           engineCompatibility: gameDefinition?.engineCompatibility || "",
           contentMode: gameDefinition?.content?.mode || ""
-        }
+        },
+        adminAuth: adminAuth?.publicStatus() || { mode: "unknown", protected: false },
+        runtimeCapabilities: runtimeCapabilities?.publicStatus() || { mode: "unknown", protected: false }
       });
       return;
     }
@@ -244,6 +261,12 @@ function createRouterRuntime({
       return;
     }
 
+    const stageEventTicketMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/event-ticket$/i);
+    if (req.method === "POST" && stageEventTicketMatch) {
+      runtimeCapabilities.handleCreateEventTicket(req, res, normalizeStageCode(stageEventTicketMatch[1]));
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/join") {
       handleJoin(req, res);
       return;
@@ -320,6 +343,7 @@ function createRouterRuntime({
     }
 
     if (req.method === "GET" || req.method === "HEAD") {
+      if (adminAuth?.isToolPath(url) && !adminAuth.requirePage(req, res, url)) return;
       serveIndex(res, url);
       return;
     }

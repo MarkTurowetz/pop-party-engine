@@ -556,9 +556,10 @@ interface ApiError extends Error {
 
 async function postJson(path: string, payload: unknown): Promise<Dict> {
   if (!w.canUseServer) throw new Error("Open this app through the server first.");
+  const headers = runtimeCapabilityHeaders(path, payload);
   const response = await fetch(`${location.origin}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(payload)
   });
   const result = (await response.json().catch(() => ({}))) as Dict;
@@ -572,12 +573,31 @@ async function postJson(path: string, payload: unknown): Promise<Dict> {
 }
 
 async function getJson(path: string): Promise<Dict> {
-  const response = await fetch(`${location.origin}${path}`, { cache: "no-store" });
+  const response = await fetch(`${location.origin}${path}`, { cache: "no-store", headers: runtimeCapabilityHeaders(path, null) });
   const result = (await response.json().catch(() => ({}))) as Dict;
   if (!response.ok || result.ok === false) {
     throw new Error((result.error as string) || "Something went wrong.");
   }
   return result;
+}
+
+function runtimeCapabilityHeaders(requestPath: string, payload: unknown): Record<string, string> {
+  const record = payload && typeof payload === "object" ? payload as Dict : {};
+  const stagePathMatch = requestPath.match(/^\/api\/stage\/([A-Z0-9]{1,6})\//i);
+  const stageCode = normalizeStageCode(record.stageCode || stagePathMatch?.[1] || "");
+  const playerId = String(record.playerId || "");
+  const headers: Record<string, string> = {};
+  if (stageCode) headers["X-Stage-Code"] = stageCode;
+  if (playerId) headers["X-Player-Id"] = playerId;
+  const storedPlayerStage = getSessionValue("partyTemplateStageCode");
+  const storedPlayerId = getSessionValue("partyTemplatePlayerId");
+  const playerCapability = getSessionValue("partyTemplatePlayerCapability");
+  if (playerCapability && stageCode === storedPlayerStage && playerId === storedPlayerId) {
+    headers["X-Player-Capability"] = playerCapability;
+  }
+  const stageCapability = stageCode ? getSessionValue(`partyTemplateStageCapability:${stageCode}`) : "";
+  if (stageCapability && !headers["X-Player-Capability"]) headers["X-Stage-Capability"] = stageCapability;
+  return headers;
 }
 
 const utilsApi = {
@@ -652,6 +672,7 @@ export {
   getControllerPlayerId,
   postJson,
   getJson,
+  runtimeCapabilityHeaders,
   loadArtAssets,
   playerAvatarArt
 };

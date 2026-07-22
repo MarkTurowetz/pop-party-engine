@@ -13,6 +13,7 @@ export class ApiError extends Error {
 export interface ApiClientOptions {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
+  adminCsrf?: boolean;
 }
 
 export interface ApiClient {
@@ -45,6 +46,26 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
 export function createApiClient(options: ApiClientOptions = {}): ApiClient {
   const baseUrl = normalizeBaseUrl(options.baseUrl);
   const fetchImpl = options.fetchImpl || fetch;
+  let csrfTokenPromise: Promise<string> | null = null;
+
+  async function adminCsrfToken(): Promise<string> {
+    if (!options.adminCsrf) return "";
+    if (!csrfTokenPromise) {
+      csrfTokenPromise = fetchImpl(apiUrl(baseUrl, "/api/admin/session"), {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin"
+      }).then(async (response) => {
+        const payload = await parseJsonResponse<{ csrfToken?: unknown }>(response);
+        return String(payload.csrfToken || "");
+      });
+    }
+    return csrfTokenPromise;
+  }
+
+  async function mutationHeaders(): Promise<Record<string, string>> {
+    const csrfToken = await adminCsrfToken();
+    return csrfToken ? { "X-CSRF-Token": csrfToken } : {};
+  }
 
   return {
     async getJson<T>(path: string): Promise<T> {
@@ -59,8 +80,10 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
         method: "POST",
         headers: {
           Accept: "application/json",
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...(await mutationHeaders())
         },
+        credentials: "same-origin",
         body: JSON.stringify(body)
       });
       return parseJsonResponse<TResponse>(response);
@@ -69,7 +92,8 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
     async deleteJson<T>(path: string): Promise<T> {
       const response = await fetchImpl(apiUrl(baseUrl, path), {
         method: "DELETE",
-        headers: { Accept: "application/json" }
+        headers: { Accept: "application/json", ...(await mutationHeaders()) },
+        credentials: "same-origin"
       });
       return parseJsonResponse<T>(response);
     }

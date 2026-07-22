@@ -1,6 +1,8 @@
 const http = require("http");
 const os = require("os");
 const path = require("path");
+const { createAdminAuthRuntime } = require("./server/admin-auth-runtime");
+const { createAdminAuditRuntime } = require("./server/admin-audit-runtime");
 const { createActionCompletionRuntime } = require("./server/action-completion-runtime");
 const { createActionEffectStateRuntime } = require("./server/action-effect-state-runtime");
 const { readAppVersion } = require("./server/app-version");
@@ -49,6 +51,7 @@ const { createRoomBroadcastRuntime } = require("./server/room-broadcast-runtime"
 const { createRoomFlowHelpersRuntime } = require("./server/room-flow-helpers-runtime");
 const { createRoomPhaseRuntime } = require("./server/room-phase-runtime");
 const { createRoomStateRuntime } = require("./server/room-state-runtime");
+const { createRuntimeCapabilityRuntime } = require("./server/runtime-capability-runtime");
 const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStageActionHandlersRuntime } = require("./server/stage-action-handlers-runtime");
 const { createStageEventsRuntime } = require("./server/stage-events-runtime");
@@ -142,6 +145,8 @@ const ART_ROOT = path.join(ROOT, "art");
 const ART_DEFAULT_DIR = path.join(ART_ROOT, "default");
 const ART_CUSTOM_DIR = path.join(ART_ROOT, "custom");
 const ART_MANIFEST_FILE = path.join(ART_ROOT, "art-manifest.json");
+const ADMIN_AUTH_MODE = String(process.env.PARTY_GAME_ADMIN_AUTH_MODE || "legacy-open").toLowerCase();
+const RUNTIME_CAPABILITY_MODE = String(process.env.PARTY_GAME_RUNTIME_CAPABILITIES || "legacy").toLowerCase();
 const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
 const START_GO_HOLD_MS = 700;
@@ -158,6 +163,17 @@ const localDraftStore = {
 };
 
 const APP_VERSION = readAppVersion(ROOT);
+const adminAudit = createAdminAuditRuntime();
+const adminAuth = createAdminAuthRuntime({
+  mode: ADMIN_AUTH_MODE,
+  isProduction: process.env.NODE_ENV === "production",
+  clientId: process.env.PARTY_GAME_GITHUB_OAUTH_CLIENT_ID || "",
+  clientSecret: process.env.PARTY_GAME_GITHUB_OAUTH_CLIENT_SECRET || "",
+  callbackUrl: process.env.PARTY_GAME_GITHUB_OAUTH_CALLBACK_URL || "",
+  allowedUserId: process.env.PARTY_GAME_ADMIN_GITHUB_USER_ID || "",
+  secureCookies: process.env.NODE_ENV === "production",
+  audit: (req, event) => adminAudit.record(req, event)
+});
 
 const {
   normalizeGameConstants
@@ -184,6 +200,16 @@ const {
   getExistingRoom,
   getRoom
 } = createRoomStateRuntime({ rooms });
+
+const runtimeCapabilities = createRuntimeCapabilityRuntime({
+  mode: RUNTIME_CAPABILITY_MODE,
+  getExistingRoom,
+  getRoom,
+  normalizePlayerId,
+  normalizeStageCode,
+  readJson,
+  sendJson
+});
 
 const {
   activePlayers,
@@ -1032,6 +1058,7 @@ const {
   publicPlayer,
   randomArrayItem,
   readJson,
+  runtimeCapabilities,
   selectVip,
   sendJson
 });
@@ -1149,6 +1176,7 @@ const {
 const {
   router
 } = createRouterRuntime({
+  adminAuth,
   clonePrompt,
   gameDefinition: GAME_DEFINITION,
   handleActionEffect,
@@ -1184,6 +1212,7 @@ const {
   multipleChoicePrompts,
   normalizeStageCode,
   rooms,
+  runtimeCapabilities,
   sendArtAssetList,
   sendControllerLayouts,
   sendGameConstants,

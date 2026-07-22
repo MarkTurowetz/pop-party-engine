@@ -12,6 +12,7 @@ function createPlayerSessionHandlersRuntime({
   publicPlayer,
   randomArrayItem,
   readJson,
+  runtimeCapabilities,
   selectVip,
   sendJson
 }) {
@@ -26,19 +27,38 @@ function createPlayerSessionHandlersRuntime({
 
     const stageCode = normalizeStageCode(payload.stageCode);
     const playerName = cleanPlayerName(payload.playerName);
-    let playerId = normalizePlayerId(payload.playerId) || `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    let playerId = normalizePlayerId(payload.playerId);
     if (!stageCode || !playerName) {
       sendJson(res, 400, { ok: false, error: "Stage code and player name are required" });
       return;
     }
 
-    const room = getRoom(stageCode);
+    const capabilityMode = runtimeCapabilities.publicStatus().mode;
+    const room = capabilityMode === "required" ? getExistingRoom(stageCode) : getRoom(stageCode);
+    if (!room) {
+      sendJson(res, 404, { ok: false, error: "That room does not exist", errorCode: "ROOM_NOT_FOUND" });
+      return;
+    }
     let player = room.players.get(playerId);
+    let playerCapability = player ? runtimeCapabilities.reconnectCapability(req, room, playerId) : "";
+    if (capabilityMode === "required" && !playerCapability) {
+      const identity = runtimeCapabilities.newPlayerIdentity(room);
+      playerId = identity.playerId;
+      playerCapability = identity.playerCapability;
+      player = null;
+    } else if (!playerId) {
+      const identity = runtimeCapabilities.newPlayerIdentity(room);
+      playerId = identity.playerId;
+      playerCapability = identity.playerCapability;
+      player = null;
+    }
     const staleDisconnectedPlayer = player
       && !player.active
       && Number(player.gameSessionId || 0) !== Number(room.gameSessionId || 0);
     if (player && (staleDisconnectedPlayer || (player.active && player.name !== playerName))) {
-      playerId = `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const identity = runtimeCapabilities.newPlayerIdentity(room);
+      playerId = identity.playerId;
+      playerCapability = identity.playerCapability;
       player = null;
     }
 
@@ -62,11 +82,13 @@ function createPlayerSessionHandlersRuntime({
       player.kickedFromGame = false;
       player.lastSeen = Date.now();
       player.gameSessionId = Number(room.gameSessionId || 0);
+      if (!playerCapability) playerCapability = runtimeCapabilities.issuePlayerCapability(room, playerId);
     }
 
+    if (!playerCapability) playerCapability = runtimeCapabilities.issuePlayerCapability(room, playerId);
     selectVip(room);
     broadcastLobby(room);
-    sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room) });
+    sendJson(res, 200, { ok: true, playerCapability, player: publicPlayer(player, room), lobby: lobbyPayload(room) });
   }
 
   async function handleHeartbeat(req, res) {

@@ -15,6 +15,6 @@ export interface ToolAppContext {
 export function createToolAppContext(options: ToolAppContextOptions): ToolAppContext {
   return {
     surface: options.surface,
-    api: createGameDataApi({ baseUrl: options.baseUrl })
+    api: createGameDataApi({ baseUrl: options.baseUrl, adminCsrf: true })
   };
 }

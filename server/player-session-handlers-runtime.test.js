@@ -7,6 +7,16 @@ const { createPlayerSessionHandlersRuntime } = require("./player-session-handler
 function createHarness(room, payload) {
   const response = {};
   const sendJson = vi.fn((_res, status, body) => Object.assign(response, { status, body }));
+  let generatedPlayerIndex = 0;
+  const runtimeCapabilities = {
+    publicStatus: () => ({ mode: "legacy" }),
+    reconnectCapability: () => "",
+    newPlayerIdentity: () => {
+      generatedPlayerIndex += 1;
+      return { playerId: `generated-${generatedPlayerIndex}`, playerCapability: `cap-${generatedPlayerIndex}` };
+    },
+    issuePlayerCapability: (_room, playerId) => `cap-${playerId}`
+  };
   const runtime = createPlayerSessionHandlersRuntime({
     broadcastLobby: vi.fn(),
     cleanPlayerName: (value) => String(value || "").trim(),
@@ -21,6 +31,7 @@ function createHarness(room, payload) {
     publicPlayer: (player) => ({ id: player.id, name: player.name, avatar: player.avatar }),
     randomArrayItem: (items) => items[0],
     readJson: async () => payload,
+    runtimeCapabilities,
     selectVip: vi.fn(),
     sendJson
   });

@@ -2,6 +2,9 @@ function createDefaultRoom(stageCode) {
   return {
     stageCode,
     stageClients: new Set(),
+    stageCapabilityHash: "",
+    stageEventTicketHashes: new Map(),
+    playerCapabilityHashes: new Map(),
     players: new Map(),
     vipPlayerId: "",
     startToken: "",

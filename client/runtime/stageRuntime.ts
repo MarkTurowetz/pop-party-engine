@@ -997,7 +997,7 @@ async function quitStageToLobby(): Promise<void> {
   }
 }
 
-function subscribeToStage(stageCode: string): void {
+async function subscribeToStage(stageCode: string): Promise<void> {
   if (!w().canUseServer) {
     setStageWaitingStatus("Open through the server to host a lobby", true);
     return;
@@ -1007,10 +1007,25 @@ function subscribeToStage(stageCode: string): void {
     w().lobbyPollTimer = setInterval(() => pollLobby(stageCode), 1000) as unknown as number;
     return;
   }
-  const stream = new EventSource(`${location.origin}/api/stage/${stageCode}/events`);
+  let ticket: string;
+  try {
+    const result = (await w().postJson!(`/api/stage/${stageCode}/event-ticket`, {})) as Dict;
+    ticket = String(result.ticket || "");
+  } catch (_error) {
+    setStageWaitingStatus("Could not authorize stage events", true);
+    window.setTimeout(() => subscribeToStage(stageCode), 1000);
+    return;
+  }
+  const streamUrl = new URL(`${location.origin}/api/stage/${stageCode}/events`);
+  if (ticket) streamUrl.searchParams.set("ticket", ticket);
+  const stream = new EventSource(streamUrl.toString());
   stream.addEventListener("lobby", (event) => renderStageLobby(JSON.parse((event as MessageEvent).data)));
   stream.addEventListener("artAssetsChanged", () => reloadStageArtAssets());
-  stream.addEventListener("error", () => setStageWaitingStatus("Reconnecting to lobby", true));
+  stream.addEventListener("error", () => {
+    stream.close();
+    setStageWaitingStatus("Reconnecting to lobby", true);
+    window.setTimeout(() => subscribeToStage(stageCode), 1000);
+  });
 }
 
 async function setupStage(): Promise<void> {
@@ -1023,6 +1038,9 @@ async function setupStage(): Promise<void> {
   ]);
   if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
   const stageCode = w().getOrCreateStageCode!();
+  const room = (await w().postJson!("/api/stage/rooms", { stageCode })) as Dict;
+  const stageCapability = String(room.stageCapability || "");
+  if (stageCapability) w().setSessionValue!(`partyTemplateStageCapability:${stageCode}`, stageCapability);
   setStageCodeDisplays(stageCode);
   renderStageJoinQr(stageCode, true);
   w().runtimeTestChannel?.addEventListener("message", (event: MessageEvent) => {
@@ -1040,7 +1058,7 @@ async function setupStage(): Promise<void> {
   window.addEventListener("resize", () => {
     if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
   });
-  subscribeToStage(stageCode);
+  await subscribeToStage(stageCode);
 }
 
 // Install the orchestrator entry points + the names other scripts read as globals,

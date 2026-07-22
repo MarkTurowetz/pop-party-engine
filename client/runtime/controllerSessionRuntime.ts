@@ -6,6 +6,7 @@ type Dict = Record<string, unknown>;
 interface ControllerState {
   stageCode?: string;
   playerId?: string;
+  playerCapability?: string;
   player?: Dict;
 }
 
@@ -20,7 +21,7 @@ export interface ControllerSessionRuntimeOptions {
 }
 
 export interface ControllerSessionRuntime {
-  enterLobby(stageCode: string, playerId: string, lobby: unknown, player: { name?: string }): void;
+  enterLobby(stageCode: string, playerId: string, playerCapability: string, lobby: unknown, player: { name?: string }): void;
   sendLeaveBeacon(origin: string): void;
 }
 
@@ -35,11 +36,12 @@ export function createControllerSessionRuntime(options: ControllerSessionRuntime
     setSessionValue
   } = options;
 
-  function enterLobby(stageCode: string, playerId: string, lobby: unknown, player: { name?: string }): void {
-    setControllerState({ stageCode, playerId, player });
+  function enterLobby(stageCode: string, playerId: string, playerCapability: string, lobby: unknown, player: { name?: string }): void {
+    setControllerState({ stageCode, playerId, playerCapability, player });
     setSessionValue("partyTemplatePlayerId", playerId);
     setSessionValue("partyTemplatePlayerName", player.name || "");
     setSessionValue("partyTemplateStageCode", stageCode);
+    setSessionValue("partyTemplatePlayerCapability", playerCapability);
     setLocalValue("partyTemplateStageCode", stageCode);
     elements.joinState.classList.add("hidden");
     renderState(lobby);
@@ -48,9 +50,19 @@ export function createControllerSessionRuntime(options: ControllerSessionRuntime
 
   function sendLeaveBeacon(origin: string): void {
     const state = getControllerState();
-    if (!state || !navigator.sendBeacon) return;
+    if (!state) return;
     const body = JSON.stringify({ stageCode: state.stageCode, playerId: state.playerId });
-    navigator.sendBeacon(`${origin}/api/leave`, new Blob([body], { type: "application/json" }));
+    fetch(`${origin}/api/leave`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Stage-Code": String(state.stageCode || ""),
+        "X-Player-Id": String(state.playerId || ""),
+        "X-Player-Capability": String(state.playerCapability || "")
+      },
+      body,
+      keepalive: true
+    }).catch(() => {});
   }
 
   return { enterLobby, sendLeaveBeacon };

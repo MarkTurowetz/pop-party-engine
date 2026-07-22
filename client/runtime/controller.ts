@@ -508,7 +508,7 @@ async function joinController(stageCode: string, playerName: string): Promise<Di
   getJoinButton().disabled = true;
   const result = (await getControllerSubmitApi().join(stageCode, playerName, playerId)) as Dict;
   const player = result.player as { id: string; name?: string };
-  getControllerSessionRuntime().enterLobby(stageCode, player.id, result.lobby, player);
+  getControllerSessionRuntime().enterLobby(stageCode, player.id, String(result.playerCapability || ""), result.lobby, player);
   return result;
 }
 
