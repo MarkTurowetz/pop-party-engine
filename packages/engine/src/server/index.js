@@ -11,5 +11,11 @@ module.exports = Object.freeze({
   ...require("./input-state-runtime"),
   ...require("./pause-runtime"),
   ...require("./countdown-runtime"),
-  ...require("./crafting-timer-runtime")
+  ...require("./crafting-timer-runtime"),
+  ...require("./flow-navigation-runtime"),
+  ...require("./flow-target-runtime"),
+  ...require("./flow-state-kind-runtime"),
+  ...require("./decision-runtime"),
+  ...require("./decision-action-normalization-runtime"),
+  ...require("./game-flow-merge-runtime")
 });

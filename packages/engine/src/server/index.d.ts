@@ -20,3 +20,11 @@ export function createInputStateRuntime(options: Record<string, unknown>): Reado
 export function createPauseRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createCountdownRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createCraftingTimerRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createFlowNavigationRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createFlowTargetRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function flowStateHasActionType(state: unknown, type: string): boolean;
+export function isCraftingStateId(stateId: unknown): boolean;
+export function isRoundIntroStateId(stateId: unknown): boolean;
+export function createDecisionRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createDecisionActionNormalizationRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createGameFlowMergeRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

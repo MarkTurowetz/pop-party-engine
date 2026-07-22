@@ -89,7 +89,13 @@ try {
     ["input-state-runtime", "createInputStateRuntime"],
     ["pause-runtime", "createPauseRuntime"],
     ["countdown-runtime", "createCountdownRuntime"],
-    ["crafting-timer-runtime", "createCraftingTimerRuntime"]
+    ["crafting-timer-runtime", "createCraftingTimerRuntime"],
+    ["flow-navigation-runtime", "createFlowNavigationRuntime"],
+    ["flow-target-runtime", "createFlowTargetRuntime"],
+    ["flow-state-kind-runtime", "flowStateHasActionType"],
+    ["decision-runtime", "createDecisionRuntime"],
+    ["decision-action-normalization-runtime", "createDecisionActionNormalizationRuntime"],
+    ["game-flow-merge-runtime", "createGameFlowMergeRuntime"]
   ];
   for (const [legacyModule, exportName] of serverKernelCompatibility) {
     if (require(path.join(root, "server", legacyModule))[exportName] !== serverKernel[exportName]) {
