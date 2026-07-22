@@ -103,6 +103,8 @@ try {
     ["runtime-capability-runtime", "@pop-party/engine/security/runtime-capabilities", "createRuntimeCapabilityRuntime"],
     ["svg-sanitizer", "@pop-party/engine/security/svg", "assertSafeSvg"],
     ["stage-test-config-handler-runtime", "@pop-party/engine/testing", "createStageTestConfigHandlerRuntime"],
+    ["art-asset-replacement-runtime", "@pop-party/engine/tooling", "normalizeArtAssetReplacementsDraft"],
+    ["art-asset-replacement-runtime", "@pop-party/engine/tooling", "parseArtAssetReplacement"],
     ["art-composition-dependency-runtime", "@pop-party/engine/tooling", "createArtCompositionDependencyReport"],
     ["art-organization-runtime", "@pop-party/engine/tooling", "normalizeArtOrganization"],
     ["art-organization-runtime", "@pop-party/engine/tooling", "removeDeletedCompositionOrganizationKeys"],
@@ -232,7 +234,7 @@ try {
     'import { defineGamePlugin } from "@pop-party/engine/plugin";',
     'import { createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime } from "@pop-party/engine/server";',
     'import { createStageTestConfigHandlerRuntime } from "@pop-party/engine/testing";',
-    'import { compositionSaveConflict, createLayoutSyncRuntime, manifestRevision, normalizeArtOrganization, removeDeletedCompositionOrganizationKeys, revisionMatches } from "@pop-party/engine/tooling";',
+    'import { compositionSaveConflict, createLayoutSyncRuntime, manifestRevision, normalizeArtAssetReplacementsDraft, normalizeArtOrganization, parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys, revisionMatches } from "@pop-party/engine/tooling";',
     'import { lifecycleLabels } from "@pop-party/engine/art/lifecycle";',
     'import { normalizeTimeline, type TimelineDocument } from "@pop-party/engine/art/timeline";',
     'import { collectArtArchitectureIssues } from "@pop-party/engine/art/architecture";',
@@ -257,7 +259,7 @@ try {
     'const timeline: TimelineDocument | null = normalizeTimeline({ fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] });',
     'const organization = normalizeArtOrganization();',
     'const manifest = { compositions: {} };',
-    'void [createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime, createStageTestConfigHandlerRuntime, createLayoutSyncRuntime, organization, removeDeletedCompositionOrganizationKeys(organization, []), manifestRevision(manifest), revisionMatches({}, manifest), compositionSaveConflict(), lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeComponentKind, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
+    'void [createControllerLayoutNormalizationRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime, createStageTestConfigHandlerRuntime, createLayoutSyncRuntime, organization, normalizeArtAssetReplacementsDraft(), parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys(organization, []), manifestRevision(manifest), revisionMatches({}, manifest), compositionSaveConflict(), lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeComponentKind, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
   ].join("\n"));
   execFileSync(process.execPath, [path.join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "--strict", "--target", "ES2022", "--module", "Node16", "--moduleResolution", "Node16", "consumer.ts"], { cwd: fixtureRoot, stdio: "pipe" });
   console.log(`Packed engine fixture passed: ${packed.filename} (${packed.files.length} files).`);

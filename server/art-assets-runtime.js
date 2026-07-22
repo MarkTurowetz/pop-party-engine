@@ -32,6 +32,10 @@ const { controllerPlayerBannerOverride } = require("./controller-player-banner-a
 const { stageBackgroundOverride } = require("./stage-background-art-runtime");
 const { migratePlayerWidgetPointPopupAnchorComponents } = require("./player-widget-point-popup-anchor-runtime");
 const { compositionRevision, createArtCompositionDependencyReport } = require("./art-composition-dependency-runtime");
+const {
+  normalizeArtAssetReplacementsDraft: normalizeArtAssetReplacementDraftCollection,
+  parseArtAssetReplacement
+} = require("./art-asset-replacement-runtime");
 const { normalizeArtOrganization, removeDeletedCompositionOrganizationKeys } = require("./art-organization-runtime");
 const { compositionSaveConflict, manifestRevision, revisionMatches } = require("./art-revision-runtime");
 const { assertSafeSvg, svgResponseHeaders } = require("./svg-sanitizer");
@@ -712,38 +716,7 @@ function createArtAssetsRuntime({
   }
 
   function normalizeArtAssetReplacementsDraft(source = {}) {
-    if (!source || typeof source !== "object" || Array.isArray(source)) {
-      throw new Error("Art asset replacement draft must be an object");
-    }
-    const replacements = {};
-    for (const [assetId, replacement] of Object.entries(source)) {
-      const asset = artAssets.find((item) => item.id === assetId);
-      if (!asset) throw new Error(`Unknown art asset id: ${assetId}`);
-      const dataUrl = String(replacement?.dataUrl || "");
-      const mimeType = String(replacement?.mimeType || "");
-      const fileName = path.basename(String(replacement?.fileName || "replacement"));
-      const match = dataUrl.match(/^data:([^;,]+);base64,([a-zA-Z0-9+/=]+)$/);
-      if (!match || match[1] !== mimeType || !acceptedArtTypes[mimeType]) {
-        throw new Error("Use a PNG, SVG, JPG, or WEBP file");
-      }
-      const originalExt = path.extname(fileName).toLowerCase();
-      const expectedExt = acceptedArtTypes[mimeType];
-      const ext = originalExt === ".jpeg" ? ".jpg" : originalExt;
-      if (ext && ext !== expectedExt) {
-        throw new Error(`Selected file does not match ${mimeType}`);
-      }
-      const buffer = Buffer.from(match[2], "base64");
-      if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) {
-        throw new Error("Replacement art must be under 5 MB");
-      }
-      replacements[asset.id] = {
-        fileName: cleanImageName(fileName, "replacement"),
-        mimeType,
-        dataUrl,
-        updatedAt: cleanText(replacement?.updatedAt, new Date().toISOString(), 40) || new Date().toISOString()
-      };
-    }
-    return replacements;
+    return normalizeArtAssetReplacementDraftCollection(source, { acceptedArtTypes, artAssets });
   }
 
   function architectureIssueKey(issue) {
@@ -1031,28 +1004,14 @@ function createArtAssetsRuntime({
       return;
     }
 
-    const dataUrl = String(payload.dataUrl || "");
-    const fileName = path.basename(String(payload.fileName || "replacement"));
-    const mimeType = String(payload.mimeType || "");
-    const match = dataUrl.match(/^data:([^;,]+);base64,([a-zA-Z0-9+/=]+)$/);
-    if (!match || match[1] !== mimeType || !acceptedArtTypes[mimeType]) {
-      sendJson(res, 400, { ok: false, error: "Use a PNG, SVG, JPG, or WEBP file." });
+    let replacement;
+    try {
+      replacement = parseArtAssetReplacement(payload, { acceptedArtTypes });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: `${error.message}.` });
       return;
     }
-
-    const originalExt = path.extname(fileName).toLowerCase();
-    const expectedExt = acceptedArtTypes[mimeType];
-    const ext = originalExt === ".jpeg" ? ".jpg" : originalExt;
-    if (ext && ext !== expectedExt) {
-      sendJson(res, 400, { ok: false, error: `Selected file does not match ${mimeType}.` });
-      return;
-    }
-
-    const buffer = Buffer.from(match[2], "base64");
-    if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) {
-      sendJson(res, 400, { ok: false, error: "Replacement art must be under 5 MB." });
-      return;
-    }
+    const { buffer, expectedExtension: expectedExt, fileName, mimeType } = replacement;
     if (mimeType === "image/svg+xml") {
       try {
         assertSafeSvg(buffer);
