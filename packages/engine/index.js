@@ -11,9 +11,9 @@ module.exports = Object.freeze({
   createGithubGitDataRuntime: require("./dist/server/github-git-data-runtime").createGithubGitDataRuntime,
   createGithubAppCredentialRuntime: require("./dist/server/github-app-credential-runtime").createGithubAppCredentialRuntime,
   createContentStoreEnvironmentRuntime: require("./dist/server/content-store-environment-runtime").createContentStoreEnvironmentRuntime,
-  createRoomContentPinRuntime: require("./dist/server/room-content-pin-runtime").createRoomContentPinRuntime,
+  createRoomContentPinRuntime: require("./src/server/room-content-pin-runtime").createRoomContentPinRuntime,
   createAdminAuthRuntime: require("./dist/server/admin-auth-runtime").createAdminAuthRuntime,
-  createAdminAuditRuntime: require("./dist/server/admin-audit-runtime").createAdminAuditRuntime,
+  createAdminAuditRuntime: require("./src/server/admin-audit-runtime").createAdminAuditRuntime,
   createRuntimeCapabilityRuntime: require("./dist/server/runtime-capability-runtime").createRuntimeCapabilityRuntime,
-  svgSafety: require("./dist/server/svg-sanitizer")
+  svgSafety: require("./src/server/svg-sanitizer")
 });

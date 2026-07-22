@@ -25,11 +25,11 @@
     "./content/github-git": "./dist/server/github-git-data-runtime.js",
     "./content/environment": "./dist/server/content-store-environment-runtime.js",
     "./content/admin": "./dist/server/content-admin-handlers-runtime.js",
-    "./rooms/content-pin": "./dist/server/room-content-pin-runtime.js",
+    "./rooms/content-pin": "./src/server/room-content-pin-runtime.js",
     "./security/admin": "./dist/server/admin-auth-runtime.js",
-    "./security/audit": "./dist/server/admin-audit-runtime.js",
+    "./security/audit": "./src/server/admin-audit-runtime.js",
     "./security/runtime-capabilities": "./dist/server/runtime-capability-runtime.js",
-    "./security/svg": "./dist/server/svg-sanitizer.js"
+    "./security/svg": "./src/server/svg-sanitizer.js"
   },
   "files": [
     "dist",

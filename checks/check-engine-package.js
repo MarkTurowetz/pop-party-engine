@@ -36,12 +36,25 @@ try {
   if (require(path.join(root, "server", "game-plugin-runtime")).defineGamePlugin !== localRequire("@pop-party/engine/plugin").defineGamePlugin) {
     throw new Error("Legacy game-plugin path is not a package compatibility re-export");
   }
+  const compatibilityExports = [
+    ["room-content-pin-runtime", "@pop-party/engine/rooms/content-pin", "createRoomContentPinRuntime"],
+    ["admin-audit-runtime", "@pop-party/engine/security/audit", "createAdminAuditRuntime"],
+    ["svg-sanitizer", "@pop-party/engine/security/svg", "assertSafeSvg"]
+  ];
+  for (const [legacyModule, specifier, exportName] of compatibilityExports) {
+    if (require(path.join(root, "server", legacyModule))[exportName] !== localRequire(specifier)[exportName]) {
+      throw new Error(`Legacy ${legacyModule} path is not a package compatibility re-export`);
+    }
+  }
   execFileSync(process.execPath, [path.join(root, "scripts", "build-engine-package.js")], { cwd: root, stdio: "inherit" });
   const packOutput = JSON.parse(execFileSync("npm", ["pack", packageRoot, "--json", "--pack-destination", fixtureRoot], { cwd: root, encoding: "utf8", env: commandEnvironment }));
   const packed = packOutput[0];
   if (!packed?.filename) throw new Error("npm pack did not return a tarball");
   const forbidden = packed.files.filter((file) => /(?:^|\/)(?:game-flow|art|controller-layouts|stage-layouts)(?:\/|\.|$)/i.test(file.path));
   if (forbidden.length) throw new Error(`Game-owned files leaked into engine tarball: ${forbidden.map((file) => file.path).join(", ")}`);
+  const packageOwnedModules = compatibilityExports.map(([legacyModule]) => `src/server/${legacyModule}.js`);
+  const missingPackageOwnedModules = packageOwnedModules.filter((expected) => !packed.files.some((file) => file.path === expected));
+  if (missingPackageOwnedModules.length) throw new Error(`Canonical package modules are missing: ${missingPackageOwnedModules.join(", ")}`);
   const tarball = path.join(fixtureRoot, packed.filename);
   fs.writeFileSync(path.join(fixtureRoot, "package.json"), `${JSON.stringify({ name: "engine-pack-fixture", private: true }, null, 2)}\n`);
   execFileSync("npm", ["install", tarball, "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: fixtureRoot, stdio: "pipe", env: commandEnvironment });
