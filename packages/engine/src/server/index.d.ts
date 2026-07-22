@@ -66,6 +66,9 @@ export function createControllerSubmitHandlersRuntime(options: Record<string, un
 export function createActionCompletionRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createRoomActionEffectsRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createStageActionHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createFlowActionPublicRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createGameFlowNormalizationRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createRoomFlowHelpersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLayoutSyncRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLocalDraftRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createToolDataReadRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
