@@ -41,6 +41,19 @@
         "width": 1320,
         "height": 150,
         "scale": 1
+      },
+      {
+        "id": "stageBackground",
+        "name": "Background Layer",
+        "kind": "art",
+        "artCompositionId": "stage-background",
+        "layoutLayer": "background",
+        "x": 960,
+        "y": 540,
+        "width": 1920,
+        "height": 1080,
+        "scale": 1,
+        "defaultAnimationState": "On"
       }
     ]
   },

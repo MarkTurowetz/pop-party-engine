@@ -22,7 +22,7 @@ export interface GameDefinitionInput<TGameData extends Record<string, unknown>> 
   content: { mode: "bundle" | "legacy-monolith"; schemaVersion: number; store?: ContentStore | null };
   gameData: TGameData;
   plugin: GamePlugin;
-  semanticRoles?: Record<string, string>;
+  semanticRoles?: Record<string, import("./src/shared/semantic-role-schema").SemanticRoleTarget>;
 }
 
 export interface ContentSnapshot {
@@ -47,6 +47,7 @@ export const REGISTRATION_KINDS: readonly string[];
 export function createGamePluginRegistry(): unknown;
 
 export const contentSchema: Readonly<Record<string, unknown>>;
+export const semanticRoles: typeof import("./src/shared/semantic-role-schema");
 export const contentSnapshots: Readonly<Record<string, unknown>>;
 export const contentStores: Readonly<Record<string, unknown>>;
 export function createLocalContentBundleProvider(options: Record<string, unknown>): ContentStore;

@@ -79,6 +79,10 @@
       "types": "./src/shared/content-bundle-schema.d.ts",
       "default": "./src/shared/content-bundle-schema.js"
     },
+    "./semantic-roles": {
+      "types": "./src/shared/semantic-role-schema.d.ts",
+      "default": "./src/shared/semantic-role-schema.js"
+    },
     "./content/snapshot": {
       "types": "./src/server/content-snapshot-runtime.d.ts",
       "default": "./src/server/content-snapshot-runtime.js"

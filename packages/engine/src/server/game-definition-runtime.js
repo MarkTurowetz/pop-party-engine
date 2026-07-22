@@ -1,6 +1,7 @@
 "use strict";
 
 const { createGamePluginRegistry } = require("./game-plugin-runtime");
+const { normalizeSemanticRoleMap } = require("../shared/semantic-role-schema");
 
 const GAME_ID_PATTERN = /^[a-z][a-z0-9-]{2,63}$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
@@ -65,7 +66,7 @@ function defineGame(definition = {}) {
     gameData: definition.gameData,
     plugin: definition.plugin,
     registrations,
-    semanticRoles: Object.freeze({ ...(definition.semanticRoles || {}) })
+    semanticRoles: normalizeSemanticRoleMap(definition.semanticRoles || {}, { requireCoreRoles: false })
   });
 }
 

@@ -5,6 +5,7 @@ module.exports = Object.freeze({
   ...require("./src/server/game-plugin-runtime"),
   server: require("./src/server"),
   contentSchema: require("./src/shared/content-bundle-schema"),
+  semanticRoles: require("./src/shared/semantic-role-schema"),
   contentSnapshots: require("./src/server/content-snapshot-runtime"),
   contentStores: require("./src/server/revisioned-content-store-runtime"),
   createLocalContentBundleProvider: require("./src/server/local-content-bundle-provider").createLocalContentBundleProvider,

@@ -25,6 +25,29 @@ function writeBundleFile(outputRoot, logicalPath, value, records) {
   records.push({ path: logicalPath, sha256: sha256(bytes), bytes: bytes.length });
 }
 
+function withDefaultBackgroundLayer(savedLayouts, defaultLayouts) {
+  const layouts = JSON.parse(JSON.stringify(savedLayouts));
+  const defaultBackgrounds = (defaultLayouts?.global?.elements || []).filter((element) => element.layoutLayer === "background");
+  if (!layouts.global || typeof layouts.global !== "object") layouts.global = { id: "global", name: "Global Layout", elements: [] };
+  if (!Array.isArray(layouts.global.elements)) layouts.global.elements = [];
+  if (!layouts.global.elements.some((element) => element.layoutLayer === "background")) {
+    layouts.global.elements.push(...JSON.parse(JSON.stringify(defaultBackgrounds)));
+  }
+  return layouts;
+}
+
+function withDefaultArtCompositions(savedManifest, defaultCompositions) {
+  const compositions = { ...(savedManifest.compositions || {}) };
+  for (const defaultComposition of defaultCompositions || []) {
+    const id = String(defaultComposition?.id || "").trim();
+    if (!id || compositions[id]) continue;
+    const copy = JSON.parse(JSON.stringify(defaultComposition));
+    delete copy.id;
+    compositions[id] = copy;
+  }
+  return { ...savedManifest, compositions };
+}
+
 function exportLegacyContentBundle(options) {
   const root = path.resolve(options.root);
   const outputRoot = path.resolve(options.outputRoot);
@@ -38,13 +61,24 @@ function exportLegacyContentBundle(options) {
   const records = [];
   writeBundleFile(outputRoot, "flow.json", readJson(firstExisting(root, ["game-flow.json", "game-flow.default.json"])), records);
   writeBundleFile(outputRoot, "constants.json", readJson(firstExisting(root, ["game-constants.json", "game-constants.default.json"])), records);
-  writeBundleFile(outputRoot, "layouts/stage.json", readJson(firstExisting(root, ["stage-layouts.json", "stage-layouts.default.json"])), records);
+  writeBundleFile(
+    outputRoot,
+    "layouts/stage.json",
+    withDefaultBackgroundLayer(
+      readJson(firstExisting(root, ["stage-layouts.json", "stage-layouts.default.json"])),
+      gameData.defaultStageLayouts
+    ),
+    records
+  );
   writeBundleFile(outputRoot, "layouts/controller.json", readJson(firstExisting(root, ["controller-layouts.json", "controller-layouts.default.json"])), records);
   writeBundleFile(outputRoot, "audio/host-audios.json", readJson(firstExisting(root, ["host-audios.json", "host-audios.default.json"])), records);
   writeBundleFile(outputRoot, "prompts/prompts.json", { prompts: gameData.multipleChoicePrompts }, records);
-  writeBundleFile(outputRoot, "semantic-roles.json", { roles: gameDefinition.semanticRoles }, records);
+  writeBundleFile(outputRoot, "semantic-roles.json", { schemaVersion: 1, roles: gameDefinition.semanticRoles }, records);
 
-  const artManifest = readJson(firstExisting(root, ["art/art-manifest.json", "art-manifest.json"]));
+  const artManifest = withDefaultArtCompositions(
+    readJson(firstExisting(root, ["art/art-manifest.json", "art-manifest.json"])),
+    gameData.defaultArtCompositions
+  );
   const assets = [];
   for (const asset of gameData.artAssets) {
     const sourcePath = firstExisting(root, [`art/default/${asset.defaultFile}`]);
@@ -81,4 +115,4 @@ function exportLegacyContentBundle(options) {
   return manifest;
 }
 
-module.exports = Object.freeze({ exportLegacyContentBundle });
+module.exports = Object.freeze({ exportLegacyContentBundle, withDefaultArtCompositions, withDefaultBackgroundLayer });

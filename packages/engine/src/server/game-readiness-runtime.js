@@ -1,5 +1,11 @@
 "use strict";
 
+const {
+  normalizeSemanticRoleMap,
+  semanticRoleTargetKey,
+  validateSemanticRoleDocument
+} = require("../shared/semantic-role-schema");
+
 class GameReadinessError extends Error {
   constructor(message, { code = "GAME_NOT_READY", details = {} } = {}) {
     super(message);
@@ -21,26 +27,27 @@ function semanticRolesFrom(snapshot) {
   } catch (error) {
     readinessFailure("SEMANTIC_ROLES_LOAD_FAILED", "Semantic roles could not be loaded", { logicalPath, cause: error.message });
   }
-  if (!document || typeof document !== "object" || Array.isArray(document) || !document.roles || typeof document.roles !== "object" || Array.isArray(document.roles)) {
-    readinessFailure("SEMANTIC_ROLES_INVALID", "Semantic roles document must contain a roles object", { logicalPath });
+  let artManifest;
+  try {
+    artManifest = snapshot.readJson("art/manifest.json");
+  } catch (error) {
+    readinessFailure("SEMANTIC_ROLE_ART_LOAD_FAILED", "Art manifest could not be loaded for semantic role validation", { cause: error.message });
   }
-  const roles = {};
-  for (const [role, target] of Object.entries(document.roles)) {
-    const normalizedRole = String(role || "").trim();
-    const normalizedTarget = String(target || "").trim();
-    if (!normalizedRole || !normalizedTarget) readinessFailure("SEMANTIC_ROLE_INVALID", "Semantic role ids and targets cannot be empty", { role });
-    roles[normalizedRole] = normalizedTarget;
+  try {
+    return validateSemanticRoleDocument(document, artManifest).roles;
+  } catch (error) {
+    readinessFailure(error.code || "SEMANTIC_ROLES_INVALID", error.message, { logicalPath, ...(error.details || {}) });
   }
-  return Object.freeze(roles);
 }
 
 function assertExpectedSemanticRoles(expectedRoles, actualRoles) {
-  for (const [role, target] of Object.entries(expectedRoles || {})) {
-    if (actualRoles[role] !== target) {
+  const expected = normalizeSemanticRoleMap(expectedRoles || {}, { requireCoreRoles: false });
+  for (const [role, target] of Object.entries(expected)) {
+    if (!actualRoles[role] || semanticRoleTargetKey(actualRoles[role]) !== semanticRoleTargetKey(target)) {
       readinessFailure("SEMANTIC_ROLE_MISMATCH", "Active content does not match the game semantic role mapping", {
         role,
-        expectedTarget: target,
-        actualTarget: actualRoles[role] || ""
+        expectedTarget: semanticRoleTargetKey(target),
+        actualTarget: actualRoles[role] ? semanticRoleTargetKey(actualRoles[role]) : ""
       });
     }
   }

@@ -8,8 +8,8 @@
   "files": [
     {
       "path": "art/manifest.json",
-      "sha256": "27eea66c3e9e68b99f6846424814d36b4ae00d750fbf44eeeda4701f8ead749f",
-      "bytes": 278342
+      "sha256": "4b680f0448eb0315436d8d541752a816a0bad6a259c9eb952665692f6408056e",
+      "bytes": 357476
     },
     {
       "path": "audio/host-audios.json",
@@ -73,8 +73,8 @@
     },
     {
       "path": "layouts/stage.json",
-      "sha256": "4823bad15042d262d3b7c1a4d61c1ae8ab1705a25b68eadd48857867be2fd3f7",
-      "bytes": 4348
+      "sha256": "d80f75ab53e53530d69e985a8d484b9b0382f78ad4b6bc48bdc0a2111762ed34",
+      "bytes": 4683
     },
     {
       "path": "prompts/prompts.json",
@@ -83,9 +83,9 @@
     },
     {
       "path": "semantic-roles.json",
-      "sha256": "33b3ee5753265d16abd8680dc62b0514bcafca32d2a9f777328ee42c5a65a705",
-      "bytes": 18
+      "sha256": "2b8b3d65c95a68e2aa5e559fde554e48978d75184249ca528bef5219f7605b97",
+      "bytes": 1856
     }
   ],
-  "rootHash": "591122fdccb56d1cf016199a6f416e5e0dd9ff956de836cb85a58425eada753c"
+  "rootHash": "e3319ccbf45f9287c9bad8387c00e423a1b41a9637cc25aab3bddb4f0b1fd1fe"
 }

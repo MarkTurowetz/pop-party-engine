@@ -3,12 +3,31 @@ import { describe, expect, it, vi } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { createGameReadinessRuntime } = require("./game-readiness-runtime");
+const { coreSemanticRoleDefinitions } = require("../shared/semantic-role-schema");
+
+function semanticFixture() {
+  const roles = {};
+  const compositions = {};
+  for (const [index, [role, definition]] of Object.entries(coreSemanticRoleDefinitions).entries()) {
+    const compositionId = `fixture-${index}`;
+    const componentKind = definition.terminalKind === "composition" ? "" : definition.terminalKind;
+    roles[role] = componentKind ? { compositionId, instancePath: ["target"] } : { compositionId };
+    compositions[compositionId] = {
+      surface: definition.surface,
+      components: componentKind ? [{ id: "target", instanceLabel: "target", kind: componentKind }] : []
+    };
+  }
+  return { roles, artManifest: { compositions } };
+}
 
 function fixture(overrides = {}) {
+  const semantic = semanticFixture();
   const snapshot = {
     revision: "content-1",
     manifest: { gameId: "fixture-game", engineContentSchemaVersion: "1.0.0", semanticRolesPath: "semantic-roles.json" },
-    readJson: vi.fn(() => ({ roles: { "engine.background": "fixture.background" } }))
+    readJson: vi.fn((logicalPath) => logicalPath === "art/manifest.json"
+      ? semantic.artManifest
+      : { schemaVersion: 1, roles: semantic.roles })
   };
   const release = {
     gameId: "fixture-game",
@@ -23,7 +42,7 @@ function fixture(overrides = {}) {
     gameId: "fixture-game",
     version: "0.1.0",
     engineCompatibility: "1.0.0",
-    semanticRoles: { "engine.background": "fixture.background" },
+    semanticRoles: semantic.roles,
     registrations: { validators: overrides.validators || [] },
     content: {
       mode: "bundle",
@@ -44,7 +63,7 @@ describe("game readiness runtime", () => {
     const runtime = createGameReadinessRuntime({ gameDefinition: game, engineVersion: "1.0.0" });
     const result = await runtime.check();
     expect(result.release).toMatchObject({ gameId: "fixture-game", contentRevision: "content-1" });
-    expect(result.semanticRoles).toEqual({ "engine.background": "fixture.background" });
+    expect(result.semanticRoles).toEqual(semanticFixture().roles);
     expect(validator).toHaveBeenCalledOnce();
     expect(runtime.state.status).toBe("ready");
   });
@@ -58,10 +77,15 @@ describe("game readiness runtime", () => {
 
   it("fails closed on missing semantic roles and plugin validation errors", async () => {
     const { game, snapshot } = fixture({ validators: [{ id: "fixture.validate", value: () => ({ ok: false, diagnostics: ["bad"] }) }] });
-    snapshot.readJson = () => ({ roles: {} });
+    const semantic = semanticFixture();
+    snapshot.readJson = (logicalPath) => logicalPath === "art/manifest.json"
+      ? semantic.artManifest
+      : { schemaVersion: 1, roles: {} };
     const rolesRuntime = createGameReadinessRuntime({ gameDefinition: game, engineVersion: "1.0.0" });
-    await expect(rolesRuntime.check()).rejects.toMatchObject({ code: "SEMANTIC_ROLE_MISMATCH" });
-    snapshot.readJson = () => ({ roles: { "engine.background": "fixture.background" } });
+    await expect(rolesRuntime.check()).rejects.toMatchObject({ code: "SEMANTIC_ROLE_REQUIRED_MISSING" });
+    snapshot.readJson = (logicalPath) => logicalPath === "art/manifest.json"
+      ? semantic.artManifest
+      : { schemaVersion: 1, roles: semantic.roles };
     const validatorRuntime = createGameReadinessRuntime({ gameDefinition: game, engineVersion: "1.0.0" });
     await expect(validatorRuntime.check()).rejects.toMatchObject({ code: "PLUGIN_VALIDATION_FAILED" });
   });

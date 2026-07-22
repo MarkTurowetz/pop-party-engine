@@ -3,6 +3,7 @@
 const { defineGame } = require("@pop-party/engine/game");
 const { defineGamePlugin } = require("@pop-party/engine/plugin");
 const gameData = require("./game-data");
+const semanticRoles = require("./semantic-roles");
 
 const referencePlugin = defineGamePlugin({
   namespace: "reference",
@@ -23,5 +24,5 @@ module.exports = defineGame({
   },
   gameData,
   plugin: referencePlugin,
-  semanticRoles: {}
+  semanticRoles
 });
