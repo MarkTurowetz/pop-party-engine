@@ -34,7 +34,8 @@ try {
     "@pop-party/engine/content/admin",
     "@pop-party/engine/content/environment",
     "@pop-party/engine/rooms/content-pin",
-    "@pop-party/engine/security/runtime-capabilities"
+    "@pop-party/engine/security/runtime-capabilities",
+    "@pop-party/engine/server"
   ];
   const missingServerImports = requiredServerImports.filter((specifier) => !referenceServer.includes(`require("${specifier}")`));
   if (missingServerImports.length) {
@@ -76,6 +77,25 @@ try {
       throw new Error(`Legacy ${legacyModule} path is not a package compatibility re-export`);
     }
   }
+  const serverKernel = localRequire("@pop-party/engine/server");
+  const serverKernelCompatibility = [
+    ["runtime-fault-runtime", "createRuntimeFault"],
+    ["action-effect-state-runtime", "createActionEffectStateRuntime"],
+    ["dynamic-game-state-runtime", "applyDynamicGameStateCode"],
+    ["stored-player-answers-runtime", "storePlayerAnswerRecord"],
+    ["game-session-reset-runtime", "resetGameSessionState"],
+    ["player-public-runtime", "createPlayerPublicRuntime"],
+    ["player-state-runtime", "createPlayerStateRuntime"],
+    ["input-state-runtime", "createInputStateRuntime"],
+    ["pause-runtime", "createPauseRuntime"],
+    ["countdown-runtime", "createCountdownRuntime"],
+    ["crafting-timer-runtime", "createCraftingTimerRuntime"]
+  ];
+  for (const [legacyModule, exportName] of serverKernelCompatibility) {
+    if (require(path.join(root, "server", legacyModule))[exportName] !== serverKernel[exportName]) {
+      throw new Error(`Legacy ${legacyModule} path is not an engine server compatibility export`);
+    }
+  }
   if (require(path.join(root, "shared", "content-bundle-schema")) !== localRequire("@pop-party/engine/content/schema")) {
     throw new Error("Legacy content schema path is not a package compatibility re-export");
   }
@@ -85,6 +105,7 @@ try {
   const forbidden = packed.files.filter((file) => file.path.startsWith("dist/") || (file.path.endsWith(".ts") && !file.path.endsWith(".d.ts")) || /(?:^|\/)(?:game-(?:flow|data|constants)|art|controller-layouts|stage-layouts|host-audios|prompts)(?:\/|\.|$)/i.test(file.path));
   if (forbidden.length) throw new Error(`Game-owned files leaked into engine tarball: ${forbidden.map((file) => file.path).join(", ")}`);
   const packageOwnedModules = compatibilityExports.map(([legacyModule]) => `src/server/${legacyModule}.js`);
+  packageOwnedModules.push(...serverKernelCompatibility.map(([legacyModule]) => `src/server/${legacyModule}.js`));
   packageOwnedModules.push("src/shared/content-bundle-schema.js");
   const missingPackageOwnedModules = packageOwnedModules.filter((expected) => !packed.files.some((file) => file.path === expected));
   if (missingPackageOwnedModules.length) throw new Error(`Canonical package modules are missing: ${missingPackageOwnedModules.join(", ")}`);
@@ -116,6 +137,7 @@ try {
     'import { REQUIRED_GAME_DATA_KEYS } from "@pop-party/engine";',
     'import { defineGame } from "@pop-party/engine/game";',
     'import { defineGamePlugin } from "@pop-party/engine/plugin";',
+    'import { createInputStateRuntime } from "@pop-party/engine/server";',
     'import { normalizeBundlePath } from "@pop-party/engine/content/schema";',
     'import { createContentSnapshot } from "@pop-party/engine/content/snapshot";',
     'import { createRevisionedContentStoreRuntime } from "@pop-party/engine/content/store";',
@@ -133,7 +155,7 @@ try {
     'const plugin = defineGamePlugin({ namespace: "typed", register(registry) { registry.actions("typed.action", {}); } });',
     'const gameData = Object.fromEntries(REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));',
     'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, gameData, plugin });',
-    'void [normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
+    'void [createInputStateRuntime, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
   ].join("\n"));
   execFileSync(process.execPath, [path.join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "--strict", "--target", "ES2022", "--module", "Node16", "--moduleResolution", "Node16", "consumer.ts"], { cwd: fixtureRoot, stdio: "pipe" });
   console.log(`Packed engine fixture passed: ${packed.filename} (${packed.files.length} files).`);

@@ -60,3 +60,4 @@ export function createAdminAuthRuntime(options?: Record<string, unknown>): Reado
 export function createAdminAuditRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createRuntimeCapabilityRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export const svgSafety: Readonly<Record<string, unknown>>;
+export const server: typeof import("./src/server");

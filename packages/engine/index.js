@@ -3,6 +3,7 @@
 module.exports = Object.freeze({
   ...require("./src/server/game-definition-runtime"),
   ...require("./src/server/game-plugin-runtime"),
+  server: require("./src/server"),
   contentSchema: require("./src/shared/content-bundle-schema"),
   contentSnapshots: require("./src/server/content-snapshot-runtime"),
   contentStores: require("./src/server/revisioned-content-store-runtime"),
