@@ -9,18 +9,66 @@ describe("createControllerSessionRuntime (ported)", () => {
     expect(host.createControllerSessionRuntime).toBeTypeOf("function");
   });
 
-  it("exposes enterLobby + sendLeaveBeacon", () => {
+  it("persists only session identity when entering a lobby", () => {
+    const addClass = vi.fn();
+    const joinState = { classList: { add: addClass } } as unknown as HTMLElement;
+    const setControllerState = vi.fn();
+    const setLocalValue = vi.fn();
+    const setSessionValue = vi.fn();
+    const renderState = vi.fn();
+    const start = vi.fn();
     const runtime = createControllerSessionRuntime({
-      elements: {} as Record<string, HTMLElement>,
+      elements: { joinState },
       getControllerState: () => null,
+      heartbeatRuntime: { start },
+      renderState,
+      setControllerState,
+      setLocalValue,
+      setSessionValue
+    });
+    const lobby = { phase: "lobby" };
+
+    runtime.enterLobby("ABCD", "p1", "capability-1", lobby, { name: "Ava", color: "pink" });
+
+    expect(setControllerState).toHaveBeenCalledWith({
+      stageCode: "ABCD",
+      playerId: "p1",
+      playerCapability: "capability-1",
+      player: { name: "Ava", color: "pink" }
+    });
+    expect(setSessionValue.mock.calls).toEqual([
+      ["partyTemplatePlayerId", "p1"],
+      ["partyTemplatePlayerName", "Ava"],
+      ["partyTemplateStageCode", "ABCD"],
+      ["partyTemplatePlayerCapability", "capability-1"]
+    ]);
+    expect(setLocalValue).toHaveBeenCalledWith("partyTemplateStageCode", "ABCD");
+    expect(addClass).toHaveBeenCalledWith("hidden");
+    expect(renderState).toHaveBeenCalledWith(lobby);
+    expect(start).toHaveBeenCalledOnce();
+  });
+
+  it("sends the player capability on a best-effort leave beacon", () => {
+    const fetchImpl = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
+    const runtime = createControllerSessionRuntime({
+      elements: { joinState: { classList: { add: vi.fn() } } as unknown as HTMLElement },
+      fetchImpl,
+      getControllerState: () => ({ stageCode: "ABCD", playerId: "p1", playerCapability: "capability-1" }),
       heartbeatRuntime: { start: vi.fn() },
       renderState: vi.fn(),
       setControllerState: vi.fn(),
       setLocalValue: vi.fn(),
       setSessionValue: vi.fn()
     });
-    expect(runtime.enterLobby).toBeTypeOf("function");
-    expect(runtime.sendLeaveBeacon).toBeTypeOf("function");
+
+    runtime.sendLeaveBeacon("https://game.example");
+
+    expect(fetchImpl).toHaveBeenCalledWith("https://game.example/api/leave", expect.objectContaining({
+      body: JSON.stringify({ stageCode: "ABCD", playerId: "p1" }),
+      headers: expect.objectContaining({ "X-Player-Capability": "capability-1" }),
+      keepalive: true,
+      method: "POST"
+    }));
   });
 });
 
