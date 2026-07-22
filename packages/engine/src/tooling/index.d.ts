@@ -9,6 +9,7 @@ export function normalizeArtAssetReplacementsDraft(source?: Record<string, unkno
 export function parseArtAssetReplacement(source?: Record<string, unknown>, options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function compositionRevision(composition: unknown): string;
 export function createArtCompositionDependencyReport(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createArtManifestStoreRuntime(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function normalizeArtOrganization(source?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function removeDeletedCompositionOrganizationKeys(organization: unknown, deletedIds: Iterable<string>): Readonly<Record<string, unknown>>;
 export function manifestRevision(manifest: unknown): string;

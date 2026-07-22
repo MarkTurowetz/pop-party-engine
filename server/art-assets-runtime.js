@@ -36,6 +36,7 @@ const {
   normalizeArtAssetReplacementsDraft: normalizeArtAssetReplacementDraftCollection,
   parseArtAssetReplacement
 } = require("./art-asset-replacement-runtime");
+const { createArtManifestStoreRuntime } = require("./art-manifest-store-runtime");
 const { normalizeArtOrganization, removeDeletedCompositionOrganizationKeys } = require("./art-organization-runtime");
 const { compositionSaveConflict, manifestRevision, revisionMatches } = require("./art-revision-runtime");
 const { assertSafeSvg, svgResponseHeaders } = require("./svg-sanitizer");
@@ -60,47 +61,13 @@ function createArtAssetsRuntime({
 }) {
   artCompositions = artCompositions.map((composition) => migrateLegacyArtCompositionSchema(JSON.parse(JSON.stringify(composition))));
   const knownCompositionIds = new Set(artCompositions.map((composition) => composition.id));
-
-  function readArtManifest() {
-    try {
-      return migrateLegacyArtManifestSchema(JSON.parse(fs.readFileSync(manifestFile, "utf8"))).manifest;
-    } catch (error) {
-      return {};
-    }
-  }
-
-  function writeArtManifest(manifest) {
-    fs.mkdirSync(artRoot, { recursive: true });
-    fs.mkdirSync(customDir, { recursive: true });
-    const body = `${JSON.stringify(manifest, null, 2)}\n`;
-    const tempFile = `${manifestFile}.${process.pid}.${Date.now()}.tmp`;
-    const fd = fs.openSync(tempFile, "w", 0o600);
-    try {
-      fs.writeFileSync(fd, body);
-      fs.fsyncSync(fd);
-    } finally {
-      fs.closeSync(fd);
-    }
-    fs.renameSync(tempFile, manifestFile);
-  }
-
-  async function loadArtManifest() {
-    if (typeof loadArtManifestSource === "function") {
-      const manifest = await loadArtManifestSource();
-      const source = manifest && typeof manifest === "object" && !Array.isArray(manifest) ? manifest : {};
-      return migrateLegacyArtManifestSchema(source).manifest;
-    }
-    return readArtManifest();
-  }
-
-  async function saveArtManifest(manifest) {
-    if (typeof writeArtManifestSource === "function") {
-      const saved = await writeArtManifestSource(manifest);
-      return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : manifest;
-    }
-    writeArtManifest(manifest);
-    return manifest;
-  }
+  const { loadArtManifest, readArtManifest, saveArtManifest } = createArtManifestStoreRuntime({
+    directories: [artRoot, customDir],
+    loadSource: loadArtManifestSource,
+    manifestFile,
+    normalizeManifest: (source) => migrateLegacyArtManifestSchema(source).manifest,
+    writeSource: writeArtManifestSource
+  });
 
   function cleanNumber(value, fallback, min = -Infinity, max = Infinity) {
     const next = Number(value);
