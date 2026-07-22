@@ -14,6 +14,7 @@ const {
   createFlowNavigationRuntime,
   createFlowTargetRuntime,
   createGameFlowMergeRuntime,
+  createGithubStorageRuntime,
   createHostAudioRuntime,
   createInactivePlayerSweepRuntime,
   createInputStateRuntime,
@@ -32,10 +33,12 @@ const {
   createRoomPhaseRuntime,
   createRoomStateRuntime,
   createRouterRuntime,
+  createSaveHandlersRuntime,
   createStageEventsRuntime,
   createStaticFilesRuntime,
   createStartHandlersRuntime,
   createToolDataReadRuntime,
+  createToolGithubSourcesRuntime,
   createToolSourceStoresRuntime,
   createTriviaContentRuntime,
   createVotingRuntime,
@@ -62,18 +65,15 @@ const { artRuntimeReferences } = require("./server/art-runtime-dependencies");
 const { createFlowActionPublicRuntime } = require("./server/flow-action-public-runtime");
 const { createGameConstantsRuntime } = require("./server/game-constants-runtime");
 const { createGameFlowNormalizationRuntime } = require("./server/game-flow-normalization-runtime");
-const { createGithubStorageRuntime } = require("./server/github-storage-runtime");
 const { createLayoutNormalizationRuntime } = require("./server/layout-normalization-runtime");
 const { createRoomActionEffectsRuntime } = require("./server/room-action-effects-runtime");
 const { createRoomFlowHelpersRuntime } = require("./server/room-flow-helpers-runtime");
 const { createRoomContentPinRuntime } = require("@pop-party/engine/rooms/content-pin");
 const { createRuntimeCapabilityRuntime } = require("@pop-party/engine/security/runtime-capabilities");
-const { createSaveHandlersRuntime } = require("./server/save-handlers-runtime");
 const { createStageActionHandlersRuntime } = require("./server/stage-action-handlers-runtime");
 const { createStageTestConfigHandlerRuntime } = require("./server/stage-test-config-handler-runtime");
 const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout-normalization-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
-const { createToolGithubSourcesRuntime } = require("./server/tool-github-sources-runtime");
 const { createToolPersistenceRuntime } = require("./server/tool-persistence-runtime");
 const { createToolSourceReadersRuntime } = require("./server/tool-source-readers-runtime");
 const {
@@ -495,8 +495,7 @@ const {
   writeGithubJsonSource
 } = createToolGithubSourcesRuntime({
   gameFlowPath: GAME_FLOW_GITHUB_PATH,
-  githubStorage,
-  mergeFlowWithExistingSubActions
+  githubStorage
 });
 
 const {

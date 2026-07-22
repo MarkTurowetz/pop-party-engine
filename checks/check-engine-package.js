@@ -119,7 +119,10 @@ try {
     ["layout-sync-runtime", "createLayoutSyncRuntime"],
     ["local-draft-runtime", "createLocalDraftRuntime"],
     ["tool-data-read-runtime", "createToolDataReadRuntime"],
-    ["tool-source-stores-runtime", "createToolSourceStoresRuntime"]
+    ["tool-source-stores-runtime", "createToolSourceStoresRuntime"],
+    ["github-storage-runtime", "createGithubStorageRuntime"],
+    ["tool-github-sources-runtime", "createToolGithubSourcesRuntime"],
+    ["save-handlers-runtime", "createSaveHandlersRuntime"]
   ];
   for (const [legacyModule, exportName] of serverKernelCompatibility) {
     if (require(path.join(root, "server", legacyModule))[exportName] !== serverKernel[exportName]) {

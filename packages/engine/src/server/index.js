@@ -41,5 +41,8 @@ module.exports = Object.freeze({
   ...require("./layout-sync-runtime"),
   ...require("./local-draft-runtime"),
   ...require("./tool-data-read-runtime"),
-  ...require("./tool-source-stores-runtime")
+  ...require("./tool-source-stores-runtime"),
+  ...require("./github-storage-runtime"),
+  ...require("./tool-github-sources-runtime"),
+  ...require("./save-handlers-runtime")
 });

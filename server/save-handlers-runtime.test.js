@@ -9,9 +9,9 @@ function store(storageKind = "github") {
   return { storageKind, error: "" };
 }
 
-function createHarness(payload) {
+function createHarness(payload, overrides = {}) {
   let response = null;
-  const writeControllerLayouts = vi.fn(async (layouts) => layouts);
+  const writeControllerLayouts = overrides.writeControllerLayouts || vi.fn(async (layouts) => layouts);
   const runtime = createSaveHandlersRuntime({
     broadcastLobby: vi.fn(),
     clearActionTimer: vi.fn(),
@@ -82,5 +82,28 @@ describe("tool save response contract", () => {
       }
     });
     expect(() => validateLayoutSaveResponse(harness.response().body, "/api/controller-layouts")).not.toThrow();
+  });
+
+  it("returns stale revision conflicts without hiding them as validation failures", async () => {
+    const conflict = Object.assign(new Error("sha does not match"), {
+      code: "CONTENT_REVISION_CONFLICT",
+      status: 409
+    });
+    const writeControllerLayouts = vi.fn(async () => {
+      throw conflict;
+    });
+    const harness = createHarness({ layouts: { states: [] } }, { writeControllerLayouts });
+
+    await harness.runtime.handleSaveControllerLayouts({}, {});
+
+    expect(writeControllerLayouts).toHaveBeenCalledTimes(1);
+    expect(harness.response()).toEqual({
+      status: 409,
+      body: {
+        ok: false,
+        error: "Controller layouts could not be saved: sha does not match",
+        errorCode: "CONTENT_REVISION_CONFLICT"
+      }
+    });
   });
 });
