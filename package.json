@@ -17,6 +17,8 @@
     "check:controller-layout-authority": "node checks/check-controller-layout-authority.js",
     "check:answer-bubble-lifecycle": "node checks/check-answer-bubble-lifecycle.js",
     "check:stage-background-authority": "node checks/check-stage-background-authority.js",
+    "content:validate": "node checks/validate-content-bundle.js",
+    "content:export-legacy": "node checks/export-legacy-content-bundle.js",
     "check-text-rendering": "node checks/check-text-rendering.js",
     "lint": "eslint \"client/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"client/**/*.{ts,tsx}\" --fix",
