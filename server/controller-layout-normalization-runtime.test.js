@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { createControllerLayoutNormalizationRuntime } = require("./controller-layout-normalization-runtime");
+const { createControllerLayoutNormalizationRuntime: createEngineControllerLayoutNormalizationRuntime } = require("@pop-party/engine/server");
 
 function runtime() {
   const defaults = {
@@ -19,6 +20,32 @@ function runtime() {
 }
 
 describe("controller layout normalization", () => {
+  it("keeps reference migrations and default-state resurrection out of the neutral engine policy", () => {
+    const defaultControllerLayouts = {
+      canvas: { width: 390, height: 844 },
+      global: { id: "global", name: "Global", elements: [] },
+      states: [{ id: "lobby", name: "Lobby", elements: [] }]
+    };
+    const engine = createEngineControllerLayoutNormalizationRuntime({
+      cloneJson: (value) => JSON.parse(JSON.stringify(value)),
+      defaultControllerLayouts,
+      normalizeLayoutNumber: (value, fallback) => Number(value ?? fallback),
+      normalizeLayoutState: (state) => state ? JSON.parse(JSON.stringify(state)) : null
+    });
+    const layouts = engine.normalizeControllerLayouts({
+      global: defaultControllerLayouts.global,
+      states: [{ id: "intro", name: "Game-owned Intro", elements: [{ id: "controllerplayerbanner" }] }]
+    });
+
+    expect(layouts.states).toHaveLength(1);
+    expect(layouts.states[0]).toMatchObject({ id: "intro" });
+    expect(layouts.states[0].elements[0]).toMatchObject({
+      id: "controllerplayerbanner",
+      defaultAnimationState: "On"
+    });
+    expect(layouts.states[0].elements[0]).not.toHaveProperty("artCompositionId");
+  });
+
   it("defaults every controller placement to On unless it is explicitly hidden initially", () => {
     const layouts = runtime().normalizeControllerLayouts({
       canvas: { width: 390, height: 844 },
