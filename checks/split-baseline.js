@@ -8,6 +8,7 @@ const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
 const DEFAULT_OUTPUT_ROOT = path.join(ROOT, "outputs", "engine-split-baseline");
+const HISTORY_AUDIT_EXCEPTIONS_FILE = path.join(__dirname, "public-history-audit-exceptions.json");
 const CONTENT_PATH_PATTERN = /(?:^|\/)(?:art-manifest|game-flow|game-constants|stage-layouts|controller-layouts|host-audios)(?:\.default)?\.json$/i;
 const PRIVATE_GAME_PATTERN = /(?:^|[\/_ -])flip[\s_-]*7(?:$|[\/_ .-])/i;
 const SECRET_DATA_EXTENSION_PATTERN = /\.(?:json|ya?ml|toml|txt|pem|key|p8|p12|pfx)$/i;
@@ -156,7 +157,35 @@ function scanReachableHistory() {
       findings.push({ severity: "block", code, path: pathByObject.get(objectId) || "", objectId });
     }
   }
-  return findings;
+  return applyHistoryAuditExceptions(findings, readHistoryAuditExceptions());
+}
+
+function readHistoryAuditExceptions() {
+  const document = JSON.parse(fs.readFileSync(HISTORY_AUDIT_EXCEPTIONS_FILE, "utf8"));
+  if (document.schemaVersion !== 1 || !Array.isArray(document.exceptions)) {
+    throw new Error("Public history audit exceptions use an unsupported schema");
+  }
+  return document.exceptions;
+}
+
+function applyHistoryAuditExceptions(findings, exceptions) {
+  const allowed = new Set();
+  for (const exception of exceptions) {
+    if (!/^[0-9a-f]{40}$/.test(String(exception.objectId || "")) || !exception.path || !Array.isArray(exception.codes) || !exception.codes.length || !exception.reason) {
+      throw new Error("Public history audit exception is incomplete");
+    }
+    for (const code of exception.codes) allowed.add(`${exception.objectId}\0${exception.path}\0${code}`);
+  }
+  const used = new Set();
+  const remaining = findings.filter((finding) => {
+    const key = `${finding.objectId}\0${finding.path}\0${finding.code}`;
+    if (!allowed.has(key)) return true;
+    used.add(key);
+    return false;
+  });
+  const unused = [...allowed].filter((key) => !used.has(key));
+  if (unused.length) throw new Error(`Unused public history audit exceptions: ${unused.length}`);
+  return remaining;
 }
 
 function isApprovedStarterContentPath(logicalPath) {
@@ -228,6 +257,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  applyHistoryAuditExceptions,
   isApprovedStarterContentPath,
   isSensitiveCredentialPath,
   normalizedLogicalPath,

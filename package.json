@@ -33,6 +33,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "preview": "node server.js",
+    "release:check": "node checks/check-release-readiness.js",
     "smoke:build-assets": "node checks/check-vite-assets.js",
     "smoke:routes": "node checks/smoke-routes.js",
     "sync-game-data": "node sync-game-data.js",

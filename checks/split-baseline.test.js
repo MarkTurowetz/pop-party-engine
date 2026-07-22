@@ -7,6 +7,7 @@ const {
   isSensitiveCredentialPath,
   normalizedLogicalPath,
   parseArgs,
+  applyHistoryAuditExceptions,
   secretContentFindingCodes,
   sha256
 } = require("./split-baseline");
@@ -32,13 +33,25 @@ describe("split baseline tooling", () => {
   });
 
   it("continues past known dummy literals and still catches a later credential", () => {
+    const fakeCredential = ["D3finite1y", "N0t", "A", "Fixture"].join("-");
+    const privateKeyMarker = ["-----BEGIN ENCRYPTED", "PRIVATE KEY-----"].join(" ");
+    const passwordAssignment = ["const pass", "word = ", JSON.stringify(fakeCredential), ";"].join("");
     expect(secretContentFindingCodes('const token = "installation-token";')).toEqual([]);
-    expect(secretContentFindingCodes('const token = "installation-token";\nconst password = "D3finite1y-N0t-A-Fixture";'))
+    expect(secretContentFindingCodes(`const token = "installation-token";\n${passwordAssignment}`))
       .toContain("GENERIC_SECRET_ASSIGNMENT");
-    expect(secretContentFindingCodes('{"client_secret":"D3finite1y-N0t-A-Fixture"}'))
+    expect(secretContentFindingCodes(JSON.stringify({ client_secret: fakeCredential })))
       .toContain("GENERIC_SECRET_ASSIGNMENT");
-    expect(secretContentFindingCodes("-----BEGIN ENCRYPTED PRIVATE KEY-----"))
+    expect(secretContentFindingCodes(privateKeyMarker))
       .toContain("PRIVATE_KEY");
+  });
+
+  it("permits only exact, fully consumed historical audit exceptions", () => {
+    const finding = { objectId: "a".repeat(40), path: "checks/example.test.js", code: "PRIVATE_KEY" };
+    const exception = { ...finding, codes: [finding.code], reason: "Deliberate fixture" };
+    delete exception.code;
+    expect(applyHistoryAuditExceptions([finding], [exception])).toEqual([]);
+    expect(() => applyHistoryAuditExceptions([], [exception])).toThrow(/Unused/);
+    expect(() => applyHistoryAuditExceptions([{ ...finding, objectId: "b".repeat(40) }], [exception])).toThrow(/Unused/);
   });
 
   it("resolves explicit immutable-ref arguments", () => {

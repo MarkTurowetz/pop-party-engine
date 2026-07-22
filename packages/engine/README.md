@@ -26,3 +26,7 @@ binding, cleanup scheduling, and shutdown to
 side-effect-free `@pop-party/engine/client/text` and
 `@pop-party/engine/client/qr-code` rendering primitives; compatibility globals
 belong only in a game adapter.
+
+Public releases are manual, protected-environment GitHub Actions runs using npm
+trusted publishing, OIDC, and provenance. No npm token is accepted by the
+release design.

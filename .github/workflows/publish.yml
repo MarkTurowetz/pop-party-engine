@@ -1,0 +1,65 @@
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Exact version already committed in both public package manifests
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH to authorize the irreversible npm release
+        required: true
+        type: string
+
+concurrency:
+  group: pop-party-publication
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'PUBLISH'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout authored game data
+        uses: actions/checkout@v4
+        with:
+          ref: game-data
+          path: .authored-game-data
+          sparse-checkout: art-manifest.json
+
+      - name: Install authored art manifest
+        run: cp .authored-game-data/art-manifest.json art/art-manifest.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run release:check -- "${{ inputs.release_version }}"
+      - run: npm run split:audit-history
+      - run: npm run check
+
+      - name: Publish engine with npm provenance
+        run: npm publish ./packages/engine --provenance --access public
+
+      - name: Publish game generator with npm provenance
+        run: npm publish ./packages/create-game --provenance --access public
+
+      - name: Create immutable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: gh release create "engine-v${RELEASE_VERSION}" --target "${GITHUB_SHA}" --generate-notes
