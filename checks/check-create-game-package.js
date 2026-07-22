@@ -22,6 +22,7 @@ try {
   if (!packed?.filename) throw new Error("npm pack did not return a create-game tarball");
   if (!packed.files.some((file) => file.path === "bin/create-game.js")) throw new Error("create-game tarball is missing its CLI");
   if (!packed.files.some((file) => file.path === "starter/content/content-bundle.json")) throw new Error("create-game tarball is missing canonical starter content");
+  if (!packed.files.some((file) => file.path === "starter/ASSET-NOTICES.json")) throw new Error("create-game tarball is missing starter asset notices");
   const tarball = path.join(fixtureRoot, packed.filename);
   fs.writeFileSync(path.join(fixtureRoot, "package.json"), `${JSON.stringify({ name: "create-game-pack-fixture", private: true }, null, 2)}\n`);
   execFileSync("npm", ["install", tarball, "--ignore-scripts", "--no-audit", "--no-fund"], {
@@ -34,6 +35,7 @@ try {
   const targetRoot = path.join(fixtureRoot, "generated-game");
   generateGame({ displayName: "Generated Fixture", engineVersion: "1.0.0", targetRoot });
   const generatedManifest = JSON.parse(fs.readFileSync(path.join(targetRoot, "package.json"), "utf8"));
+  if (!fs.existsSync(path.join(targetRoot, "STARTER-ASSET-NOTICES.json"))) throw new Error("Generated game is missing starter asset notices");
   if (generatedManifest.dependencies?.["@pop-party/engine"] !== "1.0.0") throw new Error("Generated game did not pin the exact engine version");
   if (JSON.stringify(generatedManifest).includes("file:") || JSON.stringify(generatedManifest).includes("workspace:")) {
     throw new Error("Generated game contains a local dependency reference");

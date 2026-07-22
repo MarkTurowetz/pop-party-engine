@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "collection": "Pop Party Engine canonical starter art",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "publisher": "Mark Turowetz",
+  "assets": [
+    {
+      "id": "avatar-frame",
+      "name": "Shared Avatar Frame",
+      "sourceName": "avatar-frame.svg",
+      "blobPath": "blobs/2d1298fc8597b4b13dc74c8a4093ce7c8d6027ef955c4af31ed6a6d03034d527.svg",
+      "sha256": "2d1298fc8597b4b13dc74c8a4093ce7c8d6027ef955c4af31ed6a6d03034d527",
+      "mimeType": "image/svg+xml"
+    },
+    {
+      "id": "avatar-rex",
+      "name": "Rex Dinosaur",
+      "sourceName": "dino-rex.svg",
+      "blobPath": "blobs/8785460bf8b2311bfd2a5c06e97f9faac0deafd584b8f3de428c38399e2df16d.svg",
+      "sha256": "8785460bf8b2311bfd2a5c06e97f9faac0deafd584b8f3de428c38399e2df16d",
+      "mimeType": "image/svg+xml"
+    },
+    {
+      "id": "avatar-stego",
+      "name": "Stego Dinosaur",
+      "sourceName": "dino-stego.svg",
+      "blobPath": "blobs/4d1b3ad12d64d7f145e282dc44b2c510d8cc36c0a609fcef831fe9c59270bf35.svg",
+      "sha256": "4d1b3ad12d64d7f145e282dc44b2c510d8cc36c0a609fcef831fe9c59270bf35",
+      "mimeType": "image/svg+xml"
+    },
+    {
+      "id": "avatar-trike",
+      "name": "Trike Dinosaur",
+      "sourceName": "dino-trike.svg",
+      "blobPath": "blobs/a531c3ee6f5bfa5b478b6ecda5799f1031ceea367ca9d93585545b3de0ed34d7.svg",
+      "sha256": "a531c3ee6f5bfa5b478b6ecda5799f1031ceea367ca9d93585545b3de0ed34d7",
+      "mimeType": "image/svg+xml"
+    },
+    {
+      "id": "avatar-raptor",
+      "name": "Raptor Dinosaur",
+      "sourceName": "dino-raptor.svg",
+      "blobPath": "blobs/d54e3eae53b88a705370aa028c3ea55297d549e3521aca6a41435f87e4a18167.svg",
+      "sha256": "d54e3eae53b88a705370aa028c3ea55297d549e3521aca6a41435f87e4a18167",
+      "mimeType": "image/svg+xml"
+    },
+    {
+      "id": "avatar-bronto",
+      "name": "Bronto Dinosaur",
+      "sourceName": "dino-bronto.svg",
+      "blobPath": "blobs/1c14e1db26cfb96105b2cbf60591a18329834078cc65e14373715d4ec06f07ef.svg",
+      "sha256": "1c14e1db26cfb96105b2cbf60591a18329834078cc65e14373715d4ec06f07ef",
+      "mimeType": "image/svg+xml"
+    },
+    {
+      "id": "avatar-ankylo",
+      "name": "Ankylo Dinosaur",
+      "sourceName": "dino-ankylo.svg",
+      "blobPath": "blobs/8dbc40965debd1f9f516461ed2b6ca0dd95557f8a762dbeaf67459e4b343497a.svg",
+      "sha256": "8dbc40965debd1f9f516461ed2b6ca0dd95557f8a762dbeaf67459e4b343497a",
+      "mimeType": "image/svg+xml"
+    },
+    {
+      "id": "presentation-click-cursor",
+      "name": "Presentation Click Cursor",
+      "sourceName": "cursor-arrow.svg",
+      "blobPath": "blobs/7a3a06ea1280a916254e2af034762e798b11e45f5eb7a1f4e0ba1a3ad4b8af48.svg",
+      "sha256": "7a3a06ea1280a916254e2af034762e798b11e45f5eb7a1f4e0ba1a3ad4b8af48",
+      "mimeType": "image/svg+xml"
+    }
+  ]
+}

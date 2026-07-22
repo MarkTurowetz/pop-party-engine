@@ -116,6 +116,11 @@ function generateGame(options = {}) {
     writeText(stagingRoot, ".gitignore", "node_modules/\n.env\noutputs/\n");
     writeText(stagingRoot, "README.md", `# ${displayName}\n\nIndependent Pop Party game using \`@pop-party/engine@${engineVersion}\`.\n`);
     writeText(stagingRoot, "CONTENT-LICENSE", "Canonical starter art and content were copied into this game under CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/). This copy is owned and editable by this game.\n");
+    writeText(
+      stagingRoot,
+      "STARTER-ASSET-NOTICES.json",
+      fs.readFileSync(path.join(__dirname, "..", "starter", "ASSET-NOTICES.json"), "utf8")
+    );
     if (fs.existsSync(targetRoot)) fs.rmdirSync(targetRoot);
     fs.renameSync(stagingRoot, targetRoot);
   } catch (error) {
