@@ -9,7 +9,13 @@ const filenames = [
   "choice-input-action-config.js",
   "flow-action-registry.js",
   "game-constants-schema.js",
+  "lifecycle-labels.d.ts",
+  "lifecycle-labels.js",
   "microphone-access-action-config.js",
+  "timeline-model.d.ts",
+  "timeline-model.js",
+  "art-timeline-architecture.d.ts",
+  "art-timeline-architecture.js",
   "text-answer-action-config.js"
 ];
 

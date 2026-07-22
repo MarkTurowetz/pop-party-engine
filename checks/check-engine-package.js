@@ -167,7 +167,12 @@ try {
   if (gameApi.defineGame !== engine.defineGame || pluginApi.defineGamePlugin !== engine.defineGamePlugin) {
     throw new Error("Packed engine subpath contracts do not match the root public API");
   }
-  for (const specifier of requiredServerImports) fixtureRequire(specifier);
+  for (const specifier of [
+    ...requiredServerImports,
+    "@pop-party/engine/art/lifecycle",
+    "@pop-party/engine/art/timeline",
+    "@pop-party/engine/art/architecture"
+  ]) fixtureRequire(specifier);
   const plugin = engine.defineGamePlugin({ namespace: "fixture", register(registry) { registry.actions("fixture.action", {}); } });
   const gameData = Object.fromEntries(engine.REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));
   const game = engine.defineGame({
@@ -188,6 +193,9 @@ try {
     'import { createInputStateRuntime } from "@pop-party/engine/server";',
     'import { createStageTestConfigHandlerRuntime } from "@pop-party/engine/testing";',
     'import { createLayoutSyncRuntime } from "@pop-party/engine/tooling";',
+    'import { lifecycleLabels } from "@pop-party/engine/art/lifecycle";',
+    'import { normalizeTimeline, type TimelineDocument } from "@pop-party/engine/art/timeline";',
+    'import { collectArtArchitectureIssues } from "@pop-party/engine/art/architecture";',
     'import { normalizeBundlePath } from "@pop-party/engine/content/schema";',
     'import { createContentSnapshot } from "@pop-party/engine/content/snapshot";',
     'import { createRevisionedContentStoreRuntime } from "@pop-party/engine/content/store";',
@@ -205,7 +213,8 @@ try {
     'const plugin = defineGamePlugin({ namespace: "typed", register(registry) { registry.actions("typed.action", {}); } });',
     'const gameData = Object.fromEntries(REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));',
     'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, gameData, plugin });',
-    'void [createInputStateRuntime, createStageTestConfigHandlerRuntime, createLayoutSyncRuntime, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
+    'const timeline: TimelineDocument | null = normalizeTimeline({ fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] });',
+    'void [createInputStateRuntime, createStageTestConfigHandlerRuntime, createLayoutSyncRuntime, lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
   ].join("\n"));
   execFileSync(process.execPath, [path.join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "--strict", "--target", "ES2022", "--module", "Node16", "--moduleResolution", "Node16", "consumer.ts"], { cwd: fixtureRoot, stdio: "pipe" });
   console.log(`Packed engine fixture passed: ${packed.filename} (${packed.files.length} files).`);

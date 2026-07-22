@@ -28,6 +28,18 @@
       "types": "./src/tooling/index.d.ts",
       "default": "./src/tooling/index.js"
     },
+    "./art/lifecycle": {
+      "types": "./src/shared/lifecycle-labels.d.ts",
+      "default": "./src/shared/lifecycle-labels.js"
+    },
+    "./art/timeline": {
+      "types": "./src/shared/timeline-model.d.ts",
+      "default": "./src/shared/timeline-model.js"
+    },
+    "./art/architecture": {
+      "types": "./src/shared/art-timeline-architecture.d.ts",
+      "default": "./src/shared/art-timeline-architecture.js"
+    },
     "./content/schema": {
       "types": "./src/shared/content-bundle-schema.d.ts",
       "default": "./src/shared/content-bundle-schema.js"
