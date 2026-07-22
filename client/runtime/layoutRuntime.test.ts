@@ -1,10 +1,25 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { controllerPlayerBannerRenderOptions, layoutTextArtRenderOptions, layoutTextArtUsesNestedPrefab } from "./layoutRuntime";
 
 const globals = globalThis as typeof globalThis & {
   artComposition?: (id: string) => Record<string, unknown> | null;
 };
 const previousArtComposition = globals.artComposition;
+
+beforeEach(() => {
+  globalThis.__POP_PARTY_RUNTIME_CONFIG__ = {
+    semanticRoles: {
+      "engine.controller.playerIdentity": { compositionId: "controller-player-banner" },
+      "engine.controller.textInput": { compositionId: "controller-text-input-field" },
+      "engine.controller.submitControl": { compositionId: "controller-primary-button" },
+      "engine.controller.choiceControl": { compositionId: "controller-choice-option" },
+      "engine.controller.invalidSubmission": { compositionId: "controller-invalid-banner" },
+      "engine.controller.stageCodeInput": { compositionId: "controller-stage-code-field" },
+      "engine.controller.playerNameInput": { compositionId: "controller-player-name-field" },
+      "engine.controller.avatarChoice": { compositionId: "controller-avatar-button" }
+    }
+  };
+});
 
 afterEach(() => {
   globals.artComposition = previousArtComposition;

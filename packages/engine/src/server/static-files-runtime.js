@@ -161,11 +161,23 @@ function renderViteBody(html, role) {
   return `${html.slice(0, bodyOpenEnd)}\n${blocks}\n\n${html.slice(scriptIndex)}`;
 }
 
+function runtimeConfigScript(gameDefinition) {
+  const serialized = JSON.stringify({
+    game: {
+      id: String(gameDefinition?.gameId || ""),
+      version: String(gameDefinition?.version || "")
+    },
+    semanticRoles: gameDefinition?.semanticRoles || {}
+  }).replace(/[<>&\u2028\u2029]/g, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  return `  <script id="pop-party-runtime-config" type="application/json">${serialized}</script>`;
+}
+
 function createStaticFilesRuntime({
   appVersion,
   buildAssetsRoot,
   clientRoot,
   contentTypeForFile,
+  gameDefinition,
   indexFile,
   root,
   sendJson,
@@ -181,6 +193,7 @@ function createStaticFilesRuntime({
       const stylesheetLinks = renderStylesheetLinks(stylesForRole(role));
       const viteEntryScript = viteEntryScriptForRole(root, role);
       const html = renderViteBody(String(data), role)
+        .replace(BODY_OPEN, `${BODY_OPEN}\n${runtimeConfigScript(gameDefinition)}`)
         .replace(LEGACY_STYLESHEET_PATTERN, stylesheetLinks)
         .replace(LEGACY_SCRIPT_BLOCK_PATTERN, viteEntryScript)
         .replaceAll("__APP_VERSION__", appVersion);
@@ -240,4 +253,4 @@ function createStaticFilesRuntime({
   };
 }
 
-module.exports = { createStaticFilesRuntime };
+module.exports = { createStaticFilesRuntime, runtimeConfigScript };

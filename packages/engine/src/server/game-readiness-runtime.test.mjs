@@ -12,9 +12,15 @@ function semanticFixture() {
     const compositionId = `fixture-${index}`;
     const componentKind = definition.terminalKind === "composition" ? "" : definition.terminalKind;
     roles[role] = componentKind ? { compositionId, instancePath: ["target"] } : { compositionId };
+    const components = (definition.requiredInstanceLabels || []).map((instanceLabel) => ({
+      id: instanceLabel,
+      instanceLabel,
+      kind: "shape"
+    }));
+    if (componentKind) components.push({ id: "target", instanceLabel: "target", kind: componentKind });
     compositions[compositionId] = {
       surface: definition.surface,
-      components: componentKind ? [{ id: "target", instanceLabel: "target", kind: componentKind }] : []
+      components
     };
   }
   return { roles, artManifest: { compositions } };

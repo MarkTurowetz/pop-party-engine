@@ -6,9 +6,13 @@
 import { distributedContainerItemPositions, type DistributedItemSize } from "./distributedContainerLayout";
 import { effectiveVisibilityTimeline } from "./effectiveTimeline";
 import { timelineSnapshotAt } from "./timelinePlayer";
-import { defaultPlayerPointPopupTimeline } from "../../shared/player-point-popup-timeline";
 import type { TimelineDocument } from "../../shared/timeline-model";
 import { createActionCompletionBarrier } from "./actionCompletionBarrier";
+import {
+  runtimeSemanticCompositionId,
+  runtimeSemanticInstanceLabel,
+  type RuntimeSemanticRoleMap
+} from "./semanticRoleRuntime";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -39,20 +43,19 @@ declare global {
 
 const w = () => globalThis as typeof globalThis & Window;
 
-export const PLAYER_WIDGET_COMPOSITION_ID = "prefab-player-widget-mc";
 // Runtime commands target authored instance labels, not generated component ids.
 // The current Player Widget MC may replace or regenerate its references without
 // breaking the voice-answer path as long as these public labels stay intact.
-const PLAYER_ANSWER_BUBBLE_MC_ID = "playerAnswerBubbleMC";
+const PLAYER_WIDGET_ROLE = "engine.stage.playerIdentityWidget";
+const PLAYER_ANSWER_BUBBLE_ROLE = "engine.stage.playerAnswerBubble";
+const POINT_POPUP_CONTAINER_ROLE = "engine.stage.playerPointsPopupContainer";
+const POINT_POPUP_ROLE = "engine.stage.playerPointsPopup";
 const PLAYER_ANSWER_BUBBLE_STATE_ID = "playerAnswerBubble";
 const PLAYER_AVATAR_MC_ID = "playerAvatarMC";
 const PLAYER_AVATAR_BEHAVIORS_ID = "playerAvatarBehaviors";
 const PLAYER_NAME_MC_ID = "playerNameMC";
 const PLAYER_VIP_MC_ID = "vipMC";
 const AVATAR_FRAME_ID = "avatar";
-const POINT_POPUP_CONTAINER_INSTANCE_LABEL = "pointPopupContainer";
-const POINT_POPUP_CONTAINER_LEGACY_ID = "point-popup-container";
-const POINT_POPUP_COMPOSITION_ID = "player-point-popup";
 
 type RectLike = { left: number; top: number; width: number; height: number };
 
@@ -73,14 +76,17 @@ export function authoredCanvasPointViewportPosition(
   };
 }
 
-export function playerWidgetPointPopupAnchorPosition(composition: Dict | null): PointLike | null {
+export function playerWidgetPointPopupAnchorPosition(
+  composition: Dict | null,
+  pointPopupContainerInstanceLabel = runtimeSemanticInstanceLabel(POINT_POPUP_CONTAINER_ROLE)
+): PointLike | null {
   if (!composition) return null;
   const components = [...((composition.components as Dict[]) || [])];
   let anchor: Dict | undefined;
   while (components.length && !anchor) {
     const component = components.shift();
     if (!component) continue;
-    if (component.instanceLabel === POINT_POPUP_CONTAINER_INSTANCE_LABEL || component.id === POINT_POPUP_CONTAINER_LEGACY_ID) anchor = component;
+    if (component.instanceLabel === pointPopupContainerInstanceLabel) anchor = component;
     else components.push(...((component.children as Dict[]) || []));
   }
   if (!anchor) return null;
@@ -93,8 +99,7 @@ export function playerWidgetPointPopupAnchorPosition(composition: Dict | null): 
   const onFrame = timeline.labels.find((label) => String(label?.name || "").trim().toLowerCase() === "on")?.frame ?? 0;
   const timelineTargets = timelineSnapshotAt(timeline, onFrame).targets;
   const timelinePosition = timelineTargets[String(anchor.id || "")]
-    || timelineTargets[POINT_POPUP_CONTAINER_INSTANCE_LABEL]
-    || timelineTargets[POINT_POPUP_CONTAINER_LEGACY_ID];
+    || timelineTargets[pointPopupContainerInstanceLabel];
   const timelineX = Number(timelinePosition?.x);
   const timelineY = Number(timelinePosition?.y);
   return {
@@ -157,9 +162,8 @@ function cloneArtComposition(composition: Dict, apply?: (component: Dict) => voi
 function pointPopupTimeline(composition: Dict): TimelineDocument {
   const authored = composition.timeline as TimelineDocument | null | undefined;
   const hasPopup = authored?.labels?.some((label) => String(label?.name || "").trim().toLowerCase() === "popup") === true;
-  return authored && hasPopup
-    ? effectiveVisibilityTimeline(authored)
-    : defaultPlayerPointPopupTimeline();
+  if (!authored || !hasPopup) throw new Error("Player points popup is missing its required Popup animation");
+  return effectiveVisibilityTimeline(authored);
 }
 
 function usesCurrentColor(component: Dict): boolean {
@@ -312,6 +316,7 @@ class PlayerRosterRenderer {
   gameObjectApi: GameObjectApi | undefined;
   timerSink: ((id: number) => void) | null;
   getComposition: (id: string) => Dict | null;
+  semanticRoles?: RuntimeSemanticRoleMap;
   pointPopupIds = new Set<string>();
   tileGameObjects = new Map<string, GameObjectLike>();
   tileRenderers = new WeakMap<El, TreeRenderer>();
@@ -325,12 +330,21 @@ class PlayerRosterRenderer {
     this.host = options.host as El | undefined;
     this.host?.classList?.remove("players-hidden", "players-instant");
     this.document = (options.document as Document) || globalThis.document;
+    this.semanticRoles = options.semanticRoles as RuntimeSemanticRoleMap | undefined;
     this.gameObjectApi = (options.gameObjectApi as GameObjectApi) || (w().PartyGameGameObject as GameObjectApi) || (w().PartyGameStageGameObject as GameObjectApi);
     this.timerSink = fn(options.timerSink) ? (options.timerSink as (id: number) => void) : null;
     this.getComposition = fn(options.getComposition)
       ? (options.getComposition as (id: string) => Dict | null)
       : (id: string) => w().artComposition?.(id) || null;
     this.observeHostSize();
+  }
+
+  roleCompositionId(role: string): string {
+    return runtimeSemanticCompositionId(role, this.semanticRoles, this.document);
+  }
+
+  roleInstanceLabel(role: string): string {
+    return runtimeSemanticInstanceLabel(role, this.semanticRoles, this.document);
   }
 
   observeHostSize(): void {
@@ -364,7 +378,7 @@ class PlayerRosterRenderer {
   }
 
   playerObjectCompositionFor(_player: Dict): Dict | null {
-    return this.getComposition(PLAYER_WIDGET_COMPOSITION_ID);
+    return this.getComposition(this.roleCompositionId(PLAYER_WIDGET_ROLE));
   }
 
   answerStateFor(player: Dict): PlayerAnswerBubbleRuntimeState {
@@ -509,7 +523,7 @@ class PlayerRosterRenderer {
 
   syncAnswerBubbleComponent(renderer: TreeRenderer, state: PlayerAnswerBubbleRuntimeState, options: Dict = {}): number {
     const instant = options.instant === true;
-    const targetId = PLAYER_ANSWER_BUBBLE_MC_ID;
+    const targetId = this.roleInstanceLabel(PLAYER_ANSWER_BUBBLE_ROLE);
     const lifecycleState = renderer.componentLifecycleState?.(targetId);
     const targetShown = state.visible === true;
     const componentTargetShown = lifecycleState === "shown" || lifecycleState === "appearing"
@@ -700,9 +714,10 @@ class PlayerRosterRenderer {
   }
 
   answerBubblesAnimating(): boolean {
+    const targetId = this.roleInstanceLabel(PLAYER_ANSWER_BUBBLE_ROLE);
     for (const tile of this.playerWidgetTiles()) {
       const renderer = this.tileRenderers.get(tile);
-      const lifecycleState = renderer?.componentLifecycleState?.(PLAYER_ANSWER_BUBBLE_MC_ID);
+      const lifecycleState = renderer?.componentLifecycleState?.(targetId);
       if (lifecycleState === "appearing" || lifecycleState === "disappearing") return true;
     }
     return false;
@@ -710,17 +725,19 @@ class PlayerRosterRenderer {
 
   hasParkedShownBubbles(): boolean {
     if (!this.currentAnswerBubblesShown() || !this.host) return false;
+    const targetId = this.roleInstanceLabel(PLAYER_ANSWER_BUBBLE_ROLE);
     return Array.from(this.host.querySelectorAll(".player-tile[data-answer-bubble-has-answer='true']")).some((node) => {
       const tile = node as El;
-      return this.tileRenderers.get(tile)?.isComponentVisible?.(PLAYER_ANSWER_BUBBLE_MC_ID) !== true;
+      return this.tileRenderers.get(tile)?.isComponentVisible?.(targetId) !== true;
     });
   }
 
   resetAnswerBubbles(): void {
     this.renderedAnswersShown = false;
+    const targetId = this.roleInstanceLabel(PLAYER_ANSWER_BUBBLE_ROLE);
     for (const tile of this.playerWidgetTiles()) {
       const renderer = this.tileRenderers.get(tile);
-      renderer?.stopAtComponent?.(PLAYER_ANSWER_BUBBLE_MC_ID, "Off", { instant: true });
+      renderer?.stopAtComponent?.(targetId, "Off", { instant: true });
       renderer?.stopAtComponent?.(PLAYER_ANSWER_BUBBLE_STATE_ID, "Default", { instant: true });
       tile.dataset.answerBubbleVisible = "false";
       tile.dataset.answerBubbleCorrectness = "";
@@ -852,7 +869,7 @@ class PlayerRosterRenderer {
   pointPopupAnchor(tile: El | null): PointLike | null {
     if (!tile) return null;
     const composition = this.playerObjectCompositionFor(this.tilePlayers.get(tile) || {});
-    return playerWidgetPointPopupAnchorPosition(composition);
+    return playerWidgetPointPopupAnchorPosition(composition, this.roleInstanceLabel(POINT_POPUP_CONTAINER_ROLE));
   }
 
   positionPointPopup(node: El | null, tile: El | null): boolean {
@@ -863,8 +880,7 @@ class PlayerRosterRenderer {
       height: elementDimension(this.host, "height", hostRect.height || 1)
     };
     const renderer = this.tileRenderers.get(tile);
-    const liveAnchor = renderer?.viewForComponentId?.(POINT_POPUP_CONTAINER_INSTANCE_LABEL)?.element
-      || renderer?.viewForComponentId?.(POINT_POPUP_CONTAINER_LEGACY_ID)?.element;
+    const liveAnchor = renderer?.viewForComponentId?.(this.roleInstanceLabel(POINT_POPUP_CONTAINER_ROLE))?.element;
     if (liveAnchor) {
       const position = pointPopupOverlayPosition(liveAnchor.getBoundingClientRect(), hostRect, hostSize);
       node.style.left = `${position.left}px`;
@@ -944,7 +960,7 @@ class PlayerRosterRenderer {
 
   renderPointPopupPrefab(node: El, popup: Dict): boolean {
     const text = `+${Math.max(0, Math.floor(Number(popup?.points || 0)))}`;
-    const composition = this.getComposition?.(POINT_POPUP_COMPOSITION_ID);
+    const composition = this.getComposition?.(this.roleCompositionId(POINT_POPUP_ROLE));
     const artRuntime = w().PartyGameArtObject as { ArtObjectTreeRenderer?: new (o: Dict) => TreeRenderer } | undefined;
     if (!node || !composition || !artRuntime?.ArtObjectTreeRenderer) return false;
     node.classList.add("has-prefab-art");

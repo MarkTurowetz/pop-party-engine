@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   PartyGameVotingCardVisuals,
   VOTING_CARD_ANSWER_MC_ID,
@@ -16,6 +16,14 @@ import {
   votingCardRuntimeBaseCompositionId,
   votingCardArtTimeline
 } from "./stageVotingCardVisuals";
+
+beforeEach(() => {
+  globalThis.__POP_PARTY_RUNTIME_CONFIG__ = {
+    semanticRoles: {
+      "engine.stage.votingCard": { compositionId: "test-voting-card" }
+    }
+  };
+});
 
 describe("PartyGameVotingCardVisuals (ported voting-card-visuals)", () => {
   it("createRenderer returns the render surface", () => {

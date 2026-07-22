@@ -9,6 +9,7 @@
 import "./layoutGameObjectRuntime"; // ensure PartyGameLayoutGameObjects is installed first
 import { controllerLayoutCandidateIds } from "../../shared/controller-layout-states";
 import { avatarTimelineLabelForShape } from "./stagePlayerRoster";
+import { runtimeSemanticCompositionId } from "./semanticRoleRuntime";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -87,31 +88,22 @@ const layoutTextArtComponentId = "text";
 const layoutTextArtNestedCompositionId = "prefab-layout-text-field-text";
 const layoutTextArtNestedComponentPath = `${layoutTextArtNestedCompositionId}/${layoutTextArtComponentId}`;
 const layoutTextArtLegacyComponentPath = `${layoutTextArtCompositionId}/${layoutTextArtComponentId}`;
-const controllerPrimaryButtonArtCompositionId = "controller-primary-button";
-const controllerChoiceOptionArtCompositionId = "controller-choice-option";
-const controllerPlayerBannerArtCompositionId = "controller-player-banner";
+const controllerPrimaryButtonArtCompositionId = () => runtimeSemanticCompositionId("engine.controller.submitControl");
+const controllerChoiceOptionArtCompositionId = () => runtimeSemanticCompositionId("engine.controller.choiceControl");
+const controllerPlayerBannerArtCompositionId = () => runtimeSemanticCompositionId("engine.controller.playerIdentity");
 const controllerPlayerBannerAvatarComponentId = "player-avatar-mc";
 const controllerPlayerBannerNameComponentId = "player-name-mc";
 const controllerPlayerBannerNameTextPath = "player-name-widget/name-text";
-const controllerWidgetTextComponentIds: Record<string, string> = {
-  "controller-choice-option": "option-text",
-  "controller-invalid-banner": "invalid-text",
-  "controller-player-banner": controllerPlayerBannerNameTextPath,
-  "controller-player-name-field": "field-value",
-  "controller-primary-button": "button-text",
-  "controller-stage-code-field": "field-value",
-  "controller-text-input-field": "placeholder-text"
-};
-const controllerWidgetArtCompositionIds: Record<string, string> = {
-  controlleravatar: "controller-avatar-button",
-  controllerinvalidbanner: "controller-invalid-banner",
-  controllermicaccessbutton: controllerPrimaryButtonArtCompositionId,
-  controllerplayerbanner: "controller-player-banner",
-  controllertextinput: "controller-text-input-field",
-  controllertextsubmitbutton: controllerPrimaryButtonArtCompositionId,
-  controllervoicebutton: controllerPrimaryButtonArtCompositionId,
-  playernamefield: "controller-player-name-field",
-  stagecodefield: "controller-stage-code-field",
+const controllerWidgetRoleIds: Record<string, string> = {
+  controlleravatar: "engine.controller.avatarChoice",
+  controllerinvalidbanner: "engine.controller.invalidSubmission",
+  controllermicaccessbutton: "engine.controller.submitControl",
+  controllerplayerbanner: "engine.controller.playerIdentity",
+  controllertextinput: "engine.controller.textInput",
+  controllertextsubmitbutton: "engine.controller.submitControl",
+  controllervoicebutton: "engine.controller.submitControl",
+  playernamefield: "engine.controller.playerNameInput",
+  stagecodefield: "engine.controller.stageCodeInput"
 };
 let controllerRuntimeArtRendererCounter = 0;
 const legacyLayoutTextElementIds = new Set([
@@ -135,13 +127,22 @@ function controllerWidgetArtCompositionIdForTarget(target: El | null): string {
   const layoutHost = target.closest("[data-controller-layout-art-composition-id]") as El | null;
   const layoutCompositionId = layoutHost?.dataset.controllerLayoutArtCompositionId || target.dataset.controllerLayoutArtCompositionId || "";
   if (layoutCompositionId) return layoutCompositionId;
-  if (target.classList.contains("choice-option-button")) return controllerChoiceOptionArtCompositionId;
-  if (target.classList.contains("primary-button") || target.dataset.controllerOption !== undefined) return controllerPrimaryButtonArtCompositionId;
-  return controllerWidgetArtCompositionIds[compactControllerWidgetId(target.id)] || "";
+  if (target.classList.contains("choice-option-button")) return controllerChoiceOptionArtCompositionId();
+  if (target.classList.contains("primary-button") || target.dataset.controllerOption !== undefined) return controllerPrimaryButtonArtCompositionId();
+  const role = controllerWidgetRoleIds[compactControllerWidgetId(target.id)];
+  return role ? runtimeSemanticCompositionId(role) : "";
 }
 
 function controllerWidgetTextComponentId(compositionId: unknown): string {
-  return controllerWidgetTextComponentIds[String(compositionId || "")] || "";
+  const id = String(compositionId || "");
+  if (id === controllerChoiceOptionArtCompositionId()) return "option-text";
+  if (id === runtimeSemanticCompositionId("engine.controller.invalidSubmission")) return "invalid-text";
+  if (id === controllerPlayerBannerArtCompositionId()) return controllerPlayerBannerNameTextPath;
+  if (id === runtimeSemanticCompositionId("engine.controller.playerNameInput")) return "field-value";
+  if (id === controllerPrimaryButtonArtCompositionId()) return "button-text";
+  if (id === runtimeSemanticCompositionId("engine.controller.stageCodeInput")) return "field-value";
+  if (id === runtimeSemanticCompositionId("engine.controller.textInput")) return "placeholder-text";
+  return "";
 }
 
 function controllerRuntimeArtRendererKey(target: El, prefix: string): string {
@@ -202,17 +203,21 @@ function controllerWidgetTextRenderOptions(compositionId: unknown, text: unknown
 
 function controllerLayoutArtDefaultText(element: Dict | null, host: El | null): string {
   const compositionId = String(element?.artCompositionId || "");
-  if (compositionId === "controller-stage-code-field" || compositionId === "controller-player-name-field" || compositionId === "controller-text-input-field") return "";
+  if ([
+    runtimeSemanticCompositionId("engine.controller.stageCodeInput"),
+    runtimeSemanticCompositionId("engine.controller.playerNameInput"),
+    runtimeSemanticCompositionId("engine.controller.textInput")
+  ].includes(compositionId)) return "";
   if (host?.dataset.textFitSource !== undefined) return host.dataset.textFitSource || "";
-  if (compositionId === "controller-invalid-banner") return String(host?.textContent || "Your submission was invalid").trim();
-  if (compositionId === controllerPlayerBannerArtCompositionId) return host?.dataset.controllerPlayerName || "Player";
-  if (compositionId === controllerPrimaryButtonArtCompositionId) return host?.dataset.controllerTextValue || String(host?.textContent || "").trim();
+  if (compositionId === runtimeSemanticCompositionId("engine.controller.invalidSubmission")) return String(host?.textContent || "Your submission was invalid").trim();
+  if (compositionId === controllerPlayerBannerArtCompositionId()) return host?.dataset.controllerPlayerName || "Player";
+  if (compositionId === controllerPrimaryButtonArtCompositionId()) return host?.dataset.controllerTextValue || String(host?.textContent || "").trim();
   return "";
 }
 
 function controllerLayoutArtRenderOptions(element: Dict | null, host: El | null): Dict {
   if (isLayoutTextArtElement(element)) return layoutTextArtRenderOptions(element, host?.dataset.textFitSource);
-  if (element?.artCompositionId === controllerPlayerBannerArtCompositionId) {
+  if (element?.artCompositionId === controllerPlayerBannerArtCompositionId()) {
     return controllerPlayerBannerRenderOptions({
       name: host?.dataset.controllerPlayerName,
       avatar: { color: host?.dataset.controllerPlayerAvatarColor }
@@ -229,7 +234,7 @@ function controllerPlayerBannerRenderOptions(player: Dict = {}): Dict {
   return {
     textOverrides: {
       [controllerPlayerBannerNameTextPath]: name,
-      [`${controllerPlayerBannerArtCompositionId}/banner-name`]: name
+      [`${controllerPlayerBannerArtCompositionId()}/banner-name`]: name
     },
     componentOverrides: {
       "avatars/avatar": { imageTint: color }
@@ -789,7 +794,7 @@ function controllerLayoutArtKeepElements(host: El | null): El[] {
 }
 
 function syncControllerPlayerBannerChildren(target: El | null): void {
-  if (!target || target.dataset.controllerLayoutArtCompositionId !== controllerPlayerBannerArtCompositionId) return;
+  if (!target || target.dataset.controllerLayoutArtCompositionId !== controllerPlayerBannerArtCompositionId()) return;
   const renderer = artRendererForLayoutHost(target);
   if (renderer) {
     renderer.stopAtComponent?.(controllerPlayerBannerAvatarComponentId, "On", { instant: true });
@@ -812,7 +817,7 @@ function setControllerPlayerBannerArt(target: El | null, player: Dict = {}): voi
   target.dataset.controllerPlayerAvatarColor = String(avatar.color || "#22d3ee");
   target.style.setProperty("color", target.dataset.controllerPlayerAvatarColor);
   const element = controllerLayoutElementForTarget(target);
-  if (element?.artCompositionId === controllerPlayerBannerArtCompositionId && target.dataset.controllerLayoutVisibilityKey) {
+  if (element?.artCompositionId === controllerPlayerBannerArtCompositionId() && target.dataset.controllerLayoutVisibilityKey) {
     renderControllerArtInstance(element, target, target.dataset.controllerLayoutVisibilityKey, {
       ...controllerPlayerBannerRenderOptions(player),
       keepElements: controllerLayoutArtKeepElements(target)

@@ -1,7 +1,18 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PartyGameStageWidgetBindings } from "./stageWidgetBindings";
 import { PartyGameStageRenderOrchestrator } from "./stageRenderOrchestrator";
 import { PartyGameStageDebug } from "./stageDebugPanel";
+
+beforeEach(() => {
+  globalThis.__POP_PARTY_RUNTIME_CONFIG__ = {
+    semanticRoles: {
+      "engine.stage.roomCode": { compositionId: "stage-code-widget" },
+      "engine.stage.joinQrCode": { compositionId: "join-qr-code" },
+      "engine.stage.timer": { compositionId: "crafting-timer-widget" },
+      "engine.stage.transition": { compositionId: "wipe-widget-mc" }
+    }
+  };
+});
 
 describe("PartyGameStageWidgetBindings (ported)", () => {
   it("resolves widget definitions by id and by layout element id", () => {

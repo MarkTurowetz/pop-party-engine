@@ -1,6 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  PLAYER_WIDGET_COMPOSITION_ID,
   PartyGamePlayerRoster,
   authoredCanvasPointViewportPosition,
   avatarTimelineLabelForShape,
@@ -17,6 +16,19 @@ import {
   runtimePlayerWidgetComponents
 } from "./stagePlayerRoster";
 
+const PLAYER_WIDGET_COMPOSITION_ID = "test-player-widget";
+
+beforeEach(() => {
+  globalThis.__POP_PARTY_RUNTIME_CONFIG__ = {
+    semanticRoles: {
+      "engine.stage.playerIdentityWidget": { compositionId: PLAYER_WIDGET_COMPOSITION_ID },
+      "engine.stage.playerAnswerBubble": { compositionId: PLAYER_WIDGET_COMPOSITION_ID, instancePath: ["playerAnswerBubbleMC"] },
+      "engine.stage.playerPointsPopup": { compositionId: "test-player-points-popup" },
+      "engine.stage.playerPointsPopupContainer": { compositionId: PLAYER_WIDGET_COMPOSITION_ID, instancePath: ["pointPopupContainer"] }
+    }
+  };
+});
+
 describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
   it("projects the authored container center through the Player Widget MC canvas", () => {
     expect(authoredCanvasPointViewportPosition(
@@ -28,7 +40,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
 
   it("uses the Player Widget On keyframe for the popup anchor before its stale base position", () => {
     expect(playerWidgetPointPopupAnchorPosition({
-      components: [{ id: "point-popup-container", x: 150, y: 180 }],
+      components: [{ id: "point-popup-container", instanceLabel: "pointPopupContainer", x: 150, y: 180 }],
       timeline: {
         fps: 30,
         frameCount: 2,
@@ -95,7 +107,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
         canvas: { width: 300, height: 370 },
         components: [
           { id: "player-avatar-mc", x: 150, y: 234 },
-          { id: "point-popup-container", x: 150, y: 180, width: 154, height: 64 }
+          { id: "point-popup-container", instanceLabel: "pointPopupContainer", x: 150, y: 180, width: 154, height: 64 }
         ],
         timeline: {
           fps: 30,
@@ -915,7 +927,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
-  it("renders point popup prefabs with a Popup timeline fallback when no authored timeline exists", () => {
+  it("fails closed when point popup art has no authored Popup animation", () => {
     const rendered: Record<string, unknown>[] = [];
     class FakeTreeRenderer {
       render(components: Record<string, unknown>[], canvas: Record<string, unknown>, options: Record<string, unknown>) {
@@ -941,20 +953,10 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       })
     });
 
-    expect(roster.renderPointPopupPrefab(node as unknown as HTMLElement, { points: 50 })).toBe(true);
+    expect(() => roster.renderPointPopupPrefab(node as unknown as HTMLElement, { points: 50 }))
+      .toThrow("Player points popup is missing its required Popup animation");
     host.PartyGameArtObject = previous;
-
-    expect(rendered[0].components).toEqual([
-      expect.objectContaining({ id: "point-text", defaultText: "+50" }),
-      expect.objectContaining({ id: "point-shadow", defaultText: "+50" })
-    ]);
-    expect((rendered[0].options as { timeline: { labels: { name: string }[]; tracks: { targetId: string }[] } }).timeline.labels.map((label) => label.name)).toContain(
-      "Popup"
-    );
-    expect((rendered[0].options as { timeline: { tracks: { targetId: string }[] } }).timeline.tracks.map((track) => track.targetId)).toEqual([
-      "point-text",
-      "point-shadow"
-    ]);
+    expect(rendered).toEqual([]);
   });
 
   it("plays point popup prefab timelines through the art renderer", () => {

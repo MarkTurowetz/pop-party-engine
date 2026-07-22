@@ -11,6 +11,7 @@ export interface SemanticRoleDocument {
 export interface SemanticRoleDefinition {
   readonly surface: "stage" | "controller";
   readonly terminalKind?: "composition" | "container" | "reference";
+  readonly requiredInstanceLabels?: readonly string[];
 }
 
 export class SemanticRoleValidationError extends Error {
@@ -26,24 +27,24 @@ export class SemanticRoleValidationError extends Error {
 }
 
 export const coreSemanticRoleDefinitions: Readonly<Record<string, SemanticRoleDefinition>> = Object.freeze({
-  "engine.stage.activeBackground": Object.freeze({ surface: "stage", terminalKind: "composition" }),
-  "engine.stage.playerIdentityWidget": Object.freeze({ surface: "stage", terminalKind: "composition" }),
+  "engine.stage.activeBackground": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["backgroundDefault"] }),
+  "engine.stage.playerIdentityWidget": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["playerAnswerBubbleMC", "playerAvatarMC", "playerNameMC", "vipMC", "pointPopupContainer"] }),
   "engine.stage.playerAnswerBubble": Object.freeze({ surface: "stage", terminalKind: "reference" }),
-  "engine.stage.playerPointsPopup": Object.freeze({ surface: "stage", terminalKind: "composition" }),
+  "engine.stage.playerPointsPopup": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["pointText", "pointShadow"] }),
   "engine.stage.playerPointsPopupContainer": Object.freeze({ surface: "stage", terminalKind: "container" }),
-  "engine.stage.votingCard": Object.freeze({ surface: "stage", terminalKind: "composition" }),
-  "engine.stage.timer": Object.freeze({ surface: "stage", terminalKind: "composition" }),
-  "engine.stage.transition": Object.freeze({ surface: "stage", terminalKind: "composition" }),
-  "engine.stage.joinQrCode": Object.freeze({ surface: "stage", terminalKind: "composition" }),
-  "engine.stage.roomCode": Object.freeze({ surface: "stage", terminalKind: "composition" }),
-  "engine.controller.playerIdentity": Object.freeze({ surface: "controller", terminalKind: "composition" }),
-  "engine.controller.textInput": Object.freeze({ surface: "controller", terminalKind: "composition" }),
-  "engine.controller.submitControl": Object.freeze({ surface: "controller", terminalKind: "composition" }),
-  "engine.controller.choiceControl": Object.freeze({ surface: "controller", terminalKind: "composition" }),
-  "engine.controller.invalidSubmission": Object.freeze({ surface: "controller", terminalKind: "composition" }),
-  "engine.controller.stageCodeInput": Object.freeze({ surface: "controller", terminalKind: "composition" }),
-  "engine.controller.playerNameInput": Object.freeze({ surface: "controller", terminalKind: "composition" }),
-  "engine.controller.avatarChoice": Object.freeze({ surface: "controller", terminalKind: "composition" })
+  "engine.stage.votingCard": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["voteCount", "author", "voters", "answer"] }),
+  "engine.stage.timer": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["craftingTimerMC"] }),
+  "engine.stage.transition": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["wipeArtMC"] }),
+  "engine.stage.joinQrCode": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["qRLabel", "qRPlaceholder", "qRCard"] }),
+  "engine.stage.roomCode": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["badgeCode", "badgeLabel", "badgeCard"] }),
+  "engine.controller.playerIdentity": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["playerAvatarMc", "playerNameMc"] }),
+  "engine.controller.textInput": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["placeholderText", "inputCard"] }),
+  "engine.controller.submitControl": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["buttonText", "buttonCard"] }),
+  "engine.controller.choiceControl": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["optionText", "optionCard"] }),
+  "engine.controller.invalidSubmission": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["invalidText", "invalidCard"] }),
+  "engine.controller.stageCodeInput": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["fieldLabel", "fieldValue", "fieldCard"] }),
+  "engine.controller.playerNameInput": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["fieldLabel", "fieldValue", "fieldCard"] }),
+  "engine.controller.avatarChoice": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["avatarCard"] })
 });
 
 export const requiredCoreSemanticRoles = Object.freeze(Object.keys(coreSemanticRoleDefinitions));
@@ -109,6 +110,18 @@ function componentsOf(value: Record<string, unknown>): Record<string, unknown>[]
   return Array.isArray(value.components) ? value.components.filter(plainObject) : [];
 }
 
+function allComponentsOf(value: Record<string, unknown>): Record<string, unknown>[] {
+  const output: Record<string, unknown>[] = [];
+  const visit = (components: Record<string, unknown>[]) => {
+    for (const component of components) {
+      output.push(component);
+      visit(Array.isArray(component.children) ? component.children.filter(plainObject) : []);
+    }
+  };
+  visit(componentsOf(value));
+  return output;
+}
+
 function resolveTarget(
   role: string,
   target: SemanticRoleTarget,
@@ -168,6 +181,18 @@ export function validateSemanticRoleDocument(document: unknown, artManifest: unk
         expectedKind: definition.terminalKind,
         actualKind: resolved.terminalKind
       });
+    }
+    const rootComponents = allComponentsOf(root);
+    for (const instanceLabel of definition.requiredInstanceLabels || []) {
+      const matches = rootComponents.filter((component) => String(component.instanceLabel || "") === instanceLabel);
+      if (matches.length !== 1) {
+        fail("SEMANTIC_ROLE_BINDING_MISSING", "Semantic role target is missing a required authored binding", {
+          role,
+          compositionId: target.compositionId,
+          instanceLabel,
+          matches: matches.length
+        });
+      }
     }
   }
   return Object.freeze({ schemaVersion: 1, roles });

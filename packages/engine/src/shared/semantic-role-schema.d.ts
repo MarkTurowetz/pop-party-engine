@@ -9,6 +9,7 @@ export interface SemanticRoleDocument {
 export interface SemanticRoleDefinition {
   readonly surface: "stage" | "controller";
   readonly terminalKind?: "composition" | "container" | "reference";
+  readonly requiredInstanceLabels?: readonly string[];
 }
 export declare class SemanticRoleValidationError extends Error {
   readonly code: string;

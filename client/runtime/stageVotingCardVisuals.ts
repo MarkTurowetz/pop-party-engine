@@ -4,6 +4,7 @@
 
 import { effectiveVisibilityTimeline } from "./effectiveTimeline";
 import type { TimelineDocument } from "../../shared/timeline-model";
+import { runtimeSemanticCompositionId, type RuntimeSemanticRoleMap } from "./semanticRoleRuntime";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
@@ -46,7 +47,7 @@ function targetCompletion(play: (complete: () => void) => number): Promise<void>
   });
 }
 
-export const VOTING_CARD_MC_ID = "prefab-voting-card-mc";
+const VOTING_CARD_ROLE = "engine.stage.votingCard";
 export const VOTING_CARD_ART_MC_ID = "prefab-voting-card-art-mc";
 export const VOTING_CARD_ANSWER_MC_ID = "prefab-voting-card-answer-mc";
 export const VOTING_CARD_AUTHOR_MC_ID = "prefab-voting-card-author-mc";
@@ -94,10 +95,6 @@ function safeComponentId(value: unknown, fallback: string): string {
     .replace(/[^a-zA-Z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return clean || fallback;
-}
-
-function componentById(composition: Dict | null, id: string): Dict | null {
-  return ((composition?.components as Dict[]) || []).find((component) => component.id === id) || null;
 }
 
 function authoredComponentTarget(composition: Dict | null, id: string, instanceLabel: string): string {
@@ -186,164 +183,6 @@ export function runVotingCardVisibilityTransition(options: VotingCardVisibilityT
   return targetCompletion((complete) => options.playPrimary(primaryAnimation, complete)).then(() => {
     if (!nextShown) options.playGate("Off");
   });
-}
-
-function legacyVotingCardComponent(legacy: Dict | null, id: string, fallback: Dict): Dict {
-  return cloneComponent(componentById(legacy, id) || fallback);
-}
-
-const fallbackLifecycle = (): TimelineDocument => votingCardArtTimeline(null);
-
-function fallbackComposition(id: string, legacy: Dict | null): Dict | null {
-  if (id === VOTING_CARD_MC_ID) {
-    return {
-      id,
-      name: "Voting Card MC",
-      canvas: { width: 560, height: 230 },
-      components: [
-        { id: VOTING_CARD_ART_COMPONENT_ID, instanceLabel: "cardArt", kind: "reference", artCompositionId: VOTING_CARD_ART_MC_ID, x: 280, y: 115, width: 560, height: 230, scale: 1 },
-        { id: VOTING_CARD_ANSWER_COMPONENT_ID, instanceLabel: "answer", kind: "reference", artCompositionId: VOTING_CARD_ANSWER_MC_ID, x: 280, y: 86, width: 420, height: 78, scale: 1 },
-        { id: VOTING_CARD_AUTHOR_COMPONENT_ID, instanceLabel: "author", kind: "reference", artCompositionId: VOTING_CARD_AUTHOR_MC_ID, x: 280, y: 32, width: 340, height: 28, scale: 1 },
-        { id: VOTING_CARD_VOTERS_COMPONENT_ID, instanceLabel: "voters", kind: "reference", artCompositionId: VOTING_CARD_VOTERS_MC_ID, x: 278, y: 188, width: 500, height: 48, scale: 1 },
-        { id: VOTING_CARD_VOTE_COUNT_COMPONENT_ID, instanceLabel: "voteCount", kind: "reference", artCompositionId: VOTING_CARD_VOTE_COUNT_MC_ID, x: 30.927, y: 28, width: 48, height: 48, scale: 1 }
-      ],
-      timeline: fallbackLifecycle()
-    };
-  }
-  if (id === VOTING_CARD_ART_MC_ID) {
-    const surface = legacyVotingCardComponent(legacy, "current-card", { id: "voting-card-surface", kind: "shape", x: 280, y: 86, width: 520, height: 150, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 5, borderRadius: 16 });
-    surface.id = "voting-card-surface";
-    surface.instanceLabel = "cardSurface";
-    return {
-      id,
-      name: "Voting Card Art MC",
-      canvas: { width: 560, height: 230 },
-      components: [
-        surface,
-        { id: VOTING_CARD_CORRECTNESS_COMPONENT_ID, instanceLabel: "correctnessState", kind: "reference", artCompositionId: VOTING_CARD_CORRECTNESS_STATE_ID, x: 280, y: 86, width: 520, height: 150, scale: 1 }
-      ],
-      timeline: fallbackLifecycle()
-    };
-  }
-  if (id === VOTING_CARD_ANSWER_MC_ID) {
-    const text = legacyVotingCardComponent(legacy, "answer-text", { id: "voting-card-answer-text", kind: "text", x: 210, y: 39, width: 420, height: 78, defaultText: "ANSWER", fontSize: 32, fontColor: "#17131f" });
-    text.id = "voting-card-answer-text";
-    text.instanceLabel = "answerText";
-    text.x = 210;
-    text.y = 39;
-    return { id, name: "Voting Card Answer MC", canvas: { width: 420, height: 78 }, components: [text], timeline: fallbackLifecycle() };
-  }
-  if (id === VOTING_CARD_AUTHOR_MC_ID) {
-    const text = legacyVotingCardComponent(legacy, "author-heading", { id: "voting-card-author-text", kind: "text", x: 170, y: 14, width: 340, height: 28, defaultText: "AUTHOR", fontSize: 15, fontColor: "#6b5a80" });
-    text.id = "voting-card-author-text";
-    text.instanceLabel = "authorText";
-    text.x = 170;
-    text.y = 14;
-    return { id, name: "Voting Card Author MC", canvas: { width: 340, height: 28 }, components: [text], timeline: fallbackLifecycle() };
-  }
-  if (id === VOTING_CARD_VOTE_COUNT_MC_ID) {
-    const badge = legacyVotingCardComponent(legacy, "vote-count", { id: "voting-card-vote-count", kind: "badge", x: 24, y: 24, width: 48, height: 48, defaultText: "", fontSize: 10, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999 });
-    badge.id = "voting-card-vote-count";
-    badge.instanceLabel = "voteCountText";
-    badge.x = 24;
-    badge.y = 24;
-    return { id, name: "Voting Card Vote Count MC", canvas: { width: 48, height: 48 }, components: [badge], timeline: fallbackLifecycle() };
-  }
-  if (id === VOTING_CARD_VOTERS_MC_ID) {
-    const container = legacyVotingCardComponent(legacy, "voter-container", { id: VOTING_CARD_VOTER_CONTAINER_ID, kind: "container", x: 250, y: 24, width: 500, height: 48, childDistribution: "horizontal", fillColor: "transparent", borderColor: "transparent" });
-    container.id = VOTING_CARD_VOTER_CONTAINER_ID;
-    container.instanceLabel = "voterContainer";
-    container.x = 250;
-    container.y = 24;
-    container.children = [{
-      id: VOTING_CARD_VOTER_COMPONENT_ID,
-      instanceLabel: "voter",
-      kind: "reference",
-      artCompositionId: VOTING_CARD_VOTER_MC_ID,
-      x: 56,
-      y: 16,
-      width: 112,
-      height: 32,
-      scale: 1,
-      defaultAnimationState: "Off"
-    }];
-    return {
-      id,
-      name: "Voting Card Voters MC",
-      canvas: { width: 500, height: 48 },
-      components: [container],
-      timeline: {
-        fps: 30,
-        frameCount: 2,
-        labels: [{ name: "Off", frame: 0 }, { name: "On", frame: 1 }],
-        commandFrames: [0, 1],
-        commands: [
-          { id: "stop-0", frame: 0, type: "stop" },
-          { id: "visible-0", frame: 0, type: "setVisible", target: "false" },
-          { id: "stop-1", frame: 1, type: "stop" },
-          { id: "visible-1", frame: 1, type: "setVisible", target: "true" }
-        ],
-        tracks: []
-      }
-    };
-  }
-  if (id === VOTING_CARD_VOTER_MC_ID) {
-    return {
-      id,
-      name: "Voting Card Voter MC",
-      canvas: { width: 112, height: 32 },
-      components: [{
-        id: "reference-voting-card-voter",
-        instanceLabel: "votingCardVoter",
-        kind: "reference",
-        artCompositionId: VOTING_CARD_VOTER_ID,
-        x: 56,
-        y: 16,
-        width: 112,
-        height: 32,
-        scale: 1,
-        defaultAnimationState: "Default"
-      }],
-      timeline: fallbackLifecycle()
-    };
-  }
-  if (id === VOTING_CARD_VOTER_ID) {
-    const legacyWidget = legacyVotingCardComponent(legacy, "vote-widget", { defaultText: "PLAYER", fontSize: 15, fillColor: "#fff8d6", borderColor: "#17131f", borderWidth: 2, borderRadius: 999 });
-    return {
-      id,
-      name: "Voting Card Voter",
-      canvas: { width: 112, height: 32 },
-      components: [
-        { id: VOTING_CARD_VOTER_TEXT_ID, instanceLabel: "playerName", kind: "text", x: 56, y: 16, width: 112, height: 32, defaultText: String(legacyWidget.defaultText || "PLAYER"), fontSize: Number(legacyWidget.fontSize || 15), autoFitText: true, fontColor: String(legacyWidget.fontColor || "#17131f") },
-        { id: "voting-card-voter-background", instanceLabel: "background", kind: "shape", x: 56, y: 16, width: 112, height: 32, shapeStyle: "rounded", fillColor: String(legacyWidget.fillColor || "#fff8d6"), borderColor: String(legacyWidget.borderColor || "#17131f"), borderWidth: Number(legacyWidget.borderWidth || 2), borderRadius: Number(legacyWidget.borderRadius || 999) }
-      ],
-      timeline: {
-        fps: 30,
-        frameCount: 1,
-        labels: [{ name: "Default", frame: 0 }],
-        commandFrames: [0],
-        commands: [{ id: "stop-0", frame: 0, type: "stop" }],
-        tracks: []
-      }
-    };
-  }
-  if (id === VOTING_CARD_CORRECTNESS_STATE_ID) {
-    return {
-      id,
-      name: "Voting Card Correctness State",
-      canvas: { width: 520, height: 150 },
-      components: [{ id: "voting-card-correct-surface", instanceLabel: "correctSurface", kind: "shape", x: 260, y: 75, width: 520, height: 150, fillColor: "#60d394", borderColor: "#17131f", borderWidth: 5, borderRadius: 16 }],
-      timeline: {
-        fps: 30,
-        frameCount: 2,
-        labels: [{ name: "Neutral", frame: 0 }, { name: "Correct", frame: 1 }],
-        commands: [{ id: "stop-0", frame: 0, type: "stop" }, { id: "visible-0", frame: 0, type: "setVisible", target: "false" }, { id: "stop-1", frame: 1, type: "stop" }, { id: "visible-1", frame: 1, type: "setVisible", target: "true" }],
-        commandFrames: [0, 1],
-        tracks: []
-      }
-    };
-  }
-  return null;
 }
 
 export interface VotingCardRuntimeState {
@@ -437,6 +276,7 @@ class VotingCardView {
   visualAnimation: unknown;
   gameObjectApi: unknown;
   getComposition: (id: string) => Dict | null;
+  votingCardCompositionId: string;
   cardId: string;
   element: El;
   artHost: El;
@@ -451,11 +291,12 @@ class VotingCardView {
     this.visualAnimation = options.visualAnimation;
     this.gameObjectApi = options.gameObjectApi || w().PartyGameGameObject || w().PartyGameStageGameObject;
     this.getComposition = options.getComposition as (id: string) => Dict | null;
+    this.votingCardCompositionId = String(options.votingCardCompositionId || "");
     this.cardId = String(options.cardId || "card");
     this.element = createVotingCardElement(this.document, this.cardId);
     this.artHost = this.element.querySelector(".voting-card-art-objects") as El;
     this.rootRenderer = this.createRenderer();
-    const parent = this.composition(VOTING_CARD_MC_ID);
+    const parent = this.composition(this.votingCardCompositionId);
     const bridge = visualBridge()?.createVisualForTarget?.({
       gameObjectApi: this.gameObjectApi,
       visualAnimation: this.visualAnimation,
@@ -482,9 +323,8 @@ class VotingCardView {
 
   composition(id: string): Dict | null {
     const authored = this.getComposition?.(id) || null;
-    if (authored) return authored;
-    const legacy = this.getComposition?.("voting-card") || null;
-    return fallbackComposition(id, legacy);
+    if (!authored) throw new Error(`Required voting-card composition is missing: ${id}`);
+    return authored;
   }
 
   runtimeState(): VotingCardRuntimeState {
@@ -516,7 +356,7 @@ class VotingCardView {
   }
 
   renderArt(): void {
-    const parent = this.runtimeComposition(VOTING_CARD_MC_ID);
+    const parent = this.runtimeComposition(this.votingCardCompositionId);
     if (!parent || !this.rootRenderer) return;
     const canvas = (parent.canvas as Dict) || { width: 560, height: 230 };
     this.element.style.width = `${Number(canvas.width || 560)}px`;
@@ -546,7 +386,7 @@ class VotingCardView {
     this.desiredShown = nextShown;
     const instant = options.instant === true;
     if (nextShown) this.element.classList.remove("voting-card-group-hidden");
-    const parent = this.runtimeComposition(VOTING_CARD_MC_ID);
+    const parent = this.runtimeComposition(this.votingCardCompositionId);
     const primaryTargetId = votingCardLifecycleComponentIds(parent)[0];
     if (!primaryTargetId) {
       return Promise.reject(new Error(`Voting card ${this.cardId} is missing its primary lifecycle target`));
@@ -583,7 +423,7 @@ class VotingCardView {
 
   revealAuthor(options: Dict = {}): Promise<void> {
     const instant = options.instant === true;
-    const parent = this.runtimeComposition(VOTING_CARD_MC_ID);
+    const parent = this.runtimeComposition(this.votingCardCompositionId);
     const authorTarget = authoredComponentTarget(parent, VOTING_CARD_AUTHOR_COMPONENT_ID, "author") || VOTING_CARD_AUTHOR_COMPONENT_ID;
     return targetCompletion((complete) => this.playChild(
       authorTarget,
@@ -613,7 +453,7 @@ class VotingCardView {
     const voters = this.currentVisibleVoters;
     if (!voters.length) return Promise.resolve();
     const instant = options.instant === true;
-    const parent = this.runtimeComposition(VOTING_CARD_MC_ID);
+    const parent = this.runtimeComposition(this.votingCardCompositionId);
     const votersTarget = authoredComponentTarget(parent, VOTING_CARD_VOTERS_COMPONENT_ID, "voters") || VOTING_CARD_VOTERS_COMPONENT_ID;
     const voteCountTarget = authoredComponentTarget(parent, VOTING_CARD_VOTE_COUNT_COMPONENT_ID, "voteCount") || VOTING_CARD_VOTE_COUNT_COMPONENT_ID;
     const completions = [targetCompletion((complete) => this.playChild(
@@ -645,6 +485,7 @@ class VotingCardRenderer {
   visualAnimation: unknown;
   getComposition: (id: string) => Dict | null;
   gameObjectApi: unknown;
+  votingCardCompositionId: string;
   cards = new Map<string, VotingCardView>();
   pendingRemovalIds = new Set<string>();
   hideLayerTimer: number | null = null;
@@ -656,6 +497,11 @@ class VotingCardRenderer {
     this.visualAnimation = options.visualAnimation;
     this.getComposition = options.getComposition as (id: string) => Dict | null;
     this.gameObjectApi = options.gameObjectApi || w().PartyGameGameObject || w().PartyGameStageGameObject;
+    this.votingCardCompositionId = runtimeSemanticCompositionId(
+      VOTING_CARD_ROLE,
+      options.semanticRoles as RuntimeSemanticRoleMap | undefined,
+      this.document
+    );
   }
 
   render(cards: Dict[] = [], options: Dict = {}): void {
@@ -677,6 +523,7 @@ class VotingCardRenderer {
           visualAnimation: this.visualAnimation,
           getComposition: this.getComposition,
           gameObjectApi: this.gameObjectApi,
+          votingCardCompositionId: this.votingCardCompositionId,
           cardId
         });
         this.cards.set(cardId, view);

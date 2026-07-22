@@ -18,9 +18,15 @@ function validFixture() {
     roles[role] = componentKind
       ? { compositionId, instancePath: ["target"] }
       : { compositionId };
+    const components = (definition.requiredInstanceLabels || []).map((instanceLabel) => ({
+      id: instanceLabel,
+      instanceLabel,
+      kind: "shape"
+    }));
+    if (componentKind) components.push({ id: "target", instanceLabel: "target", kind: componentKind });
     compositions[compositionId] = {
       surface: definition.surface,
-      components: componentKind ? [{ id: "target", instanceLabel: "target", kind: componentKind }] : []
+      components
     };
   }
   return { document: { schemaVersion: 1, roles }, artManifest: { compositions } };
@@ -57,5 +63,13 @@ describe("semantic role schema", () => {
     fixture.artManifest.compositions[target.compositionId].components[0].kind = "shape";
     expect(() => validateSemanticRoleDocument(fixture.document, fixture.artManifest))
       .toThrowError(expect.objectContaining({ code: "SEMANTIC_ROLE_KIND_MISMATCH" }));
+  });
+
+  it("rejects a mapped widget whose required text or child binding is absent", () => {
+    const fixture = validFixture();
+    const target = fixture.document.roles["engine.controller.submitControl"];
+    fixture.artManifest.compositions[target.compositionId].components = [];
+    expect(() => validateSemanticRoleDocument(fixture.document, fixture.artManifest))
+      .toThrowError(expect.objectContaining({ code: "SEMANTIC_ROLE_BINDING_MISSING" }));
   });
 });

@@ -1,6 +1,8 @@
 // Typed port of the legacy client/stage/widget-art-bindings.js IIFE. Installs
 // window.PartyGameStageWidgetBindings for the legacy stage runtime.
 
+import { runtimeSemanticCompositionId } from "./semanticRoleRuntime";
+
 interface WidgetDefinition {
   compositionId: string;
   layoutElementId: string;
@@ -15,12 +17,12 @@ const definitions: Record<string, WidgetDefinition> = {
     previewTextOverrides: { "panel-code": "NUZ7" }
   },
   stageCodeWidget: {
-    compositionId: "stage-code-widget",
+    get compositionId() { return runtimeSemanticCompositionId("engine.stage.roomCode"); },
     layoutElementId: "stagecodebadge",
     previewTextOverrides: { "badge-code": "NUZ7" }
   },
   joinQr: {
-    compositionId: "join-qr-code",
+    get compositionId() { return runtimeSemanticCompositionId("engine.stage.joinQrCode"); },
     layoutElementId: "stagejoinqr",
     overlayComponentId: "qr-placeholder",
     previewTextOverrides: {}
@@ -41,12 +43,12 @@ const definitions: Record<string, WidgetDefinition> = {
     previewTextOverrides: { "popup-text": "Starting in 3" }
   },
   craftingTimer: {
-    compositionId: "crafting-timer-widget",
+    get compositionId() { return runtimeSemanticCompositionId("engine.stage.timer"); },
     layoutElementId: "craftingtimer",
     previewTextOverrides: { "timer-value": "30" }
   },
   stageWipe: {
-    compositionId: "wipe-widget-mc",
+    get compositionId() { return runtimeSemanticCompositionId("engine.stage.transition"); },
     layoutElementId: "",
     previewTextOverrides: {}
   },

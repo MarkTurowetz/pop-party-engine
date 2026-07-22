@@ -549,6 +549,7 @@ const {
   buildAssetsRoot: BUILD_ASSETS_ROOT,
   clientRoot: CLIENT_ROOT,
   contentTypeForFile,
+  gameDefinition: GAME_DEFINITION,
   indexFile: INDEX_FILE,
   root: ROOT,
   sendJson,
