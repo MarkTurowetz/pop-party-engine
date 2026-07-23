@@ -7,3 +7,7 @@ Generated games use `pop-party validate content` for content-only checks and
 output is game-local and records the exact immutable content revision.
 Runtime game data is materialized from that same validated content snapshot;
 the generator does not create a second empty or drifting game-data source.
+
+Generated games run through `pop-party dev` locally and `pop-party start` in
+production. Both commands validate the complete active release before opening
+a port.

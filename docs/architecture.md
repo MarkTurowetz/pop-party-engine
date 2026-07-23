@@ -19,6 +19,11 @@ concepts into focused modules.
 - `apps/reference/server/`
   - Reference-owned art migrations and default layout adapters used by the template game.
   - Root modules with matching names are compatibility exports only; new games do not inherit these adapters.
+- `packages/engine/src/server/game-application-runtime.js`
+  - Owns the public generated-game HTTP bootstrap used by `pop-party start` and `pop-party dev`.
+  - It validates and pins the complete active release before the service port opens.
+  - Stage and controller routes require exactly one explicit game-plugin bootstrap renderer each; missing or ambiguous renderers stop startup instead of installing engine or reference fallback UI.
+  - Authenticated tooling is not inferred from reference-app code. Until a game registers and configures its tool application, `/tools` fails with `GAME_TOOLING_NOT_CONFIGURED`.
 - `server/`
   - Server-only helpers that do not need browser access.
   - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules,

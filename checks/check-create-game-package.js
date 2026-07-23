@@ -41,6 +41,9 @@ try {
     if (!fs.existsSync(path.join(targetRoot, relativePath))) throw new Error(`Generated game is missing ${relativePath}`);
   }
   if (generatedManifest.dependencies?.["@pop-party/engine"] !== "1.0.0") throw new Error("Generated game did not pin the exact engine version");
+  if (generatedManifest.scripts?.start !== "pop-party start" || generatedManifest.scripts?.dev !== "pop-party dev") {
+    throw new Error("Generated game is missing engine-owned start/dev service scripts");
+  }
   if (JSON.stringify(generatedManifest).includes("file:") || JSON.stringify(generatedManifest).includes("workspace:")) {
     throw new Error("Generated game contains a local dependency reference");
   }

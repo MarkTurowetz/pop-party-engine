@@ -44,14 +44,20 @@ describe("create-game generator", () => {
     expect(generatedPackage.dependencies)
       .toEqual({ "@pop-party/engine": "1.0.0" });
     expect(generatedPackage.scripts.build).toBe("pop-party build");
+    expect(generatedPackage.scripts.dev).toBe("pop-party dev");
+    expect(generatedPackage.scripts.start).toBe("pop-party start");
     expect(fs.readFileSync(path.join(targetRoot, "content", "blobs", "asset.bin")))
       .toEqual(Buffer.from([0, 1, 2, 255]));
     expect(JSON.parse(fs.readFileSync(path.join(targetRoot, "content", "content-bundle.json"), "utf8")).gameId)
       .toBe("flip-7");
     expect(fs.readFileSync(path.join(targetRoot, "src", "plugin", "index.js"), "utf8")).toContain('namespace: "flip-7"');
-    for (const contribution of ["actions", "stage", "controller", "tools"]) {
+    for (const contribution of ["actions", "tools"]) {
       expect(fs.readFileSync(path.join(targetRoot, "src", contribution, "index.js"), "utf8")).toContain("Object.freeze([])");
     }
+    expect(fs.readFileSync(path.join(targetRoot, "src", "stage", "index.js"), "utf8"))
+      .toContain('id: "flip-7.bootstrap-stage"');
+    expect(fs.readFileSync(path.join(targetRoot, "src", "controller", "index.js"), "utf8"))
+      .toContain('id: "flip-7.bootstrap-controller"');
     expect(fs.readFileSync(path.join(targetRoot, "tests", "config.test.js"), "utf8")).toContain("node:test");
 
     fs.writeFileSync(path.join(targetRoot, "content", "blobs", "asset.bin"), Buffer.from([9]));

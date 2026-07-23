@@ -18,6 +18,14 @@ then writes `dist/pop-party-build.json`. Invalid content does not produce a
 build manifest, and the manifest pins the immutable content revision that was
 actually validated.
 
+`pop-party dev` and `pop-party start` use the same release gate before binding
+the application port. The starter service requires exactly one game-owned stage
+and controller bootstrap renderer and exposes immutable release diagnostics.
+Missing or ambiguous renderers leave the port closed instead of installing
+fallback UI. Authenticated tooling is
+deliberately unavailable until a game configures it; the service returns
+`GAME_TOOLING_NOT_CONFIGURED` instead of borrowing reference-app tools.
+
 Bundle-mode games do not supply a parallel `game-data.js`. Readiness
 materializes flow, constants, layouts, audio, prompts, art, avatar choices, and
 transition metadata from the same pinned snapshot after hash and semantic-role

@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { REQUIRED_CONTENT_PATHS, rootHashInput } = require("../shared/content-bundle-schema");
-const { runCli } = require("./cli");
+const { runCli, serviceArguments } = require("./cli");
 
 const temporaryRoots = [];
 
@@ -64,5 +64,55 @@ describe("pop-party CLI", () => {
     expect(errors.some((message) => message.includes("Content bundle invalid"))).toBe(true);
     expect(errors.some((message) => message.includes("Game build invalid"))).toBe(true);
     expect(errors.some((message) => message.includes("Unknown pop-party command"))).toBe(true);
+  });
+
+  it("starts production and development services through the validated application boundary", async () => {
+    const calls = [];
+    const messages = [];
+    const output = { log: (message) => messages.push(message), error: (message) => messages.push(message) };
+    const startGameApplication = async (options) => {
+      calls.push(options);
+      return {
+        runtime: { stop() {} },
+        startup: { localUrl: "http://localhost:4321", lanUrls: ["http://10.0.0.2:4321"] }
+      };
+    };
+
+    expect(await runCli(["start", "custom.config.js", "--host", "127.0.0.1", "--port=4321"], {
+      cwd: "/tmp/fixture",
+      engineVersion: "1.0.0",
+      installSignalHandlers: false,
+      output,
+      startGameApplication
+    })).toBe(0);
+    expect(await runCli(["dev", "--port", "0"], {
+      cwd: "/tmp/fixture",
+      engineVersion: "1.0.0",
+      env: {},
+      installSignalHandlers: false,
+      output,
+      startGameApplication
+    })).toBe(0);
+
+    expect(calls).toEqual([
+      expect.objectContaining({ configPath: "custom.config.js", host: "127.0.0.1", port: 4321 }),
+      expect.objectContaining({ configPath: "game.config.js", host: "0.0.0.0", port: 0 })
+    ]);
+    expect(messages).toContain("Game service ready: http://localhost:4321");
+    expect(messages).toContain("LAN: http://10.0.0.2:4321");
+  });
+
+  it("rejects invalid service arguments before opening a port", async () => {
+    expect(() => serviceArguments(["--port", "abc"], {})).toThrow(/port must be an integer/i);
+    expect(() => serviceArguments(["--host"], {})).toThrow(/requires a value/i);
+    expect(() => serviceArguments(["--unknown"], {})).toThrow(/Unknown service option/);
+    expect(() => serviceArguments(["one.js", "two.js"], {})).toThrow(/Unexpected service argument/);
+
+    const messages = [];
+    expect(await runCli(["start", "--port", "abc"], {
+      installSignalHandlers: false,
+      output: { log() {}, error: (message) => messages.push(message) }
+    })).toBe(1);
+    expect(messages[0]).toMatch(/Game service invalid/);
   });
 });
