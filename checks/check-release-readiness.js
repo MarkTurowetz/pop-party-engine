@@ -28,6 +28,9 @@ function checkReleaseReadiness(version = process.argv[2]) {
   const reference = readJson("apps/reference/package.json");
   assertPublicPackage(engine, "@pop-party/engine", expectedVersion);
   assertPublicPackage(createGame, "@pop-party/create-game", expectedVersion);
+  if (createGame.bin?.["create-game"] !== "bin/create-game.js") {
+    throw new Error("@pop-party/create-game must expose the npm initializer executable");
+  }
   if (reference.private !== true) throw new Error("Reference application must remain private as an npm package");
   if (reference.dependencies?.["@pop-party/engine"] !== expectedVersion) {
     throw new Error("Reference application must pin the exact released engine version");

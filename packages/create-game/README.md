@@ -2,6 +2,11 @@
 
 This package powers `npm create @pop-party/game MyGame`. It creates an independent game directory, pins an exact `@pop-party/engine` version, and byte-copies the canonical CC0-1.0 starter content without symlinks or references to the engine repository.
 
+Current npm initializer resolution maps `npm create @pop-party/game` to this
+package, `@pop-party/create-game`, and executes its sole `create-game` bin. The
+packed executable is part of the release gate. Unknown flags, missing flag
+values, and ambiguous game names fail instead of falling back to defaults.
+
 Generated games use `pop-party validate content` for content-only checks and
 `pop-party build` for the full game/engine/plugin/content readiness gate. Build
 output is game-local and records the exact immutable content revision.

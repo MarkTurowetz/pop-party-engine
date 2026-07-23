@@ -8,6 +8,8 @@ external release authorities exist. Before its first use:
 2. Create the public npm scope `@pop-party`.
 3. Reserve `@pop-party/engine` and `@pop-party/create-game` if npm requires an
    initial package creation step.
+   The latter is the package npm resolves for the public command
+   `npm create @pop-party/game`.
 4. Configure npm trusted publishing for both packages. The trusted publisher
    must be this GitHub repository, workflow `.github/workflows/publish.yml`, and
    environment `npm-publish`.

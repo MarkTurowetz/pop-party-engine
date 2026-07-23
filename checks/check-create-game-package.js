@@ -30,6 +30,19 @@ try {
     stdio: "pipe",
     env: { ...process.env, npm_config_cache: path.join(fixtureRoot, ".npm-cache") }
   });
+  const packedCli = path.join(fixtureRoot, "node_modules", "@pop-party", "create-game", "bin", "create-game.js");
+  const cliTargetRoot = path.join(fixtureRoot, "cli-generated-game");
+  const cliOutput = execFileSync(process.execPath, [packedCli, "CLI Generated Fixture", "--engine-version", "1.0.0", "--output", cliTargetRoot], {
+    cwd: fixtureRoot,
+    encoding: "utf8"
+  });
+  if (!cliOutput.includes(`Created CLI Generated Fixture at ${cliTargetRoot}`)
+    || !cliOutput.includes("Engine: @pop-party/engine@1.0.0")) {
+    throw new Error("Packed create-game executable output contract failed");
+  }
+  if (JSON.parse(fs.readFileSync(path.join(cliTargetRoot, "package.json"), "utf8")).name !== "cli-generated-fixture") {
+    throw new Error("Packed create-game executable did not generate the requested game");
+  }
   const fixtureRequire = createRequire(path.join(fixtureRoot, "fixture.js"));
   const { generateGame } = fixtureRequire("@pop-party/create-game");
   const targetRoot = path.join(fixtureRoot, "generated-game");
