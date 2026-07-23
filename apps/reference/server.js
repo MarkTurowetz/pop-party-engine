@@ -74,6 +74,7 @@ const {
   writeJsonFile
 } = require("@pop-party/engine/server");
 const { createWebServiceRuntime } = require("@pop-party/engine/server/web-service");
+const { createGameReleaseValidator } = require("@pop-party/engine/server/readiness");
 const {
   createGithubStorageRuntime,
   createLayoutSyncRuntime,
@@ -231,7 +232,11 @@ const {
 
 const roomContentPins = createRoomContentPinRuntime({
   contentStore: roomContentStore,
-  gameId: GAME_DEFINITION.gameId
+  gameId: GAME_DEFINITION.gameId,
+  validateRelease: createGameReleaseValidator({
+    gameDefinition: GAME_DEFINITION,
+    engineVersion: GAME_DEFINITION.engineCompatibility
+  })
 });
 
 const runtimeCapabilities = createRuntimeCapabilityRuntime({

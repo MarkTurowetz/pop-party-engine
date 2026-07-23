@@ -62,6 +62,22 @@ describe("room content revision pinning", () => {
       code: "ACTIVE_RELEASE_INCOMPATIBLE",
       details: { diagnostics: [{ code: "ENGINE_VERSION" }] }
     });
+
+    const rejected = harness({
+      validateRelease: vi.fn(async () => {
+        const error = new Error("semantic role mismatch");
+        error.code = "SEMANTIC_ROLE_MISMATCH";
+        error.details = { role: "engine.stage.votingCard" };
+        throw error;
+      })
+    });
+    await expect(rejected.runtime.pinNewRoom({})).rejects.toMatchObject({
+      code: "ACTIVE_RELEASE_INCOMPATIBLE",
+      details: {
+        validationCode: "SEMANTIC_ROLE_MISMATCH",
+        validationDetails: { role: "engine.stage.votingCard" }
+      }
+    });
   });
 
   it("fails closed when the pinned snapshot cannot produce complete game data", async () => {

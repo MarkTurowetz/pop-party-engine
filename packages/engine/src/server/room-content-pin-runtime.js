@@ -82,7 +82,20 @@ function createRoomContentPinRuntime(options = {}) {
         details: { contentRevision: release.contentRevision }
       });
     }
-    const validation = await validateRelease({ gameData, release, snapshot });
+    let validation;
+    try {
+      validation = await validateRelease({ gameData, release, snapshot });
+    } catch (error) {
+      throw new RoomContentPinError("Active release is incompatible with this game build", {
+        code: "ACTIVE_RELEASE_INCOMPATIBLE",
+        details: {
+          validationCode: String(error?.code || "ACTIVE_RELEASE_VALIDATION_FAILED"),
+          cause: String(error?.message || error),
+          diagnostics: error?.details?.diagnostics || [],
+          validationDetails: { ...(error?.details || {}) }
+        }
+      });
+    }
     if (validation?.ok === false) {
       throw new RoomContentPinError("Active release is incompatible with this game build", {
         code: "ACTIVE_RELEASE_INCOMPATIBLE",

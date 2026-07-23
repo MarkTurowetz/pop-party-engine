@@ -42,6 +42,10 @@ in-room render until those resources load, fetch private art with the room's
 stage or player capability, and render from local blob URLs. Pre-join and
 authoring views may load draft presentation data, but it is never reused as an
 in-room fallback; missing or unauthorized pinned content stops activation.
+Room creation also runs the service-readiness release validator against the
+exact loaded snapshot before installing the pin. Tuple, schema, semantic-role,
+and plugin-validation failures reject the room as one atomic operation; no
+partially validated room data becomes observable.
 
 Public runtime boundaries include `@pop-party/engine/server`,
 `@pop-party/engine/tooling`, and `@pop-party/engine/testing`. Public art authoring

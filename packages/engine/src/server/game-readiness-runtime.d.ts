@@ -14,6 +14,18 @@ export interface GameReadinessRuntime {
   check(): Promise<Readonly<Record<string, unknown>>>;
 }
 
+export interface GameReleaseValidationContext {
+  gameData: Record<string, unknown>;
+  release: Record<string, unknown>;
+  snapshot: Record<string, unknown>;
+}
+
+export function createGameReleaseValidator(options: {
+  gameDefinition: Record<string, unknown>;
+  engineVersion: string;
+  contentSchemaVersion?: string;
+}): (context: GameReleaseValidationContext) => Promise<Readonly<Record<string, unknown>>>;
+
 export function createGameReadinessRuntime(options: {
   gameDefinition: Record<string, unknown>;
   engineVersion: string;

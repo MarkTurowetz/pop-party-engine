@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import { describe, expect, it, vi } from "vitest";
 
 const require = createRequire(import.meta.url);
-const { createGameReadinessRuntime } = require("./game-readiness-runtime");
+const { createGameReadinessRuntime, createGameReleaseValidator } = require("./game-readiness-runtime");
 const { coreSemanticRoleDefinitions } = require("../shared/semantic-role-schema");
 
 function semanticFixture() {
@@ -126,5 +126,22 @@ describe("game readiness runtime", () => {
 
     await expect(runtime.check()).rejects.toMatchObject({ code: "BUNDLE_GAME_DATA_INVALID" });
     expect(runtime.state).toMatchObject({ status: "failed", diagnostic: { code: "BUNDLE_GAME_DATA_INVALID" } });
+  });
+
+  it("validates an already-pinned room snapshot without requiring bundle mode on the game definition", async () => {
+    const { game, release, snapshot } = fixture({ game: { content: { mode: "legacy-monolith" } } });
+    const gameData = { defaultGameFlow: { states: [{ id: "lobby" }] } };
+    const validateRelease = createGameReleaseValidator({ gameDefinition: game, engineVersion: "1.0.0" });
+
+    await expect(validateRelease({ gameData, release, snapshot })).resolves.toMatchObject({
+      release: { contentRevision: "content-1" },
+      semanticRoles: semanticFixture().roles
+    });
+
+    await expect(validateRelease({
+      gameData,
+      release: { ...release, gameBuild: "9.9.9" },
+      snapshot
+    })).rejects.toMatchObject({ code: "ACTIVE_RELEASE_GAME_BUILD_MISMATCH" });
   });
 });

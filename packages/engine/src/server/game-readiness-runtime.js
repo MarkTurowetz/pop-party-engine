@@ -54,6 +54,44 @@ function assertExpectedSemanticRoles(expectedRoles, actualRoles) {
   }
 }
 
+function createGameReleaseValidator(options = {}) {
+  const game = options.gameDefinition;
+  if (!game || typeof game !== "object") throw new Error("Game release validation requires a defined game");
+  const engineVersion = String(options.engineVersion || "").trim();
+  const contentSchemaVersion = String(options.contentSchemaVersion || engineVersion).trim();
+  if (!engineVersion) throw new Error("Game release validation requires the running engine version");
+
+  return async function validateGameRelease(context = {}) {
+    const { gameData, release, snapshot } = context;
+    if (!release?.releaseRevision || !release?.contentRevision) readinessFailure("ACTIVE_RELEASE_MISSING", "No complete active release is available");
+    if (release.gameId !== game.gameId) readinessFailure("ACTIVE_RELEASE_GAME_MISMATCH", "Active release belongs to another game", { expected: game.gameId, actual: release.gameId });
+    if (release.gameBuild !== game.version) readinessFailure("ACTIVE_RELEASE_GAME_BUILD_MISMATCH", "Active release targets another game build", { expected: game.version, actual: release.gameBuild });
+    if (game.engineCompatibility !== engineVersion) readinessFailure("GAME_ENGINE_INCOMPATIBLE", "Game does not declare compatibility with the running engine", { expected: game.engineCompatibility, actual: engineVersion });
+    if (release.engineVersion !== engineVersion) readinessFailure("ACTIVE_RELEASE_ENGINE_MISMATCH", "Active release targets another engine version", { expected: engineVersion, actual: release.engineVersion });
+    if (release.pluginVersion !== game.version) readinessFailure("ACTIVE_RELEASE_PLUGIN_MISMATCH", "Active release targets another game plugin version", { expected: game.version, actual: release.pluginVersion });
+    if (!snapshot || snapshot.revision !== release.contentRevision) readinessFailure("ACTIVE_CONTENT_REVISION_MISMATCH", "Loaded content revision differs from the active release", { expected: release.contentRevision, actual: snapshot?.revision || "" });
+    if (snapshot.manifest?.gameId !== game.gameId) readinessFailure("ACTIVE_CONTENT_GAME_MISMATCH", "Loaded content belongs to another game", { expected: game.gameId, actual: snapshot.manifest?.gameId || "" });
+    if (snapshot.manifest?.engineContentSchemaVersion !== contentSchemaVersion) readinessFailure("ACTIVE_CONTENT_SCHEMA_MISMATCH", "Loaded content targets another engine content schema", { expected: contentSchemaVersion, actual: snapshot.manifest?.engineContentSchemaVersion || "" });
+    if (!gameData || typeof gameData !== "object") readinessFailure("BUNDLE_GAME_DATA_INVALID", "Active content did not materialize complete game runtime data");
+    const semanticRoles = semanticRolesFrom(snapshot);
+    assertExpectedSemanticRoles(game.semanticRoles, semanticRoles);
+    for (const registration of game.registrations?.validators || []) {
+      if (typeof registration.value !== "function") readinessFailure("PLUGIN_VALIDATOR_INVALID", "Game validator registration is not callable", { id: registration.id });
+      const validation = await registration.value({ game, gameData, release, semanticRoles, snapshot });
+      if (validation?.ok === false) readinessFailure("PLUGIN_VALIDATION_FAILED", "Game validator rejected the active release", { id: registration.id, diagnostics: validation.diagnostics || [] });
+    }
+    const readyRelease = Object.freeze({
+      gameId: release.gameId,
+      gameBuild: release.gameBuild,
+      engineVersion: release.engineVersion,
+      pluginVersion: release.pluginVersion,
+      contentRevision: release.contentRevision,
+      releaseRevision: release.releaseRevision
+    });
+    return Object.freeze({ game, gameData, release: readyRelease, semanticRoles, snapshot });
+  };
+}
+
 function createGameReadinessRuntime(options = {}) {
   const game = options.gameDefinition;
   if (!game || typeof game !== "object") throw new Error("Game readiness requires a defined game");
@@ -65,28 +103,23 @@ function createGameReadinessRuntime(options = {}) {
   const engineVersion = String(options.engineVersion || "").trim();
   const contentSchemaVersion = String(options.contentSchemaVersion || engineVersion).trim();
   if (!engineVersion) throw new Error("Game readiness requires the running engine version");
+  const validateGameRelease = createGameReleaseValidator({
+    gameDefinition: game,
+    engineVersion,
+    contentSchemaVersion
+  });
   let state = Object.freeze({ status: "pending", diagnostic: null, release: null });
 
   async function check() {
     try {
       const release = await contentStore.getActiveRelease();
       if (!release?.releaseRevision || !release?.contentRevision) readinessFailure("ACTIVE_RELEASE_MISSING", "No complete active release is available");
-      if (release.gameId !== game.gameId) readinessFailure("ACTIVE_RELEASE_GAME_MISMATCH", "Active release belongs to another game", { expected: game.gameId, actual: release.gameId });
-      if (release.gameBuild !== game.version) readinessFailure("ACTIVE_RELEASE_GAME_BUILD_MISMATCH", "Active release targets another game build", { expected: game.version, actual: release.gameBuild });
-      if (game.engineCompatibility !== engineVersion) readinessFailure("GAME_ENGINE_INCOMPATIBLE", "Game does not declare compatibility with the running engine", { expected: game.engineCompatibility, actual: engineVersion });
-      if (release.engineVersion !== engineVersion) readinessFailure("ACTIVE_RELEASE_ENGINE_MISMATCH", "Active release targets another engine version", { expected: engineVersion, actual: release.engineVersion });
-      if (release.pluginVersion !== game.version) readinessFailure("ACTIVE_RELEASE_PLUGIN_MISMATCH", "Active release targets another game plugin version", { expected: game.version, actual: release.pluginVersion });
       let snapshot;
       try {
         snapshot = await contentStore.loadPublishedRevision(release.contentRevision);
       } catch (error) {
         readinessFailure("ACTIVE_CONTENT_LOAD_FAILED", "Active content revision could not be loaded", { contentRevision: release.contentRevision, cause: error.message });
       }
-      if (snapshot.revision !== release.contentRevision) readinessFailure("ACTIVE_CONTENT_REVISION_MISMATCH", "Loaded content revision differs from the active release", { expected: release.contentRevision, actual: snapshot.revision });
-      if (snapshot.manifest.gameId !== game.gameId) readinessFailure("ACTIVE_CONTENT_GAME_MISMATCH", "Loaded content belongs to another game", { expected: game.gameId, actual: snapshot.manifest.gameId });
-      if (snapshot.manifest.engineContentSchemaVersion !== contentSchemaVersion) readinessFailure("ACTIVE_CONTENT_SCHEMA_MISMATCH", "Loaded content targets another engine content schema", { expected: contentSchemaVersion, actual: snapshot.manifest.engineContentSchemaVersion });
-      const semanticRoles = semanticRolesFrom(snapshot);
-      assertExpectedSemanticRoles(game.semanticRoles, semanticRoles);
       let gameData;
       try {
         gameData = createBundleGameData(snapshot);
@@ -95,21 +128,9 @@ function createGameReadinessRuntime(options = {}) {
           cause: error.message
         });
       }
-      for (const registration of game.registrations.validators || []) {
-        if (typeof registration.value !== "function") readinessFailure("PLUGIN_VALIDATOR_INVALID", "Game validator registration is not callable", { id: registration.id });
-        const validation = await registration.value({ game, gameData, release, semanticRoles, snapshot });
-        if (validation?.ok === false) readinessFailure("PLUGIN_VALIDATION_FAILED", "Game validator rejected the active release", { id: registration.id, diagnostics: validation.diagnostics || [] });
-      }
-      const readyRelease = Object.freeze({
-        gameId: release.gameId,
-        gameBuild: release.gameBuild,
-        engineVersion: release.engineVersion,
-        pluginVersion: release.pluginVersion,
-        contentRevision: release.contentRevision,
-        releaseRevision: release.releaseRevision
-      });
-      state = Object.freeze({ status: "ready", diagnostic: null, release: readyRelease });
-      return Object.freeze({ game, gameData, release: readyRelease, semanticRoles, snapshot });
+      const active = await validateGameRelease({ gameData, release, snapshot });
+      state = Object.freeze({ status: "ready", diagnostic: null, release: active.release });
+      return active;
     } catch (error) {
       const diagnostic = Object.freeze({
         code: String(error.code || "GAME_READINESS_FAILED"),
@@ -129,4 +150,4 @@ function createGameReadinessRuntime(options = {}) {
   });
 }
 
-module.exports = Object.freeze({ GameReadinessError, createGameReadinessRuntime });
+module.exports = Object.freeze({ GameReadinessError, createGameReadinessRuntime, createGameReleaseValidator });
