@@ -55,7 +55,7 @@ is configured to use GitHub-backed storage:
 
 ```text
 GAME_FLOW_STORAGE=github
-GAME_FLOW_GITHUB_REPO=MarkTurowetz/pop-party
+GAME_FLOW_GITHUB_REPO=MarkTurowetz/pop-party-engine
 GAME_FLOW_GITHUB_BRANCH=game-data
 GAME_FLOW_GITHUB_PATH=game-flow.json
 GAME_CONSTANTS_GITHUB_PATH=game-constants.json

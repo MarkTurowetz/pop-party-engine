@@ -14,7 +14,7 @@ services:
       - key: GAME_FLOW_STORAGE
         value: github
       - key: GAME_FLOW_GITHUB_REPO
-        value: MarkTurowetz/pop-party
+        value: MarkTurowetz/pop-party-engine
       - key: GAME_FLOW_GITHUB_BRANCH
         value: game-data
       - key: GAME_FLOW_GITHUB_BASE_BRANCH

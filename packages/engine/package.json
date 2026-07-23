@@ -3,6 +3,15 @@
   "version": "1.0.0",
   "description": "Public runtime and authoring infrastructure for Pop Party games.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MarkTurowetz/pop-party-engine.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://github.com/MarkTurowetz/pop-party-engine#readme",
+  "bugs": {
+    "url": "https://github.com/MarkTurowetz/pop-party-engine/issues"
+  },
   "type": "commonjs",
   "main": "index.js",
   "types": "index.d.ts",
