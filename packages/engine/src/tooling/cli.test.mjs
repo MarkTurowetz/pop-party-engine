@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { REQUIRED_CONTENT_PATHS, rootHashInput } = require("../shared/content-bundle-schema");
-const { runCli, serviceArguments } = require("./cli");
+const { migrationArguments, runCli, serviceArguments } = require("./cli");
 
 const temporaryRoots = [];
 
@@ -114,5 +114,51 @@ describe("pop-party CLI", () => {
       output: { log() {}, error: (message) => messages.push(message) }
     })).toBe(1);
     expect(messages[0]).toMatch(/Game service invalid/);
+  });
+
+  it("previews migrations and writes only when an output directory is explicit", async () => {
+    const calls = [];
+    const messages = [];
+    const output = { log: (message) => messages.push(message), error: (message) => messages.push(message) };
+    const createGameMigration = async (options) => {
+      calls.push(options);
+      return {
+        outputRoot: options.outputDirectory ? "/tmp/fixture/migrated" : null,
+        preview: {
+          changedPaths: ["constants.json"],
+          sourceLevel: 0,
+          sourceRevision: "source-1",
+          targetLevel: 1,
+          targetRevision: "target-1"
+        }
+      };
+    };
+
+    expect(await runCli(["migrate", "custom.config.js", "--to-level", "1"], {
+      createGameMigration,
+      cwd: "/tmp/fixture",
+      engineVersion: "1.0.0",
+      output
+    })).toBe(0);
+    expect(await runCli(["migrate", "--to-level=1", "--output", "migrated"], {
+      createGameMigration,
+      cwd: "/tmp/fixture",
+      engineVersion: "1.0.0",
+      output
+    })).toBe(0);
+    expect(calls).toEqual([
+      expect.objectContaining({ configPath: "custom.config.js", outputDirectory: undefined, targetLevel: 1 }),
+      expect.objectContaining({ configPath: "game.config.js", outputDirectory: "migrated", targetLevel: 1 })
+    ]);
+    expect(messages).toContain("Migration preview valid: level 0 -> 1");
+    expect(messages).toContain("Changed paths: constants.json");
+    expect(messages).toContain("Migration output: migrated");
+  });
+
+  it("rejects unsafe migration arguments before loading content", () => {
+    expect(() => migrationArguments(["--to-level", "-1"])).toThrow(/non-negative integer/);
+    expect(() => migrationArguments(["--output"])).toThrow(/requires a value/);
+    expect(() => migrationArguments(["--unknown"])).toThrow(/Unknown migration option/);
+    expect(() => migrationArguments(["one.js", "two.js"])).toThrow(/Unexpected migration argument/);
   });
 });

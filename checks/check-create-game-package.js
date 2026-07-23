@@ -41,8 +41,10 @@ try {
     if (!fs.existsSync(path.join(targetRoot, relativePath))) throw new Error(`Generated game is missing ${relativePath}`);
   }
   if (generatedManifest.dependencies?.["@pop-party/engine"] !== "1.0.0") throw new Error("Generated game did not pin the exact engine version");
-  if (generatedManifest.scripts?.start !== "pop-party start" || generatedManifest.scripts?.dev !== "pop-party dev") {
-    throw new Error("Generated game is missing engine-owned start/dev service scripts");
+  if (generatedManifest.scripts?.start !== "pop-party start"
+    || generatedManifest.scripts?.dev !== "pop-party dev"
+    || generatedManifest.scripts?.migrate !== "pop-party migrate") {
+    throw new Error("Generated game is missing engine-owned service and migration scripts");
   }
   if (JSON.stringify(generatedManifest).includes("file:") || JSON.stringify(generatedManifest).includes("workspace:")) {
     throw new Error("Generated game contains a local dependency reference");
@@ -61,6 +63,10 @@ try {
     env: { ...process.env, npm_config_cache: path.join(fixtureRoot, ".npm-cache") }
   });
   execFileSync("npm", ["test"], { cwd: targetRoot, stdio: "pipe" });
+  const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });
+  if (!migrationPreview.includes("Migration preview valid: level 0 -> 0") || !migrationPreview.includes("Changed paths: (none)")) {
+    throw new Error("Generated game migration preview contract failed");
+  }
   execFileSync("npm", ["run", "build"], { cwd: targetRoot, stdio: "pipe" });
   const gameBuild = JSON.parse(fs.readFileSync(path.join(targetRoot, "dist", "pop-party-build.json"), "utf8"));
   if (gameBuild.gameId !== "generated-fixture" || gameBuild.engineVersion !== "1.0.0") {

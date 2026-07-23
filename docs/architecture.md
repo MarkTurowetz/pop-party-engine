@@ -24,6 +24,13 @@ concepts into focused modules.
   - It validates and pins the complete active release before the service port opens.
   - Stage and controller routes require exactly one explicit game-plugin bootstrap renderer each; missing or ambiguous renderers stop startup instead of installing engine or reference fallback UI.
   - Authenticated tooling is not inferred from reference-app code. Until a game registers and configures its tool application, `/tools` fails with `GAME_TOOLING_NOT_CONFIGURED`.
+- `packages/engine/src/server/content-migration-runtime.js`
+  - Resolves only explicit namespaced game-plugin migrations, requires a contiguous one-level path, and rejects downgrades.
+  - Runs every step twice against the same immutable source and blocks output when the resulting revisions differ.
+  - Produces a new snapshot with parent-revision metadata; it never mutates or publishes the source snapshot.
+- `packages/engine/src/tooling/game-migration-runtime.js`
+  - Validates the complete migrated snapshot as a candidate release and optionally writes it atomically to a new game-local directory.
+  - Refuses traversal, workspace replacement, and non-empty destinations.
 - `server/`
   - Server-only helpers that do not need browser access.
   - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules,

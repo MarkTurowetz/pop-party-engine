@@ -8,6 +8,11 @@ export interface PopPartyCliOutput {
 }
 
 export const HELP_TEXT: string;
+export function migrationArguments(argv: string[]): Readonly<{
+  configPath: string;
+  outputDirectory?: string;
+  targetLevel?: number;
+}>;
 export function serviceArguments(argv: string[], env?: Record<string, string | undefined>): Readonly<{
   configPath: string;
   host: string;
@@ -28,4 +33,5 @@ export function runCli(argv?: string[], options?: {
   installSignalHandlers?: boolean;
   processRuntime?: Record<string, unknown>;
   startGameApplication?: (options: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  createGameMigration?: (options: Record<string, unknown>) => Promise<Record<string, unknown>>;
 }): Promise<number>;

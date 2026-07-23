@@ -94,6 +94,7 @@ export * from "./game-readiness-runtime";
 export * from "./game-service-runtime";
 export * from "./game-application-runtime";
 export * from "./content-game-data-runtime";
+export * from "./content-migration-runtime";
 export function createRoomFlowHelpersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGameConstantsRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLayoutNormalizationRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

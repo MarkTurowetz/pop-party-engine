@@ -26,6 +26,12 @@ fallback UI. Authenticated tooling is
 deliberately unavailable until a game configures it; the service returns
 `GAME_TOOLING_NOT_CONFIGURED` instead of borrowing reference-app tools.
 
+`pop-party migrate` loads the active immutable snapshot and follows only the
+game plugin's explicit, one-level-at-a-time migration registrations. The default
+operation is a read-only preview. `--output <new-directory>` writes an isolated
+bundle only after determinism and full release validation pass; source content
+and the active release are never rewritten or published by this command.
+
 Bundle-mode games do not supply a parallel `game-data.js`. Readiness
 materializes flow, constants, layouts, audio, prompts, art, avatar choices, and
 transition metadata from the same pinned snapshot after hash and semantic-role

@@ -101,6 +101,7 @@ function generateGame(options = {}) {
       scripts: {
         build: "pop-party build",
         dev: "pop-party dev",
+        migrate: "pop-party migrate",
         start: "pop-party start",
         test: "node --test",
         validate: "pop-party validate content"

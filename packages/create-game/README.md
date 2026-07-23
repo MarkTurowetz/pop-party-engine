@@ -11,3 +11,8 @@ the generator does not create a second empty or drifting game-data source.
 Generated games run through `pop-party dev` locally and `pop-party start` in
 production. Both commands validate the complete active release before opening
 a port.
+
+`pop-party migrate` previews the registered, contiguous game migration path.
+It writes nothing unless `--output <new-directory>` is supplied, never mutates
+the source bundle, runs every migration twice to reject nondeterministic output,
+and validates the complete result against the installed engine before writing.

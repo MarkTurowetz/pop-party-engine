@@ -53,6 +53,7 @@ module.exports = Object.freeze({
   ...require("./game-service-runtime"),
   ...require("./game-application-runtime"),
   ...require("./content-game-data-runtime"),
+  ...require("./content-migration-runtime"),
   ...require("./room-flow-helpers-runtime"),
   ...require("./game-constants-runtime"),
   ...require("./layout-normalization-runtime"),

@@ -11,6 +11,20 @@ npm run content:validate -- tmp/content-bundle
 
 Record the reported game ID and root content revision. Do not substitute a newer export during later steps.
 
+When an engine upgrade requires a registered game migration, preview it first:
+
+```bash
+npm run migrate -- --to-level 1
+```
+
+Then write the reviewed result to a new isolated directory and validate that
+directory. This does not publish or alter the active bundle:
+
+```bash
+npm run migrate -- --to-level 1 --output outputs/migrated-content
+npm run validate -- outputs/migrated-content
+```
+
 ## 2. Dry-run the bootstrap
 
 ```bash

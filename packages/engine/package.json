@@ -99,6 +99,10 @@
       "types": "./src/server/content-game-data-runtime.d.ts",
       "default": "./src/server/content-game-data-runtime.js"
     },
+    "./content/migrations": {
+      "types": "./src/server/content-migration-runtime.d.ts",
+      "default": "./src/server/content-migration-runtime.js"
+    },
     "./content/store": {
       "types": "./src/server/revisioned-content-store-runtime.d.ts",
       "default": "./src/server/revisioned-content-store-runtime.js"

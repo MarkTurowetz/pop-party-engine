@@ -5,6 +5,7 @@ const enginePackage = require("../../package.json");
 const { createLocalContentBundleProvider } = require("../server/local-content-bundle-provider");
 const { createGameApplicationRuntime } = require("../server/game-application-runtime");
 const { createGameBuild, loadGameDefinition } = require("./game-build-runtime");
+const { createGameMigration } = require("./game-migration-runtime");
 
 const HELP_TEXT = [
   "Usage: pop-party <command>",
@@ -14,11 +15,51 @@ const HELP_TEXT = [
   "  build [game-config]           Validate and write an immutable game build manifest",
   "  start [game-config]           Validate and start the production game service",
   "  dev [game-config]             Validate and start the local game service",
+  "  migrate [game-config]         Preview a deterministic content migration",
   "",
   "Service options:",
   "  --host <address>              Listening address (default: HOST or 0.0.0.0)",
-  "  --port <number>               Listening port (default: PORT or 3000)"
+  "  --port <number>               Listening port (default: PORT or 3000)",
+  "",
+  "Migration options:",
+  "  --to-level <number>           Requested game migration level",
+  "  --output <directory>          Write the validated result to a new directory"
 ].join("\n");
+
+function migrationArguments(argv) {
+  let configPath = "game.config.js";
+  let configSeen = false;
+  let outputDirectory = "";
+  let targetLevel;
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = argv[index];
+    if (value === "--to-level" || value === "--output") {
+      if (index + 1 >= argv.length) throw new Error(`${value} requires a value`);
+      const next = argv[index + 1];
+      if (value === "--to-level") targetLevel = Number(next);
+      else outputDirectory = String(next);
+      index += 1;
+      continue;
+    }
+    if (value.startsWith("--to-level=")) {
+      targetLevel = Number(value.slice("--to-level=".length));
+      continue;
+    }
+    if (value.startsWith("--output=")) {
+      outputDirectory = value.slice("--output=".length);
+      continue;
+    }
+    if (value.startsWith("-")) throw new Error(`Unknown migration option: ${value}`);
+    if (configSeen) throw new Error(`Unexpected migration argument: ${value}`);
+    configPath = value;
+    configSeen = true;
+  }
+  if (targetLevel !== undefined && (!Number.isInteger(targetLevel) || targetLevel < 0)) {
+    throw new Error("Migration target level must be a non-negative integer");
+  }
+  if (outputDirectory !== "" && !outputDirectory.trim()) throw new Error("Migration output directory cannot be empty");
+  return Object.freeze({ configPath, outputDirectory: outputDirectory || undefined, targetLevel });
+}
 
 function serviceArguments(argv, env = process.env) {
   let configPath = "game.config.js";
@@ -103,7 +144,7 @@ async function runCli(argv = process.argv.slice(2), options = {}) {
     output.log(HELP_TEXT);
     return 0;
   }
-  if (command !== "validate" && command !== "build" && command !== "start" && command !== "dev") {
+  if (command !== "validate" && command !== "build" && command !== "start" && command !== "dev" && command !== "migrate") {
     output.error(`Unknown pop-party command: ${command}`);
     output.error(HELP_TEXT);
     return 1;
@@ -120,7 +161,7 @@ async function runCli(argv = process.argv.slice(2), options = {}) {
       output.log(`Game build valid: ${build.manifest.gameId}`);
       output.log(`Content revision: ${build.manifest.contentRevision}`);
       output.log(`Build manifest: ${path.relative(cwd, build.manifestPath)}`);
-    } else {
+    } else if (command === "start" || command === "dev") {
       const service = serviceArguments(argv.slice(1), options.env || process.env);
       const started = await (options.startGameApplication || startGameApplication)({
         configPath: service.configPath,
@@ -134,10 +175,30 @@ async function runCli(argv = process.argv.slice(2), options = {}) {
       if (options.installSignalHandlers !== false) {
         installShutdownHandlers(started.runtime, { output, processRuntime: options.processRuntime });
       }
+    } else {
+      const migration = migrationArguments(argv.slice(1));
+      const result = await (options.createGameMigration || createGameMigration)({
+        configPath: migration.configPath,
+        cwd,
+        engineVersion: options.engineVersion || enginePackage.version,
+        outputDirectory: migration.outputDirectory,
+        targetLevel: migration.targetLevel
+      });
+      output.log(`Migration preview valid: level ${result.preview.sourceLevel} -> ${result.preview.targetLevel}`);
+      output.log(`Source revision: ${result.preview.sourceRevision}`);
+      output.log(`Target revision: ${result.preview.targetRevision}`);
+      output.log(`Changed paths: ${result.preview.changedPaths.length ? result.preview.changedPaths.join(", ") : "(none)"}`);
+      if (result.outputRoot) output.log(`Migration output: ${path.relative(cwd, result.outputRoot)}`);
     }
     return 0;
   } catch (error) {
-    const label = command === "validate" ? "Content bundle" : command === "build" ? "Game build" : "Game service";
+    const label = command === "validate"
+      ? "Content bundle"
+      : command === "build"
+        ? "Game build"
+        : command === "migrate"
+          ? "Game migration"
+          : "Game service";
     output.error(`${label} invalid: ${error.message}`);
     return 1;
   }
@@ -146,6 +207,7 @@ async function runCli(argv = process.argv.slice(2), options = {}) {
 module.exports = Object.freeze({
   HELP_TEXT,
   installShutdownHandlers,
+  migrationArguments,
   runCli,
   serviceArguments,
   startGameApplication,

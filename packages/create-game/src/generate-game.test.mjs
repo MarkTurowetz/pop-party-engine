@@ -45,6 +45,7 @@ describe("create-game generator", () => {
       .toEqual({ "@pop-party/engine": "1.0.0" });
     expect(generatedPackage.scripts.build).toBe("pop-party build");
     expect(generatedPackage.scripts.dev).toBe("pop-party dev");
+    expect(generatedPackage.scripts.migrate).toBe("pop-party migrate");
     expect(generatedPackage.scripts.start).toBe("pop-party start");
     expect(fs.readFileSync(path.join(targetRoot, "content", "blobs", "asset.bin")))
       .toEqual(Buffer.from([0, 1, 2, 255]));

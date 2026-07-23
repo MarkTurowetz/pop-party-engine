@@ -88,8 +88,17 @@ function replaceSnapshotFiles(snapshot, replacements, options = {}) {
       : Buffer.from(`${canonicalizeJson(value)}\n`, "utf8");
     files.set(logicalPath, bytes);
   }
+  const metadata = options.manifestMetadata && typeof options.manifestMetadata === "object"
+    ? options.manifestMetadata
+    : {};
   const manifest = buildManifest({
     ...snapshot.manifest,
+    ...Object.fromEntries([
+      "engineContentSchemaVersion",
+      "flowExpressionLanguageVersion",
+      "gameMigrationLevel",
+      "semanticRolesPath"
+    ].filter((key) => metadata[key] !== undefined).map((key) => [key, metadata[key]])),
     parentRevision: snapshot.revision,
     publishedRevision: options.publishedRevision ?? snapshot.manifest.publishedRevision
   }, files);
