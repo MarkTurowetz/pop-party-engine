@@ -6,11 +6,11 @@ external release authorities exist. Current setup status:
 - [x] Rename this repository to `MarkTurowetz/pop-party-engine`, make it
   public, and preserve the GitHub redirect from the old name.
 - [x] Create the public npm scope `@pop-party`.
-- [ ] Reserve `@pop-party/engine` and `@pop-party/create-game` if npm requires an
+- [x] Reserve `@pop-party/engine` and `@pop-party/create-game` if npm requires an
    initial package creation step.
    The latter is the package npm resolves for the public command
    `npm create @pop-party/game`.
-- [ ] Configure npm trusted publishing for both packages. The trusted publisher
+- [x] Configure npm trusted publishing for both packages. The trusted publisher
    must be this GitHub repository, workflow `.github/workflows/publish.yml`, and
    environment `npm-publish`.
 - [x] Create the GitHub environment `npm-publish`, restrict it to protected
