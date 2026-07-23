@@ -1,6 +1,3 @@
-function stageBackgroundOverride(defaultComposition, manifestCompositions = {}) {
-  if (!String(defaultComposition?.id || "").startsWith("stage-background")) return null;
-  return manifestCompositions?.[defaultComposition.id] || null;
-}
+"use strict";
 
-module.exports = { stageBackgroundOverride };
+module.exports = require("../apps/reference/server/stage-background-art-runtime");

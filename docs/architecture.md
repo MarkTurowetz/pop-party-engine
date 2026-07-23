@@ -1,14 +1,19 @@
 # Party Game Template Architecture
 
-This project began as a fast prototype with most behavior inside `server.js` and `index.html`.
+This project began as a fast prototype with most behavior inside the root server and `index.html`.
 The long-term direction is to keep the same simple deployment model while moving stable
 concepts into focused modules.
 
 ## Current Module Boundaries
 
 - `server.js`
+  - Compatibility launcher only; it delegates to `apps/reference/server.js`.
+- `apps/reference/server.js`
   - HTTP routing, room lifecycle, game runtime orchestration, and persistence wiring.
-  - This is still the largest file and should keep shrinking over time.
+  - This is reference-app composition code and must not be imported by the engine package or generated games.
+- `apps/reference/server/`
+  - Reference-owned art migrations and default layout adapters used by the template game.
+  - Root modules with matching names are compatibility exports only; new games do not inherit these adapters.
 - `server/`
   - Server-only helpers that do not need browser access.
   - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules,
@@ -18,13 +23,6 @@ concepts into focused modules.
   - `controller-input-payload-runtime.js` owns controller choice/vote/text input payload setup.
   - `controller-submit-handlers-runtime.js` owns controller choice/vote/text answer submission endpoints.
   - `countdown-runtime.js` owns countdown timer clearing and starting-phase countdown scheduling.
-  - `controller-layout-normalization-runtime.js` owns controller layout collection normalization,
-    including the per-placement `On`/`Off` initial-state contract.
-  - `controller-layout-state-runtime.js` owns default controller layout state creation for flow states
-    and reusable semantic input layouts (presentation, multiple choice, voting, text, voice,
-    microphone access, and paused).
-  - `art-assets-runtime.js` owns Art Manager manifest handling, art replacement validation,
-    and art file responses.
   - `decision-action-normalization-runtime.js` owns decision branch/operator/value normalization.
   - `flow-action-public-runtime.js` owns public flow action serialization and room text interpolation.
   - `game-flow-normalization-runtime.js` owns flow, action, timing, and node-position normalization.
@@ -37,7 +35,6 @@ concepts into focused modules.
   - `http-utils.js` owns JSON responses, request body parsing, and content type lookup.
   - `inactive-player-sweep-runtime.js` owns controller heartbeat timeout sweeps.
   - `input-state-runtime.js` owns shared choice/text input reset state and submission-completion checks.
-  - `layout-normalization-runtime.js` owns shared layout state/element normalization and element deduping.
   - `layout-sync-runtime.js` owns syncing saved stage/controller layout states to the active flow.
   - `lobby-control-handlers-runtime.js` owns lobby fetch and quit-to-lobby endpoints.
   - `lobby-payload-runtime.js` owns lobby/stage snapshot payloads and debug action summaries.
@@ -54,8 +51,6 @@ concepts into focused modules.
   - `stage-action-handlers-runtime.js` owns stage action completion/effect callback endpoints,
     using registry metadata for stage-completable action types.
   - `stage-events-runtime.js` owns stage SSE connection setup, heartbeat, and cleanup.
-  - `stage-layout-normalization-runtime.js` owns stage layout collection normalization and migration.
-  - `stage-layout-state-runtime.js` owns default stage layout state creation for flow states.
   - `stage-test-config-handler-runtime.js` owns stage test-flow override endpoint handling.
   - `start-handlers-runtime.js` owns VIP start/cancel-start endpoint handling.
   - `static-files-runtime.js` owns app shell rendering and browser module file responses.

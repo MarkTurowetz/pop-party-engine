@@ -100,7 +100,10 @@ if (!/normalized === "presentation"\) return "stagepresentationtext"/.test(layou
   process.exit(1);
 }
 
-const layoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/layout-normalization-runtime.js"), "utf8");
+const layoutNormalizerSource = fs.readFileSync(
+  path.join(repoRoot, "apps/reference/server/layout-normalization-runtime.js"),
+  "utf8"
+);
 const engineLayoutNormalizerSource = fs.readFileSync(
   path.join(repoRoot, "packages/engine/src/server/layout-normalization-runtime.js"),
   "utf8"
@@ -112,8 +115,14 @@ if (!/element\.autoFitText === true/.test(engineLayoutNormalizerSource)
   process.exit(1);
 }
 
-const stageLayoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/stage-layout-normalization-runtime.js"), "utf8");
-const controllerLayoutNormalizerSource = fs.readFileSync(path.join(repoRoot, "server/controller-layout-normalization-runtime.js"), "utf8");
+const stageLayoutNormalizerSource = fs.readFileSync(
+  path.join(repoRoot, "apps/reference/server/stage-layout-normalization-runtime.js"),
+  "utf8"
+);
+const controllerLayoutNormalizerSource = fs.readFileSync(
+  path.join(repoRoot, "apps/reference/server/controller-layout-normalization-runtime.js"),
+  "utf8"
+);
 if (/mergeMissingDefaultElements/.test(stageLayoutNormalizerSource)
   || /mergeMissingDefaultElements/.test(controllerLayoutNormalizerSource)) {
   console.error("Text rendering regression check failed:");

@@ -53,9 +53,35 @@ try {
   if (!referenceConfig.includes('require("./game-data")')) {
     throw new Error("Reference game configuration must consume app-owned game data");
   }
-  const referenceServer = fs.readFileSync(path.join(root, "server.js"), "utf8");
-  if (!referenceServer.includes('require("./apps/reference/game.config")')) {
+  const rootServer = fs.readFileSync(path.join(root, "server.js"), "utf8");
+  if (!rootServer.includes('require("./apps/reference/server")')) {
+    throw new Error("Root server must remain only a reference-app compatibility launcher");
+  }
+  const referenceServer = fs.readFileSync(path.join(root, "apps", "reference", "server.js"), "utf8");
+  if (!referenceServer.includes('require("./game.config")')) {
     throw new Error("Reference server must load the app-owned game configuration directly");
+  }
+  if (referenceServer.includes('require("../../server/art-assets-runtime")')
+    || referenceServer.includes('require("../../server/layout-normalization-runtime")')) {
+    throw new Error("Reference server must load reference-owned art and layout adapters from its app boundary");
+  }
+  const referenceCompatibilityModules = [
+    "art-assets-runtime",
+    "art-runtime-dependencies",
+    "controller-layout-normalization-runtime",
+    "controller-layout-state-runtime",
+    "controller-player-banner-art-runtime",
+    "layout-normalization-runtime",
+    "player-widget-point-popup-anchor-runtime",
+    "stage-background-art-runtime",
+    "stage-layout-normalization-runtime",
+    "stage-layout-state-runtime"
+  ];
+  for (const moduleName of referenceCompatibilityModules) {
+    const compatibilitySource = fs.readFileSync(path.join(root, "server", `${moduleName}.js`), "utf8");
+    if (!compatibilitySource.includes(`require("../apps/reference/server/${moduleName}")`)) {
+      throw new Error(`Legacy ${moduleName} path must remain only a reference-app compatibility export`);
+    }
   }
   const requiredServerImports = [
     "@pop-party/engine/security/admin",
