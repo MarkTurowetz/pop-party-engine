@@ -22,6 +22,11 @@ export function startGameApplication(options: Record<string, unknown>): Promise<
   runtime: GameServiceRuntime;
   startup: WebServiceStartup;
 } & Record<string, unknown>>>;
+export function startDevelopmentApplication(options: Record<string, unknown>): Promise<Readonly<{
+  runtime: GameServiceRuntime;
+  startup: WebServiceStartup;
+  development: Readonly<Record<string, unknown>>;
+} & Record<string, unknown>>>;
 export function installShutdownHandlers(runtime: GameServiceRuntime, options?: Record<string, unknown>): void;
 export function validateContentBundle(contentRoot: string, output?: PopPartyCliOutput): ContentSnapshot;
 export function runCli(argv?: string[], options?: {
@@ -33,5 +38,6 @@ export function runCli(argv?: string[], options?: {
   installSignalHandlers?: boolean;
   processRuntime?: Record<string, unknown>;
   startGameApplication?: (options: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  startDevelopmentApplication?: (options: Record<string, unknown>) => Promise<Record<string, unknown>>;
   createGameMigration?: (options: Record<string, unknown>) => Promise<Record<string, unknown>>;
 }): Promise<number>;

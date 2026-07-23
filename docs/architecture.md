@@ -31,6 +31,10 @@ concepts into focused modules.
 - `packages/engine/src/tooling/game-migration-runtime.js`
   - Validates the complete migrated snapshot as a candidate release and optionally writes it atomically to a new game-local directory.
   - Refuses traversal, workspace replacement, and non-empty destinations.
+- `packages/engine/src/tooling/development-workspace-runtime.js`
+  - Seeds ignored `.pop-party/content` once from the configured immutable release and validates it as an independent local bundle.
+  - Existing development content is reused rather than silently refreshed from production.
+  - The generated game config accepts the scoped `POP_PARTY_CONTENT_ROOT` override only when it resolves inside that game's workspace; the loader restores the process environment immediately after config evaluation.
 - `server/`
   - Server-only helpers that do not need browser access.
   - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules,

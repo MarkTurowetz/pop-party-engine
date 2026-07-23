@@ -37,6 +37,9 @@ try {
   const generatedManifest = JSON.parse(fs.readFileSync(path.join(targetRoot, "package.json"), "utf8"));
   if (!fs.readFileSync(path.join(targetRoot, "LICENSE"), "utf8").startsWith("MIT License\n")) throw new Error("Generated game is missing its MIT code license");
   if (!fs.existsSync(path.join(targetRoot, "STARTER-ASSET-NOTICES.json"))) throw new Error("Generated game is missing starter asset notices");
+  if (!fs.readFileSync(path.join(targetRoot, ".gitignore"), "utf8").includes(".pop-party/")) {
+    throw new Error("Generated game does not ignore its local development content workspace");
+  }
   for (const relativePath of ["src/actions/index.js", "src/stage/index.js", "src/controller/index.js", "src/tools/index.js", "src/plugin/index.js", "tests/config.test.js"]) {
     if (!fs.existsSync(path.join(targetRoot, relativePath))) throw new Error(`Generated game is missing ${relativePath}`);
   }
@@ -62,6 +65,33 @@ try {
     stdio: "pipe",
     env: { ...process.env, npm_config_cache: path.join(fixtureRoot, ".npm-cache") }
   });
+  const developmentSmoke = execFileSync(process.execPath, ["-e", `
+    const { startDevelopmentApplication } = require("@pop-party/engine/tooling");
+    (async () => {
+      const first = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: "1.0.0", host: "127.0.0.1", port: 0 });
+      const firstHealth = await (await fetch(first.startup.localUrl + "/health")).json();
+      await first.runtime.stop();
+      const second = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: "1.0.0", host: "127.0.0.1", port: 0 });
+      const result = {
+        firstRevision: first.development.revision,
+        healthRevision: firstHealth.release.contentRevision,
+        secondRevision: second.development.revision,
+        seededFirst: first.development.seeded,
+        seededSecond: second.development.seeded
+      };
+      await second.runtime.stop();
+      process.stdout.write(JSON.stringify(result));
+    })().catch((error) => { console.error(error); process.exitCode = 1; });
+  `], { cwd: targetRoot, encoding: "utf8" });
+  const development = JSON.parse(developmentSmoke);
+  if (!development.seededFirst || development.seededSecond
+    || development.firstRevision !== development.secondRevision
+    || development.firstRevision !== development.healthRevision) {
+    throw new Error("Generated game development workspace did not seed once and remain authoritative");
+  }
+  if (!fs.existsSync(path.join(targetRoot, ".pop-party", "content", "content-bundle.json"))) {
+    throw new Error("Generated game development workspace was not created inside the game");
+  }
   execFileSync("npm", ["test"], { cwd: targetRoot, stdio: "pipe" });
   const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });
   if (!migrationPreview.includes("Migration preview valid: level 0 -> 0") || !migrationPreview.includes("Changed paths: (none)")) {

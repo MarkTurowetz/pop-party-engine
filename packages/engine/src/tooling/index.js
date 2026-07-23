@@ -4,6 +4,7 @@ module.exports = Object.freeze({
   ...require("./cli"),
   ...require("./game-build-runtime"),
   ...require("./game-migration-runtime"),
+  ...require("./development-workspace-runtime"),
   ...require("../server/layout-sync-runtime"),
   ...require("../server/legacy-content-bundle-exporter"),
   ...require("../server/local-draft-runtime"),

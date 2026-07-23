@@ -77,13 +77,22 @@ describe("pop-party CLI", () => {
         startup: { localUrl: "http://localhost:4321", lanUrls: ["http://10.0.0.2:4321"] }
       };
     };
+    const startDevelopmentApplication = async (options) => ({
+      ...(await startGameApplication(options)),
+      development: {
+        contentRoot: "/tmp/fixture/.pop-party/content",
+        revision: "development-1",
+        seeded: true
+      }
+    });
 
     expect(await runCli(["start", "custom.config.js", "--host", "127.0.0.1", "--port=4321"], {
       cwd: "/tmp/fixture",
       engineVersion: "1.0.0",
       installSignalHandlers: false,
       output,
-      startGameApplication
+      startGameApplication,
+      startDevelopmentApplication
     })).toBe(0);
     expect(await runCli(["dev", "--port", "0"], {
       cwd: "/tmp/fixture",
@@ -91,7 +100,8 @@ describe("pop-party CLI", () => {
       env: {},
       installSignalHandlers: false,
       output,
-      startGameApplication
+      startGameApplication,
+      startDevelopmentApplication
     })).toBe(0);
 
     expect(calls).toEqual([
@@ -100,6 +110,8 @@ describe("pop-party CLI", () => {
     ]);
     expect(messages).toContain("Game service ready: http://localhost:4321");
     expect(messages).toContain("LAN: http://10.0.0.2:4321");
+    expect(messages).toContain("Development content: .pop-party/content (seeded)");
+    expect(messages).toContain("Development revision: development-1");
   });
 
   it("rejects invalid service arguments before opening a port", async () => {

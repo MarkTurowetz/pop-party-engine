@@ -60,6 +60,8 @@ describe("create-game generator", () => {
     expect(fs.readFileSync(path.join(targetRoot, "src", "controller", "index.js"), "utf8"))
       .toContain('id: "flip-7.bootstrap-controller"');
     expect(fs.readFileSync(path.join(targetRoot, "tests", "config.test.js"), "utf8")).toContain("node:test");
+    expect(fs.readFileSync(path.join(targetRoot, "game.config.js"), "utf8")).toContain("POP_PARTY_CONTENT_ROOT must remain inside the game workspace");
+    expect(fs.readFileSync(path.join(targetRoot, ".gitignore"), "utf8")).toContain(".pop-party/");
 
     fs.writeFileSync(path.join(targetRoot, "content", "blobs", "asset.bin"), Buffer.from([9]));
     expect(fs.readFileSync(path.join(starterRoot, "blobs", "asset.bin"))).toEqual(Buffer.from([0, 1, 2, 255]));

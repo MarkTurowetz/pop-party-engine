@@ -1,6 +1,7 @@
 export * from "./cli";
 export * from "./game-build-runtime";
 export * from "./game-migration-runtime";
+export * from "./development-workspace-runtime";
 export function createLayoutSyncRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function exportLegacyContentBundle(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLocalDraftRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

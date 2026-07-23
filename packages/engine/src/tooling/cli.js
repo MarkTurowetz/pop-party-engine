@@ -6,6 +6,7 @@ const { createLocalContentBundleProvider } = require("../server/local-content-bu
 const { createGameApplicationRuntime } = require("../server/game-application-runtime");
 const { createGameBuild, loadGameDefinition } = require("./game-build-runtime");
 const { createGameMigration } = require("./game-migration-runtime");
+const { prepareDevelopmentWorkspace } = require("./development-workspace-runtime");
 
 const HELP_TEXT = [
   "Usage: pop-party <command>",
@@ -127,6 +128,19 @@ async function startGameApplication(options = {}) {
   return Object.freeze({ ...loaded, runtime, startup });
 }
 
+async function startDevelopmentApplication(options = {}) {
+  const loaded = loadGameDefinition(options);
+  const development = await prepareDevelopmentWorkspace({
+    contentDirectory: options.contentDirectory,
+    loaded
+  });
+  const started = await startGameApplication({
+    ...options,
+    environment: { POP_PARTY_CONTENT_ROOT: development.contentRoot }
+  });
+  return Object.freeze({ ...started, development });
+}
+
 function validateContentBundle(contentRoot, output = console) {
   const root = path.resolve(contentRoot || "content");
   const snapshot = createLocalContentBundleProvider({ root }).loadPublishedRevision();
@@ -163,7 +177,10 @@ async function runCli(argv = process.argv.slice(2), options = {}) {
       output.log(`Build manifest: ${path.relative(cwd, build.manifestPath)}`);
     } else if (command === "start" || command === "dev") {
       const service = serviceArguments(argv.slice(1), options.env || process.env);
-      const started = await (options.startGameApplication || startGameApplication)({
+      const startApplication = command === "dev"
+        ? options.startDevelopmentApplication || startDevelopmentApplication
+        : options.startGameApplication || startGameApplication;
+      const started = await startApplication({
         configPath: service.configPath,
         cwd,
         engineVersion: options.engineVersion || enginePackage.version,
@@ -171,6 +188,10 @@ async function runCli(argv = process.argv.slice(2), options = {}) {
         port: service.port
       });
       output.log(`Game service ready: ${started.startup.localUrl}`);
+      if (started.development) {
+        output.log(`Development content: ${path.relative(cwd, started.development.contentRoot)} (${started.development.seeded ? "seeded" : "existing"})`);
+        output.log(`Development revision: ${started.development.revision}`);
+      }
       for (const url of started.startup.lanUrls) output.log(`LAN: ${url}`);
       if (options.installSignalHandlers !== false) {
         installShutdownHandlers(started.runtime, { output, processRuntime: options.processRuntime });
@@ -210,6 +231,7 @@ module.exports = Object.freeze({
   migrationArguments,
   runCli,
   serviceArguments,
+  startDevelopmentApplication,
   startGameApplication,
   validateContentBundle
 });

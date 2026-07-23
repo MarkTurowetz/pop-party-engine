@@ -9,8 +9,10 @@ Runtime game data is materialized from that same validated content snapshot;
 the generator does not create a second empty or drifting game-data source.
 
 Generated games run through `pop-party dev` locally and `pop-party start` in
-production. Both commands validate the complete active release before opening
-a port.
+production. The first development run seeds ignored `.pop-party/content` from
+the configured immutable release; later runs keep that independent local copy.
+Production never reads the development workspace. Both commands validate the
+complete selected release before opening a port.
 
 `pop-party migrate` previews the registered, contiguous game migration path.
 It writes nothing unless `--output <new-directory>` is supplied, never mutates
