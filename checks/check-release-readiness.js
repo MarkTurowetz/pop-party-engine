@@ -36,10 +36,24 @@ function checkReleaseReadiness(version = process.argv[2]) {
     throw new Error("Reference application must pin the exact released engine version");
   }
   const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "publish.yml"), "utf8");
-  for (const contract of ["id-token: write", "environment: npm-publish", "npm publish ./packages/engine", "npm publish ./packages/create-game", "--provenance", "--access public"]) {
+  for (const contract of [
+    "id-token: write",
+    "environment: npm-publish",
+    "actions/checkout@v6",
+    "actions/setup-node@v6",
+    "node-version: 24",
+    "package-manager-cache: false",
+    "npm publish ./packages/engine",
+    "npm publish ./packages/create-game",
+    "--provenance",
+    "--access public"
+  ]) {
     if (!workflow.includes(contract)) throw new Error(`Publish workflow is missing: ${contract}`);
   }
   const checkWorkflow = fs.readFileSync(path.join(root, ".github", "workflows", "check.yml"), "utf8");
+  for (const contract of ["actions/checkout@v6", "actions/setup-node@v6", "node-version: 24"]) {
+    if (!checkWorkflow.includes(contract)) throw new Error(`Check workflow is missing: ${contract}`);
+  }
   for (const [label, source] of [["publish", workflow], ["check", checkWorkflow]]) {
     if (source.includes("game-data") || source.includes(".authored-game-data")) {
       throw new Error(`${label} workflow cannot depend on a game-data branch`);

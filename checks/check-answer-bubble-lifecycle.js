@@ -78,6 +78,14 @@ async function main() {
 
     const result = await page.evaluate(async () => {
       const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+      const waitFor = async (condition, message, timeout = 750) => {
+        const startedAt = performance.now();
+        while (performance.now() - startedAt < timeout) {
+          if (condition()) return;
+          await sleep(16);
+        }
+        throw new Error(message);
+      };
       // Match the saved Player Answer Bubble contract: its static text component
       // remains manual-size while each semantic state opts into auto-fit.
       const authoredBubble = window.artComposition("player-answer-bubble");
@@ -164,7 +172,10 @@ async function main() {
       });
       const appearToken = token();
       const appearStartFrame = frame();
-      await sleep(100);
+      await waitFor(
+        () => frame() > appearStartFrame,
+        "Appear did not reach an authored frame before reconciliation"
+      );
       roster.render([player], { instant: false });
       const appearTokenAfterReconcile = token();
       const appearMidFrame = frame();
@@ -215,7 +226,10 @@ async function main() {
         roster.setAnswerBubblesShown(false, { instant: false, complete: resolve });
       });
       const disappearToken = token();
-      await sleep(100);
+      await waitFor(
+        () => frame() > 17,
+        "Disappear did not reach an authored frame before reconciliation"
+      );
       roster.render([player], { instant: false });
       const disappearMidToken = token();
       const disappearMidFrame = frame();

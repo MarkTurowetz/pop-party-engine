@@ -5,7 +5,7 @@ external release authorities exist. Current setup status:
 
 - [x] Rename this repository to `MarkTurowetz/pop-party-engine`, make it
   public, and preserve the GitHub redirect from the old name.
-- [ ] Create the public npm scope `@pop-party`.
+- [x] Create the public npm scope `@pop-party`.
 - [ ] Reserve `@pop-party/engine` and `@pop-party/create-game` if npm requires an
    initial package creation step.
    The latter is the package npm resolves for the public command
@@ -17,7 +17,7 @@ external release authorities exist. Current setup status:
    branches, and add
    Mark as a required reviewer.
 - [x] Protect `main`; require the `check` workflow and disallow force pushes.
-- [ ] Confirm the repository history audit, starter-asset inventory, and public
+- [x] Confirm the repository history audit, starter-asset inventory, and public
    licensing gate all pass from the renamed public repository.
 
 Both CI workflows are self-contained on the checked-out engine repository.
