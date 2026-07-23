@@ -35,6 +35,9 @@ concepts into focused modules.
   - Seeds ignored `.pop-party/content` once from the configured immutable release and validates it as an independent local bundle.
   - Existing development content is reused rather than silently refreshed from production.
   - The generated game config accepts the scoped `POP_PARTY_CONTENT_ROOT` override only when it resolves inside that game's workspace; the loader restores the process environment immediately after config evaluation.
+- Generated game deployment
+  - `render.yaml` owns exactly one manually scaled Node web service (`numInstances: 1`) with engine build/start commands and `/health` readiness.
+  - `DEPLOYMENT.md` records the single-replica in-memory-room constraint and keeps provider/OAuth credentials out of source.
 - `server/`
   - Server-only helpers that do not need browser access.
   - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules,

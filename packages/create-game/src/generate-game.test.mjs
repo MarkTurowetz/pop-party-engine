@@ -62,6 +62,13 @@ describe("create-game generator", () => {
     expect(fs.readFileSync(path.join(targetRoot, "tests", "config.test.js"), "utf8")).toContain("node:test");
     expect(fs.readFileSync(path.join(targetRoot, "game.config.js"), "utf8")).toContain("POP_PARTY_CONTENT_ROOT must remain inside the game workspace");
     expect(fs.readFileSync(path.join(targetRoot, ".gitignore"), "utf8")).toContain(".pop-party/");
+    const renderBlueprint = fs.readFileSync(path.join(targetRoot, "render.yaml"), "utf8");
+    expect(renderBlueprint).toContain("name: flip-7");
+    expect(renderBlueprint).toContain("runtime: node");
+    expect(renderBlueprint).toContain("numInstances: 1");
+    expect(renderBlueprint).toContain("healthCheckPath: /health");
+    expect(renderBlueprint).toContain("startCommand: npm start");
+    expect(fs.readFileSync(path.join(targetRoot, "DEPLOYMENT.md"), "utf8")).toContain("one independent Render web service");
 
     fs.writeFileSync(path.join(targetRoot, "content", "blobs", "asset.bin"), Buffer.from([9]));
     expect(fs.readFileSync(path.join(starterRoot, "blobs", "asset.bin"))).toEqual(Buffer.from([0, 1, 2, 255]));

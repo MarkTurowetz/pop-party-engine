@@ -60,6 +60,10 @@ function generatedBootstrapRendererSource({ gameId, role }) {
   return `"use strict";\n\nmodule.exports = Object.freeze([{\n  id: ${JSON.stringify(`${gameId}.bootstrap-${role}`)},\n  value: Object.freeze({\n    renderBootstrap({ game }) {\n      if (game.id !== ${JSON.stringify(gameId)}) throw new Error("${kind} renderer received another game");\n      return Object.freeze({\n        heading: game.displayName,\n        message: ${JSON.stringify(`${kind} service is ready.`)}\n      });\n    }\n  })\n}]);\n`;
 }
 
+function generatedRenderBlueprintSource(gameId) {
+  return `services:\n  - type: web\n    name: ${gameId}\n    runtime: node\n    plan: starter\n    numInstances: 1\n    buildCommand: npm install --no-audit --no-fund && npm run build\n    startCommand: npm start\n    healthCheckPath: /health\n    maxShutdownDelaySeconds: 300\n    envVars:\n      - key: NODE_ENV\n        value: production\n`;
+}
+
 function generatedPluginSource(pluginNamespace) {
   return `"use strict";\n\nconst { defineGamePlugin } = require("@pop-party/engine/plugin");\nconst actions = require("../actions");\nconst stageRenderers = require("../stage");\nconst controllerRenderers = require("../controller");\nconst toolPanels = require("../tools");\n\nconst contributionGroups = Object.freeze([\n  ["actions", actions],\n  ["stageRenderers", stageRenderers],\n  ["controllerRenderers", controllerRenderers],\n  ["toolPanels", toolPanels]\n]);\n\nmodule.exports = defineGamePlugin({\n  namespace: ${JSON.stringify(pluginNamespace)},\n  register(registry) {\n    for (const [kind, contributions] of contributionGroups) {\n      for (const contribution of contributions) registry[kind](contribution.id, contribution.value);\n    }\n  }\n});\n`;
 }
@@ -118,6 +122,8 @@ function generateGame(options = {}) {
     writeText(stagingRoot, "tests/config.test.js", generatedConfigTestSource({ engineVersion, gameId, pluginNamespace }));
     writeText(stagingRoot, ".gitignore", "node_modules/\n.env\n.pop-party/\ndist/\noutputs/\n");
     writeText(stagingRoot, "README.md", `# ${displayName}\n\nIndependent Pop Party game using \`@pop-party/engine@${engineVersion}\`.\n\nRun \`npm run dev\` locally or \`npm start\` in production. Development seeds ignored \`.pop-party/content\` once and then preserves that independent local copy; production uses the configured active store. The engine validates the selected release before binding the service port. Game-owned contributions live under \`src/actions\`, \`src/stage\`, \`src/controller\`, and \`src/tools\`; register them through the namespaced plugin in \`src/plugin\`. Content and starter blobs under \`content\` are independent copies owned by this game. Authenticated tools fail closed until the game explicitly configures them.\n`);
+    writeText(stagingRoot, "render.yaml", generatedRenderBlueprintSource(gameId));
+    writeText(stagingRoot, "DEPLOYMENT.md", `# ${displayName} deployment\n\nThis game deploys as one independent Render web service defined by \`render.yaml\`. Keep \`numInstances: 1\` and autoscaling disabled while rooms are in-memory. Render builds with \`npm install --no-audit --no-fund && npm run build\`, starts with \`npm start\`, and checks \`/health\`.\n\nProduction must use reviewed provider credentials and an immutable active release. Do not point \`POP_PARTY_CONTENT_ROOT\` at \`.pop-party/content\`; that override is only for the engine-owned local development command. Configure provider, OAuth, and content-writer secrets in Render rather than committing them.\n`);
     writeText(stagingRoot, "LICENSE", fs.readFileSync(path.join(__dirname, "..", "LICENSE"), "utf8"));
     writeText(stagingRoot, "CONTENT-LICENSE", "Canonical starter art and content were copied into this game under CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/). This copy is owned and editable by this game.\n");
     writeText(

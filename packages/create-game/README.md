@@ -18,3 +18,8 @@ complete selected release before opening a port.
 It writes nothing unless `--output <new-directory>` is supplied, never mutates
 the source bundle, runs every migration twice to reject nondeterministic output,
 and validates the complete result against the installed engine before writing.
+
+Each generated game also owns a `render.yaml` and `DEPLOYMENT.md`. The Blueprint
+declares one manually scaled Node web service, the engine build/start commands,
+`/health`, and a 300-second graceful shutdown window. It contains no shared
+engine deployment and no committed provider or administrator secrets.
