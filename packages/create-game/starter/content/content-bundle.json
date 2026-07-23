@@ -58,13 +58,18 @@
     },
     {
       "path": "constants.json",
-      "sha256": "3697f8564f6b3d78d948613f23e7a15231b75013002bc4acc923fa4c5a4ad828",
-      "bytes": 198
+      "sha256": "d9caea5b7d2495baf014d2f67e5d1c2541c159a8b53e6b7e8ff6fc79ebf6f14d",
+      "bytes": 449
     },
     {
       "path": "flow.json",
       "sha256": "fa8d18f055dd2f4e8d2e0b20dde032d8e05813d49526a70663482fd50a4dd8a4",
       "bytes": 42838
+    },
+    {
+      "path": "game-data/runtime.json",
+      "sha256": "232a381a9d3fbd0e7b82935d029ed9cf66e9a802f3c4181b072acbec74f7f887",
+      "bytes": 905
     },
     {
       "path": "layouts/controller.json",
@@ -87,5 +92,5 @@
       "bytes": 2469
     }
   ],
-  "rootHash": "f64673eb65277aaa3caad553efbf34891954aaf164d0057755d68cc54bddaaed"
+  "rootHash": "d8dace66131ea30a47367622a0a79d64e666401c389d5bc53938153ae4096e39"
 }

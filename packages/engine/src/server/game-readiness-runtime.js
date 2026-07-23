@@ -5,6 +5,7 @@ const {
   semanticRoleTargetKey,
   validateSemanticRoleDocument
 } = require("../shared/semantic-role-schema");
+const { createBundleGameData } = require("./content-game-data-runtime");
 
 class GameReadinessError extends Error {
   constructor(message, { code = "GAME_NOT_READY", details = {} } = {}) {
@@ -86,9 +87,17 @@ function createGameReadinessRuntime(options = {}) {
       if (snapshot.manifest.engineContentSchemaVersion !== contentSchemaVersion) readinessFailure("ACTIVE_CONTENT_SCHEMA_MISMATCH", "Loaded content targets another engine content schema", { expected: contentSchemaVersion, actual: snapshot.manifest.engineContentSchemaVersion });
       const semanticRoles = semanticRolesFrom(snapshot);
       assertExpectedSemanticRoles(game.semanticRoles, semanticRoles);
+      let gameData;
+      try {
+        gameData = createBundleGameData(snapshot);
+      } catch (error) {
+        readinessFailure("BUNDLE_GAME_DATA_INVALID", "Active content cannot materialize complete game runtime data", {
+          cause: error.message
+        });
+      }
       for (const registration of game.registrations.validators || []) {
         if (typeof registration.value !== "function") readinessFailure("PLUGIN_VALIDATOR_INVALID", "Game validator registration is not callable", { id: registration.id });
-        const validation = await registration.value({ game, release, semanticRoles, snapshot });
+        const validation = await registration.value({ game, gameData, release, semanticRoles, snapshot });
         if (validation?.ok === false) readinessFailure("PLUGIN_VALIDATION_FAILED", "Game validator rejected the active release", { id: registration.id, diagnostics: validation.diagnostics || [] });
       }
       const readyRelease = Object.freeze({
@@ -100,7 +109,7 @@ function createGameReadinessRuntime(options = {}) {
         releaseRevision: release.releaseRevision
       });
       state = Object.freeze({ status: "ready", diagnostic: null, release: readyRelease });
-      return Object.freeze({ game, release: readyRelease, semanticRoles, snapshot });
+      return Object.freeze({ game, gameData, release: readyRelease, semanticRoles, snapshot });
     } catch (error) {
       const diagnostic = Object.freeze({
         code: String(error.code || "GAME_READINESS_FAILED"),

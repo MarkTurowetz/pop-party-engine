@@ -60,7 +60,16 @@ function exportLegacyContentBundle(options) {
   const gameData = gameDefinition.gameData;
   const records = [];
   writeBundleFile(outputRoot, "flow.json", readJson(firstExisting(root, ["game-flow.json", "game-flow.default.json"])), records);
-  writeBundleFile(outputRoot, "constants.json", readJson(firstExisting(root, ["game-constants.json", "game-constants.default.json"])), records);
+  const savedConstants = readJson(firstExisting(root, ["game-constants.json", "game-constants.default.json"]));
+  writeBundleFile(outputRoot, "constants.json", {
+    ...gameData.defaultGameConstants,
+    ...savedConstants,
+    customConstants: Array.isArray(savedConstants.customConstants)
+      ? savedConstants.customConstants
+      : Array.isArray(gameData.defaultGameConstants.customConstants)
+        ? gameData.defaultGameConstants.customConstants
+        : []
+  }, records);
   writeBundleFile(
     outputRoot,
     "layouts/stage.json",
@@ -73,6 +82,12 @@ function exportLegacyContentBundle(options) {
   writeBundleFile(outputRoot, "layouts/controller.json", readJson(firstExisting(root, ["controller-layouts.json", "controller-layouts.default.json"])), records);
   writeBundleFile(outputRoot, "audio/host-audios.json", readJson(firstExisting(root, ["host-audios.json", "host-audios.default.json"])), records);
   writeBundleFile(outputRoot, "prompts/prompts.json", { prompts: gameData.multipleChoicePrompts }, records);
+  writeBundleFile(outputRoot, "game-data/runtime.json", {
+    schemaVersion: 1,
+    artGroups: gameData.artGroups,
+    avatarShapes: gameData.avatarShapes,
+    availableFlowTransitions: gameData.availableFlowTransitions
+  }, records);
   writeBundleFile(outputRoot, "semantic-roles.json", { schemaVersion: 1, roles: gameDefinition.semanticRoles }, records);
 
   const artManifest = withDefaultArtCompositions(

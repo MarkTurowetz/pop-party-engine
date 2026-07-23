@@ -87,6 +87,10 @@
       "types": "./src/server/content-snapshot-runtime.d.ts",
       "default": "./src/server/content-snapshot-runtime.js"
     },
+    "./content/game-data": {
+      "types": "./src/server/content-game-data-runtime.d.ts",
+      "default": "./src/server/content-game-data-runtime.js"
+    },
     "./content/store": {
       "types": "./src/server/revisioned-content-store-runtime.d.ts",
       "default": "./src/server/revisioned-content-store-runtime.js"

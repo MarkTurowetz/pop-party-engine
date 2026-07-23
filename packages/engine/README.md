@@ -18,6 +18,12 @@ then writes `dist/pop-party-build.json`. Invalid content does not produce a
 build manifest, and the manifest pins the immutable content revision that was
 actually validated.
 
+Bundle-mode games do not supply a parallel `game-data.js`. Readiness
+materializes flow, constants, layouts, audio, prompts, art, avatar choices, and
+transition metadata from the same pinned snapshot after hash and semantic-role
+validation. Missing runtime fields fail with `BUNDLE_GAME_DATA_INVALID`; the
+engine never fills them from reference or starter defaults.
+
 Public runtime boundaries include `@pop-party/engine/server`,
 `@pop-party/engine/tooling`, and `@pop-party/engine/testing`. Public art authoring
 contracts are exposed through `@pop-party/engine/art/lifecycle`,

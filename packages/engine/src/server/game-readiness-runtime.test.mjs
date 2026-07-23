@@ -28,12 +28,32 @@ function semanticFixture() {
 
 function fixture(overrides = {}) {
   const semantic = semanticFixture();
+  const documents = {
+    "semantic-roles.json": { schemaVersion: 1, roles: semantic.roles },
+    "art/manifest.json": { ...semantic.artManifest, assets: [] },
+    "flow.json": { states: [{ id: "lobby", actions: [] }, { id: "intro", actions: [] }], routeNodes: [] },
+    "constants.json": {
+      playerColors: ["#ffffff"],
+      craftingTimerDuration: 30,
+      startGameCountdownDuration: 1,
+      pointsForCorrectAnswer: 200,
+      gameTitle: "Fixture",
+      numberOfRounds: 3,
+      randomChanceTest: 0.5,
+      speechToTextSendInputBuffer: 1,
+      overrideFirstGameOfSession: false,
+      customConstants: []
+    },
+    "layouts/stage.json": { canvas: {}, global: {}, states: [{ id: "lobby", elements: [] }] },
+    "layouts/controller.json": { canvas: {}, global: {}, states: [{ id: "join", elements: [] }] },
+    "audio/host-audios.json": { hostAudios: [] },
+    "prompts/prompts.json": { prompts: [] },
+    "game-data/runtime.json": { schemaVersion: 1, avatarShapes: ["triangle"], artGroups: [], availableFlowTransitions: [] }
+  };
   const snapshot = {
     revision: "content-1",
     manifest: { gameId: "fixture-game", engineContentSchemaVersion: "1.0.0", semanticRolesPath: "semantic-roles.json" },
-    readJson: vi.fn((logicalPath) => logicalPath === "art/manifest.json"
-      ? semantic.artManifest
-      : { schemaVersion: 1, roles: semantic.roles })
+    readJson: vi.fn((logicalPath) => structuredClone(documents[logicalPath]))
   };
   const release = {
     gameId: "fixture-game",
@@ -70,6 +90,7 @@ describe("game readiness runtime", () => {
     const result = await runtime.check();
     expect(result.release).toMatchObject({ gameId: "fixture-game", contentRevision: "content-1" });
     expect(result.semanticRoles).toEqual(semanticFixture().roles);
+    expect(result.gameData.defaultGameFlow.states[0].id).toBe("lobby");
     expect(validator).toHaveBeenCalledOnce();
     expect(runtime.state.status).toBe("ready");
   });
@@ -84,15 +105,26 @@ describe("game readiness runtime", () => {
   it("fails closed on missing semantic roles and plugin validation errors", async () => {
     const { game, snapshot } = fixture({ validators: [{ id: "fixture.validate", value: () => ({ ok: false, diagnostics: ["bad"] }) }] });
     const semantic = semanticFixture();
-    snapshot.readJson = (logicalPath) => logicalPath === "art/manifest.json"
-      ? semantic.artManifest
-      : { schemaVersion: 1, roles: {} };
+    const originalReadJson = snapshot.readJson;
+    snapshot.readJson = (logicalPath) => logicalPath === "semantic-roles.json"
+      ? { schemaVersion: 1, roles: {} }
+      : originalReadJson(logicalPath);
     const rolesRuntime = createGameReadinessRuntime({ gameDefinition: game, engineVersion: "1.0.0" });
     await expect(rolesRuntime.check()).rejects.toMatchObject({ code: "SEMANTIC_ROLE_REQUIRED_MISSING" });
-    snapshot.readJson = (logicalPath) => logicalPath === "art/manifest.json"
-      ? semantic.artManifest
-      : { schemaVersion: 1, roles: semantic.roles };
+    snapshot.readJson = originalReadJson;
     const validatorRuntime = createGameReadinessRuntime({ gameDefinition: game, engineVersion: "1.0.0" });
     await expect(validatorRuntime.check()).rejects.toMatchObject({ code: "PLUGIN_VALIDATION_FAILED" });
+  });
+
+  it("fails closed when pinned bundle runtime data is incomplete", async () => {
+    const { game, snapshot } = fixture();
+    const originalReadJson = snapshot.readJson;
+    snapshot.readJson = (logicalPath) => logicalPath === "constants.json"
+      ? { playerColors: ["#ffffff"], customConstants: [] }
+      : originalReadJson(logicalPath);
+    const runtime = createGameReadinessRuntime({ gameDefinition: game, engineVersion: "1.0.0" });
+
+    await expect(runtime.check()).rejects.toMatchObject({ code: "BUNDLE_GAME_DATA_INVALID" });
+    expect(runtime.state).toMatchObject({ status: "failed", diagnostic: { code: "BUNDLE_GAME_DATA_INVALID" } });
   });
 });

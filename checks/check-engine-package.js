@@ -197,13 +197,21 @@ try {
   const packOutput = JSON.parse(execFileSync("npm", ["pack", packageRoot, "--json", "--pack-destination", fixtureRoot], { cwd: root, encoding: "utf8", env: commandEnvironment }));
   const packed = packOutput[0];
   if (!packed?.filename) throw new Error("npm pack did not return a tarball");
-  const forbidden = packed.files.filter((file) => file.path.startsWith("dist/") || (file.path.endsWith(".ts") && !file.path.endsWith(".d.ts")) || /(?:^|\/)(?:game-(?:flow|data|constants)|art|controller-layouts|stage-layouts|host-audios|prompts)(?:\/|\.|$)/i.test(file.path));
+  const engineRuntimeDataModules = new Set([
+    "src/server/content-game-data-runtime.js",
+    "src/server/content-game-data-runtime.d.ts"
+  ]);
+  const forbidden = packed.files.filter((file) => file.path.startsWith("dist/")
+    || (file.path.endsWith(".ts") && !file.path.endsWith(".d.ts"))
+    || (!engineRuntimeDataModules.has(file.path)
+      && /(?:^|\/)(?:game-(?:flow|data|constants)|art|controller-layouts|stage-layouts|host-audios|prompts)(?:\/|\.|$)/i.test(file.path)));
   if (forbidden.length) throw new Error(`Game-owned files leaked into engine tarball: ${forbidden.map((file) => file.path).join(", ")}`);
   const packageOwnedModules = compatibilityExports.map(([legacyModule]) => `src/server/${legacyModule}.js`);
   packageOwnedModules.push(...serverKernelCompatibility.map(([legacyModule]) => `src/server/${legacyModule}.js`));
   packageOwnedModules.push("src/server/layout-normalization-runtime.js");
   packageOwnedModules.push("src/server/stage-layout-normalization-runtime.js");
   packageOwnedModules.push("src/server/controller-layout-normalization-runtime.js");
+  packageOwnedModules.push("src/server/content-game-data-runtime.js");
   packageOwnedModules.push("src/shared/content-bundle-schema.js");
   const missingPackageOwnedModules = packageOwnedModules.filter((expected) => !packed.files.some((file) => file.path === expected));
   if (missingPackageOwnedModules.length) throw new Error(`Canonical package modules are missing: ${missingPackageOwnedModules.join(", ")}`);
@@ -217,6 +225,10 @@ try {
   if (!cliHelp.includes("validate [content-directory]")) throw new Error("Packed engine CLI help contract failed");
   const fixtureRequire = createRequire(path.join(fixtureRoot, "fixture.js"));
   const engine = fixtureRequire("@pop-party/engine");
+  const bundleGameDataApi = fixtureRequire("@pop-party/engine/content/game-data");
+  if (engine.createBundleGameData !== bundleGameDataApi.createBundleGameData) {
+    throw new Error("Packed engine root and content game-data exports diverged");
+  }
   const gameApi = fixtureRequire("@pop-party/engine/game");
   const pluginApi = fixtureRequire("@pop-party/engine/plugin");
   delete globalThis.createControllerSubmitApi;
@@ -266,20 +278,17 @@ try {
     "@pop-party/engine/art/components"
   ]) fixtureRequire(specifier);
   const plugin = engine.defineGamePlugin({ namespace: "fixture", register(registry) { registry.actions("fixture.action", {}); } });
-  const gameData = Object.fromEntries(engine.REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));
   const game = engine.defineGame({
     gameId: "packed-fixture",
     displayName: "Packed Fixture",
     version: "1.0.0",
     engineCompatibility: "1.0.0",
     content: { mode: "bundle", schemaVersion: 1 },
-    gameData,
     plugin
   });
   if (game.registrations.actions[0]?.id !== "fixture.action") throw new Error("Packed engine public contract failed");
   fixtureRequire("@pop-party/engine/content/github");
   fs.writeFileSync(path.join(fixtureRoot, "consumer.ts"), [
-    'import { REQUIRED_GAME_DATA_KEYS } from "@pop-party/engine";',
     'import { defineGame } from "@pop-party/engine/game";',
     'import { defineGamePlugin } from "@pop-party/engine/plugin";',
     'import { controllerLayoutStateIds, controllerViewVisitKey, createActionCompletionBarrier, createApiClient, createControllerHeartbeatRuntime, createControllerLocalButtonRuntime, createControllerModuleCache, createControllerRecordingLifecycle, createControllerSessionRuntime, createControllerStateRuntime, createControllerSubmitApi, createControllerViewState, createControllerVoiceInput, distributedContainerItemPositions, effectiveVisibilityTimeline, resolveControllerSubmissionConfirmation } from "@pop-party/engine/client";',
@@ -295,6 +304,7 @@ try {
     'import { normalizeComponentKind } from "@pop-party/engine/art/components";',
     'import { normalizeBundlePath } from "@pop-party/engine/content/schema";',
     'import { createContentSnapshot } from "@pop-party/engine/content/snapshot";',
+    'import { createBundleGameData } from "@pop-party/engine/content/game-data";',
     'import { createRevisionedContentStoreRuntime } from "@pop-party/engine/content/store";',
     'import { createLocalContentBundleProvider } from "@pop-party/engine/content/local";',
     'import { createGithubContentBundleStore } from "@pop-party/engine/content/github";',
@@ -308,12 +318,11 @@ try {
     'import { createRuntimeCapabilityRuntime } from "@pop-party/engine/security/runtime-capabilities";',
     'import { assertSafeSvg } from "@pop-party/engine/security/svg";',
     'const plugin = defineGamePlugin({ namespace: "typed", register(registry) { registry.actions("typed.action", {}); } });',
-    'const gameData = Object.fromEntries(REQUIRED_GAME_DATA_KEYS.map((key) => [key, {}]));',
-    'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, gameData, plugin });',
+    'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, plugin });',
     'const timeline: TimelineDocument | null = normalizeTimeline({ fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] });',
     'const organization = normalizeArtOrganization();',
     'const manifest = { compositions: {} };',
-    'void [controllerLayoutStateIds, controllerViewVisitKey({}, {}, "lobby"), createActionCompletionBarrier(), createApiClient, createControllerHeartbeatRuntime({ applyLayoutForPhase() {}, closeAvatarPicker() {}, elements: { meta: document.body }, getJoinButton: () => document.createElement("button"), getControllerState: () => null, hideViews() {}, renderState() {}, sendHeartbeat: async () => ({ lobby: {} }), setControllerState() {}, showView() {} }), createControllerModuleCache(), createControllerRecordingLifecycle({ recognitionConstructor: () => null, submitText: async () => null }), createControllerSessionRuntime({ elements: { joinState: document.body }, getControllerState: () => null, heartbeatRuntime: { start() {} }, renderState() {}, setControllerState() {}, setLocalValue() {}, setSessionValue() {} }), createControllerSubmitApi({ getControllerState: () => null, postJson: async () => null }), createControllerViewState(), createControllerVoiceInput({ getButton: () => null, getReleaseBufferSeconds: () => 1, renderGlobalMessage() {}, status: document.body, submitText: async () => null }), distributedContainerItemPositions({}, [], "horizontal"), effectiveVisibilityTimeline(null), gameTextHtml("text"), normalizeGameTextFontFamily(""), PartyGameQrCode.matrixForText("text"), resolveControllerSubmissionConfirmation({}, {}), createControllerLayoutNormalizationRuntime, createGameReadinessRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime, createStageTestConfigHandlerRuntime, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, exportLegacyContentBundle, organization, normalizeArtAssetReplacementsDraft(), parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys(organization, []), manifestRevision(manifest), revisionMatches({}, manifest), compositionSaveConflict(), blockingArtArchitectureIssues([], []), runCli, validateContentBundle, lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeComponentKind, normalizeBundlePath, createContentSnapshot, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
+    'void [controllerLayoutStateIds, controllerViewVisitKey({}, {}, "lobby"), createActionCompletionBarrier(), createApiClient, createControllerHeartbeatRuntime({ applyLayoutForPhase() {}, closeAvatarPicker() {}, elements: { meta: document.body }, getJoinButton: () => document.createElement("button"), getControllerState: () => null, hideViews() {}, renderState() {}, sendHeartbeat: async () => ({ lobby: {} }), setControllerState() {}, showView() {} }), createControllerModuleCache(), createControllerRecordingLifecycle({ recognitionConstructor: () => null, submitText: async () => null }), createControllerSessionRuntime({ elements: { joinState: document.body }, getControllerState: () => null, heartbeatRuntime: { start() {} }, renderState() {}, setControllerState() {}, setLocalValue() {}, setSessionValue() {} }), createControllerSubmitApi({ getControllerState: () => null, postJson: async () => null }), createControllerViewState(), createControllerVoiceInput({ getButton: () => null, getReleaseBufferSeconds: () => 1, renderGlobalMessage() {}, status: document.body, submitText: async () => null }), distributedContainerItemPositions({}, [], "horizontal"), effectiveVisibilityTimeline(null), gameTextHtml("text"), normalizeGameTextFontFamily(""), PartyGameQrCode.matrixForText("text"), resolveControllerSubmissionConfirmation({}, {}), createControllerLayoutNormalizationRuntime, createGameReadinessRuntime, createInputStateRuntime, createLayoutNormalizationRuntime, createStageLayoutNormalizationRuntime, createStageTestConfigHandlerRuntime, createArtComponentNormalizationRuntime, createArtCompositionCatalogRuntime, createArtFileRuntime, createArtManifestStoreRuntime, createLayoutSyncRuntime, exportLegacyContentBundle, organization, normalizeArtAssetReplacementsDraft(), parseArtAssetReplacement, removeDeletedCompositionOrganizationKeys(organization, []), manifestRevision(manifest), revisionMatches({}, manifest), compositionSaveConflict(), blockingArtArchitectureIssues([], []), runCli, validateContentBundle, lifecycleLabels, timeline, collectArtArchitectureIssues, normalizeComponentKind, normalizeBundlePath, createContentSnapshot, createBundleGameData, createRevisionedContentStoreRuntime, createLocalContentBundleProvider, createGithubContentBundleStore, createGithubAppCredentialRuntime, createGithubGitDataRuntime, createContentStoreEnvironmentRuntime, createContentAdminHandlersRuntime, createRoomContentPinRuntime, createAdminAuthRuntime, createAdminAuditRuntime, createRuntimeCapabilityRuntime, assertSafeSvg];'
   ].join("\n"));
   execFileSync(process.execPath, [path.join(root, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "--strict", "--target", "ES2022", "--module", "Node16", "--moduleResolution", "Node16", "consumer.ts"], { cwd: fixtureRoot, stdio: "pipe" });
   console.log(`Packed engine fixture passed: ${packed.filename} (${packed.files.length} files).`);

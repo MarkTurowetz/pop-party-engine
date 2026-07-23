@@ -19,6 +19,7 @@
         "audio/host-audios.json",
         "art/manifest.json",
         "prompts/prompts.json",
+        "game-data/runtime.json",
         "semantic-roles.json"
     ]);
     const SHA256_PATTERN = /^[a-f0-9]{64}$/;

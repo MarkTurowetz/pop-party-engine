@@ -29,7 +29,6 @@ function validDefinition(overrides = {}) {
     version: "0.1.0",
     engineCompatibility: "1.0.0",
     content: { mode: "bundle", schemaVersion: 1 },
-    gameData: requiredGameData,
     plugin: defineGamePlugin({ namespace: "example", register() {} }),
     ...overrides
   };
@@ -50,8 +49,16 @@ describe("defineGame", () => {
     expect(Object.isFrozen(game)).toBe(true);
   });
 
-  it("rejects incomplete game-owned data instead of inventing defaults", () => {
-    expect(() => defineGame(validDefinition({ gameData: {} }))).toThrow(/missing gameData/);
+  it("requires legacy data only at the legacy boundary and rejects bundle-side duplicates", () => {
+    expect(() => defineGame(validDefinition({ gameData: requiredGameData }))).toThrow(/must load runtime data from their pinned content snapshot/);
+    expect(() => defineGame(validDefinition({
+      content: { mode: "legacy-monolith", schemaVersion: 0 },
+      gameData: {}
+    }))).toThrow(/missing gameData/);
+    expect(defineGame(validDefinition({
+      content: { mode: "legacy-monolith", schemaVersion: 0 },
+      gameData: requiredGameData
+    })).gameData).toBe(requiredGameData);
   });
 
   it("rejects plugin ids outside the plugin namespace", () => {

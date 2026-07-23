@@ -5,23 +5,6 @@ const path = require("path");
 
 const EXACT_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 const GAME_ID_PATTERN = /^[a-z][a-z0-9-]{2,63}$/;
-const REQUIRED_GAME_DATA_KEYS = Object.freeze([
-  "acceptedArtTypes",
-  "artAssets",
-  "artGroups",
-  "availableFlowActionTypes",
-  "availableFlowTransitions",
-  "avatarShapes",
-  "defaultArtCompositions",
-  "defaultControllerLayouts",
-  "defaultGameConstants",
-  "defaultGameFlow",
-  "defaultHostAudios",
-  "defaultPlayerColors",
-  "defaultStageLayouts",
-  "multipleChoicePrompts"
-]);
-
 function gameIdFromName(value) {
   const normalized = String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const gameId = normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64).replace(/-+$/g, "");
@@ -64,13 +47,8 @@ function writeText(targetRoot, relativePath, text) {
   fs.writeFileSync(absolutePath, text, { encoding: "utf8", flag: "wx" });
 }
 
-function generatedGameDataSource() {
-  const values = Object.fromEntries(REQUIRED_GAME_DATA_KEYS.map((key) => [key, key.startsWith("default") ? {} : []]));
-  return `"use strict";\n\nmodule.exports = Object.freeze(${JSON.stringify(values, null, 2)});\n`;
-}
-
 function generatedConfigSource({ displayName, engineVersion, gameId }) {
-  return `"use strict";\n\nconst path = require("node:path");\nconst { createLocalContentBundleProvider } = require("@pop-party/engine");\nconst { defineGame } = require("@pop-party/engine/game");\nconst gameData = require("./game-data");\nconst semanticRoles = require("./content/semantic-roles.json").roles;\nconst plugin = require("./src/plugin");\n\nmodule.exports = defineGame({\n  gameId: ${JSON.stringify(gameId)},\n  displayName: ${JSON.stringify(displayName)},\n  version: "0.1.0",\n  engineCompatibility: ${JSON.stringify(engineVersion)},\n  content: {\n    mode: "bundle",\n    schemaVersion: 1,\n    store: createLocalContentBundleProvider({\n      root: path.join(__dirname, "content"),\n      gameBuild: "0.1.0",\n      engineVersion: ${JSON.stringify(engineVersion)},\n      pluginVersion: "0.1.0"\n    })\n  },\n  gameData,\n  plugin,\n  semanticRoles\n});\n`;
+  return `"use strict";\n\nconst path = require("node:path");\nconst { createLocalContentBundleProvider } = require("@pop-party/engine");\nconst { defineGame } = require("@pop-party/engine/game");\nconst semanticRoles = require("./content/semantic-roles.json").roles;\nconst plugin = require("./src/plugin");\n\nconst contentStore = createLocalContentBundleProvider({\n  root: path.join(__dirname, "content"),\n  gameBuild: "0.1.0",\n  engineVersion: ${JSON.stringify(engineVersion)},\n  pluginVersion: "0.1.0"\n});\n\nmodule.exports = defineGame({\n  gameId: ${JSON.stringify(gameId)},\n  displayName: ${JSON.stringify(displayName)},\n  version: "0.1.0",\n  engineCompatibility: ${JSON.stringify(engineVersion)},\n  content: {\n    mode: "bundle",\n    schemaVersion: 1,\n    store: contentStore\n  },\n  plugin,\n  semanticRoles\n});\n`;
 }
 
 function generatedContributionSource(kind) {
@@ -82,7 +60,7 @@ function generatedPluginSource(pluginNamespace) {
 }
 
 function generatedConfigTestSource({ engineVersion, gameId, pluginNamespace }) {
-  return `"use strict";\n\nconst assert = require("node:assert/strict");\nconst test = require("node:test");\nconst { createGameReadinessRuntime } = require("@pop-party/engine/server/readiness");\nconst game = require("../game.config");\n\ntest("game configuration owns an exact engine and plugin boundary", async () => {\n  assert.equal(game.gameId, ${JSON.stringify(gameId)});\n  assert.equal(game.engineCompatibility, ${JSON.stringify(engineVersion)});\n  assert.equal(game.plugin.namespace, ${JSON.stringify(pluginNamespace)});\n  assert.deepEqual(game.registrations, {\n    actions: [],\n    stageRenderers: [],\n    controllerRenderers: [],\n    stateSchemas: [],\n    validators: [],\n    migrations: [],\n    toolPanels: [],\n    diagnostics: []\n  });\n  const readiness = createGameReadinessRuntime({ gameDefinition: game, engineVersion: ${JSON.stringify(engineVersion)} });\n  const active = await readiness.check();\n  assert.equal(active.release.gameId, ${JSON.stringify(gameId)});\n  assert.equal(active.release.engineVersion, ${JSON.stringify(engineVersion)});\n  assert.equal(readiness.state.status, "ready");\n});\n`;
+  return `"use strict";\n\nconst assert = require("node:assert/strict");\nconst test = require("node:test");\nconst { createGameReadinessRuntime } = require("@pop-party/engine/server/readiness");\nconst game = require("../game.config");\n\ntest("game configuration owns an exact engine and plugin boundary", async () => {\n  assert.equal(game.gameId, ${JSON.stringify(gameId)});\n  assert.equal(game.engineCompatibility, ${JSON.stringify(engineVersion)});\n  assert.equal(game.plugin.namespace, ${JSON.stringify(pluginNamespace)});\n  assert.equal(game.gameData, null);\n  assert.deepEqual(game.registrations, {\n    actions: [],\n    stageRenderers: [],\n    controllerRenderers: [],\n    stateSchemas: [],\n    validators: [],\n    migrations: [],\n    toolPanels: [],\n    diagnostics: []\n  });\n  const readiness = createGameReadinessRuntime({ gameDefinition: game, engineVersion: ${JSON.stringify(engineVersion)} });\n  const active = await readiness.check();\n  assert.equal(active.release.gameId, ${JSON.stringify(gameId)});\n  assert.equal(active.release.engineVersion, ${JSON.stringify(engineVersion)});\n  assert.ok(active.gameData.defaultGameFlow.states.length > 0);\n  assert.ok(active.gameData.defaultArtCompositions.length > 0);\n  assert.equal(readiness.state.status, "ready");\n});\n`;
 }
 
 function rewriteBundleGameId(contentRoot, gameId) {
@@ -123,7 +101,6 @@ function generateGame(options = {}) {
       dependencies: { "@pop-party/engine": engineVersion }
     };
     writeText(stagingRoot, "package.json", `${JSON.stringify(manifest, null, 2)}\n`);
-    writeText(stagingRoot, "game-data.js", generatedGameDataSource());
     writeText(stagingRoot, "game.config.js", generatedConfigSource({ displayName, engineVersion, gameId }));
     writeText(stagingRoot, "src/actions/index.js", generatedContributionSource("server and flow action"));
     writeText(stagingRoot, "src/stage/index.js", generatedContributionSource("stage renderer"));

@@ -14,16 +14,23 @@ export interface GamePlugin {
   readonly register: (registry: GamePluginRegistryApi) => void;
 }
 
-export interface GameDefinitionInput<TGameData extends Record<string, unknown>> {
+export interface GameDefinitionInput<TGameData extends Record<string, unknown> = Record<string, unknown>> {
   gameId: string;
   displayName: string;
   version: string;
   engineCompatibility: string;
   content: { mode: "bundle" | "legacy-monolith"; schemaVersion: number; store?: ContentStore | null };
-  gameData: TGameData;
+  gameData?: TGameData;
   plugin: GamePlugin;
   semanticRoles?: Record<string, import("./src/shared/semantic-role-schema").SemanticRoleTarget>;
 }
+
+export type GameDefinition<TGameData extends Record<string, unknown> = Record<string, unknown>> = Readonly<
+  Omit<GameDefinitionInput<TGameData>, "gameData"> & {
+    gameData: TGameData | null;
+    registrations: Readonly<Record<string, readonly unknown[]>>;
+  }
+>;
 
 export interface ContentSnapshot {
   readonly revision: string;
@@ -40,7 +47,7 @@ export interface ContentStore {
 }
 
 export function defineGamePlugin(definition: GamePlugin): GamePlugin;
-export function defineGame<TGameData extends Record<string, unknown>>(definition: GameDefinitionInput<TGameData>): Readonly<GameDefinitionInput<TGameData> & { registrations: Readonly<Record<string, readonly unknown[]>> }>;
+export function defineGame<TGameData extends Record<string, unknown>>(definition: GameDefinitionInput<TGameData>): GameDefinition<TGameData>;
 export const GAME_ID_PATTERN: RegExp;
 export const REQUIRED_GAME_DATA_KEYS: readonly string[];
 export const REGISTRATION_KINDS: readonly string[];
@@ -51,6 +58,7 @@ export const semanticRoles: typeof import("./src/shared/semantic-role-schema");
 export const contentSnapshots: Readonly<Record<string, unknown>>;
 export const contentStores: Readonly<Record<string, unknown>>;
 export function createLocalContentBundleProvider(options: Record<string, unknown>): ContentStore;
+export function createBundleGameData(snapshot: ContentSnapshot): import("./src/server/content-game-data-runtime").BundleGameData;
 export function createGithubContentBundleStore(options: Record<string, unknown>): ContentStore & Record<string, unknown>;
 export function createGithubGitDataRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGithubAppCredentialRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

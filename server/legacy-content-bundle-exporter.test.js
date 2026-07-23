@@ -15,8 +15,15 @@ function fixture() {
   const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-export-"));
   fs.rmSync(outputRoot, { recursive: true, force: true });
   roots.push(root, outputRoot);
-  for (const fileName of ["game-flow.json", "game-constants.json", "stage-layouts.json", "controller-layouts.json", "host-audios.json"]) {
-    fs.writeFileSync(path.join(root, fileName), `${JSON.stringify({ source: fileName })}\n`);
+  const sources = {
+    "game-flow.json": { states: [{ id: "lobby", actions: [] }, { id: "intro", actions: [] }], routeNodes: [] },
+    "game-constants.json": { playerColors: ["#ffffff"] },
+    "stage-layouts.json": { canvas: {}, global: { elements: [] }, states: [{ id: "lobby", elements: [] }] },
+    "controller-layouts.json": { canvas: {}, global: { elements: [] }, states: [{ id: "join", elements: [] }] },
+    "host-audios.json": { hostAudios: [] }
+  };
+  for (const [fileName, value] of Object.entries(sources)) {
+    fs.writeFileSync(path.join(root, fileName), `${JSON.stringify(value)}\n`);
   }
   fs.mkdirSync(path.join(root, "art", "default"), { recursive: true });
   fs.writeFileSync(path.join(root, "art", "art-manifest.json"), `${JSON.stringify({ compositions: {} })}\n`);
@@ -25,8 +32,25 @@ function fixture() {
     gameId: "example-game",
     semanticRoles: { "engine.background": "example.background" },
     gameData: {
+      defaultArtCompositions: [],
+      defaultGameConstants: {
+        playerColors: ["#000000"],
+        craftingTimerDuration: 30,
+        startGameCountdownDuration: 1,
+        pointsForCorrectAnswer: 200,
+        gameTitle: "Example",
+        numberOfRounds: 3,
+        randomChanceTest: 0.5,
+        speechToTextSendInputBuffer: 1,
+        overrideFirstGameOfSession: false,
+        customConstants: []
+      },
+      defaultStageLayouts: { global: { elements: [] } },
       multipleChoicePrompts: [{ id: "one", prompt: "One?", options: ["Yes"], correctAnswerIndex: 0 }],
-      artAssets: [{ id: "asset", name: "Asset", category: "Test", use: "Test", defaultFile: "asset.svg" }]
+      artAssets: [{ id: "asset", name: "Asset", category: "Test", use: "Test", defaultFile: "asset.svg" }],
+      artGroups: [],
+      avatarShapes: ["triangle"],
+      availableFlowTransitions: []
     }
   };
   return { root, outputRoot, gameDefinition };
@@ -44,6 +68,8 @@ describe("legacy content bundle exporter", () => {
     const art = snapshot.readJson("art/manifest.json");
 
     expect(snapshot.readJson("prompts/prompts.json").prompts).toHaveLength(1);
+    expect(snapshot.readJson("constants.json").gameTitle).toBe("Example");
+    expect(snapshot.readJson("game-data/runtime.json").avatarShapes).toEqual(["triangle"]);
     expect(snapshot.readJson("semantic-roles.json").roles).toEqual({ "engine.background": "example.background" });
     expect(art.assets[0].blobPath).toMatch(/^blobs\/[a-f0-9]{64}\.svg$/);
     expect(snapshot.readBytes(art.assets[0].blobPath).toString()).toBe("<svg></svg>\n");

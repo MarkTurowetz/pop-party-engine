@@ -90,6 +90,7 @@ export function createStageActionHandlersRuntime(options: Record<string, unknown
 export function createFlowActionPublicRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGameFlowNormalizationRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export * from "./game-readiness-runtime";
+export * from "./content-game-data-runtime";
 export function createRoomFlowHelpersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGameConstantsRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLayoutNormalizationRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
