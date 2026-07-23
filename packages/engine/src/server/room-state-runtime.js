@@ -9,6 +9,7 @@ function createDefaultRoom(stageCode) {
     playerCapabilityHashes: new Map(),
     releasePin: null,
     contentSnapshot: null,
+    gameData: null,
     players: new Map(),
     vipPlayerId: "",
     startToken: "",

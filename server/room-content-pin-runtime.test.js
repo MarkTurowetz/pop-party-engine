@@ -14,6 +14,7 @@ function harness(overrides = {}) {
     releaseRevision: "b".repeat(64)
   };
   const snapshot = { revision: release.contentRevision, manifest: { gameId: release.gameId } };
+  const gameData = Object.freeze({ defaultGameFlow: { states: [{ id: "lobby" }] } });
   const contentStore = {
     getActiveRelease: vi.fn(async () => release),
     loadPublishedRevision: vi.fn(async () => snapshot),
@@ -22,19 +23,26 @@ function harness(overrides = {}) {
   return {
     contentStore,
     release,
-    runtime: createRoomContentPinRuntime({ contentStore, gameId: "example-game", validateRelease: overrides.validateRelease }),
+    gameData,
+    runtime: createRoomContentPinRuntime({
+      contentStore,
+      gameId: "example-game",
+      materializeGameData: overrides.materializeGameData || (() => gameData),
+      validateRelease: overrides.validateRelease
+    }),
     snapshot
   };
 }
 
 describe("room content revision pinning", () => {
   it("pins one complete active release before room use", async () => {
-    const { runtime, release, snapshot } = harness();
+    const { runtime, release, snapshot, gameData } = harness();
     const room = {};
     await expect(runtime.pinNewRoom(room)).resolves.toEqual(release);
 
     expect(room.releasePin).toEqual(release);
     expect(room.contentSnapshot).toBe(snapshot);
+    expect(room.gameData).toBe(gameData);
     expect(() => { room.releasePin.contentRevision = "changed"; }).toThrow();
   });
 
@@ -56,11 +64,19 @@ describe("room content revision pinning", () => {
     });
   });
 
-  it("releases both the tuple and immutable snapshot when a room ends", async () => {
+  it("fails closed when the pinned snapshot cannot produce complete game data", async () => {
+    const invalid = harness({ materializeGameData: () => { throw new Error("missing flow"); } });
+    await expect(invalid.runtime.pinNewRoom({})).rejects.toMatchObject({
+      code: "ACTIVE_CONTENT_GAME_DATA_INVALID",
+      details: { cause: "missing flow" }
+    });
+  });
+
+  it("releases the tuple, immutable snapshot, and materialized game data when a room ends", async () => {
     const { runtime } = harness();
     const room = {};
     await runtime.pinNewRoom(room);
     runtime.releaseRoomPin(room);
-    expect(room).toMatchObject({ releasePin: null, contentSnapshot: null });
+    expect(room).toMatchObject({ releasePin: null, contentSnapshot: null, gameData: null });
   });
 });

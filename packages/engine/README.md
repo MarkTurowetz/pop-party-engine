@@ -24,6 +24,13 @@ transition metadata from the same pinned snapshot after hash and semantic-role
 validation. Missing runtime fields fail with `BUNDLE_GAME_DATA_INVALID`; the
 engine never fills them from reference or starter defaults.
 
+Room creation independently materializes that room's runtime data from its
+immutable content pin. The room's flow resolver prefers this pinned flow over
+process-global drafts or legacy files, and teardown drops the release tuple,
+snapshot, and materialized data together. A snapshot that cannot produce a
+complete room dataset fails room creation with
+`ACTIVE_CONTENT_GAME_DATA_INVALID`.
+
 Public runtime boundaries include `@pop-party/engine/server`,
 `@pop-party/engine/tooling`, and `@pop-party/engine/testing`. Public art authoring
 contracts are exposed through `@pop-party/engine/art/lifecycle`,

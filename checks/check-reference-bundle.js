@@ -7,6 +7,7 @@ const path = require("node:path");
 const { defineGame } = require("@pop-party/engine/game");
 const { createLocalContentBundleProvider } = require("@pop-party/engine/content/local");
 const { createGameReadinessRuntime } = require("@pop-party/engine/server/readiness");
+const { createRoomContentPinRuntime } = require("@pop-party/engine/rooms/content-pin");
 const legacyReferenceGame = require("../apps/reference/game.config");
 
 const root = path.resolve(__dirname, "..");
@@ -43,6 +44,12 @@ async function main() {
   assert.ok(active.gameData.defaultControllerLayouts.states.length > 0, "Reference controller layouts must materialize from its bundle");
   assert.deepEqual(active.gameData.avatarShapes, legacyReferenceGame.gameData.avatarShapes);
   assert.deepEqual(active.gameData.availableFlowTransitions, legacyReferenceGame.gameData.availableFlowTransitions);
+  const roomPins = createRoomContentPinRuntime({ contentStore, gameId: legacyReferenceGame.gameId });
+  const room = {};
+  await roomPins.pinNewRoom(room);
+  assert.equal(room.gameData.defaultGameFlow.states[0].id, active.gameData.defaultGameFlow.states[0].id);
+  roomPins.releaseRoomPin(room);
+  assert.deepEqual(room, { releasePin: null, contentSnapshot: null, gameData: null });
   console.log(`Reference bundle readiness passed: ${active.release.contentRevision} (${active.snapshot.paths.length} files).`);
 }
 

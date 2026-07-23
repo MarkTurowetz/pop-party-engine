@@ -1,5 +1,7 @@
 "use strict";
 
+const { createBundleGameData } = require("./content-game-data-runtime");
+
 class RoomContentPinError extends Error {
   constructor(message, { code = "ROOM_CONTENT_PIN_FAILED", details = {} } = {}) {
     super(message);
@@ -28,10 +30,13 @@ function createRoomContentPinRuntime(options = {}) {
   }
   const expectedGameId = String(options.gameId || "");
   const validateRelease = typeof options.validateRelease === "function" ? options.validateRelease : () => ({ ok: true, diagnostics: [] });
+  const materializeGameData = typeof options.materializeGameData === "function"
+    ? options.materializeGameData
+    : createBundleGameData;
 
   async function pinNewRoom(room) {
     if (!room || typeof room !== "object") throw new RoomContentPinError("Room is required", { code: "ROOM_REQUIRED" });
-    if (room.releasePin || room.contentSnapshot) {
+    if (room.releasePin || room.contentSnapshot || room.gameData) {
       throw new RoomContentPinError("Room already has a content revision", { code: "ROOM_ALREADY_PINNED" });
     }
     const release = await contentStore.getActiveRelease();
@@ -62,7 +67,22 @@ function createRoomContentPinRuntime(options = {}) {
     if (snapshot.manifest.gameId !== release.gameId) {
       throw new RoomContentPinError("Loaded content belongs to another game", { code: "ACTIVE_CONTENT_GAME_MISMATCH" });
     }
-    const validation = await validateRelease({ release, snapshot });
+    let gameData;
+    try {
+      gameData = materializeGameData(snapshot);
+    } catch (error) {
+      throw new RoomContentPinError("Active content cannot materialize complete room game data", {
+        code: "ACTIVE_CONTENT_GAME_DATA_INVALID",
+        details: { contentRevision: release.contentRevision, cause: String(error?.message || error) }
+      });
+    }
+    if (!gameData || typeof gameData !== "object") {
+      throw new RoomContentPinError("Active content did not produce room game data", {
+        code: "ACTIVE_CONTENT_GAME_DATA_INVALID",
+        details: { contentRevision: release.contentRevision }
+      });
+    }
+    const validation = await validateRelease({ gameData, release, snapshot });
     if (validation?.ok === false) {
       throw new RoomContentPinError("Active release is incompatible with this game build", {
         code: "ACTIVE_RELEASE_INCOMPATIBLE",
@@ -71,6 +91,7 @@ function createRoomContentPinRuntime(options = {}) {
     }
     room.releasePin = Object.freeze({ ...release });
     room.contentSnapshot = snapshot;
+    room.gameData = gameData;
     return publicReleaseTuple(release);
   }
 
@@ -78,6 +99,7 @@ function createRoomContentPinRuntime(options = {}) {
     if (!room || typeof room !== "object") return;
     room.releasePin = null;
     room.contentSnapshot = null;
+    room.gameData = null;
   }
 
   function roomRelease(room) {

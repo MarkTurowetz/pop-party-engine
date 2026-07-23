@@ -13,7 +13,10 @@ function createFlowNavigationRuntime({
   }
 
   function runtimeGameFlow(room) {
-    return room?.runtimeFlowOverride || localDraftStore.flow || readGameFlow();
+    return room?.runtimeFlowOverride
+      || room?.gameData?.defaultGameFlow
+      || localDraftStore.flow
+      || readGameFlow();
   }
 
   function subroutineActions(subroutine) {
