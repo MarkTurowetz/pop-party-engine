@@ -53,48 +53,14 @@ function completeWhenActionTargetsFinish(action: Action, runtime: Runtime, resul
   if (runtime.isCurrent()) runtime.complete(action);
 }
 
-const fallbackRunnerDefinitions: RunnerDefinition[] = [
-  { type: "doNothing", runner: "immediateComplete" },
-  { type: "startMoment", runner: "startMoment" },
-  { type: "endMoment", runner: "endMoment" },
-  { type: "labelNode", runner: "immediateComplete" },
-  { type: "codeNode", runner: "serverEffect" },
-  { type: "subroutine", runner: "immediateComplete" },
-  { type: "jumpNode", runner: "immediateComplete" },
-  { type: "playAudio", runner: "playAudio" },
-  { type: "playHostAudio", runner: "playAudio" },
-  { type: "getRandomMultipleChoiceContent", runner: "serverEffect" },
-  { type: "prepareVotingCards", runner: "serverEffect" },
-  { type: "setVotingCardsShown", runner: "votingCardAction" },
-  { type: "revealVotingResults", runner: "votingReveal" },
-  { type: "revealAuthors", runner: "votingReveal" },
-  { type: "revealVotes", runner: "votingReveal" },
-  { type: "revealWinningAnswer", runner: "votingReveal" },
-  { type: "setupGame", runner: "serverEffect" },
-  { type: "getPlayerAnswers", runner: "serverEffect" },
-  { type: "present", runner: "displayText" },
-  { type: "displayText", runner: "displayText" },
-  { type: "setPlayersShown", runner: "setPlayersShown" },
-  { type: "setPlayerAnswersShown", runner: "setPlayerAnswersShown" },
-  { type: "setGameObjectShown", runner: "setGameObjectShown" },
-  { type: "setArtAssetShown", runner: "setGameObjectShown" },
-  { type: "playGameObjectAnimation", runner: "playGameObjectAnimation" },
-  { type: "stopGameObjectAnimation", runner: "playGameObjectAnimation" },
-  { type: "revealPlayerAnswerCorrectness", runner: "revealPlayerAnswerCorrectness" },
-  { type: "showPoints", runner: "showPoints" },
-  { type: "givePendingPoints", runner: "serverEffect" },
-  { type: "setTimerShown", runner: "setTimerShown" },
-  { type: "setWipeShown", runner: "setWipeShown" },
-  { type: "setControllerLayout", runner: "serverEffect" },
-  { type: "startCraftingTimer", runner: "serverEffect" },
-  { type: "transition", runner: "transition" },
-  { type: "transitionState", runner: "immediateComplete" },
-  { type: "text", runner: "immediateComplete" }
-];
-
 function runnerDefinitions(): RunnerDefinition[] {
   const sharedDefinitions = (globalThis as typeof globalThis & Window).PartyGameFlowActionRegistry?.stageActionRunnerDefinitions;
-  return Array.isArray(sharedDefinitions) && sharedDefinitions.length ? sharedDefinitions : fallbackRunnerDefinitions;
+  if (!Array.isArray(sharedDefinitions) || sharedDefinitions.length === 0) {
+    throw new Error(
+      "Stage action registry is unavailable. Refusing to execute flow actions with a duplicated legacy runner list."
+    );
+  }
+  return sharedDefinitions;
 }
 
 function createBehaviorHandlers(context: runnerContext): Record<string, BehaviorHandler> {
@@ -266,7 +232,10 @@ function createRunner(context: runnerContext): { run: (action: Action, runtimeOp
       ?? Boolean(action?.trigger);
     if (isEventBarrier) return;
     const handler = handlers.get(action?.type as string);
-    if (handler) handler(action, runtime);
+    if (!handler) {
+      throw new Error(`No stage action runner is registered for authored action type "${String(action?.type || "(missing)")}".`);
+    }
+    handler(action, runtime);
   }
 
   return { run };

@@ -34,6 +34,11 @@ their stage/controller surface, and their terminal component kind against the
 published art manifest before the game can become ready. In particular, the
 player answer bubble and points origin are children of the mapped player widget,
 while the popup art and voting-card widget are independent mapped prefabs.
+Flow saves are complete replacements: omitted states and nested action arrays
+are rejected instead of being recovered from an older save. Stage execution
+likewise consumes the shared action registry and registered layout entities as
+authoritative; it does not carry duplicate runner definitions or synthesize
+game objects from static DOM nodes.
 
 Node applications can own their router while delegating initialization,
 binding, cleanup scheduling, and shutdown to

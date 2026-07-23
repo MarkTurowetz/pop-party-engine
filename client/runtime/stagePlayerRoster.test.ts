@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   PartyGamePlayerRoster,
-  authoredCanvasPointViewportPosition,
   avatarTimelineLabelForShape,
   pointPopupOverlayPosition,
-  playerWidgetPointPopupAnchorPosition,
   playerAnswerBubbleRuntimeState,
   playerAnswerBubbleStateLabel,
   playerNameRuntimeText,
@@ -31,48 +29,6 @@ beforeEach(() => {
 });
 
 describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
-  it("projects the authored container center through the Player Widget MC canvas", () => {
-    expect(authoredCanvasPointViewportPosition(
-      { x: 30, y: 40 },
-      { width: 300, height: 370 },
-      { left: 200, top: 80, width: 150, height: 185 }
-    )).toEqual({ x: 215, y: 100 });
-  });
-
-  it("uses the Player Widget On keyframe for the popup anchor before its stale base position", () => {
-    expect(playerWidgetPointPopupAnchorPosition({
-      components: [{ id: "point-popup-container", instanceLabel: "pointPopupContainer", x: 150, y: 180 }],
-      timeline: {
-        fps: 30,
-        frameCount: 2,
-        labels: [{ name: "Off", frame: 0 }, { name: "On", frame: 1 }],
-        commands: [],
-        tracks: [{
-          id: "track-point-popup-container",
-          targetId: "point-popup-container",
-          keyframes: [{ frame: 0, props: { x: 150, y: 81 }, easing: "hold" }]
-        }]
-      }
-    })).toEqual({ x: 150, y: 81 });
-  });
-
-  it("resolves a regenerated popup anchor through its stable instance label", () => {
-    expect(playerWidgetPointPopupAnchorPosition({
-      components: [{ id: "generated-anchor-id", instanceLabel: "pointPopupContainer", x: 44, y: 55 }],
-      timeline: {
-        fps: 30,
-        frameCount: 2,
-        labels: [{ name: "On", frame: 1 }],
-        commands: [],
-        tracks: [{
-          id: "track-generated-anchor",
-          targetId: "generated-anchor-id",
-          keyframes: [{ frame: 0, props: { x: 64, y: 75 }, easing: "hold" }]
-        }]
-      }
-    })).toEqual({ x: 64, y: 75 });
-  });
-
   it("converts the authored player anchor center into unclipped roster overlay coordinates", () => {
     expect(pointPopupOverlayPosition(
       { left: 225, top: 75, width: 50, height: 20 },
@@ -88,7 +44,7 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(roster.renderPointPopups).toBeTypeOf("function");
   });
 
-  it("positions a popup from pointPopupContainer authored x/y rather than avatar geometry", () => {
+  it("refuses to project a popup from stale composition coordinates", () => {
     const playerObject = {
       getBoundingClientRect: () => ({ left: 200, top: 80, width: 150, height: 185 })
     };
@@ -125,10 +81,9 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     });
     roster.tilePlayers.set(tile, { id: "player-1" });
 
-    expect(roster.positionPointPopup(node, tile)).toBe(true);
-    expect(node.style.left).toBe("350px");
-    expect(node.style.top).toBe("141px");
-    expect(node.style.top).not.toBe("294px");
+    expect(roster.positionPointPopup(node, tile)).toBe(false);
+    expect(node.style.left).toBeUndefined();
+    expect(node.style.top).toBeUndefined();
   });
 
   it("prefers the awarded player's live pointPopupContainer over stale composition coordinates", () => {

@@ -5,7 +5,6 @@
 
 import { distributedContainerItemPositions, type DistributedItemSize } from "./distributedContainerLayout";
 import { effectiveVisibilityTimeline } from "./effectiveTimeline";
-import { timelineSnapshotAt } from "./timelinePlayer";
 import type { TimelineDocument } from "../../shared/timeline-model";
 import { createActionCompletionBarrier } from "./actionCompletionBarrier";
 import {
@@ -59,55 +58,6 @@ const PLAYER_VIP_MC_ID = "vipMC";
 const AVATAR_FRAME_ID = "avatar";
 
 type RectLike = { left: number; top: number; width: number; height: number };
-
-type PointLike = { x: number; y: number };
-
-export function authoredCanvasPointViewportPosition(
-  point: PointLike,
-  canvas: { width: number; height: number; minX?: number; minY?: number },
-  canvasRect: RectLike
-): PointLike {
-  const canvasWidth = Math.max(1, Number(canvas.width || 1));
-  const canvasHeight = Math.max(1, Number(canvas.height || 1));
-  const canvasMinX = Number(canvas.minX || 0);
-  const canvasMinY = Number(canvas.minY || 0);
-  return {
-    x: canvasRect.left + ((Number(point.x || 0) - canvasMinX) / canvasWidth) * canvasRect.width,
-    y: canvasRect.top + ((Number(point.y || 0) - canvasMinY) / canvasHeight) * canvasRect.height
-  };
-}
-
-export function playerWidgetPointPopupAnchorPosition(
-  composition: Dict | null,
-  pointPopupContainerInstanceLabel = runtimeSemanticInstanceLabel(POINT_POPUP_CONTAINER_ROLE)
-): PointLike | null {
-  if (!composition) return null;
-  const components = [...((composition.components as Dict[]) || [])];
-  let anchor: Dict | undefined;
-  while (components.length && !anchor) {
-    const component = components.shift();
-    if (!component) continue;
-    if (component.instanceLabel === pointPopupContainerInstanceLabel) anchor = component;
-    else components.push(...((component.children as Dict[]) || []));
-  }
-  if (!anchor) return null;
-  const position = {
-    x: Number(anchor.x || 0),
-    y: Number(anchor.y || 0)
-  };
-  const timeline = composition.timeline as TimelineDocument | null | undefined;
-  if (!timeline?.labels?.length || !timeline?.tracks?.length) return position;
-  const onFrame = timeline.labels.find((label) => String(label?.name || "").trim().toLowerCase() === "on")?.frame ?? 0;
-  const timelineTargets = timelineSnapshotAt(timeline, onFrame).targets;
-  const timelinePosition = timelineTargets[String(anchor.id || "")]
-    || timelineTargets[pointPopupContainerInstanceLabel];
-  const timelineX = Number(timelinePosition?.x);
-  const timelineY = Number(timelinePosition?.y);
-  return {
-    x: Number.isFinite(timelineX) ? timelineX : position.x,
-    y: Number.isFinite(timelineY) ? timelineY : position.y
-  };
-}
 
 export function pointPopupOverlayPosition(
   anchorRect: RectLike,
@@ -867,12 +817,6 @@ class PlayerRosterRenderer {
     return layer;
   }
 
-  pointPopupAnchor(tile: El | null): PointLike | null {
-    if (!tile) return null;
-    const composition = this.playerObjectCompositionFor(this.tilePlayers.get(tile) || {});
-    return playerWidgetPointPopupAnchorPosition(composition, this.roleInstanceLabel(POINT_POPUP_CONTAINER_ROLE));
-  }
-
   positionPointPopup(node: El | null, tile: El | null): boolean {
     if (!node || !tile || !this.host) return false;
     const hostRect = this.host.getBoundingClientRect();
@@ -888,33 +832,17 @@ class PlayerRosterRenderer {
       node.style.top = `${position.top}px`;
       return true;
     }
+    return false;
+  }
 
-    // Keep composition projection as a startup/test fallback for the brief
-    // interval before the player's authored object tree has exposed its view.
-    const playerObject = tile.querySelector(":scope > .player-object-art-host") as El | null;
-    const composition = this.playerObjectCompositionFor(this.tilePlayers.get(tile) || {});
-    const anchor = this.pointPopupAnchor(tile);
-    if (!playerObject || !composition || !anchor) return false;
-    const playerObjectRect = playerObject.getBoundingClientRect();
-    const canvas = (composition.canvas as Dict) || { width: 300, height: 370 };
-    const anchorViewportPosition = authoredCanvasPointViewportPosition(
-      anchor,
-      {
-        width: Math.max(1, Number(canvas.width || 1)),
-        height: Math.max(1, Number(canvas.height || 1)),
-        minX: Number(canvas.minX || 0),
-        minY: Number(canvas.minY || 0)
-      },
-      playerObjectRect
-    );
-    const position = pointPopupOverlayPosition(
-      { left: anchorViewportPosition.x, top: anchorViewportPosition.y, width: 0, height: 0 },
-      hostRect,
-      hostSize
-    );
-    node.style.left = `${position.left}px`;
-    node.style.top = `${position.top}px`;
-    return true;
+  warnMissingPointPopupAnchor(tile: El | null): void {
+    const playerId = String(tile?.dataset?.playerId || "");
+    w().PartyGameStageDebugRuntime?.showGameObjectWarning?.({
+      elementId: this.roleInstanceLabel(POINT_POPUP_CONTAINER_ROLE),
+      name: "Player points popup",
+      scope: "player",
+      reason: `awarded player ${playerId || "(unknown)"} has no live authored points-popup container`
+    });
   }
 
   positionPointPopups(): void {
@@ -924,7 +852,11 @@ class PlayerRosterRenderer {
     const popupNodes = Array.from(layer.querySelectorAll(".point-popup[data-player-id]"));
     for (const node of popupNodes) {
       const popupNode = node as El;
-      this.positionPointPopup(popupNode, this.tileForPlayerId(popupNode.dataset.playerId));
+      const tile = this.tileForPlayerId(popupNode.dataset.playerId);
+      if (!this.positionPointPopup(popupNode, tile)) {
+        this.warnMissingPointPopupAnchor(tile);
+        this.disposePointPopup(popupNode);
+      }
     }
   }
 
@@ -932,17 +864,20 @@ class PlayerRosterRenderer {
     for (const popup of popups || []) {
       if (!popup?.id || this.pointPopupIds.has(popup.id as string)) continue;
       const tile = this.tileForPlayerId(popup.playerId);
-      const anchor = this.pointPopupAnchor(tile);
       const layer = this.pointPopupLayer();
-      if (!tile || !anchor || !layer) continue;
+      if (!tile || !layer) continue;
       const node = this.document.createElement("div");
       node.className = "point-popup point-popup-hidden";
       node.dataset.pointPopupId = popup.id as string;
       node.dataset.playerId = String(popup.playerId || "");
       if (!this.renderPointPopupPrefab(node, popup)) continue;
-      this.pointPopupIds.add(popup.id as string);
       layer.appendChild(node);
-      this.positionPointPopup(node, tile);
+      if (!this.positionPointPopup(node, tile)) {
+        this.warnMissingPointPopupAnchor(tile);
+        this.disposePointPopup(node);
+        continue;
+      }
+      this.pointPopupIds.add(popup.id as string);
       node.dataset.pointPopupPending = "true";
     }
     void options;

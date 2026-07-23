@@ -91,7 +91,7 @@ The reveal action receives authoritative `correctPlayerIds` and `incorrectPlayer
 | Winner revealed | reveal flow action | correctness `stopAtComponent("Correct" / "Neutral")` | `prefab-voting-card-correctness-state` | Semantic frame selection only. |
 | Card data rerender | recurring lobby payload | `renderArt` | none | Data only; no lifecycle or correctness selection. |
 
-`stageVotingCardVisuals.ts` still contains a legacy composition fallback that synthesizes the newer prefab hierarchy from the old `voting-card` composition if authored prefabs are missing. It is a data/prefab compatibility path, not a server animation call, but it should be removed after all supported projects are migrated.
+`stageVotingCardVisuals.ts` requires the authored voting-card prefab hierarchy. It no longer synthesizes that hierarchy from the old `voting-card` composition.
 
 ## Remaining compatibility presentation paths
 
@@ -100,7 +100,7 @@ These paths no longer advance the action from estimated animation duration, but 
 - The generic `CssVisualObject` retains CSS-class lifecycle fallbacks for non-flow setup surfaces, but a flow action that requests a callback from a target without an authored label fails closed.
 - Player roster host/tile classes are not flow completion sources. Player widget parts use authored MC timelines.
 - The global Wipe is a `Wipe Widget MC` compound prefab. Its parent `Appear` and `Disappear` timelines command the nested colored-strip `Wipe Art MC`, and only the parent terminal callback may complete `Set Wipe Shown`.
-- `stageVotingCardVisuals.ts` can construct voting prefabs from the legacy `voting-card` composition.
+- Layout flow actions resolve only registered authored entities. They do not promote matching legacy/static DOM nodes or reload older layout/art data to repair a missing target.
 - A point popup without its authored prefab fails closed; it does not create a timer-based animation completion substitute.
 
 ## Completion-event migration

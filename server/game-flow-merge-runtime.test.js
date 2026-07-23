@@ -4,98 +4,104 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const { createGameFlowMergeRuntime } = require("./game-flow-merge-runtime");
 
-const defaultLobby = {
+const lobby = {
   id: "lobby",
-  name: "Default Lobby",
-  actions: [{ id: "default-lobby-action", type: "transitionState" }]
+  name: "Lobby",
+  actions: [{ id: "lobby-action", type: "doNothing", subActions: [] }]
 };
-const defaultIntro = {
+const intro = {
   id: "intro",
-  name: "Default Intro",
-  actions: [{ id: "default-intro-action", type: "presentText" }]
+  name: "Intro",
+  actions: [{ id: "intro-action", type: "doNothing", subActions: [] }]
 };
 
-function runtime(existingFlow) {
+function runtime() {
   return createGameFlowMergeRuntime({
-    readGameFlowSource: () => existingFlow,
-    requiredFlowStates: [defaultLobby, defaultIntro]
+    requiredFlowStates: [lobby, intro]
   });
 }
 
-describe("game flow save merging", () => {
-  it("restores an omitted required state from the existing authored flow", () => {
-    const authoredLobby = {
-      id: "lobby",
-      name: "Authored Lobby",
-      actions: [{ id: "setup", type: "setupGame" }]
-    };
-    const existing = {
-      states: [authoredLobby, defaultIntro, { id: "round", actions: [] }]
-    };
-    const incoming = {
-      states: [defaultIntro, { id: "round", actions: [] }]
-    };
+function completeFlow(overrides = {}) {
+  return {
+    states: [lobby, intro],
+    routeNodes: [],
+    ...overrides
+  };
+}
 
-    const merged = runtime(existing).mergeFlowWithExistingSubActions(incoming, existing);
-
-    expect(merged.states.map((state) => state.id)).toEqual(["lobby", "intro", "round"]);
-    expect(merged.states[0]).toBe(authoredLobby);
-  });
-
-  it("uses built-in defaults when durable data already lacks required states", () => {
-    const existing = { states: [{ id: "round", actions: [] }] };
-    const incoming = { states: [{ id: "round", actions: [] }] };
-
-    const merged = runtime(existing).mergeFlowWithExistingSubActions(incoming, existing);
-
-    expect(merged.states.map((state) => state.id)).toEqual(["lobby", "intro", "round"]);
-    expect(merged.states[0]).toBe(defaultLobby);
-    expect(merged.states[1]).toBe(defaultIntro);
-  });
-
-  it("preserves the complete existing flow when a save submits no states", () => {
-    const round = { id: "round", actions: [] };
-    const existing = { states: [defaultLobby, defaultIntro, round] };
-
-    const merged = runtime(existing).mergeFlowWithExistingSubActions({ states: [] }, existing);
-
-    expect(merged.states).toEqual([defaultLobby, defaultIntro, round]);
-  });
-
-  it("keeps incoming authored required states instead of overwriting them", () => {
-    const incomingLobby = { id: "lobby", name: "Edited Lobby", actions: [] };
-    const incomingIntro = { id: "intro", name: "Edited Intro", actions: [] };
-    const existing = { states: [defaultLobby, defaultIntro] };
-
-    const merged = runtime(existing).mergeFlowWithExistingSubActions({
-      states: [incomingLobby, incomingIntro]
-    }, existing);
-
-    expect(merged.states).toEqual([incomingLobby, incomingIntro]);
-  });
-
-  it("continues to preserve nested actions omitted by an incoming save", () => {
-    const childAction = { id: "child", type: "displayText" };
-    const existing = {
+describe("game flow save replacement", () => {
+  it("accepts the complete incoming authored flow without merging older data", () => {
+    const incoming = completeFlow({
       states: [
-        defaultLobby,
-        defaultIntro,
+        { ...lobby, name: "Edited Lobby" },
+        intro,
+        { id: "round", actions: [] }
+      ]
+    });
+    const existing = completeFlow({
+      states: [lobby, intro, { id: "stale-round", actions: [{ id: "stale", type: "doNothing", subActions: [] }] }]
+    });
+
+    const saved = runtime().mergeFlowWithExistingSubActions(incoming, existing);
+
+    expect(saved).toEqual(incoming);
+    expect(saved).not.toBe(incoming);
+    expect(saved.states.some((state) => state.id === "stale-round")).toBe(false);
+  });
+
+  it("rejects an empty save instead of preserving the previous flow", () => {
+    expect(() => runtime().mergeFlowWithExistingSubActions({ states: [], routeNodes: [] }, completeFlow()))
+      .toThrow("refusing to reuse previously saved states");
+  });
+
+  it("rejects omitted required states instead of restoring old or starter states", () => {
+    expect(() => runtime().mergeFlowWithExistingSubActions({
+      states: [{ id: "round", actions: [] }],
+      routeNodes: []
+    }, completeFlow())).toThrow("missing required authored states: lobby, intro");
+  });
+
+  it("rejects omitted nested subroutine actions instead of recovering them by id", () => {
+    const incoming = completeFlow({
+      states: [
+        lobby,
+        intro,
         {
           id: "round",
-          actions: [{ id: "routine", type: "subroutine", actions: [childAction] }]
+          actions: [{ id: "routine", type: "subroutine", subActions: [] }]
         }
       ]
-    };
-    const incoming = {
+    });
+    const existing = completeFlow({
       states: [
-        defaultLobby,
-        defaultIntro,
-        { id: "round", actions: [{ id: "routine", type: "subroutine" }] }
+        lobby,
+        intro,
+        {
+          id: "round",
+          actions: [{
+            id: "routine",
+            type: "subroutine",
+            subActions: [],
+            actions: [{ id: "old-child", type: "displayText", subActions: [] }]
+          }]
+        }
       ]
-    };
+    });
 
-    const merged = runtime(existing).mergeFlowWithExistingSubActions(incoming, existing);
+    expect(() => runtime().mergeFlowWithExistingSubActions(incoming, existing))
+      .toThrow("flow.states[2].actions[0].actions must be an array");
+  });
 
-    expect(merged.states[2].actions[0].actions).toEqual([childAction]);
+  it("requires serialized subActions arrays so stale branches cannot survive", () => {
+    const invalid = completeFlow({
+      states: [
+        lobby,
+        intro,
+        { id: "round", actions: [{ id: "answer", type: "displayText" }] }
+      ]
+    });
+
+    expect(() => runtime().mergeFlowWithExistingSubActions(invalid, completeFlow()))
+      .toThrow("subActions must be an array");
   });
 });

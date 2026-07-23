@@ -76,6 +76,19 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     expect(PartyGameLayoutGameObjects.setLayoutGameObjectShownForAction).toBeTypeOf("function");
   });
 
+  it("does not promote a matching DOM node into an unauthored layout entity", () => {
+    const target = {} as HTMLElement;
+    const register = vi.fn();
+    const resolver = PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver({
+      registry: () => ({ get: () => null, register }),
+      targetByElementId: () => target,
+      visibilityKeyForTarget: () => "moment:legacy-node"
+    });
+
+    expect(resolver.entityForElementId("legacy-node", target, "moment")).toBeNull();
+    expect(register).not.toHaveBeenCalled();
+  });
+
   it("applies text and style overrides to a scoped text component inside a referenced prefab", () => {
     const options = {
       textOverrides: {

@@ -324,22 +324,10 @@ function layoutEntityForElementId(elementId: string, target: El | null = null, o
     }
     return entity;
   }
-  const resolvedTarget = target || (options.targetByElementId as ((id: string, scope: string) => El | null) | undefined)?.(elementId, (options.scope as string) || "");
-  if (!resolvedTarget) return null;
-  const resolvedRegistryKey = (options.registryKeyFor as ((id: string, scope: string, t: El) => string) | undefined)?.(elementId, (options.scope as string) || "", resolvedTarget) || registryKey;
-  const fallbackEntity: Dict = {
-    element: null,
-    id: elementId,
-    registryKey: resolvedRegistryKey,
-    isArt: (options.isGameObjectArtTarget as ((t: El) => boolean) | undefined)?.(resolvedTarget) === true,
-    isDynamic: (options.isDynamicTarget as ((t: El) => boolean) | undefined)?.(resolvedTarget) === true,
-    isGlobal: (options.isGlobalTarget as ((t: El) => boolean) | undefined)?.(resolvedTarget) === true,
-    target: resolvedTarget,
-    visibilityKey: (options.visibilityKeyForTarget as ((id: string, t: El, scope: string) => string) | undefined)?.(elementId, resolvedTarget, (options.scope as string) || "") || "",
-    artRenderer: layoutArtRendererByHost.get(resolvedTarget) || null,
-    syncArtRendererOnShow: layoutArtRendererByHost.has(resolvedTarget)
-  };
-  return registry?.register?.(fallbackEntity) || fallbackEntity;
+  // A DOM node is not proof of an authored game object. Only placement can
+  // register an entity, so a legacy/static node with a matching id can never
+  // be promoted into the flow runtime as a substitute game object.
+  return null;
 }
 
 function layoutElementTargetMatchesSelector(element: Dict | null, target: El | null): boolean {

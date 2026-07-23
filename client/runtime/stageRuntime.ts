@@ -318,35 +318,21 @@ function invokeLayoutActionWithCompletion(
 async function setStageLayoutGameObjectShownForStageAction(action: Dict): Promise<void> {
   const showGameObject = w().setStageLayoutGameObjectShownForAction || w().setStageLayoutArtElementShownForAction;
   if (typeof showGameObject !== "function") throw new Error("Stage game object visibility runtime unavailable");
-  const first = await invokeLayoutActionWithCompletion(
-    (playOptions) => showGameObject(flowActionCommand(action), playOptions) as Dict,
-    { returnResult: true, suppressMissingWarning: true }
-  );
-  if (!first?.missing) return;
-  await Promise.all([w().loadArtAssets!().catch(() => w().artCompositions), w().loadStageLayouts!({ forceServer: true }).catch(() => w().stageLayouts)]);
-  if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
-  const second = await invokeLayoutActionWithCompletion(
+  const result = await invokeLayoutActionWithCompletion(
     (playOptions) => showGameObject(flowActionCommand(action), playOptions) as Dict,
     { returnResult: true }
   );
-  if (second?.missing) throw new Error(String(second.reason || "Stage game object target unavailable"));
+  if (result?.missing) throw new Error(String(result.reason || "Stage game object target unavailable"));
 }
 
 async function playStageLayoutGameObjectAnimationForStageAction(action: Dict): Promise<void> {
   const playAnimation = w().playStageLayoutGameObjectAnimationForAction;
   if (typeof playAnimation !== "function") throw new Error("Stage game object animation runtime unavailable");
-  const first = await invokeLayoutActionWithCompletion(
-    (playOptions) => playAnimation(flowActionCommand(action), playOptions) as Dict,
-    { returnResult: true, suppressMissingWarning: true }
-  );
-  if (!first?.missing) return;
-  await Promise.all([w().loadArtAssets!().catch(() => w().artCompositions), w().loadStageLayouts!({ forceServer: true }).catch(() => w().stageLayouts)]);
-  if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
-  const second = await invokeLayoutActionWithCompletion(
+  const result = await invokeLayoutActionWithCompletion(
     (playOptions) => playAnimation(flowActionCommand(action), playOptions) as Dict,
     { returnResult: true }
   );
-  if (second?.missing) throw new Error(String(second.reason || "Stage game object target unavailable"));
+  if (result?.missing) throw new Error(String(result.reason || "Stage game object target unavailable"));
 }
 
 function runStageWipe(onCovered: () => void, complete: () => void): number {

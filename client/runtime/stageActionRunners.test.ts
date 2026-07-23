@@ -1,5 +1,30 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PartyGameStageActionRunners } from "./stageActionRunners";
+
+const runnerDefinitions = [
+  ["doNothing", "immediateComplete"],
+  ["startMoment", "startMoment"],
+  ["endMoment", "endMoment"],
+  ["transitionState", "immediateComplete"],
+  ["playGameObjectAnimation", "playGameObjectAnimation"],
+  ["stopGameObjectAnimation", "playGameObjectAnimation"],
+  ["setupGame", "serverEffect"],
+  ["setPlayerAnswersShown", "setPlayerAnswersShown"],
+  ["revealPlayerAnswerCorrectness", "revealPlayerAnswerCorrectness"],
+  ["showPoints", "showPoints"]
+].map(([type, runner]) => ({ type, runner }));
+
+beforeEach(() => {
+  (globalThis as typeof globalThis & {
+    PartyGameFlowActionRegistry?: {
+      isFlowEventBarrierAction: (action: Record<string, unknown>) => boolean;
+      stageActionRunnerDefinitions: Array<{ type: string; runner: string }>;
+    };
+  }).PartyGameFlowActionRegistry = {
+    isFlowEventBarrierAction: (action) => Boolean(action.trigger),
+    stageActionRunnerDefinitions: runnerDefinitions
+  };
+});
 
 function deferred() {
   let resolve: () => void = () => {};
@@ -112,6 +137,22 @@ describe("PartyGameStageActionRunners (ported)", () => {
   it("installs the global bridge on import", () => {
     const host = globalThis as typeof globalThis & { PartyGameStageActionRunners?: unknown };
     expect(host.PartyGameStageActionRunners).toBeTypeOf("object");
+  });
+
+  it("fails closed when the shared action registry has not loaded", () => {
+    delete (globalThis as typeof globalThis & { PartyGameFlowActionRegistry?: unknown }).PartyGameFlowActionRegistry;
+
+    expect(() => PartyGameStageActionRunners.createRunner(context() as never))
+      .toThrow("Stage action registry is unavailable");
+  });
+
+  it("fails closed when an authored action has no registered stage runner", () => {
+    const runner = PartyGameStageActionRunners.createRunner(context() as never);
+
+    expect(() => runner.run(
+      { id: "unknown", type: "game.unknownAction" },
+      { isPrimary: true, actionKey: "k" }
+    )).toThrow('No stage action runner is registered for authored action type "game.unknownAction"');
   });
 
   it.each(["playGameObjectAnimation", "stopGameObjectAnimation"])(
