@@ -43,7 +43,8 @@ try {
   exportLegacyContentBundle({
     root,
     outputRoot: reproducedRoot,
-    gameDefinition: { ...gameDefinition, gameData: authoringSourceGameData }
+    gameDefinition: { ...gameDefinition, gameData: authoringSourceGameData },
+    artManifestPath: "apps/reference/authoring/art-manifest.json"
   });
   const committedInventory = inventory(committedRoot);
   const reproducedInventory = inventory(reproducedRoot);

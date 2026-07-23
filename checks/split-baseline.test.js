@@ -21,6 +21,7 @@ describe("split baseline tooling", () => {
 
   it("classifies only the agreed historical starter content paths", () => {
     expect(isApprovedStarterContentPath("game-flow.json")).toBe(true);
+    expect(isApprovedStarterContentPath("apps/reference/authoring/art-manifest.json")).toBe(true);
     expect(isApprovedStarterContentPath("games/flip-7/game-flow.json")).toBe(false);
   });
 
@@ -55,10 +56,11 @@ describe("split baseline tooling", () => {
   });
 
   it("resolves explicit immutable-ref arguments", () => {
-    expect(parseArgs(["--main-ref", "abc", "--data-ref", "def", "--audit-history"])).toMatchObject({
+    expect(parseArgs(["--main-ref", "abc", "--data-ref", "def", "--audit-history", "--audit-history-only"])).toMatchObject({
       mainRef: "abc",
       dataRef: "def",
-      auditHistory: true
+      auditHistory: true,
+      auditHistoryOnly: true
     });
   });
 

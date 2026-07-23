@@ -30,16 +30,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Checkout authored game data
-        uses: actions/checkout@v4
-        with:
-          ref: game-data
-          path: .authored-game-data
-          sparse-checkout: art-manifest.json
-
-      - name: Install authored art manifest
-        run: cp .authored-game-data/art-manifest.json art/art-manifest.json
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22

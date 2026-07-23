@@ -16,6 +16,7 @@ try {
     root: process.cwd(),
     outputRoot,
     gameDefinition: { ...gameDefinition, gameData: authoringSourceGameData },
+    artManifestPath: "apps/reference/authoring/art-manifest.json",
     force: process.argv.includes("--force")
   });
   console.log(`Legacy content exported: ${outputRoot}`);

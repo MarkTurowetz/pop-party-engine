@@ -6,6 +6,8 @@ This directory owns the reference game's configuration and will become the thin 
 `gameData` object. `authoring-source-game-data.js` is a temporary, explicitly
 source-only bridge for the legacy Art Manager and one-time bundle exporter; it
 is not part of game readiness or room composition.
+The tracked `authoring/art-manifest.json` is the reference app's local editing
+seed, so public engine checks never fetch or inject a `game-data` branch.
 
 Its manifest pins the engine exactly. The repository root uses a local file dependency only for migration development; published games will install that same semantic version from npm.
 

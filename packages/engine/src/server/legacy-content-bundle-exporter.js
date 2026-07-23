@@ -91,7 +91,9 @@ function exportLegacyContentBundle(options) {
   writeBundleFile(outputRoot, "semantic-roles.json", { schemaVersion: 1, roles: gameDefinition.semanticRoles }, records);
 
   const artManifest = withDefaultArtCompositions(
-    readJson(firstExisting(root, ["art/art-manifest.json", "art-manifest.json"])),
+    readJson(firstExisting(root, options.artManifestPath
+      ? [options.artManifestPath]
+      : ["art/art-manifest.json", "art-manifest.json"])),
     gameData.defaultArtCompositions
   );
   const assets = [];

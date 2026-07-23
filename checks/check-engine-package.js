@@ -64,6 +64,9 @@ try {
   if (!referenceServer.includes('require("./authoring-source-game-data")')) {
     throw new Error("Reference source metadata must remain behind its explicit authoring-only adapter");
   }
+  if (!referenceServer.includes('path.join(__dirname, "authoring", "art-manifest.json")')) {
+    throw new Error("Reference local art authoring must use its tracked app-owned seed");
+  }
   if (referenceServer.includes('require("../../server/art-assets-runtime")')
     || referenceServer.includes('require("../../server/layout-normalization-runtime")')) {
     throw new Error("Reference server must load reference-owned art and layout adapters from its app boundary");

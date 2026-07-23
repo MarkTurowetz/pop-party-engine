@@ -39,7 +39,7 @@
     "smoke:routes": "node checks/smoke-routes.js",
     "sync-game-data": "node sync-game-data.js",
     "split:baseline": "node checks/split-baseline.js",
-    "split:audit-history": "node checks/split-baseline.js --audit-history",
+    "split:audit-history": "node checks/split-baseline.js --audit-history --audit-history-only",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

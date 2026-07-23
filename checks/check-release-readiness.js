@@ -36,6 +36,12 @@ function checkReleaseReadiness(version = process.argv[2]) {
   for (const contract of ["id-token: write", "environment: npm-publish", "npm publish ./packages/engine", "npm publish ./packages/create-game", "--provenance", "--access public"]) {
     if (!workflow.includes(contract)) throw new Error(`Publish workflow is missing: ${contract}`);
   }
+  const checkWorkflow = fs.readFileSync(path.join(root, ".github", "workflows", "check.yml"), "utf8");
+  for (const [label, source] of [["publish", workflow], ["check", checkWorkflow]]) {
+    if (source.includes("game-data") || source.includes(".authored-game-data")) {
+      throw new Error(`${label} workflow cannot depend on a game-data branch`);
+    }
+  }
   console.log(`Release readiness passed for @pop-party/engine and @pop-party/create-game ${expectedVersion}.`);
 }
 

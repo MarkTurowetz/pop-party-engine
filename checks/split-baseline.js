@@ -192,6 +192,7 @@ function isApprovedStarterContentPath(logicalPath) {
   return [
     "art-manifest.json",
     "art/art-manifest.json",
+    "apps/reference/authoring/art-manifest.json",
     "controller-layouts.json",
     "controller-layouts.default.json",
     "game-constants.json",
@@ -206,13 +207,14 @@ function isApprovedStarterContentPath(logicalPath) {
 }
 
 function parseArgs(argv) {
-  const options = { mainRef: "HEAD", dataRef: "origin/game-data", outputRoot: DEFAULT_OUTPUT_ROOT, auditHistory: false };
+  const options = { mainRef: "HEAD", dataRef: "origin/game-data", outputRoot: DEFAULT_OUTPUT_ROOT, auditHistory: false, auditHistoryOnly: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--main-ref") options.mainRef = argv[++index];
     else if (argument === "--data-ref") options.dataRef = argv[++index];
     else if (argument === "--output") options.outputRoot = path.resolve(ROOT, argv[++index]);
     else if (argument === "--audit-history") options.auditHistory = true;
+    else if (argument === "--audit-history-only") options.auditHistoryOnly = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
   return options;
@@ -220,7 +222,7 @@ function parseArgs(argv) {
 
 function writeBaseline(options) {
   const main = inventoryRevision(options.mainRef);
-  const gameData = inventoryRevision(options.dataRef);
+  const gameData = options.auditHistoryOnly ? null : inventoryRevision(options.dataRef);
   const auditFindings = options.auditHistory ? scanReachableHistory() : [];
   const report = {
     schemaVersion: 1,
@@ -238,7 +240,7 @@ function writeBaseline(options) {
   const reportPath = path.join(options.outputRoot, "baseline-report.json");
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, { mode: 0o600 });
   git(["archive", "--format=tar", "-o", path.join(options.outputRoot, "main.tar"), main.commit]);
-  git(["archive", "--format=tar", "-o", path.join(options.outputRoot, "game-data.tar"), gameData.commit]);
+  if (gameData) git(["archive", "--format=tar", "-o", path.join(options.outputRoot, "game-data.tar"), gameData.commit]);
   return { report, reportPath };
 }
 
@@ -247,7 +249,7 @@ if (require.main === module) {
     const { report, reportPath } = writeBaseline(parseArgs(process.argv.slice(2)));
     console.log(`Baseline report: ${reportPath}`);
     console.log(`main: ${report.main.commit}`);
-    console.log(`game-data: ${report.gameData.commit}`);
+    console.log(`game-data: ${report.gameData?.commit || "not required for history-only audit"}`);
     console.log(`public history audit: ${report.audit.verdict}`);
     if (report.audit.verdict === "BLOCK") process.exitCode = 2;
   } catch (error) {

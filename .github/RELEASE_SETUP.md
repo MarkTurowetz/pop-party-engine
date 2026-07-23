@@ -17,6 +17,10 @@ external release authorities exist. Before its first use:
 7. Confirm the repository history audit, starter-asset inventory, and public
    licensing gate all pass from the renamed public repository.
 
+Both CI workflows are self-contained on the checked-out engine repository.
+They must not fetch a game-specific `game-data` branch; the reference app owns
+its tracked authoring seed and immutable content bundle under `apps/reference`.
+
 To release, commit the exact same version to both public package manifests and
 the reference app's exact engine dependency, merge that version change to
 `main`, then manually dispatch `publish` with the version and confirmation
