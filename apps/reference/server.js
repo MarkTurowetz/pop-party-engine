@@ -74,7 +74,8 @@ const {
   writeJsonFile
 } = require("@pop-party/engine/server");
 const { createWebServiceRuntime } = require("@pop-party/engine/server/web-service");
-const { createGameReleaseValidator } = require("@pop-party/engine/server/readiness");
+const { defineGame } = require("@pop-party/engine/game");
+const { createGameReadinessRuntime, createGameReleaseValidator } = require("@pop-party/engine/server/readiness");
 const {
   createGithubStorageRuntime,
   createLayoutSyncRuntime,
@@ -100,22 +101,8 @@ const { createStageTestConfigHandlerRuntime } = require("@pop-party/engine/testi
 const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout-normalization-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
 const GAME_DEFINITION = require("./game.config");
-const {
-  acceptedArtTypes,
-  defaultArtCompositions,
-  artAssets,
-  artGroups,
-  availableFlowActionTypes,
-  availableFlowTransitions,
-  avatarShapes,
-  defaultControllerLayouts,
-  defaultGameConstants,
-  defaultGameFlow,
-  defaultHostAudios,
-  defaultPlayerColors,
-  defaultStageLayouts,
-  multipleChoicePrompts
-} = GAME_DEFINITION.gameData;
+
+async function startReferenceApplication() {
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -195,6 +182,41 @@ const roomContentStore = contentEnvironment.contentStore || createLocalContentBu
   engineVersion: GAME_DEFINITION.engineCompatibility,
   pluginVersion: GAME_DEFINITION.version
 });
+const runtimeGameDefinition = defineGame({
+  gameId: GAME_DEFINITION.gameId,
+  displayName: GAME_DEFINITION.displayName,
+  version: GAME_DEFINITION.version,
+  engineCompatibility: GAME_DEFINITION.engineCompatibility,
+  content: { mode: "bundle", schemaVersion: 1, store: roomContentStore },
+  plugin: GAME_DEFINITION.plugin,
+  semanticRoles: GAME_DEFINITION.semanticRoles
+});
+const runtimeReadiness = createGameReadinessRuntime({
+  gameDefinition: runtimeGameDefinition,
+  engineVersion: runtimeGameDefinition.engineCompatibility
+});
+const activeRuntime = await runtimeReadiness.check();
+// The legacy Art Manager adapter still edits repository source files and needs
+// source-only fields such as defaultFile. Public rooms never consume these
+// records; their art manifest and bytes resolve through activeRuntime/room pins.
+const {
+  acceptedArtTypes,
+  defaultArtCompositions,
+  artAssets,
+  artGroups
+} = GAME_DEFINITION.gameData;
+const {
+  availableFlowActionTypes,
+  availableFlowTransitions,
+  avatarShapes,
+  defaultControllerLayouts,
+  defaultGameConstants,
+  defaultGameFlow,
+  defaultHostAudios,
+  defaultPlayerColors,
+  defaultStageLayouts,
+  multipleChoicePrompts
+} = activeRuntime.gameData;
 const contentAdmin = contentEnvironment.remoteAuthoring === "enabled"
   ? createContentAdminHandlersRuntime({
       contentStore,
@@ -232,10 +254,10 @@ const {
 
 const roomContentPins = createRoomContentPinRuntime({
   contentStore: roomContentStore,
-  gameId: GAME_DEFINITION.gameId,
+  gameId: runtimeGameDefinition.gameId,
   validateRelease: createGameReleaseValidator({
-    gameDefinition: GAME_DEFINITION,
-    engineVersion: GAME_DEFINITION.engineCompatibility
+    gameDefinition: runtimeGameDefinition,
+    engineVersion: runtimeGameDefinition.engineCompatibility
   })
 });
 
@@ -465,7 +487,7 @@ const {
   normalizeColor,
   normalizeFlowId,
   normalizeLayoutNumber,
-  semanticRoles: GAME_DEFINITION.semanticRoles
+  semanticRoles: runtimeGameDefinition.semanticRoles
 });
 
 const {
@@ -484,7 +506,7 @@ const {
   defaultControllerLayouts,
   normalizeLayoutNumber,
   normalizeLayoutState,
-  semanticRoles: GAME_DEFINITION.semanticRoles
+  semanticRoles: runtimeGameDefinition.semanticRoles
 });
 
 const {
@@ -550,7 +572,7 @@ const {
       stageLayouts: localDraftStore.layouts || stageLayouts,
       controllerLayouts: localDraftStore.controllerLayouts || controllerLayouts,
       flow: localDraftStore.flow || flow,
-      runtimeReferences: artRuntimeReferences(GAME_DEFINITION.semanticRoles)
+      runtimeReferences: artRuntimeReferences(runtimeGameDefinition.semanticRoles)
     };
   },
   localDraftStore,
@@ -571,7 +593,7 @@ const {
   buildAssetsRoot: BUILD_ASSETS_ROOT,
   clientRoot: CLIENT_ROOT,
   contentTypeForFile,
-  gameDefinition: GAME_DEFINITION,
+  gameDefinition: runtimeGameDefinition,
   indexFile: INDEX_FILE,
   root: ROOT,
   sendJson,
@@ -1225,7 +1247,7 @@ const {
     remoteAuthoring: contentEnvironment.remoteAuthoring,
     enabled: contentEnvironment.enabled
   },
-  gameDefinition: GAME_DEFINITION,
+  gameDefinition: runtimeGameDefinition,
   handleActionEffect,
   handleAdvancePresentation,
   handleCancelStart,
@@ -1321,12 +1343,8 @@ const webService = createWebServiceRuntime({
   }
 });
 
-webService.start()
-  .catch((error) => {
-    if (error.code === "EADDRINUSE") {
-      console.error(`Port ${PORT} is already in use. Try PORT=${PORT + 1} npm start`);
-      process.exit(1);
-    }
-    console.error(`Authoritative game content failed to initialize: ${error.message}`);
-    process.exit(1);
-  });
+await webService.start();
+return Object.freeze({ activeRuntime, runtimeGameDefinition, webService });
+}
+
+module.exports = Object.freeze({ startReferenceApplication });

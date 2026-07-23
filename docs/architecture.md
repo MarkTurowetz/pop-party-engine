@@ -7,9 +7,10 @@ concepts into focused modules.
 ## Current Module Boundaries
 
 - `server.js`
-  - Compatibility launcher only; it delegates to `apps/reference/server.js`.
+  - Compatibility launcher only; it invokes the explicit application startup factory exported by `apps/reference/server.js`.
 - `apps/reference/server.js`
-  - HTTP routing, room lifecycle, game runtime orchestration, and persistence wiring.
+  - Validates the active game-owned bundle before constructing HTTP routing, room lifecycle, game runtime orchestration, and persistence wiring.
+  - Gameplay composition uses only the validated candidate. Legacy source metadata is passed solely to reference-owned authoring adapters.
   - This is reference-app composition code and must not be imported by the engine package or generated games.
 - `apps/reference/server/`
   - Reference-owned art migrations and default layout adapters used by the template game.

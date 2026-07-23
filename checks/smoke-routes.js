@@ -90,7 +90,8 @@ function assertShell(response, label, expectedText, { expectedStyles = [], forbi
 }
 
 function assertJsonOk(response, label) {
-  assert(response.statusCode === 200, `${label} returned ${response.statusCode}`);
+  const diagnostic = response.json?.error || response.body || "empty response";
+  assert(response.statusCode === 200, `${label} returned ${response.statusCode}: ${diagnostic}`);
   assert(response.json?.ok === true, `${label} did not return ok: true`);
 }
 

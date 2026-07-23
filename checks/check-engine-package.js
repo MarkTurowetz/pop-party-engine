@@ -92,7 +92,9 @@ try {
     "@pop-party/engine/security/runtime-capabilities",
     "@pop-party/engine/testing",
     "@pop-party/engine/tooling",
+    "@pop-party/engine/game",
     "@pop-party/engine/server",
+    "@pop-party/engine/server/readiness",
     "@pop-party/engine/server/web-service"
   ];
   const missingServerImports = requiredServerImports.filter((specifier) => !referenceServer.includes(`require("${specifier}")`));

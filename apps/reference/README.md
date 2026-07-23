@@ -8,6 +8,7 @@ Reference-owned flow, layouts, art, audio, prompts, constants, semantic roles,
 and runtime metadata now live in the self-verifying `content/` bundle. Those
 files and content-addressed blobs are a physical game-owned copy: they are not
 resolved from the engine starter and can evolve without changing generated
-games or the engine package. The legacy root sources remain temporarily wired
-to the deployed reference service until its full application composition
-switches to the bundle readiness boundary.
+games or the engine package. The application validates this bundle before
+constructing gameplay runtimes or binding its port. Legacy root sources remain
+available only to the reference-owned authoring adapters until those tools move
+fully onto draft-bundle APIs; public rooms never resolve through them.
