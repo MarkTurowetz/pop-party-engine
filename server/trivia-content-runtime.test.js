@@ -33,4 +33,24 @@ describe("trivia content stage setup", () => {
 
     expect(room.triviaPromptText).toBe("Which dinosaur had three horns?");
   });
+
+  it("uses prompts from the room's pinned bundle instead of process defaults", () => {
+    const room = {
+      flowVariables: {},
+      gameData: {
+        multipleChoicePrompts: [{
+          id: "pinned",
+          prompt: "Pinned prompt",
+          options: ["Pinned answer"],
+          correctAnswerIndex: 0
+        }]
+      }
+    };
+
+    runtime().storeRandomTriviaPrompt(room, "question");
+    const content = runtime().triviaContentForAction(room, { contentVariable: "question" });
+
+    expect(room.triviaPromptText).toBe("Pinned prompt");
+    expect(content).toMatchObject({ id: "pinned", prompt: "Pinned prompt", options: ["Pinned answer"] });
+  });
 });

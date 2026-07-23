@@ -73,7 +73,7 @@ function createFlowActionPublicRuntime({
       };
     }
     if (resolved.type === "playHostAudio") {
-      return resolveHostAudioAction(room, resolved, readHostAudios());
+      return resolveHostAudioAction(room, resolved, readHostAudios(room));
     }
     return resolved;
   }

@@ -975,8 +975,9 @@ function readHostAudiosSource() {
   return cloneJson(hostAudiosStore.source || readDefaultHostAudiosSource());
 }
 
-function readHostAudios() {
-  return normalizeHostAudios(localDraftStore.hostAudios || readHostAudiosSource());
+function readHostAudios(room = null) {
+  const pinnedHostAudios = room?.gameData?.defaultHostAudios;
+  return normalizeHostAudios(pinnedHostAudios || localDraftStore.hostAudios || readHostAudiosSource());
 }
 
 const {

@@ -31,7 +31,9 @@ snapshot, and materialized data together. A snapshot that cannot produce a
 complete room dataset fails room creation with
 `ACTIVE_CONTENT_GAME_DATA_INVALID`. Runtime decisions, scoring defaults,
 countdown/crafting durations, player colors, and avatar choices likewise resolve
-through that room's pinned dataset.
+through that room's pinned dataset. Trivia selection and host-audio action
+resolution also use the room-owned prompt and audio collections, never a newer
+process-global authoring draft.
 
 Public runtime boundaries include `@pop-party/engine/server`,
 `@pop-party/engine/tooling`, and `@pop-party/engine/testing`. Public art authoring

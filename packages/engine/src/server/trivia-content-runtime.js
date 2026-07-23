@@ -4,8 +4,13 @@ function createTriviaContentRuntime({
   multipleChoicePrompts,
   normalizeFlowVariableName
 }) {
-  function triviaPromptById(id) {
-    return multipleChoicePrompts.find((prompt) => prompt.id === id) || null;
+  function promptsForRoom(room = null) {
+    const pinnedPrompts = room?.gameData?.multipleChoicePrompts;
+    return Array.isArray(pinnedPrompts) ? pinnedPrompts : multipleChoicePrompts;
+  }
+
+  function triviaPromptById(id, room = null) {
+    return promptsForRoom(room).find((prompt) => prompt.id === id) || null;
   }
 
   function clonePrompt(prompt) {
@@ -17,8 +22,9 @@ function createTriviaContentRuntime({
     };
   }
 
-  function randomTriviaPrompt() {
-    return multipleChoicePrompts[Math.floor(Math.random() * multipleChoicePrompts.length)] || multipleChoicePrompts[0];
+  function randomTriviaPrompt(room = null) {
+    const prompts = promptsForRoom(room);
+    return prompts[Math.floor(Math.random() * prompts.length)] || prompts[0];
   }
 
   function shuffledTriviaPrompt(prompt) {
@@ -37,7 +43,7 @@ function createTriviaContentRuntime({
   }
 
   function storeRandomTriviaPrompt(room, variableName) {
-    const prompt = randomTriviaPrompt();
+    const prompt = randomTriviaPrompt(room);
     room.flowVariables = room.flowVariables && typeof room.flowVariables === "object" ? room.flowVariables : {};
     room.flowVariables[normalizeFlowVariableName(variableName)] = clonePrompt(prompt);
     room.triviaPromptText = String(prompt?.prompt || "");
@@ -46,7 +52,8 @@ function createTriviaContentRuntime({
   function triviaContentForAction(room, action) {
     const variableName = normalizeFlowVariableName(action?.contentVariable);
     const stored = room.flowVariables?.[variableName];
-    const prompt = stored?.id ? triviaPromptById(stored.id) || stored : multipleChoicePrompts[0];
+    const prompts = promptsForRoom(room);
+    const prompt = stored?.id ? triviaPromptById(stored.id, room) || stored : prompts[0];
     const content = action?.randomizeOptions ? shuffledTriviaPrompt(prompt) : {
       ...clonePrompt(prompt),
       optionOriginalIndexes: prompt.options.map((_, index) => index)
