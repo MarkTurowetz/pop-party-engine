@@ -48,6 +48,31 @@ describe("createControllerSessionRuntime (ported)", () => {
     expect(start).toHaveBeenCalledOnce();
   });
 
+  it("can defer the first lobby render until room content is ready", () => {
+    const renderState = vi.fn();
+    const start = vi.fn();
+    const runtime = createControllerSessionRuntime({
+      elements: { joinState: { classList: { add: vi.fn() } } as unknown as HTMLElement },
+      getControllerState: () => null,
+      heartbeatRuntime: { start },
+      renderState,
+      setControllerState: vi.fn(),
+      setLocalValue: vi.fn(),
+      setSessionValue: vi.fn()
+    });
+    const lobby = { phase: "lobby" };
+
+    runtime.enterLobby("ABCD", "p1", "capability-1", lobby, { name: "Ava" }, { deferActivation: true });
+
+    expect(renderState).not.toHaveBeenCalled();
+    expect(start).not.toHaveBeenCalled();
+
+    runtime.activateLobby(lobby);
+
+    expect(renderState).toHaveBeenCalledWith(lobby);
+    expect(start).toHaveBeenCalledOnce();
+  });
+
   it("sends the player capability on a best-effort leave beacon", () => {
     const fetchImpl = vi.fn(() => Promise.resolve(new Response(null, { status: 204 })));
     const runtime = createControllerSessionRuntime({

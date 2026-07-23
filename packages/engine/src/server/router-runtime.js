@@ -48,10 +48,12 @@ function createRouterRuntime({
   sendJson,
   sendLocalDraft,
   sendStageLayouts,
+  sendRoomRuntimeContent,
   serveArtFile,
   serveBuildAsset,
   serveClientFile,
   serveIndex,
+  serveRoomArtAsset,
   serveSharedFile,
 }) {
   function router(req, res) {
@@ -104,6 +106,18 @@ function createRouterRuntime({
         runtimeCapabilities: runtimeCapabilities?.publicStatus() || { mode: "unknown", protected: false },
         contentStore: contentStatus || { mode: "disabled", remoteAuthoring: "disabled", enabled: false }
       });
+      return;
+    }
+
+    const runtimeContentMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/content\/(stage-layouts|controller-layouts|art-assets)$/i);
+    if (req.method === "GET" && runtimeContentMatch) {
+      sendRoomRuntimeContent(res, runtimeContentMatch[1], runtimeContentMatch[2]);
+      return;
+    }
+
+    const runtimeArtAssetMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/content\/art-assets\/([a-z0-9-]+)$/i);
+    if (req.method === "GET" && runtimeArtAssetMatch) {
+      serveRoomArtAsset(res, runtimeArtAssetMatch[1], runtimeArtAssetMatch[2]);
       return;
     }
 

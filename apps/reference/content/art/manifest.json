@@ -1631,9 +1631,9 @@
     },
     "controller-primary-button": {
       "name": "Controller Primary Button",
-      "description": "Editable controller button art used by join, start, present, next, submit, and microphone buttons.",
+      "description": "Lifecycle wrapper for Controller Primary Button.",
       "surface": "controller",
-      "compositionKind": "gameObject",
+      "compositionKind": "prefab",
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -1642,29 +1642,10 @@
       },
       "components": [
         {
-          "id": "button-text",
-          "name": "Button Text",
-          "instanceLabel": "buttonText",
-          "kind": "text",
-          "x": 150,
-          "y": 39,
-          "width": 250,
-          "height": 44,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "BUTTON",
-          "fontSize": 24,
-          "autoFitText": false,
-          "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
-        },
-        {
-          "id": "button-card",
-          "name": "Button Card",
-          "instanceLabel": "buttonCard",
-          "kind": "shape",
+          "id": "controller-primary-button-interaction-ref",
+          "name": "Controller Primary Button Interaction MC",
+          "instanceLabel": "interaction",
+          "kind": "reference",
           "x": 150,
           "y": 39,
           "width": 300,
@@ -1672,25 +1653,16 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "On",
-          "shapeStyle": "rounded",
-          "fillColor": "#22d3ee",
-          "fillCss": "",
-          "borderColor": "#17131f",
-          "borderWidth": 4,
-          "borderRadius": 18
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-primary-button-interaction"
         }
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 33,
+        "frameCount": 19,
         "labels": [
           {
             "name": "Off",
-            "frame": 0
-          },
-          {
-            "name": "Park",
             "frame": 0
           },
           {
@@ -1703,79 +1675,157 @@
           },
           {
             "name": "Update",
-            "frame": 13
+            "frame": 9
           },
           {
             "name": "Disappear",
-            "frame": 17
+            "frame": 12
           }
         ],
         "commands": [
           {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
+            "id": "hide-off",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
-            "id": "stop-1",
-            "frame": 1,
+            "id": "stop-off",
+            "frame": 0,
             "type": "stop"
           },
           {
-            "id": "setvisible-1-true",
+            "id": "show-on",
             "frame": 1,
             "type": "setVisible",
             "target": "true"
           },
           {
-            "id": "setvisible-2-true",
+            "id": "default-on",
+            "frame": 1,
+            "type": "stopComponent",
+            "target": "controller-primary-button-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "id": "stop-on",
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "id": "show-appear",
             "frame": 2,
             "type": "setVisible",
             "target": "true"
           },
           {
-            "id": "stop-12",
-            "frame": 12,
+            "id": "default-appear",
+            "frame": 2,
+            "type": "stopComponent",
+            "target": "controller-primary-button-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "id": "stop-appear",
+            "frame": 8,
             "type": "stop"
           },
           {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
+            "id": "stop-update",
+            "frame": 11,
             "type": "stop"
           },
           {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
+            "id": "hide-disappear",
+            "frame": 18,
             "type": "setVisible",
             "target": "false"
+          },
+          {
+            "id": "stop-disappear",
+            "frame": 18,
+            "type": "stop"
           }
         ],
-        "tracks": [],
-        "commandFrames": [
-          0,
-          1,
-          2,
-          12,
-          13,
-          16,
-          32
+        "tracks": [
+          {
+            "id": "track-controller-primary-button-interaction-ref",
+            "targetId": "controller-primary-button-interaction-ref",
+            "keyframes": [
+              {
+                "id": "controller-primary-button-interaction-ref-off",
+                "frame": 0,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-on",
+                "frame": 1,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-appear-start",
+                "frame": 2,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-appear-end",
+                "frame": 8,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-update-start",
+                "frame": 9,
+                "props": {
+                  "scale": 1.03,
+                  "opacity": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-update-end",
+                "frame": 11,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-disappear-start",
+                "frame": 12,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "controller-primary-button-interaction-ref-disappear-end",
+                "frame": 18,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
@@ -2369,9 +2419,9 @@
     },
     "controller-avatar-button": {
       "name": "Controller Avatar Button",
-      "description": "Editable controller avatar button background art.",
+      "description": "Lifecycle wrapper for Controller Avatar Button.",
       "surface": "controller",
-      "compositionKind": "gameObject",
+      "compositionKind": "prefab",
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -2380,10 +2430,10 @@
       },
       "components": [
         {
-          "id": "avatar-card",
-          "name": "Avatar Card",
-          "instanceLabel": "avatarCard",
-          "kind": "shape",
+          "id": "controller-avatar-button-interaction-ref",
+          "name": "Controller Avatar Button Interaction MC",
+          "instanceLabel": "interaction",
+          "kind": "reference",
           "x": 52,
           "y": 52,
           "width": 104,
@@ -2391,25 +2441,16 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "On",
-          "shapeStyle": "rounded",
-          "fillColor": "#fffdf4",
-          "fillCss": "",
-          "borderColor": "#17131f",
-          "borderWidth": 4,
-          "borderRadius": 18
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-avatar-button-interaction"
         }
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 33,
+        "frameCount": 19,
         "labels": [
           {
             "name": "Off",
-            "frame": 0
-          },
-          {
-            "name": "Park",
             "frame": 0
           },
           {
@@ -2422,88 +2463,166 @@
           },
           {
             "name": "Update",
-            "frame": 13
+            "frame": 9
           },
           {
             "name": "Disappear",
-            "frame": 17
+            "frame": 12
           }
         ],
         "commands": [
           {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
+            "id": "hide-off",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
-            "id": "stop-1",
-            "frame": 1,
+            "id": "stop-off",
+            "frame": 0,
             "type": "stop"
           },
           {
-            "id": "setvisible-1-true",
+            "id": "show-on",
             "frame": 1,
             "type": "setVisible",
             "target": "true"
           },
           {
-            "id": "setvisible-2-true",
+            "id": "default-on",
+            "frame": 1,
+            "type": "stopComponent",
+            "target": "controller-avatar-button-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "id": "stop-on",
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "id": "show-appear",
             "frame": 2,
             "type": "setVisible",
             "target": "true"
           },
           {
-            "id": "stop-12",
-            "frame": 12,
+            "id": "default-appear",
+            "frame": 2,
+            "type": "stopComponent",
+            "target": "controller-avatar-button-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "id": "stop-appear",
+            "frame": 8,
             "type": "stop"
           },
           {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
+            "id": "stop-update",
+            "frame": 11,
             "type": "stop"
           },
           {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
+            "id": "hide-disappear",
+            "frame": 18,
             "type": "setVisible",
             "target": "false"
+          },
+          {
+            "id": "stop-disappear",
+            "frame": 18,
+            "type": "stop"
           }
         ],
-        "tracks": [],
-        "commandFrames": [
-          0,
-          1,
-          2,
-          12,
-          13,
-          16,
-          32
+        "tracks": [
+          {
+            "id": "track-controller-avatar-button-interaction-ref",
+            "targetId": "controller-avatar-button-interaction-ref",
+            "keyframes": [
+              {
+                "id": "controller-avatar-button-interaction-ref-off",
+                "frame": 0,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-on",
+                "frame": 1,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-appear-start",
+                "frame": 2,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-appear-end",
+                "frame": 8,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-update-start",
+                "frame": 9,
+                "props": {
+                  "scale": 1.03,
+                  "opacity": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-update-end",
+                "frame": 11,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-disappear-start",
+                "frame": 12,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "controller-avatar-button-interaction-ref-disappear-end",
+                "frame": 18,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
     },
     "controller-choice-option": {
       "name": "Controller Choice Option",
-      "description": "Editable controller multiple-choice option button art.",
+      "description": "Lifecycle wrapper for Controller Choice Option.",
       "surface": "controller",
-      "compositionKind": "gameObject",
+      "compositionKind": "prefab",
       "isCustom": false,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -2512,29 +2631,10 @@
       },
       "components": [
         {
-          "id": "option-text",
-          "name": "Option Text",
-          "instanceLabel": "optionText",
-          "kind": "text",
-          "x": 160,
-          "y": 36,
-          "width": 280,
-          "height": 40,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "On",
-          "defaultText": "Option",
-          "fontSize": 24,
-          "autoFitText": false,
-          "fontColor": "#17131f",
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
-        },
-        {
-          "id": "option-card",
-          "name": "Option Card",
-          "instanceLabel": "optionCard",
-          "kind": "shape",
+          "id": "controller-choice-option-interaction-ref",
+          "name": "Controller Choice Option Interaction MC",
+          "instanceLabel": "interaction",
+          "kind": "reference",
           "x": 160,
           "y": 36,
           "width": 320,
@@ -2542,25 +2642,16 @@
           "scale": 1,
           "rotation": 0,
           "locked": false,
-          "defaultAnimationState": "On",
-          "shapeStyle": "rounded",
-          "fillColor": "#fffdf4",
-          "fillCss": "",
-          "borderColor": "#17131f",
-          "borderWidth": 4,
-          "borderRadius": 18
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-choice-option-interaction"
         }
       ],
       "timeline": {
         "fps": 30,
-        "frameCount": 33,
+        "frameCount": 19,
         "labels": [
           {
             "name": "Off",
-            "frame": 0
-          },
-          {
-            "name": "Park",
             "frame": 0
           },
           {
@@ -2573,79 +2664,157 @@
           },
           {
             "name": "Update",
-            "frame": 13
+            "frame": 9
           },
           {
             "name": "Disappear",
-            "frame": 17
+            "frame": 12
           }
         ],
         "commands": [
           {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-0-false",
+            "id": "hide-off",
             "frame": 0,
             "type": "setVisible",
             "target": "false"
           },
           {
-            "id": "stop-1",
-            "frame": 1,
+            "id": "stop-off",
+            "frame": 0,
             "type": "stop"
           },
           {
-            "id": "setvisible-1-true",
+            "id": "show-on",
             "frame": 1,
             "type": "setVisible",
             "target": "true"
           },
           {
-            "id": "setvisible-2-true",
+            "id": "default-on",
+            "frame": 1,
+            "type": "stopComponent",
+            "target": "controller-choice-option-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "id": "stop-on",
+            "frame": 1,
+            "type": "stop"
+          },
+          {
+            "id": "show-appear",
             "frame": 2,
             "type": "setVisible",
             "target": "true"
           },
           {
-            "id": "stop-12",
-            "frame": 12,
+            "id": "default-appear",
+            "frame": 2,
+            "type": "stopComponent",
+            "target": "controller-choice-option-interaction-ref",
+            "event": "Default"
+          },
+          {
+            "id": "stop-appear",
+            "frame": 8,
             "type": "stop"
           },
           {
-            "id": "setvisible-13-true",
-            "frame": 13,
-            "type": "setVisible",
-            "target": "true"
-          },
-          {
-            "id": "stop-16",
-            "frame": 16,
+            "id": "stop-update",
+            "frame": 11,
             "type": "stop"
           },
           {
-            "id": "stop-32",
-            "frame": 32,
-            "type": "stop"
-          },
-          {
-            "id": "setvisible-32-false",
-            "frame": 32,
+            "id": "hide-disappear",
+            "frame": 18,
             "type": "setVisible",
             "target": "false"
+          },
+          {
+            "id": "stop-disappear",
+            "frame": 18,
+            "type": "stop"
           }
         ],
-        "tracks": [],
-        "commandFrames": [
-          0,
-          1,
-          2,
-          12,
-          13,
-          16,
-          32
+        "tracks": [
+          {
+            "id": "track-controller-choice-option-interaction-ref",
+            "targetId": "controller-choice-option-interaction-ref",
+            "keyframes": [
+              {
+                "id": "controller-choice-option-interaction-ref-off",
+                "frame": 0,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-interaction-ref-on",
+                "frame": 1,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-interaction-ref-appear-start",
+                "frame": 2,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-interaction-ref-appear-end",
+                "frame": 8,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-interaction-ref-update-start",
+                "frame": 9,
+                "props": {
+                  "scale": 1.03,
+                  "opacity": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-interaction-ref-update-end",
+                "frame": 11,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-interaction-ref-disappear-start",
+                "frame": 12,
+                "props": {
+                  "scale": 1,
+                  "opacity": 1
+                },
+                "easing": "easeIn"
+              },
+              {
+                "id": "controller-choice-option-interaction-ref-disappear-end",
+                "frame": 18,
+                "props": {
+                  "scale": 0.92,
+                  "opacity": 0
+                },
+                "easing": "hold"
+              }
+            ]
+          }
         ]
       },
       "updatedAt": "2026-07-12T05:08:35.961Z"
@@ -10208,6 +10377,983 @@
       },
       "updatedAt": "2026-07-15T07:37:26.638Z"
     },
+    "controller-primary-button-art": {
+      "name": "Controller Primary Button Art",
+      "description": "Base art used by Controller Primary Button.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 300,
+        "height": 78
+      },
+      "components": [
+        {
+          "id": "button-text",
+          "name": "Button Text",
+          "instanceLabel": "buttonText",
+          "kind": "text",
+          "x": 150,
+          "y": 39,
+          "width": 250,
+          "height": 44,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "defaultText": "BUTTON",
+          "fontSize": 24,
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "button-card",
+          "name": "Button Card",
+          "instanceLabel": "buttonCard",
+          "kind": "shape",
+          "x": 150,
+          "y": 39,
+          "width": 300,
+          "height": 78,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "rounded",
+          "fillColor": "#22d3ee",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 18
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      }
+    },
+    "controller-primary-button-state": {
+      "name": "Controller Primary Button State MC",
+      "description": "Default and Disabled visual states for Controller Primary Button.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 300,
+        "height": 78
+      },
+      "components": [
+        {
+          "id": "controller-primary-button-art-ref",
+          "name": "Controller Primary Button Art",
+          "instanceLabel": "art",
+          "kind": "reference",
+          "x": 150,
+          "y": 39,
+          "width": 300,
+          "height": 78,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-primary-button-art"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 2,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Disabled",
+            "frame": 1
+          }
+        ],
+        "commands": [
+          {
+            "id": "stop-default",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "stop-disabled",
+            "frame": 1,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-primary-button-art-ref",
+            "targetId": "controller-primary-button-art-ref",
+            "keyframes": [
+              {
+                "id": "controller-primary-button-art-ref-default",
+                "frame": 0,
+                "props": {
+                  "opacity": 1,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-art-ref-disabled",
+                "frame": 1,
+                "props": {
+                  "opacity": 0.68,
+                  "brightness": 0.72
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "controller-primary-button-interaction": {
+      "name": "Controller Primary Button Interaction MC",
+      "description": "Default, Down, Up, HoverIn, and HoverOut interactions for Controller Primary Button.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 300,
+        "height": 78
+      },
+      "components": [
+        {
+          "id": "controller-primary-button-state-ref",
+          "name": "Controller Primary Button State MC",
+          "instanceLabel": "state",
+          "kind": "reference",
+          "x": 150,
+          "y": 39,
+          "width": 300,
+          "height": 78,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-primary-button-state"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 13,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Down",
+            "frame": 1
+          },
+          {
+            "name": "Up",
+            "frame": 4
+          },
+          {
+            "name": "HoverIn",
+            "frame": 7
+          },
+          {
+            "name": "HoverOut",
+            "frame": 10
+          }
+        ],
+        "commands": [
+          {
+            "id": "stop-default",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "stop-down",
+            "frame": 3,
+            "type": "stop"
+          },
+          {
+            "id": "stop-up",
+            "frame": 6,
+            "type": "stop"
+          },
+          {
+            "id": "stop-hover-in",
+            "frame": 9,
+            "type": "stop"
+          },
+          {
+            "id": "stop-hover-out",
+            "frame": 12,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-primary-button-state-ref",
+            "targetId": "controller-primary-button-state-ref",
+            "keyframes": [
+              {
+                "id": "controller-primary-button-state-ref-default",
+                "frame": 0,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-state-ref-down-start",
+                "frame": 1,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-state-ref-down-end",
+                "frame": 3,
+                "props": {
+                  "x": 152,
+                  "y": 41,
+                  "scale": 0.94
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-state-ref-up-start",
+                "frame": 4,
+                "props": {
+                  "x": 152,
+                  "y": 41,
+                  "scale": 0.94
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-state-ref-up-end",
+                "frame": 6,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-state-ref-hover-in-start",
+                "frame": 7,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-state-ref-hover-in-end",
+                "frame": 9,
+                "props": {
+                  "x": 148,
+                  "y": 37,
+                  "scale": 1.02
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-primary-button-state-ref-hover-out-start",
+                "frame": 10,
+                "props": {
+                  "x": 148,
+                  "y": 37,
+                  "scale": 1.02
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-primary-button-state-ref-hover-out-end",
+                "frame": 12,
+                "props": {
+                  "x": 150,
+                  "y": 39,
+                  "scale": 1
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "controller-choice-option-art": {
+      "name": "Controller Choice Option Art",
+      "description": "Base art used by Controller Choice Option.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 320,
+        "height": 72
+      },
+      "components": [
+        {
+          "id": "option-text",
+          "name": "Option Text",
+          "instanceLabel": "optionText",
+          "kind": "text",
+          "x": 160,
+          "y": 36,
+          "width": 280,
+          "height": 40,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "defaultText": "Option",
+          "fontSize": 24,
+          "autoFitText": false,
+          "fontColor": "#17131f",
+          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif"
+        },
+        {
+          "id": "option-card",
+          "name": "Option Card",
+          "instanceLabel": "optionCard",
+          "kind": "shape",
+          "x": 160,
+          "y": 36,
+          "width": 320,
+          "height": 72,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 18
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      }
+    },
+    "controller-choice-option-state": {
+      "name": "Controller Choice Option State MC",
+      "description": "Default and Disabled visual states for Controller Choice Option.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 320,
+        "height": 72
+      },
+      "components": [
+        {
+          "id": "controller-choice-option-art-ref",
+          "name": "Controller Choice Option Art",
+          "instanceLabel": "art",
+          "kind": "reference",
+          "x": 160,
+          "y": 36,
+          "width": 320,
+          "height": 72,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-choice-option-art"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 2,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Disabled",
+            "frame": 1
+          }
+        ],
+        "commands": [
+          {
+            "id": "stop-default",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "stop-disabled",
+            "frame": 1,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-choice-option-art-ref",
+            "targetId": "controller-choice-option-art-ref",
+            "keyframes": [
+              {
+                "id": "controller-choice-option-art-ref-default",
+                "frame": 0,
+                "props": {
+                  "opacity": 1,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-art-ref-disabled",
+                "frame": 1,
+                "props": {
+                  "opacity": 0.68,
+                  "brightness": 0.72
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "controller-choice-option-interaction": {
+      "name": "Controller Choice Option Interaction MC",
+      "description": "Default, Down, Up, HoverIn, and HoverOut interactions for Controller Choice Option.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 320,
+        "height": 72
+      },
+      "components": [
+        {
+          "id": "controller-choice-option-state-ref",
+          "name": "Controller Choice Option State MC",
+          "instanceLabel": "state",
+          "kind": "reference",
+          "x": 160,
+          "y": 36,
+          "width": 320,
+          "height": 72,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-choice-option-state"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 13,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Down",
+            "frame": 1
+          },
+          {
+            "name": "Up",
+            "frame": 4
+          },
+          {
+            "name": "HoverIn",
+            "frame": 7
+          },
+          {
+            "name": "HoverOut",
+            "frame": 10
+          }
+        ],
+        "commands": [
+          {
+            "id": "stop-default",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "stop-down",
+            "frame": 3,
+            "type": "stop"
+          },
+          {
+            "id": "stop-up",
+            "frame": 6,
+            "type": "stop"
+          },
+          {
+            "id": "stop-hover-in",
+            "frame": 9,
+            "type": "stop"
+          },
+          {
+            "id": "stop-hover-out",
+            "frame": 12,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-choice-option-state-ref",
+            "targetId": "controller-choice-option-state-ref",
+            "keyframes": [
+              {
+                "id": "controller-choice-option-state-ref-default",
+                "frame": 0,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-state-ref-down-start",
+                "frame": 1,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-state-ref-down-end",
+                "frame": 3,
+                "props": {
+                  "x": 162,
+                  "y": 38,
+                  "scale": 0.94
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-state-ref-up-start",
+                "frame": 4,
+                "props": {
+                  "x": 162,
+                  "y": 38,
+                  "scale": 0.94
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-state-ref-up-end",
+                "frame": 6,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-state-ref-hover-in-start",
+                "frame": 7,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-state-ref-hover-in-end",
+                "frame": 9,
+                "props": {
+                  "x": 158,
+                  "y": 34,
+                  "scale": 1.02
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-choice-option-state-ref-hover-out-start",
+                "frame": 10,
+                "props": {
+                  "x": 158,
+                  "y": 34,
+                  "scale": 1.02
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-choice-option-state-ref-hover-out-end",
+                "frame": 12,
+                "props": {
+                  "x": 160,
+                  "y": 36,
+                  "scale": 1
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "controller-avatar-button-art": {
+      "name": "Controller Avatar Button Art",
+      "description": "Base art used by Controller Avatar Button.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 104,
+        "height": 104
+      },
+      "components": [
+        {
+          "id": "avatar-card",
+          "name": "Avatar Card",
+          "instanceLabel": "avatarCard",
+          "kind": "shape",
+          "x": 52,
+          "y": 52,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "On",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 4,
+          "borderRadius": 18
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commands": [
+          {
+            "id": "stop-0",
+            "frame": 0,
+            "type": "stop"
+          }
+        ],
+        "tracks": []
+      }
+    },
+    "controller-avatar-button-state": {
+      "name": "Controller Avatar Button State MC",
+      "description": "Default and Disabled visual states for Controller Avatar Button.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 104,
+        "height": 104
+      },
+      "components": [
+        {
+          "id": "controller-avatar-button-art-ref",
+          "name": "Controller Avatar Button Art",
+          "instanceLabel": "art",
+          "kind": "reference",
+          "x": 52,
+          "y": 52,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-avatar-button-art"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 2,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Disabled",
+            "frame": 1
+          }
+        ],
+        "commands": [
+          {
+            "id": "stop-default",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "stop-disabled",
+            "frame": 1,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-avatar-button-art-ref",
+            "targetId": "controller-avatar-button-art-ref",
+            "keyframes": [
+              {
+                "id": "controller-avatar-button-art-ref-default",
+                "frame": 0,
+                "props": {
+                  "opacity": 1,
+                  "brightness": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-art-ref-disabled",
+                "frame": 1,
+                "props": {
+                  "opacity": 0.68,
+                  "brightness": 0.72
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "controller-avatar-button-interaction": {
+      "name": "Controller Avatar Button Interaction MC",
+      "description": "Default, Down, Up, HoverIn, and HoverOut interactions for Controller Avatar Button.",
+      "surface": "controller",
+      "compositionKind": "prefab",
+      "isCustom": false,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 104,
+        "height": 104
+      },
+      "components": [
+        {
+          "id": "controller-avatar-button-state-ref",
+          "name": "Controller Avatar Button State MC",
+          "instanceLabel": "state",
+          "kind": "reference",
+          "x": 52,
+          "y": 52,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "locked": false,
+          "defaultAnimationState": "",
+          "artCompositionId": "controller-avatar-button-state"
+        }
+      ],
+      "timeline": {
+        "fps": 30,
+        "frameCount": 13,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          },
+          {
+            "name": "Down",
+            "frame": 1
+          },
+          {
+            "name": "Up",
+            "frame": 4
+          },
+          {
+            "name": "HoverIn",
+            "frame": 7
+          },
+          {
+            "name": "HoverOut",
+            "frame": 10
+          }
+        ],
+        "commands": [
+          {
+            "id": "stop-default",
+            "frame": 0,
+            "type": "stop"
+          },
+          {
+            "id": "stop-down",
+            "frame": 3,
+            "type": "stop"
+          },
+          {
+            "id": "stop-up",
+            "frame": 6,
+            "type": "stop"
+          },
+          {
+            "id": "stop-hover-in",
+            "frame": 9,
+            "type": "stop"
+          },
+          {
+            "id": "stop-hover-out",
+            "frame": 12,
+            "type": "stop"
+          }
+        ],
+        "tracks": [
+          {
+            "id": "track-controller-avatar-button-state-ref",
+            "targetId": "controller-avatar-button-state-ref",
+            "keyframes": [
+              {
+                "id": "controller-avatar-button-state-ref-default",
+                "frame": 0,
+                "props": {
+                  "x": 52,
+                  "y": 52,
+                  "scale": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-state-ref-down-start",
+                "frame": 1,
+                "props": {
+                  "x": 52,
+                  "y": 52,
+                  "scale": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-avatar-button-state-ref-down-end",
+                "frame": 3,
+                "props": {
+                  "x": 54,
+                  "y": 54,
+                  "scale": 0.94
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-state-ref-up-start",
+                "frame": 4,
+                "props": {
+                  "x": 54,
+                  "y": 54,
+                  "scale": 0.94
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-avatar-button-state-ref-up-end",
+                "frame": 6,
+                "props": {
+                  "x": 52,
+                  "y": 52,
+                  "scale": 1
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-state-ref-hover-in-start",
+                "frame": 7,
+                "props": {
+                  "x": 52,
+                  "y": 52,
+                  "scale": 1
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-avatar-button-state-ref-hover-in-end",
+                "frame": 9,
+                "props": {
+                  "x": 50,
+                  "y": 50,
+                  "scale": 1.02
+                },
+                "easing": "hold"
+              },
+              {
+                "id": "controller-avatar-button-state-ref-hover-out-start",
+                "frame": 10,
+                "props": {
+                  "x": 50,
+                  "y": 50,
+                  "scale": 1.02
+                },
+                "easing": "easeOut"
+              },
+              {
+                "id": "controller-avatar-button-state-ref-hover-out-end",
+                "frame": 12,
+                "props": {
+                  "x": 52,
+                  "y": 52,
+                  "scale": 1
+                },
+                "easing": "hold"
+              }
+            ]
+          }
+        ]
+      }
+    },
     "stage-background-gradient-plane": {
       "name": "Background Gradient Plane",
       "description": "Base gradient plane for the default stage background.",
@@ -12215,973 +13361,6 @@
           }
         ],
         "tracks": []
-      }
-    },
-    "controller-primary-button-art": {
-      "name": "Controller Primary Button Art",
-      "description": "Base art used by Controller Primary Button.",
-      "surface": "controller",
-      "compositionKind": "prefab",
-      "isCustom": false,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 300,
-        "height": 78
-      },
-      "components": [
-        {
-          "id": "button-text",
-          "name": "Button Text",
-          "kind": "text",
-          "x": 150,
-          "y": 39,
-          "width": 250,
-          "height": 44,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "on",
-          "defaultText": "BUTTON",
-          "fontSize": 24,
-          "autoFitText": false,
-          "fontColor": "#17131f",
-          "instanceLabel": "buttonText"
-        },
-        {
-          "id": "button-card",
-          "name": "Button Card",
-          "kind": "shape",
-          "x": 150,
-          "y": 39,
-          "width": 300,
-          "height": 78,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "on",
-          "shapeStyle": "rounded",
-          "fillColor": "#22d3ee",
-          "borderColor": "#17131f",
-          "borderWidth": 4,
-          "borderRadius": 18,
-          "instanceLabel": "buttonCard"
-        }
-      ],
-      "timeline": {
-        "fps": 30,
-        "frameCount": 1,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          }
-        ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          }
-        ],
-        "tracks": []
-      }
-    },
-    "controller-primary-button-state": {
-      "name": "Controller Primary Button State MC",
-      "description": "Default and Disabled visual states for Controller Primary Button.",
-      "surface": "controller",
-      "compositionKind": "prefab",
-      "isCustom": false,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 300,
-        "height": 78
-      },
-      "components": [
-        {
-          "id": "controller-primary-button-art-ref",
-          "name": "Controller Primary Button Art",
-          "instanceLabel": "art",
-          "kind": "reference",
-          "x": 150,
-          "y": 39,
-          "width": 300,
-          "height": 78,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "",
-          "artCompositionId": "controller-primary-button-art"
-        }
-      ],
-      "timeline": {
-        "fps": 30,
-        "frameCount": 2,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          },
-          {
-            "name": "Disabled",
-            "frame": 1
-          }
-        ],
-        "commands": [
-          {
-            "id": "stop-default",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "stop-disabled",
-            "frame": 1,
-            "type": "stop"
-          }
-        ],
-        "tracks": [
-          {
-            "id": "track-controller-primary-button-art-ref",
-            "targetId": "controller-primary-button-art-ref",
-            "keyframes": [
-              {
-                "id": "controller-primary-button-art-ref-default",
-                "frame": 0,
-                "props": {
-                  "opacity": 1,
-                  "brightness": 1
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-primary-button-art-ref-disabled",
-                "frame": 1,
-                "props": {
-                  "opacity": 0.68,
-                  "brightness": 0.72
-                },
-                "easing": "hold"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    "controller-primary-button-interaction": {
-      "name": "Controller Primary Button Interaction MC",
-      "description": "Default, Down, Up, HoverIn, and HoverOut interactions for Controller Primary Button.",
-      "surface": "controller",
-      "compositionKind": "prefab",
-      "isCustom": false,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 300,
-        "height": 78
-      },
-      "components": [
-        {
-          "id": "controller-primary-button-state-ref",
-          "name": "Controller Primary Button State MC",
-          "instanceLabel": "state",
-          "kind": "reference",
-          "x": 150,
-          "y": 39,
-          "width": 300,
-          "height": 78,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "",
-          "artCompositionId": "controller-primary-button-state"
-        }
-      ],
-      "timeline": {
-        "fps": 30,
-        "frameCount": 13,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          },
-          {
-            "name": "Down",
-            "frame": 1
-          },
-          {
-            "name": "Up",
-            "frame": 4
-          },
-          {
-            "name": "HoverIn",
-            "frame": 7
-          },
-          {
-            "name": "HoverOut",
-            "frame": 10
-          }
-        ],
-        "commands": [
-          {
-            "id": "stop-default",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "stop-down",
-            "frame": 3,
-            "type": "stop"
-          },
-          {
-            "id": "stop-up",
-            "frame": 6,
-            "type": "stop"
-          },
-          {
-            "id": "stop-hover-in",
-            "frame": 9,
-            "type": "stop"
-          },
-          {
-            "id": "stop-hover-out",
-            "frame": 12,
-            "type": "stop"
-          }
-        ],
-        "tracks": [
-          {
-            "id": "track-controller-primary-button-state-ref",
-            "targetId": "controller-primary-button-state-ref",
-            "keyframes": [
-              {
-                "id": "controller-primary-button-state-ref-default",
-                "frame": 0,
-                "props": {
-                  "x": 150,
-                  "y": 39,
-                  "scale": 1
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-primary-button-state-ref-down-start",
-                "frame": 1,
-                "props": {
-                  "x": 150,
-                  "y": 39,
-                  "scale": 1
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-primary-button-state-ref-down-end",
-                "frame": 3,
-                "props": {
-                  "x": 152,
-                  "y": 41,
-                  "scale": 0.94
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-primary-button-state-ref-up-start",
-                "frame": 4,
-                "props": {
-                  "x": 152,
-                  "y": 41,
-                  "scale": 0.94
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-primary-button-state-ref-up-end",
-                "frame": 6,
-                "props": {
-                  "x": 150,
-                  "y": 39,
-                  "scale": 1
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-primary-button-state-ref-hover-in-start",
-                "frame": 7,
-                "props": {
-                  "x": 150,
-                  "y": 39,
-                  "scale": 1
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-primary-button-state-ref-hover-in-end",
-                "frame": 9,
-                "props": {
-                  "x": 148,
-                  "y": 37,
-                  "scale": 1.02
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-primary-button-state-ref-hover-out-start",
-                "frame": 10,
-                "props": {
-                  "x": 148,
-                  "y": 37,
-                  "scale": 1.02
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-primary-button-state-ref-hover-out-end",
-                "frame": 12,
-                "props": {
-                  "x": 150,
-                  "y": 39,
-                  "scale": 1
-                },
-                "easing": "hold"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    "controller-choice-option-art": {
-      "name": "Controller Choice Option Art",
-      "description": "Base art used by Controller Choice Option.",
-      "surface": "controller",
-      "compositionKind": "prefab",
-      "isCustom": false,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 320,
-        "height": 72
-      },
-      "components": [
-        {
-          "id": "option-text",
-          "name": "Option Text",
-          "kind": "text",
-          "x": 160,
-          "y": 36,
-          "width": 280,
-          "height": 40,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "on",
-          "defaultText": "Option",
-          "fontSize": 24,
-          "autoFitText": false,
-          "fontColor": "#17131f",
-          "instanceLabel": "optionText"
-        },
-        {
-          "id": "option-card",
-          "name": "Option Card",
-          "kind": "shape",
-          "x": 160,
-          "y": 36,
-          "width": 320,
-          "height": 72,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "on",
-          "shapeStyle": "rounded",
-          "fillColor": "#fffdf4",
-          "borderColor": "#17131f",
-          "borderWidth": 4,
-          "borderRadius": 18,
-          "instanceLabel": "optionCard"
-        }
-      ],
-      "timeline": {
-        "fps": 30,
-        "frameCount": 1,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          }
-        ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          }
-        ],
-        "tracks": []
-      }
-    },
-    "controller-choice-option-state": {
-      "name": "Controller Choice Option State MC",
-      "description": "Default and Disabled visual states for Controller Choice Option.",
-      "surface": "controller",
-      "compositionKind": "prefab",
-      "isCustom": false,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 320,
-        "height": 72
-      },
-      "components": [
-        {
-          "id": "controller-choice-option-art-ref",
-          "name": "Controller Choice Option Art",
-          "instanceLabel": "art",
-          "kind": "reference",
-          "x": 160,
-          "y": 36,
-          "width": 320,
-          "height": 72,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "",
-          "artCompositionId": "controller-choice-option-art"
-        }
-      ],
-      "timeline": {
-        "fps": 30,
-        "frameCount": 2,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          },
-          {
-            "name": "Disabled",
-            "frame": 1
-          }
-        ],
-        "commands": [
-          {
-            "id": "stop-default",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "stop-disabled",
-            "frame": 1,
-            "type": "stop"
-          }
-        ],
-        "tracks": [
-          {
-            "id": "track-controller-choice-option-art-ref",
-            "targetId": "controller-choice-option-art-ref",
-            "keyframes": [
-              {
-                "id": "controller-choice-option-art-ref-default",
-                "frame": 0,
-                "props": {
-                  "opacity": 1,
-                  "brightness": 1
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-choice-option-art-ref-disabled",
-                "frame": 1,
-                "props": {
-                  "opacity": 0.68,
-                  "brightness": 0.72
-                },
-                "easing": "hold"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    "controller-choice-option-interaction": {
-      "name": "Controller Choice Option Interaction MC",
-      "description": "Default, Down, Up, HoverIn, and HoverOut interactions for Controller Choice Option.",
-      "surface": "controller",
-      "compositionKind": "prefab",
-      "isCustom": false,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 320,
-        "height": 72
-      },
-      "components": [
-        {
-          "id": "controller-choice-option-state-ref",
-          "name": "Controller Choice Option State MC",
-          "instanceLabel": "state",
-          "kind": "reference",
-          "x": 160,
-          "y": 36,
-          "width": 320,
-          "height": 72,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "",
-          "artCompositionId": "controller-choice-option-state"
-        }
-      ],
-      "timeline": {
-        "fps": 30,
-        "frameCount": 13,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          },
-          {
-            "name": "Down",
-            "frame": 1
-          },
-          {
-            "name": "Up",
-            "frame": 4
-          },
-          {
-            "name": "HoverIn",
-            "frame": 7
-          },
-          {
-            "name": "HoverOut",
-            "frame": 10
-          }
-        ],
-        "commands": [
-          {
-            "id": "stop-default",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "stop-down",
-            "frame": 3,
-            "type": "stop"
-          },
-          {
-            "id": "stop-up",
-            "frame": 6,
-            "type": "stop"
-          },
-          {
-            "id": "stop-hover-in",
-            "frame": 9,
-            "type": "stop"
-          },
-          {
-            "id": "stop-hover-out",
-            "frame": 12,
-            "type": "stop"
-          }
-        ],
-        "tracks": [
-          {
-            "id": "track-controller-choice-option-state-ref",
-            "targetId": "controller-choice-option-state-ref",
-            "keyframes": [
-              {
-                "id": "controller-choice-option-state-ref-default",
-                "frame": 0,
-                "props": {
-                  "x": 160,
-                  "y": 36,
-                  "scale": 1
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-choice-option-state-ref-down-start",
-                "frame": 1,
-                "props": {
-                  "x": 160,
-                  "y": 36,
-                  "scale": 1
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-choice-option-state-ref-down-end",
-                "frame": 3,
-                "props": {
-                  "x": 162,
-                  "y": 38,
-                  "scale": 0.94
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-choice-option-state-ref-up-start",
-                "frame": 4,
-                "props": {
-                  "x": 162,
-                  "y": 38,
-                  "scale": 0.94
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-choice-option-state-ref-up-end",
-                "frame": 6,
-                "props": {
-                  "x": 160,
-                  "y": 36,
-                  "scale": 1
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-choice-option-state-ref-hover-in-start",
-                "frame": 7,
-                "props": {
-                  "x": 160,
-                  "y": 36,
-                  "scale": 1
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-choice-option-state-ref-hover-in-end",
-                "frame": 9,
-                "props": {
-                  "x": 158,
-                  "y": 34,
-                  "scale": 1.02
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-choice-option-state-ref-hover-out-start",
-                "frame": 10,
-                "props": {
-                  "x": 158,
-                  "y": 34,
-                  "scale": 1.02
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-choice-option-state-ref-hover-out-end",
-                "frame": 12,
-                "props": {
-                  "x": 160,
-                  "y": 36,
-                  "scale": 1
-                },
-                "easing": "hold"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    "controller-avatar-button-art": {
-      "name": "Controller Avatar Button Art",
-      "description": "Base art used by Controller Avatar Button.",
-      "surface": "controller",
-      "compositionKind": "prefab",
-      "isCustom": false,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 104,
-        "height": 104
-      },
-      "components": [
-        {
-          "id": "avatar-card",
-          "name": "Avatar Card",
-          "kind": "shape",
-          "x": 52,
-          "y": 52,
-          "width": 104,
-          "height": 104,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "on",
-          "shapeStyle": "rounded",
-          "fillColor": "#fffdf4",
-          "borderColor": "#17131f",
-          "borderWidth": 4,
-          "borderRadius": 18,
-          "instanceLabel": "avatarCard"
-        }
-      ],
-      "timeline": {
-        "fps": 30,
-        "frameCount": 1,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          }
-        ],
-        "commands": [
-          {
-            "id": "stop-0",
-            "frame": 0,
-            "type": "stop"
-          }
-        ],
-        "tracks": []
-      }
-    },
-    "controller-avatar-button-state": {
-      "name": "Controller Avatar Button State MC",
-      "description": "Default and Disabled visual states for Controller Avatar Button.",
-      "surface": "controller",
-      "compositionKind": "prefab",
-      "isCustom": false,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 104,
-        "height": 104
-      },
-      "components": [
-        {
-          "id": "controller-avatar-button-art-ref",
-          "name": "Controller Avatar Button Art",
-          "instanceLabel": "art",
-          "kind": "reference",
-          "x": 52,
-          "y": 52,
-          "width": 104,
-          "height": 104,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "",
-          "artCompositionId": "controller-avatar-button-art"
-        }
-      ],
-      "timeline": {
-        "fps": 30,
-        "frameCount": 2,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          },
-          {
-            "name": "Disabled",
-            "frame": 1
-          }
-        ],
-        "commands": [
-          {
-            "id": "stop-default",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "stop-disabled",
-            "frame": 1,
-            "type": "stop"
-          }
-        ],
-        "tracks": [
-          {
-            "id": "track-controller-avatar-button-art-ref",
-            "targetId": "controller-avatar-button-art-ref",
-            "keyframes": [
-              {
-                "id": "controller-avatar-button-art-ref-default",
-                "frame": 0,
-                "props": {
-                  "opacity": 1,
-                  "brightness": 1
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-avatar-button-art-ref-disabled",
-                "frame": 1,
-                "props": {
-                  "opacity": 0.68,
-                  "brightness": 0.72
-                },
-                "easing": "hold"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    "controller-avatar-button-interaction": {
-      "name": "Controller Avatar Button Interaction MC",
-      "description": "Default, Down, Up, HoverIn, and HoverOut interactions for Controller Avatar Button.",
-      "surface": "controller",
-      "compositionKind": "prefab",
-      "isCustom": false,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 104,
-        "height": 104
-      },
-      "components": [
-        {
-          "id": "controller-avatar-button-state-ref",
-          "name": "Controller Avatar Button State MC",
-          "instanceLabel": "state",
-          "kind": "reference",
-          "x": 52,
-          "y": 52,
-          "width": 104,
-          "height": 104,
-          "scale": 1,
-          "rotation": 0,
-          "locked": false,
-          "defaultAnimationState": "",
-          "artCompositionId": "controller-avatar-button-state"
-        }
-      ],
-      "timeline": {
-        "fps": 30,
-        "frameCount": 13,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          },
-          {
-            "name": "Down",
-            "frame": 1
-          },
-          {
-            "name": "Up",
-            "frame": 4
-          },
-          {
-            "name": "HoverIn",
-            "frame": 7
-          },
-          {
-            "name": "HoverOut",
-            "frame": 10
-          }
-        ],
-        "commands": [
-          {
-            "id": "stop-default",
-            "frame": 0,
-            "type": "stop"
-          },
-          {
-            "id": "stop-down",
-            "frame": 3,
-            "type": "stop"
-          },
-          {
-            "id": "stop-up",
-            "frame": 6,
-            "type": "stop"
-          },
-          {
-            "id": "stop-hover-in",
-            "frame": 9,
-            "type": "stop"
-          },
-          {
-            "id": "stop-hover-out",
-            "frame": 12,
-            "type": "stop"
-          }
-        ],
-        "tracks": [
-          {
-            "id": "track-controller-avatar-button-state-ref",
-            "targetId": "controller-avatar-button-state-ref",
-            "keyframes": [
-              {
-                "id": "controller-avatar-button-state-ref-default",
-                "frame": 0,
-                "props": {
-                  "x": 52,
-                  "y": 52,
-                  "scale": 1
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-avatar-button-state-ref-down-start",
-                "frame": 1,
-                "props": {
-                  "x": 52,
-                  "y": 52,
-                  "scale": 1
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-avatar-button-state-ref-down-end",
-                "frame": 3,
-                "props": {
-                  "x": 54,
-                  "y": 54,
-                  "scale": 0.94
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-avatar-button-state-ref-up-start",
-                "frame": 4,
-                "props": {
-                  "x": 54,
-                  "y": 54,
-                  "scale": 0.94
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-avatar-button-state-ref-up-end",
-                "frame": 6,
-                "props": {
-                  "x": 52,
-                  "y": 52,
-                  "scale": 1
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-avatar-button-state-ref-hover-in-start",
-                "frame": 7,
-                "props": {
-                  "x": 52,
-                  "y": 52,
-                  "scale": 1
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-avatar-button-state-ref-hover-in-end",
-                "frame": 9,
-                "props": {
-                  "x": 50,
-                  "y": 50,
-                  "scale": 1.02
-                },
-                "easing": "hold"
-              },
-              {
-                "id": "controller-avatar-button-state-ref-hover-out-start",
-                "frame": 10,
-                "props": {
-                  "x": 50,
-                  "y": 50,
-                  "scale": 1.02
-                },
-                "easing": "easeOut"
-              },
-              {
-                "id": "controller-avatar-button-state-ref-hover-out-end",
-                "frame": 12,
-                "props": {
-                  "x": 52,
-                  "y": 52,
-                  "scale": 1
-                },
-                "easing": "hold"
-              }
-            ]
-          }
-        ]
       }
     }
   },

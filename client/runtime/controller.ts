@@ -38,7 +38,7 @@ declare global {
   interface Window {
     PartyGameLayoutText?: LayoutTextApi;
     applyControllerLayoutForPhase?: (phase: string, visitKey?: string) => void;
-    loadControllerLayouts?: () => Promise<unknown>;
+    loadControllerLayouts?: (options?: { forceServer?: boolean; stageCode?: string }) => Promise<unknown>;
     applyControllerRuntimeTestMessage?: (data: unknown) => void;
     setupController?: () => void | Promise<void>;
     controllerState?: Dict | null;
@@ -508,7 +508,20 @@ async function joinController(stageCode: string, playerName: string): Promise<Di
   getJoinButton().disabled = true;
   const result = (await getControllerSubmitApi().join(stageCode, playerName, playerId)) as Dict;
   const player = result.player as { id: string; name?: string };
-  getControllerSessionRuntime().enterLobby(stageCode, player.id, String(result.playerCapability || ""), result.lobby, player);
+  const sessionRuntime = getControllerSessionRuntime();
+  sessionRuntime.enterLobby(
+    stageCode,
+    player.id,
+    String(result.playerCapability || ""),
+    result.lobby,
+    player,
+    { deferActivation: true }
+  );
+  await Promise.all([
+    w.loadArtAssets!({ stageCode }),
+    w.loadControllerLayouts?.({ forceServer: true, stageCode }) || Promise.reject(new Error("Controller layouts runtime unavailable"))
+  ]);
+  sessionRuntime.activateLobby(result.lobby);
   return result;
 }
 

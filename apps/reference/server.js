@@ -40,6 +40,7 @@ const {
   createRoomFlowHelpersRuntime,
   createRoomPhaseRuntime,
   createRoomStateRuntime,
+  createRoomRuntimeContentRuntime,
   createRouterRuntime,
   createStageActionHandlersRuntime,
   createStageEventsRuntime,
@@ -86,6 +87,7 @@ const {
 } = require("@pop-party/engine/tooling");
 const { createContentAdminHandlersRuntime } = require("@pop-party/engine/content/admin");
 const { createContentStoreEnvironmentRuntime } = require("@pop-party/engine/content/environment");
+const { createLocalContentBundleProvider } = require("@pop-party/engine/content/local");
 const { createControllerLayoutNormalizationRuntime } = require("./server/controller-layout-normalization-runtime");
 const { createControllerLayoutStateRuntime } = require("./server/controller-layout-state-runtime");
 const { createArtAssetsRuntime } = require("./server/art-assets-runtime");
@@ -186,6 +188,12 @@ const contentEnvironment = createContentStoreEnvironmentRuntime({
   adminAuthMode: ADMIN_AUTH_MODE
 });
 const contentStore = GAME_DEFINITION.content.store || contentEnvironment.contentStore;
+const roomContentStore = contentEnvironment.contentStore || createLocalContentBundleProvider({
+  root: path.join(__dirname, "content"),
+  gameBuild: GAME_DEFINITION.version,
+  engineVersion: GAME_DEFINITION.engineCompatibility,
+  pluginVersion: GAME_DEFINITION.version
+});
 const contentAdmin = contentEnvironment.remoteAuthoring === "enabled"
   ? createContentAdminHandlersRuntime({
       contentStore,
@@ -221,12 +229,10 @@ const {
   getRoom
 } = createRoomStateRuntime({ rooms });
 
-const roomContentPins = contentStore
-  ? createRoomContentPinRuntime({
-      contentStore,
-      gameId: GAME_DEFINITION.gameId
-    })
-  : null;
+const roomContentPins = createRoomContentPinRuntime({
+  contentStore: roomContentStore,
+  gameId: GAME_DEFINITION.gameId
+});
 
 const runtimeCapabilities = createRuntimeCapabilityRuntime({
   mode: RUNTIME_CAPABILITY_MODE,
@@ -238,6 +244,15 @@ const runtimeCapabilities = createRuntimeCapabilityRuntime({
   sendJson,
   pinNewRoom: roomContentPins?.pinNewRoom,
   deleteRoom: (stageCode) => rooms.delete(stageCode)
+});
+
+const {
+  sendRoomRuntimeContent,
+  serveRoomArtAsset
+} = createRoomRuntimeContentRuntime({
+  getExistingRoom,
+  normalizeStageCode,
+  sendJson
 });
 
 const {
@@ -1248,10 +1263,12 @@ const {
   sendJson,
   sendLocalDraft,
   sendStageLayouts,
+  sendRoomRuntimeContent,
   serveArtFile,
   serveBuildAsset,
   serveClientFile,
   serveIndex,
+  serveRoomArtAsset,
   serveSharedFile,
 });
 

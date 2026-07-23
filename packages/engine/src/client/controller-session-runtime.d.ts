@@ -23,7 +23,15 @@ export interface ControllerSessionRuntimeOptions {
 }
 
 export interface ControllerSessionRuntime {
-  enterLobby(stageCode: string, playerId: string, playerCapability: string, lobby: unknown, player: ControllerSessionPlayer): void;
+  activateLobby(lobby: unknown): void;
+  enterLobby(
+    stageCode: string,
+    playerId: string,
+    playerCapability: string,
+    lobby: unknown,
+    player: ControllerSessionPlayer,
+    options?: { deferActivation?: boolean }
+  ): void;
   sendLeaveBeacon(origin: string): void;
 }
 

@@ -90,6 +90,24 @@ describe("runtime capability authorization", () => {
     expect(harness.response.body.errorCode).toBe("PLAYER_CAPABILITY_REQUIRED");
   });
 
+  it("authorizes pinned room content for only that room's stage or player", async () => {
+    const harness = createHarness({ payload: { stageCode: "ABCD" } });
+    await harness.runtime.handleCreateRoom(request(), {});
+    const room = harness.getRoom("ABCD");
+    const stageCapability = harness.response.body.stageCapability;
+    const player = harness.runtime.newPlayerIdentity(room);
+    const url = new URL("http://test/api/stage/ABCD/content/art-assets");
+
+    expect(harness.runtime.authorizeRequest(request({ method: "GET", headers: {
+      "x-stage-capability": stageCapability
+    } }), {}, url)).toBe(true);
+    expect(harness.runtime.authorizeRequest(request({ method: "GET", headers: {
+      "x-player-id": player.playerId,
+      "x-player-capability": player.playerCapability
+    } }), {}, url)).toBe(true);
+    expect(harness.runtime.authorizeRequest(request({ method: "GET" }), {}, url)).toBe(false);
+  });
+
   it("consumes stage event tickets once", async () => {
     const harness = createHarness({ payload: { stageCode: "ABCD" } });
     await harness.runtime.handleCreateRoom(request(), {});

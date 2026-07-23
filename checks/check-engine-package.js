@@ -182,6 +182,7 @@ try {
     ["player-answers-runtime", "createPlayerAnswersRuntime"],
     ["room-broadcast-runtime", "createRoomBroadcastRuntime"],
     ["room-state-runtime", "createRoomStateRuntime"],
+    ["room-runtime-content-runtime", "createRoomRuntimeContentRuntime"],
     ["voting-runtime", "createVotingRuntime"],
     ["room-phase-runtime", "createRoomPhaseRuntime"],
     ["moment-route-runtime", "createMomentRouteRuntime"],

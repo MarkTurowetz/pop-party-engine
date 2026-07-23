@@ -55,7 +55,7 @@ declare global {
     dinoIcon?: (shape?: string) => string;
     playerAvatarArt?: (shape?: string) => string;
     listenForArtAssetsChanged?: (callback: () => void) => void;
-    loadArtAssets?: () => Promise<Dict[]>;
+    loadArtAssets?: (options?: { stageCode?: string }) => Promise<Dict[]>;
     postJson?: (path: string, payload: unknown) => Promise<Dict>;
     getJson?: (path: string) => Promise<Dict>;
   }
@@ -533,15 +533,42 @@ function applyArtAssets(
   document.documentElement.style.setProperty("--click-cursor-url", cssUrl(artAssetUrl("presentation-click-cursor")));
 }
 
-async function loadArtAssets(): Promise<Dict[]> {
+const runtimeArtBlobUrls = new Map<string, string>();
+
+function runtimeArtStageCode(explicitStageCode = ""): string {
+  const controllerStageCode = String((w.controllerState as Dict | null)?.stageCode || "");
+  const stageStateCode = String((w.currentStageState as Dict | null)?.stageCode || "");
+  return normalizeStageCode(explicitStageCode || controllerStageCode || stageStateCode);
+}
+
+async function hydrateAuthenticatedArtAssets(assets: Dict[]): Promise<Dict[]> {
+  return Promise.all(assets.map(async (asset) => {
+    if (asset.requiresAuthenticatedFetch !== true || typeof asset.currentUrl !== "string") return asset;
+    const response = await fetch(`${location.origin}${asset.currentUrl}`, {
+      cache: "no-store",
+      headers: runtimeCapabilityHeaders(asset.currentUrl, null)
+    });
+    if (!response.ok) throw new Error(`Pinned art asset could not be loaded: ${String(asset.id || "")}`);
+    const previousUrl = runtimeArtBlobUrls.get(String(asset.id || ""));
+    if (previousUrl) URL.revokeObjectURL(previousUrl);
+    const blobUrl = URL.createObjectURL(await response.blob());
+    runtimeArtBlobUrls.set(String(asset.id || ""), blobUrl);
+    return { ...asset, currentUrl: blobUrl, defaultUrl: blobUrl };
+  }));
+}
+
+async function loadArtAssets(options: { stageCode?: string } = {}): Promise<Dict[]> {
   if (!w.canUseServer) {
     applyArtAssets([]);
     return [];
   }
   const toolContext = w.PartyGameToolContext as ToolContextApi | undefined;
-  const result = (await (toolContext?.api?.art?.loadArtAssets?.() || getJson("/api/art-assets"))) as Dict;
+  const stageCode = runtimeArtStageCode(options.stageCode);
+  const runtimePath = stageCode ? `/api/stage/${stageCode}/content/art-assets` : "/api/art-assets";
+  const result = (await (toolContext?.api?.art?.loadArtAssets?.() || getJson(runtimePath))) as Dict;
+  const assets = await hydrateAuthenticatedArtAssets((result.assets as Dict[]) || []);
   applyArtAssets(
-    (result.assets as Dict[]) || [],
+    assets,
     (result.groups as Dict[]) || [],
     (result.compositions as ArtComposition[]) || [],
     result.organization as Dict
@@ -585,12 +612,12 @@ function runtimeCapabilityHeaders(requestPath: string, payload: unknown): Record
   const record = payload && typeof payload === "object" ? payload as Dict : {};
   const stagePathMatch = requestPath.match(/^\/api\/stage\/([A-Z0-9]{1,6})\//i);
   const stageCode = normalizeStageCode(record.stageCode || stagePathMatch?.[1] || "");
-  const playerId = String(record.playerId || "");
+  const storedPlayerStage = getSessionValue("partyTemplateStageCode");
+  const storedPlayerId = getSessionValue("partyTemplatePlayerId");
+  const playerId = String(record.playerId || (stageCode === storedPlayerStage ? storedPlayerId : ""));
   const headers: Record<string, string> = {};
   if (stageCode) headers["X-Stage-Code"] = stageCode;
   if (playerId) headers["X-Player-Id"] = playerId;
-  const storedPlayerStage = getSessionValue("partyTemplateStageCode");
-  const storedPlayerId = getSessionValue("partyTemplatePlayerId");
   const playerCapability = getSessionValue("partyTemplatePlayerCapability");
   if (playerCapability && stageCode === storedPlayerStage && playerId === storedPlayerId) {
     headers["X-Player-Capability"] = playerCapability;

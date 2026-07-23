@@ -12,7 +12,12 @@ function createControllerSessionRuntime(options) {
     setSessionValue
   } = options;
 
-  function enterLobby(stageCode, playerId, playerCapability, lobby, player) {
+  function activateLobby(lobby) {
+    renderState(lobby);
+    heartbeatRuntime.start();
+  }
+
+  function enterLobby(stageCode, playerId, playerCapability, lobby, player, enterOptions = {}) {
     setControllerState({ stageCode, playerId, playerCapability, player });
     setSessionValue("partyTemplatePlayerId", playerId);
     setSessionValue("partyTemplatePlayerName", player.name || "");
@@ -20,8 +25,7 @@ function createControllerSessionRuntime(options) {
     setSessionValue("partyTemplatePlayerCapability", playerCapability);
     setLocalValue("partyTemplateStageCode", stageCode);
     elements.joinState.classList.add("hidden");
-    renderState(lobby);
-    heartbeatRuntime.start();
+    if (enterOptions.deferActivation !== true) activateLobby(lobby);
   }
 
   function sendLeaveBeacon(origin) {
@@ -41,7 +45,7 @@ function createControllerSessionRuntime(options) {
     }).catch(() => {});
   }
 
-  return Object.freeze({ enterLobby, sendLeaveBeacon });
+  return Object.freeze({ activateLobby, enterLobby, sendLeaveBeacon });
 }
 
 module.exports = Object.freeze({ createControllerSessionRuntime });

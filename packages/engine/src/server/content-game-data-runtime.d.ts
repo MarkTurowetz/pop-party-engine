@@ -2,6 +2,7 @@ export interface BundleGameData {
   readonly acceptedArtTypes: Readonly<Record<string, string>>;
   readonly artAssets: readonly unknown[];
   readonly artGroups: readonly unknown[];
+  readonly artOrganization: Readonly<Record<string, unknown>>;
   readonly availableFlowActionTypes: readonly unknown[];
   readonly availableFlowTransitions: readonly unknown[];
   readonly avatarShapes: readonly string[];

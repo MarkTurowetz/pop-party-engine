@@ -1937,7 +1937,7 @@ button.controller-widget-art-host.has-controller-widget-art:disabled,
   resize: none;
 }
 
-.controller-submit-button {
+.controller-submit-button:not(.controller-local-action-button) {
   min-height: 56px;
   width: min(330px, 100%);
   border-radius: 999px;

@@ -31,6 +31,7 @@ module.exports = Object.freeze({
   ...require("./player-answers-runtime"),
   ...require("./room-broadcast-runtime"),
   ...require("./room-state-runtime"),
+  ...require("./room-runtime-content-runtime"),
   ...require("./voting-runtime"),
   ...require("./room-phase-runtime"),
   ...require("./moment-route-runtime"),

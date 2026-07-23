@@ -20,13 +20,14 @@ function findOpenPort() {
   });
 }
 
-function request({ port, pathname, parseJson = false }) {
+function request({ port, pathname, parseJson = false, method = "GET", headers = {}, body = "" }) {
   return new Promise((resolve, reject) => {
     const req = http.request({
       host,
       port,
-      method: "GET",
+      method,
       path: pathname,
+      headers,
       timeout: 5000
     }, (res) => {
       const chunks = [];
@@ -46,7 +47,7 @@ function request({ port, pathname, parseJson = false }) {
     });
     req.on("timeout", () => req.destroy(new Error(`${pathname} timed out`)));
     req.on("error", reject);
-    req.end();
+    req.end(body);
   });
 }
 
@@ -123,6 +124,26 @@ async function main() {
     const health = await request({ port, pathname: "/api/health", parseJson: true });
     assertJsonOk(health, "/api/health");
     assert(Number.isInteger(health.json.rooms), "/api/health did not include a room count");
+
+    const room = await request({
+      port,
+      pathname: "/api/stage/rooms",
+      parseJson: true,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stageCode: "TEST" })
+    });
+    assertJsonOk(room, "/api/stage/rooms");
+    const runtimeStageLayouts = await request({ port, pathname: "/api/stage/TEST/content/stage-layouts", parseJson: true });
+    assertJsonOk(runtimeStageLayouts, "pinned stage layouts");
+    assert(runtimeStageLayouts.json.revision === room.json?.release?.contentRevision, "pinned stage layouts did not match the room release");
+    const runtimeArt = await request({ port, pathname: "/api/stage/TEST/content/art-assets", parseJson: true });
+    assertJsonOk(runtimeArt, "pinned art assets");
+    const pinnedAsset = runtimeArt.json.assets?.[0];
+    assert(pinnedAsset?.requiresAuthenticatedFetch === true, "pinned art did not require authenticated fetch");
+    const pinnedAssetBytes = await request({ port, pathname: pinnedAsset.currentUrl });
+    assert(pinnedAssetBytes.statusCode === 200, "pinned art bytes could not be fetched");
+    assert(String(pinnedAssetBytes.headers["cache-control"] || "").includes("immutable"), "pinned art bytes were not immutable");
 
     assertShell(await request({ port, pathname: "/stage" }), "/stage", "stageScreen", {
       expectedStyles: ["/client/styles/legacy/base.css", "/client/styles/legacy/stage-runtime.css"],

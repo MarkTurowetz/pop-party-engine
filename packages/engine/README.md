@@ -35,6 +35,14 @@ through that room's pinned dataset. Trivia selection and host-audio action
 resolution also use the room-owned prompt and audio collections, never a newer
 process-global authoring draft.
 
+Stage and controller presentation is delivered through the same room pin.
+Authenticated room routes expose that pin's stage layouts, controller layouts,
+art manifest, and immutable art bytes. Browser clients defer their first
+in-room render until those resources load, fetch private art with the room's
+stage or player capability, and render from local blob URLs. Pre-join and
+authoring views may load draft presentation data, but it is never reused as an
+in-room fallback; missing or unauthorized pinned content stops activation.
+
 Public runtime boundaries include `@pop-party/engine/server`,
 `@pop-party/engine/tooling`, and `@pop-party/engine/testing`. Public art authoring
 contracts are exposed through `@pop-party/engine/art/lifecycle`,

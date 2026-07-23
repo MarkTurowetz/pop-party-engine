@@ -245,12 +245,47 @@ async function main() {
       const avatarComposition = document.querySelector("#controllerAvatar .player-avatar-art-composition");
       const avatarMask = document.querySelector("#controllerAvatar .avatar-art-mask-image");
       const avatarMaskRect = avatarMask?.getBoundingClientRect();
+      const buttonRect = button?.getBoundingClientRect();
+      const buttonStyle = button ? getComputedStyle(button) : null;
+      const containerRect = container?.getBoundingClientRect();
+      const containerStyle = container ? getComputedStyle(container) : null;
+      const lobbyState = document.querySelector("#controllerLobbyState");
+      const lobbyStateRect = lobbyState?.getBoundingClientRect();
+      const lobbyStateStyle = lobbyState ? getComputedStyle(lobbyState) : null;
       return {
         buttonCount: document.querySelectorAll("#startGameButton").length,
         containerOverflow: container ? getComputedStyle(container).overflow : "missing",
         buttonOverflow: button ? getComputedStyle(button).overflow : "missing",
         artLayerCount: button?.querySelectorAll(":scope > .controller-widget-art-layer").length || 0,
         artRootCount: button?.querySelectorAll(":scope > .controller-widget-art-layer > .art-runtime-object").length || 0,
+        artRootDetails: Array.from(button?.querySelectorAll(":scope > .controller-widget-art-layer > .art-runtime-object") || []).map((root) => ({
+          className: root.className,
+          compositionId: root.getAttribute("data-art-composition-id") || "",
+          instanceId: root.getAttribute("data-art-instance-id") || "",
+        label: root.getAttribute("data-art-instance-label") || ""
+        })),
+        buttonDisplay: buttonStyle?.display || "missing",
+        buttonVisibility: buttonStyle?.visibility || "missing",
+        buttonOpacity: buttonStyle?.opacity || "missing",
+        buttonComputedWidth: buttonStyle?.width || "missing",
+        buttonComputedHeight: buttonStyle?.height || "missing",
+        buttonWidth: buttonRect?.width || 0,
+        buttonHeight: buttonRect?.height || 0,
+        buttonHidden: Boolean(button?.hidden),
+        buttonClasses: button?.className || "",
+        buttonStyleAttribute: button?.getAttribute("style") || "",
+        localActionWidth: buttonStyle?.getPropertyValue("--controller-local-action-width") || "",
+        localActionHeight: buttonStyle?.getPropertyValue("--controller-local-action-height") || "",
+        hiddenArtRoots: button?.querySelectorAll(".art-runtime-object-hidden").length || 0,
+        containerWidth: containerRect?.width || 0,
+        containerHeight: containerRect?.height || 0,
+        containerTransform: containerStyle?.transform || "missing",
+        containerScale: containerStyle?.scale || "missing",
+        containerVisibility: containerStyle?.visibility || "missing",
+        lobbyStateClasses: lobbyState?.className || "",
+        lobbyStateDisplay: lobbyStateStyle?.display || "missing",
+        lobbyStateWidth: lobbyStateRect?.width || 0,
+        lobbyStateHeight: lobbyStateRect?.height || 0,
         text: button?.textContent.trim() || "",
         avatarSource: avatarComposition?.getAttribute("data-player-avatar-source") || "",
         avatarMaskWidth: avatarMaskRect?.width || 0,
@@ -262,7 +297,9 @@ async function main() {
     assert(startState.containerOverflow === "visible", "Lobby button container clips authored animation bounds");
     assert(startState.buttonOverflow === "visible", "dynamic Start button clips authored animation bounds");
     assert(startState.artLayerCount === 1, `Start button has ${startState.artLayerCount} art layers`);
-    assert(startState.artRootCount === 1, `Start button has ${startState.artRootCount} competing art renderers`);
+    assert(startState.artRootCount === 1, `Start button has ${startState.artRootCount} competing art renderers: ${JSON.stringify(startState.artRootDetails)}`);
+    assert(startState.buttonDisplay !== "none" && startState.buttonVisibility !== "hidden" && startState.buttonOpacity !== "0" && startState.buttonWidth > 0 && startState.buttonHeight > 0 && !startState.buttonHidden,
+      `Start button is not visible: ${JSON.stringify(startState)}`);
     assert(startState.text === "START GAME", `unexpected Start button text: ${startState.text}`);
     assert(startState.avatarSource === "prefab-player-avatar-mc", `controller avatar used ${startState.avatarSource || "no shared Player Avatar MC"}`);
     assert(startState.avatarMaskWidth > 40 && startState.avatarMaskHeight > 40, `controller avatar collapsed to ${startState.avatarMaskWidth}x${startState.avatarMaskHeight}`);

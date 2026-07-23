@@ -72,4 +72,28 @@ describe("semantic role schema", () => {
     expect(() => validateSemanticRoleDocument(fixture.document, fixture.artManifest))
       .toThrowError(expect.objectContaining({ code: "SEMANTIC_ROLE_BINDING_MISSING" }));
   });
+
+  it("validates required bindings through nested authored composition references", () => {
+    const fixture = validFixture();
+    const target = fixture.document.roles["engine.controller.submitControl"];
+    fixture.artManifest.compositions[target.compositionId].components = [{
+      id: "interaction-ref",
+      instanceLabel: "interaction",
+      kind: "reference",
+      artCompositionId: "nested-submit-art"
+    }];
+    fixture.artManifest.compositions["nested-submit-art"] = {
+      surface: "controller",
+      components: [
+        { id: "text", instanceLabel: "buttonText", kind: "text" },
+        { id: "card", instanceLabel: "buttonCard", kind: "shape" }
+      ]
+    };
+
+    expect(() => validateSemanticRoleDocument(fixture.document, fixture.artManifest)).not.toThrow();
+
+    fixture.artManifest.compositions["nested-submit-art"].components.pop();
+    expect(() => validateSemanticRoleDocument(fixture.document, fixture.artManifest))
+      .toThrowError(expect.objectContaining({ code: "SEMANTIC_ROLE_BINDING_MISSING" }));
+  });
 });

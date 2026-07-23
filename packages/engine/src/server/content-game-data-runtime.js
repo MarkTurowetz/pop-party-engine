@@ -114,6 +114,7 @@ function createBundleGameData(snapshot) {
     acceptedArtTypes: ACCEPTED_ART_TYPES,
     artAssets: structuredClone(artManifest.assets),
     artGroups: structuredClone(artGroups),
+    artOrganization: structuredClone(artManifest.organization || {}),
     availableFlowActionTypes: structuredClone(availableFlowActionTypes),
     availableFlowTransitions: structuredClone(availableFlowTransitions),
     avatarShapes: structuredClone(avatarShapes),

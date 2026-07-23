@@ -32,7 +32,7 @@ declare global {
     setStageLayoutGameObjectShownForAction?: (action: Dict, options?: Dict) => unknown;
     setStageLayoutArtElementShownForAction?: (action: Dict, options?: Dict) => unknown;
     playStageLayoutGameObjectAnimationForAction?: (action: Dict, options?: Dict) => unknown;
-    loadStageLayouts?: (options?: { forceServer?: boolean }) => Promise<Dict>;
+    loadStageLayouts?: (options?: { forceServer?: boolean; stageCode?: string }) => Promise<Dict>;
     stageLayoutStateForPhase?: (phase: string) => Dict | null;
     stageLayoutEntityForElementId?: (elementId: string, target: El | null, scope?: string) => Dict | null;
     // utils not otherwise typed.
@@ -292,10 +292,12 @@ function runVotingCardActionForAction(action: Dict): Promise<void> {
   return renderer?.runAction?.(action) || Promise.reject(new Error("Voting card renderer unavailable"));
 }
 
-function reloadStageArtAssets(): Promise<void> {
-  return w().loadArtAssets!().then(() => {
+function reloadStageArtAssets(stageCode = "", failClosed = false): Promise<void> {
+  return w().loadArtAssets!({ stageCode }).then(() => {
     if (w().currentStageState) renderStageLobby(w().currentStageState as Dict, { force: true });
-  }).catch(() => {});
+  }).catch((error) => {
+    if (failClosed) throw error;
+  });
 }
 
 function invokeLayoutActionWithCompletion(
@@ -1018,16 +1020,16 @@ async function setupStage(): Promise<void> {
   w().stageScreen.classList.remove("hidden");
   initStageTextObjects();
   w().listenForArtAssetsChanged!(reloadStageArtAssets);
-  await Promise.all([
-    reloadStageArtAssets(),
-    w().loadStageLayouts!().catch(() => w().stageLayouts)
-  ]);
-  if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
   const stageCode = w().getOrCreateStageCode!();
   const room = (await w().postJson!("/api/stage/rooms", { stageCode })) as Dict;
   const stageCapability = String(room.stageCapability || "");
   if (stageCapability) w().setSessionValue!(`partyTemplateStageCapability:${stageCode}`, stageCapability);
   setStageCodeDisplays(stageCode);
+  await Promise.all([
+    reloadStageArtAssets(stageCode, true),
+    w().loadStageLayouts!({ stageCode })
+  ]);
+  if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
   renderStageJoinQr(stageCode, true);
   w().runtimeTestChannel?.addEventListener("message", (event: MessageEvent) => {
     applyRuntimeTestMessage(event.data);

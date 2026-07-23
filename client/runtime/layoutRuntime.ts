@@ -274,7 +274,13 @@ function controllerLayoutGameObjectRegistry(): Dict | null {
   return controllerLayoutGameObjects;
 }
 
-async function loadStageLayouts(options: { forceServer?: boolean } = {}): Promise<LayoutCollection> {
+function runtimeLayoutStageCode(explicitStageCode = ""): string {
+  const controllerStageCode = String((w().controllerState as Dict | null)?.stageCode || "");
+  const stageStateCode = String((w().currentStageState as Dict | null)?.stageCode || "");
+  return String(explicitStageCode || controllerStageCode || stageStateCode).trim().toUpperCase();
+}
+
+async function loadStageLayouts(options: { forceServer?: boolean; stageCode?: string } = {}): Promise<LayoutCollection> {
   const { forceServer = false } = options;
   if (w().runtimeTestLayouts && !forceServer) {
     w().stageLayouts = w().runtimeTestLayouts as LayoutCollection;
@@ -282,12 +288,14 @@ async function loadStageLayouts(options: { forceServer?: boolean } = {}): Promis
   }
   if (!w().canUseServer) return w().stageLayouts;
   const toolContext = w().PartyGameToolContext as { api?: { layout?: { loadStageLayouts?: () => Promise<Dict> } } } | undefined;
-  const result = (await (toolContext?.api?.layout?.loadStageLayouts?.() || w().getJson!("/api/stage-layouts"))) as Dict;
+  const stageCode = runtimeLayoutStageCode(options.stageCode);
+  const path = stageCode ? `/api/stage/${stageCode}/content/stage-layouts` : "/api/stage-layouts";
+  const result = (await (toolContext?.api?.layout?.loadStageLayouts?.() || w().getJson!(path))) as Dict;
   w().stageLayouts = (result.layouts as LayoutCollection) || w().stageLayouts;
   return w().stageLayouts;
 }
 
-async function loadControllerLayouts(options: { forceServer?: boolean } = {}): Promise<LayoutCollection> {
+async function loadControllerLayouts(options: { forceServer?: boolean; stageCode?: string } = {}): Promise<LayoutCollection> {
   const { forceServer = false } = options;
   if (w().runtimeTestControllerLayouts && !forceServer) {
     w().controllerLayouts = w().runtimeTestControllerLayouts as LayoutCollection;
@@ -295,7 +303,9 @@ async function loadControllerLayouts(options: { forceServer?: boolean } = {}): P
   }
   if (!w().canUseServer) return w().controllerLayouts;
   const toolContext = w().PartyGameToolContext as { api?: { layout?: { loadControllerLayouts?: () => Promise<Dict> } } } | undefined;
-  const result = (await (toolContext?.api?.layout?.loadControllerLayouts?.() || w().getJson!("/api/controller-layouts"))) as Dict;
+  const stageCode = runtimeLayoutStageCode(options.stageCode);
+  const path = stageCode ? `/api/stage/${stageCode}/content/controller-layouts` : "/api/controller-layouts";
+  const result = (await (toolContext?.api?.layout?.loadControllerLayouts?.() || w().getJson!(path))) as Dict;
   w().controllerLayouts = (result.layouts as LayoutCollection) || w().controllerLayouts;
   return w().controllerLayouts;
 }

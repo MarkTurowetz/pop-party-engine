@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("crypto");
+const { publicReleaseTuple } = require("./room-content-pin-runtime");
 
 const PLAYER_ENDPOINTS = new Set([
   "/api/heartbeat", "/api/avatar", "/api/leave", "/api/start", "/api/cancel-start",
@@ -106,6 +107,15 @@ function createRuntimeCapabilityRuntime(options = {}) {
         ? true
         : deny(res, "STAGE_CAPABILITY_REQUIRED", "Stage event authorization is missing or expired");
     }
+    const stageContentMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/content\//i);
+    if (req.method === "GET" && stageContentMatch) {
+      const stageCode = normalizeStageCode(stageContentMatch[1]);
+      const room = getExistingRoom(stageCode);
+      const playerId = normalizePlayerId(req.headers["x-player-id"]);
+      return (verifyStage(req, room) || verifyPlayer(req, room, playerId))
+        ? true
+        : deny(res, playerId ? "PLAYER_CAPABILITY_REQUIRED" : "STAGE_CAPABILITY_REQUIRED", "Room content authorization is required");
+    }
     const stageRouteMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/(?:lobby|test-config|event-ticket)$/i);
     if (stageRouteMatch) {
       const stageCode = normalizeStageCode(stageRouteMatch[1]);
@@ -162,7 +172,7 @@ function createRuntimeCapabilityRuntime(options = {}) {
     }
     if (!room) {
       room = getRoom(stageCode);
-      if (mode === "required") {
+      if (typeof pinNewRoom === "function") {
         try {
           await pinNewRoom(room);
         } catch (error) {
@@ -177,7 +187,7 @@ function createRuntimeCapabilityRuntime(options = {}) {
       }
     }
     if (!capability || !verifyStage(req, room)) capability = issueStageCapability(room);
-    sendJson(res, 200, { ok: true, stageCode, stageCapability: capability });
+    sendJson(res, 200, { ok: true, stageCode, stageCapability: capability, release: publicReleaseTuple(room.releasePin) });
   }
 
   function handleCreateEventTicket(req, res, stageCode) {

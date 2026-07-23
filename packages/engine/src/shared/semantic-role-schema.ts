@@ -117,15 +117,23 @@ function componentsOf(value: Record<string, unknown>): Record<string, unknown>[]
   return Array.isArray(value.components) ? value.components.filter(plainObject) : [];
 }
 
-function allComponentsOf(value: Record<string, unknown>): Record<string, unknown>[] {
+function allComponentsOf(
+  value: Record<string, unknown>,
+  compositions: Map<string, Record<string, unknown>>
+): Record<string, unknown>[] {
   const output: Record<string, unknown>[] = [];
-  const visit = (components: Record<string, unknown>[]) => {
+  const visit = (components: Record<string, unknown>[], referencePath: Set<string>) => {
     for (const component of components) {
       output.push(component);
-      visit(Array.isArray(component.children) ? component.children.filter(plainObject) : []);
+      visit(Array.isArray(component.children) ? component.children.filter(plainObject) : [], referencePath);
+      if (String(component.kind || "") !== "reference") continue;
+      const referencedId = String(component.artCompositionId || "").trim();
+      const referenced = compositions.get(referencedId);
+      if (!referenced || referencePath.has(referencedId)) continue;
+      visit(componentsOf(referenced), new Set([...referencePath, referencedId]));
     }
   };
-  visit(componentsOf(value));
+  visit(componentsOf(value), new Set([String(value.id || "")]));
   return output;
 }
 
@@ -189,7 +197,7 @@ export function validateSemanticRoleDocument(document: unknown, artManifest: unk
         actualKind: resolved.terminalKind
       });
     }
-    const rootComponents = allComponentsOf(root);
+    const rootComponents = allComponentsOf(root, compositions);
     for (const instanceLabel of definition.requiredInstanceLabels || []) {
       const matches = rootComponents.filter((component) => String(component.instanceLabel || "") === instanceLabel);
       if (matches.length !== 1) {
