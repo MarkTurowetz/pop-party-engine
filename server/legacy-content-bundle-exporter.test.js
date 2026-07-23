@@ -74,4 +74,20 @@ describe("legacy content bundle exporter", () => {
     expect(art.assets[0].blobPath).toMatch(/^blobs\/[a-f0-9]{64}\.svg$/);
     expect(snapshot.readBytes(art.assets[0].blobPath).toString()).toBe("<svg></svg>\n");
   });
+
+  it("uses explicit tracked source paths instead of volatile legacy files", () => {
+    const options = fixture();
+    fs.mkdirSync(path.join(options.root, "tracked"), { recursive: true });
+    fs.writeFileSync(
+      path.join(options.root, "tracked", "flow.json"),
+      `${JSON.stringify({ states: [{ id: "tracked", actions: [] }], routeNodes: [] })}\n`
+    );
+    const manifest = exportLegacyContentBundle({
+      ...options,
+      sourcePaths: { flow: "tracked/flow.json" }
+    });
+    const snapshot = createLocalContentBundleProvider({ root: options.outputRoot }).loadPublishedRevision(manifest.rootHash);
+
+    expect(snapshot.readJson("flow.json").states[0].id).toBe("tracked");
+  });
 });

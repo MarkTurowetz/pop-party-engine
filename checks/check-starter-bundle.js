@@ -44,7 +44,14 @@ try {
     root,
     outputRoot: reproducedRoot,
     gameDefinition: { ...gameDefinition, gameData: authoringSourceGameData },
-    artManifestPath: "apps/reference/authoring/art-manifest.json"
+    artManifestPath: "apps/reference/authoring/art-manifest.json",
+    sourcePaths: {
+      flow: "apps/reference/content/flow.json",
+      constants: "apps/reference/content/constants.json",
+      stageLayouts: "apps/reference/content/layouts/stage.json",
+      controllerLayouts: "apps/reference/content/layouts/controller.json",
+      hostAudios: "apps/reference/content/audio/host-audios.json"
+    }
   });
   const committedInventory = inventory(committedRoot);
   const reproducedInventory = inventory(reproducedRoot);
