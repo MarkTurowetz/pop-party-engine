@@ -48,7 +48,12 @@ game objects from static DOM nodes.
 
 Node applications can own their router while delegating initialization,
 binding, cleanup scheduling, and shutdown to
-`@pop-party/engine/server/web-service`. Browser applications use the
+`@pop-party/engine/server/web-service`. Bundle-backed games should compose that
+router through `@pop-party/engine/server/game-service`: the engine validates and
+pins the complete active release, creates the request handler from that exact
+snapshot, and only then binds the service port. A failed readiness check or
+invalid handler leaves the port closed and exposes a structured failed state;
+there is no fallback request handler. Browser applications use the
 side-effect-free `@pop-party/engine/client/text` and
 `@pop-party/engine/client/qr-code` rendering primitives; compatibility globals
 belong only in a game adapter.
