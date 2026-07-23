@@ -139,8 +139,8 @@ function createPlayerSessionHandlersRuntime({
 
     const stageCode = normalizeStageCode(payload.stageCode);
     const playerId = normalizePlayerId(payload.playerId);
-    const shape = normalizeAvatarShape(payload.shape);
     const room = getExistingRoom(stageCode);
+    const shape = normalizeAvatarShape(payload.shape, room);
     const player = room?.players.get(playerId);
     if (!room || !player) {
       sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
@@ -160,7 +160,7 @@ function createPlayerSessionHandlersRuntime({
     }
 
     player.avatar = {
-      color: player.avatar?.color || randomArrayItem(gameConstants().playerColors),
+      color: player.avatar?.color || randomArrayItem(gameConstants(room).playerColors),
       shape
     };
     player.active = true;

@@ -48,7 +48,7 @@ function createCraftingTimerRuntime({
 
   function setCraftingTimerShown(room, isShown) {
     if (isShown) {
-      const timerDurationMs = durationMs();
+      const timerDurationMs = durationMs(room);
       room.craftingTimerShown = true;
       room.craftingTimerRunning = false;
       room.craftingTimerDurationMs = timerDurationMs;
@@ -75,7 +75,7 @@ function createCraftingTimerRuntime({
 
   function startCraftingTimer(room, action) {
     if (room.craftingTimerDurationMs <= 0 || room.craftingTimerRemainingMs <= 0) {
-      const timerDurationMs = durationMs();
+      const timerDurationMs = durationMs(room);
       room.craftingTimerDurationMs = timerDurationMs;
       room.craftingTimerRemainingMs = timerDurationMs;
     }

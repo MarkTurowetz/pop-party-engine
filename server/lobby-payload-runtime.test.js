@@ -7,6 +7,7 @@ const { createLobbyPayloadRuntime } = require("./lobby-payload-runtime");
 function runtimeFor(action) {
   const applyRoomActionEffects = vi.fn();
   const currentRoomAction = vi.fn(() => action);
+  const gameConstants = vi.fn(() => ({ gameTitle: "Game", speechToTextSendInputBuffer: 0 }));
   const runtime = createLobbyPayloadRuntime({
     activePlayers: () => [],
     allActivePlayersHaveSubmittedInput: () => false,
@@ -14,7 +15,7 @@ function runtimeFor(action) {
     choiceInputPayload: () => null,
     craftingTimerPayload: () => null,
     currentRoomAction,
-    gameConstants: () => ({ gameTitle: "Game", speechToTextSendInputBuffer: 0 }),
+    gameConstants,
     microphoneAccessPayload: () => null,
     normalizePlayerFilter: () => "all",
     publicPlayer: (player) => player,
@@ -25,7 +26,7 @@ function runtimeFor(action) {
     serializeVotingCards: () => [],
     textInputPayload: () => null
   });
-  return { ...runtime, applyRoomActionEffects, currentRoomAction };
+  return { ...runtime, applyRoomActionEffects, currentRoomAction, gameConstants };
 }
 
 describe("lobby payload flow action exposure", () => {
@@ -63,6 +64,19 @@ describe("lobby payload flow action exposure", () => {
     });
 
     expect(payload.triviaPromptText).toBe("Which dinosaur had three horns?");
+  });
+
+  it("reads constants from the room that owns the payload", () => {
+    const runtime = runtimeFor(null);
+    const room = {
+      stageCode: "TEST",
+      revision: 1,
+      phase: "lobby",
+      flowStateId: "lobby",
+      players: new Map()
+    };
+    runtime.lobbyPayload(room);
+    expect(runtime.gameConstants).toHaveBeenCalledWith(room);
   });
 
   it("exposes a runtime fault without evaluating or applying another flow action", () => {

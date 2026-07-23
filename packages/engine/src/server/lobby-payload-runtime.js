@@ -24,7 +24,7 @@ function createLobbyPayloadRuntime({
     const currentAction = runtimeFault ? null : resolveRoomActionText(currentRoomAction(room), room);
     runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
     if (!runtimeFault) applyRoomActionEffects(room, currentAction);
-    const constants = gameConstants();
+    const constants = gameConstants(room);
     const input = choiceInputPayload(room, currentAction);
     const textInput = textInputPayload(room, currentAction);
     const microphoneAccess = microphoneAccessPayload(room, currentAction);

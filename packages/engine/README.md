@@ -29,7 +29,9 @@ immutable content pin. The room's flow resolver prefers this pinned flow over
 process-global drafts or legacy files, and teardown drops the release tuple,
 snapshot, and materialized data together. A snapshot that cannot produce a
 complete room dataset fails room creation with
-`ACTIVE_CONTENT_GAME_DATA_INVALID`.
+`ACTIVE_CONTENT_GAME_DATA_INVALID`. Runtime decisions, scoring defaults,
+countdown/crafting durations, player colors, and avatar choices likewise resolve
+through that room's pinned dataset.
 
 Public runtime boundaries include `@pop-party/engine/server`,
 `@pop-party/engine/tooling`, and `@pop-party/engine/testing`. Public art authoring

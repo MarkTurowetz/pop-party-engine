@@ -409,7 +409,7 @@ const {
 } = createCountdownRuntime({
   broadcastLobby,
   completeCountdownTrigger: completeCountdownTriggerProxy,
-  countdownDurationMs: () => Math.round(normalizeDurationSeconds(gameConstants().startGameCountdownDuration, 1) * 1000),
+  countdownDurationMs: (room) => Math.round(normalizeDurationSeconds(gameConstants(room).startGameCountdownDuration, 1) * 1000),
   startGoHoldMs: START_GO_HOLD_MS
 });
 
@@ -634,7 +634,7 @@ const {
 } = createCraftingTimerRuntime({
   clearActiveInputFlowEvent,
   clearAnswersSubmittedAdvanceTimer,
-  durationMs: () => Math.round(normalizeDurationSeconds(gameConstants().craftingTimerDuration, 30) * 1000),
+  durationMs: (room) => Math.round(normalizeDurationSeconds(gameConstants(room).craftingTimerDuration, 30) * 1000),
   emitInputFlowEvent: emitInputFlowEventProxy
 });
 
@@ -958,8 +958,9 @@ function readGameConstantsSource() {
   return cloneJson(gameConstantsStore.source || readDefaultGameConstantsSource());
 }
 
-function gameConstants() {
-  return normalizeGameConstants(localDraftStore.constants || readGameConstantsSource());
+function gameConstants(room = null) {
+  const pinnedConstants = room?.gameData?.defaultGameConstants;
+  return normalizeGameConstants(pinnedConstants || localDraftStore.constants || readGameConstantsSource());
 }
 
 function readStageLayoutsSource() {

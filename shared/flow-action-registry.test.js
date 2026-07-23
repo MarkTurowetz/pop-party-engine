@@ -77,9 +77,10 @@ describe("flow action registry", () => {
   });
 
   it("keeps point-popup event identities fresh when a game restarts in the same room", () => {
+    const gameConstants = vi.fn(() => ({ pointsForCorrectAnswer: 100 }));
     const actionRegistry = registry({
       filteredPlayerIds: () => ["p1"],
-      gameConstants: () => ({ pointsForCorrectAnswer: 100 })
+      gameConstants
     });
     const room = {
       players: new Map([["p1", { points: 50, pendingPoints: 0 }]]),
@@ -91,6 +92,21 @@ describe("flow action registry", () => {
 
     expect(room.pendingPointPopupNonce).toBe(8);
     expect(room.pendingPointPopups).toEqual([expect.objectContaining({ id: "8-p1", playerId: "p1", points: 25 })]);
+    expect(gameConstants).not.toHaveBeenCalled();
+  });
+
+  it("uses the current room's pinned constants for default point awards", () => {
+    const room = {
+      players: new Map([["p1", { points: 50, pendingPoints: 0 }]]),
+      pendingPointPopupNonce: 0
+    };
+    const gameConstants = vi.fn(() => ({ pointsForCorrectAnswer: 100 }));
+    const actionRegistry = registry({ filteredPlayerIds: () => ["p1"], gameConstants });
+
+    actionRegistry.applyRoomEffect(room, { type: "showPoints", points: 0, playerFilter: "all" });
+
+    expect(gameConstants).toHaveBeenCalledWith(room);
+    expect(room.pendingPointPopups).toEqual([expect.objectContaining({ points: 100 })]);
   });
 
   it.each(["setupGame", "getPlayerAnswers"])("preserves the registered %s type in the stage payload", (type) => {

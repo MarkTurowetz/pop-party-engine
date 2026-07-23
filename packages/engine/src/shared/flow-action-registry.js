@@ -746,7 +746,7 @@
             }),
             applyRoomEffect: (room, action, context) => {
                 const playerIds = context.filteredPlayerIds(room, action.playerFilter);
-                const points = Number(action.points || 0) > 0 ? Number(action.points) : context.gameConstants().pointsForCorrectAnswer;
+                const points = Number(action.points || 0) > 0 ? Number(action.points) : context.gameConstants(room).pointsForCorrectAnswer;
                 room.pendingPointPopupNonce = Number(room.pendingPointPopupNonce || 0) + 1;
                 const nonce = room.pendingPointPopupNonce;
                 room.pendingPointPopups = playerIds.map((playerId, index) => {

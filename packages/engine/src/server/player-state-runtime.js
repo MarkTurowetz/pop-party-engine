@@ -6,11 +6,17 @@ function createPlayerStateRuntime({
   normalizeColor,
   randomToken
 }) {
-  function makeAvatar(playerIndex) {
-    const colors = gameConstants().playerColors;
+  function roomAvatarShapes(room = null) {
+    const pinnedShapes = room?.gameData?.avatarShapes;
+    return Array.isArray(pinnedShapes) && pinnedShapes.length ? pinnedShapes : avatarShapes;
+  }
+
+  function makeAvatar(playerIndex, room = null) {
+    const colors = gameConstants(room).playerColors;
+    const shapes = roomAvatarShapes(room);
     return {
       color: colors[playerIndex % colors.length],
-      shape: avatarShapes[Math.floor(playerIndex / colors.length) % avatarShapes.length]
+      shape: shapes[Math.floor(playerIndex / colors.length) % shapes.length]
     };
   }
 
@@ -25,17 +31,18 @@ function createPlayerStateRuntime({
       if (player.id !== playerId && player.avatar?.shape) usedShapes.add(player.avatar.shape);
       if (player.id !== playerId && player.avatar?.color) usedColors.add(normalizeColor(player.avatar.color));
     }
-    const availableShapes = avatarShapes.filter((shape) => !usedShapes.has(shape));
-    const playerColors = gameConstants().playerColors;
+    const shapes = roomAvatarShapes(room);
+    const availableShapes = shapes.filter((shape) => !usedShapes.has(shape));
+    const playerColors = gameConstants(room).playerColors;
     const availableColors = playerColors.filter((color) => !usedColors.has(color));
-    const shape = randomArrayItem(availableShapes.length ? availableShapes : avatarShapes);
+    const shape = randomArrayItem(availableShapes.length ? availableShapes : shapes);
     const color = randomArrayItem(availableColors.length ? availableColors : playerColors);
     return { color, shape };
   }
 
-  function normalizeAvatarShape(value) {
+  function normalizeAvatarShape(value, room = null) {
     const shape = String(value || "").trim().toLowerCase();
-    return avatarShapes.includes(shape) ? shape : "";
+    return roomAvatarShapes(room).includes(shape) ? shape : "";
   }
 
   function activePlayers(room) {

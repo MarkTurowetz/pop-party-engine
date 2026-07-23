@@ -66,7 +66,7 @@ function createDecisionRuntime({
 
   function decisionVariableValue(room, variable) {
     const key = String(variable || "activePlayerCount").trim();
-    const constants = gameConstants();
+    const constants = gameConstants(room);
     const active = activePlayers(room);
     const activeSessionKey = active.map((player) => player.id).sort().join("|");
     if (activeSessionKey !== room.playerSessionKey) {

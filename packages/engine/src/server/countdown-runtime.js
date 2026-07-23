@@ -14,7 +14,7 @@ function createCountdownRuntime({
 
   function enterStartingPhase(room) {
     const now = Date.now();
-    const startCountdownMs = countdownDurationMs();
+    const startCountdownMs = countdownDurationMs(room);
     clearCountdownTimer(room);
     room.phase = "starting";
     room.countdownStartedAt = now;
