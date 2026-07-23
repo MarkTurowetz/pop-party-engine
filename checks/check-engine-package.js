@@ -50,8 +50,8 @@ try {
   if (!referenceConfig.includes('require("@pop-party/engine/game")') || !referenceConfig.includes('require("@pop-party/engine/plugin")')) {
     throw new Error("Reference game configuration must consume the public engine package subpaths");
   }
-  if (!referenceConfig.includes('require("./game-data")')) {
-    throw new Error("Reference game configuration must consume app-owned game data");
+  if (!referenceConfig.includes('mode: "bundle"') || referenceConfig.includes('require("./game-data")')) {
+    throw new Error("Reference game configuration must be bundle-backed without importing legacy game data");
   }
   const rootServer = fs.readFileSync(path.join(root, "server.js"), "utf8");
   if (!rootServer.includes('require("./apps/reference/server")')) {
@@ -60,6 +60,9 @@ try {
   const referenceServer = fs.readFileSync(path.join(root, "apps", "reference", "server.js"), "utf8");
   if (!referenceServer.includes('require("./game.config")')) {
     throw new Error("Reference server must load the app-owned game configuration directly");
+  }
+  if (!referenceServer.includes('require("./authoring-source-game-data")')) {
+    throw new Error("Reference source metadata must remain behind its explicit authoring-only adapter");
   }
   if (referenceServer.includes('require("../../server/art-assets-runtime")')
     || referenceServer.includes('require("../../server/layout-normalization-runtime")')) {

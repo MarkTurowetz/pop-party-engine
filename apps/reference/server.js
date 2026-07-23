@@ -101,6 +101,7 @@ const { createStageTestConfigHandlerRuntime } = require("@pop-party/engine/testi
 const { createStageLayoutNormalizationRuntime } = require("./server/stage-layout-normalization-runtime");
 const { createStageLayoutStateRuntime } = require("./server/stage-layout-state-runtime");
 const GAME_DEFINITION = require("./game.config");
+const AUTHORING_SOURCE_GAME_DATA = require("./authoring-source-game-data");
 
 async function startReferenceApplication() {
 
@@ -204,7 +205,7 @@ const {
   defaultArtCompositions,
   artAssets,
   artGroups
-} = GAME_DEFINITION.gameData;
+} = AUTHORING_SOURCE_GAME_DATA;
 const {
   availableFlowActionTypes,
   availableFlowTransitions,

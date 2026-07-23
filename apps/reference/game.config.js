@@ -2,7 +2,6 @@
 
 const { defineGame } = require("@pop-party/engine/game");
 const { defineGamePlugin } = require("@pop-party/engine/plugin");
-const gameData = require("./game-data");
 const semanticRoles = require("./semantic-roles");
 
 const referencePlugin = defineGamePlugin({
@@ -19,10 +18,9 @@ module.exports = defineGame({
   version: "1.0.17",
   engineCompatibility: "1.0.0",
   content: {
-    mode: "legacy-monolith",
-    schemaVersion: 0
+    mode: "bundle",
+    schemaVersion: 1
   },
-  gameData,
   plugin: referencePlugin,
   semanticRoles
 });

@@ -5,6 +5,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const gameDefinition = require("../apps/reference/game.config");
+const authoringSourceGameData = require("../apps/reference/authoring-source-game-data");
 const { generateGame } = require("../packages/create-game/src/generate-game");
 const { exportLegacyContentBundle } = require("@pop-party/engine/tooling");
 const { createLocalContentBundleProvider } = require("@pop-party/engine/content/local");
@@ -39,7 +40,11 @@ function inventory(directory) {
 
 try {
   const reproducedRoot = path.join(temporaryRoot, "reproduced");
-  exportLegacyContentBundle({ root, outputRoot: reproducedRoot, gameDefinition });
+  exportLegacyContentBundle({
+    root,
+    outputRoot: reproducedRoot,
+    gameDefinition: { ...gameDefinition, gameData: authoringSourceGameData }
+  });
   const committedInventory = inventory(committedRoot);
   const reproducedInventory = inventory(reproducedRoot);
   if (JSON.stringify(committedInventory) !== JSON.stringify(reproducedInventory)) {

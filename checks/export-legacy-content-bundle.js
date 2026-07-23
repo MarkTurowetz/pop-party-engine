@@ -3,6 +3,7 @@
 
 const path = require("path");
 const gameDefinition = require("../apps/reference/game.config");
+const authoringSourceGameData = require("../apps/reference/authoring-source-game-data");
 const { exportLegacyContentBundle } = require("../server/legacy-content-bundle-exporter");
 
 const outputFlag = process.argv.indexOf("--output");
@@ -14,7 +15,7 @@ try {
   const manifest = exportLegacyContentBundle({
     root: process.cwd(),
     outputRoot,
-    gameDefinition,
+    gameDefinition: { ...gameDefinition, gameData: authoringSourceGameData },
     force: process.argv.includes("--force")
   });
   console.log(`Legacy content exported: ${outputRoot}`);

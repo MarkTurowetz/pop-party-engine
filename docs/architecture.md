@@ -12,6 +12,10 @@ concepts into focused modules.
   - Validates the active game-owned bundle before constructing HTTP routing, room lifecycle, game runtime orchestration, and persistence wiring.
   - Gameplay composition uses only the validated candidate. Legacy source metadata is passed solely to reference-owned authoring adapters.
   - This is reference-app composition code and must not be imported by the engine package or generated games.
+- `apps/reference/game.config.js`
+  - Bundle-mode application definition with no embedded runtime data.
+- `apps/reference/authoring-source-game-data.js`
+  - Temporary reference-only bridge for source-file art authoring and legacy bundle export; runtime rooms cannot import it.
 - `apps/reference/server/`
   - Reference-owned art migrations and default layout adapters used by the template game.
   - Root modules with matching names are compatibility exports only; new games do not inherit these adapters.
