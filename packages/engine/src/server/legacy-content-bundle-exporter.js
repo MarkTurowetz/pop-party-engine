@@ -17,6 +17,11 @@ function firstExisting(root, candidates) {
   throw new Error(`None of the legacy sources exist: ${candidates.join(", ")}`);
 }
 
+function sourceCandidates(sourcePaths, key, fallbacks) {
+  const configured = String(sourcePaths?.[key] || "").trim();
+  return configured ? [configured] : fallbacks;
+}
+
 function writeBundleFile(outputRoot, logicalPath, value, records) {
   const absolutePath = path.join(outputRoot, ...logicalPath.split("/"));
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
@@ -58,9 +63,18 @@ function exportLegacyContentBundle(options) {
   fs.mkdirSync(outputRoot, { recursive: true });
   const gameDefinition = options.gameDefinition;
   const gameData = gameDefinition.gameData;
+  const sourcePaths = options.sourcePaths || {};
   const records = [];
-  writeBundleFile(outputRoot, "flow.json", readJson(firstExisting(root, ["game-flow.json", "game-flow.default.json"])), records);
-  const savedConstants = readJson(firstExisting(root, ["game-constants.json", "game-constants.default.json"]));
+  writeBundleFile(
+    outputRoot,
+    "flow.json",
+    readJson(firstExisting(root, sourceCandidates(sourcePaths, "flow", ["game-flow.json", "game-flow.default.json"]))),
+    records
+  );
+  const savedConstants = readJson(firstExisting(
+    root,
+    sourceCandidates(sourcePaths, "constants", ["game-constants.json", "game-constants.default.json"])
+  ));
   writeBundleFile(outputRoot, "constants.json", {
     ...gameData.defaultGameConstants,
     ...savedConstants,
@@ -74,13 +88,32 @@ function exportLegacyContentBundle(options) {
     outputRoot,
     "layouts/stage.json",
     withDefaultBackgroundLayer(
-      readJson(firstExisting(root, ["stage-layouts.json", "stage-layouts.default.json"])),
+      readJson(firstExisting(
+        root,
+        sourceCandidates(sourcePaths, "stageLayouts", ["stage-layouts.json", "stage-layouts.default.json"])
+      )),
       gameData.defaultStageLayouts
     ),
     records
   );
-  writeBundleFile(outputRoot, "layouts/controller.json", readJson(firstExisting(root, ["controller-layouts.json", "controller-layouts.default.json"])), records);
-  writeBundleFile(outputRoot, "audio/host-audios.json", readJson(firstExisting(root, ["host-audios.json", "host-audios.default.json"])), records);
+  writeBundleFile(
+    outputRoot,
+    "layouts/controller.json",
+    readJson(firstExisting(
+      root,
+      sourceCandidates(sourcePaths, "controllerLayouts", ["controller-layouts.json", "controller-layouts.default.json"])
+    )),
+    records
+  );
+  writeBundleFile(
+    outputRoot,
+    "audio/host-audios.json",
+    readJson(firstExisting(
+      root,
+      sourceCandidates(sourcePaths, "hostAudios", ["host-audios.json", "host-audios.default.json"])
+    )),
+    records
+  );
   writeBundleFile(outputRoot, "prompts/prompts.json", { prompts: gameData.multipleChoicePrompts }, records);
   writeBundleFile(outputRoot, "game-data/runtime.json", {
     schemaVersion: 1,
