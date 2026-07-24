@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1158",
+  "version": "1.0.17.1160",
   "baseVersion": "1.0.17",
-  "buildNumber": 1158,
-  "commit": "823b48cd",
-  "branch": "codex/npm-publication-complete",
-  "generatedAt": "2026-07-23T09:12:05.021Z"
+  "buildNumber": 1160,
+  "commit": "f5b7fce9",
+  "branch": "main",
+  "generatedAt": "2026-07-24T19:25:35.754Z"
 }

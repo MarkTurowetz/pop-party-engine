@@ -34,12 +34,25 @@ function createArtFileRuntime({
 
   function publicArtAsset(asset, manifest = {}) {
     const custom = manifest[asset.id] || null;
-    const defaultFilePath = path.join(defaultDir, asset.defaultFile);
-    const defaultUrl = cacheBustFileUrl(defaultFilePath, `/art/default/${asset.defaultFile}`);
+    const defaultFile = String(asset.defaultFile || path.posix.basename(String(asset.blobPath || "")));
+    const defaultFilePath = path.join(defaultDir, defaultFile);
+    const defaultUrl = cacheBustFileUrl(defaultFilePath, `/art/default/${defaultFile}`);
+    const portable = Array.isArray(manifest.assets)
+      ? manifest.assets.find((candidate) => candidate?.id === asset.id)
+      : null;
+    const portableFile = path.posix.basename(String(portable?.blobPath || ""));
+    const portableFilePath = portableFile ? path.join(defaultDir, portableFile) : "";
+    const hasPortableReplacement = Boolean(portableFile
+      && fs.existsSync(portableFilePath)
+      && (portableFile !== defaultFile || String(portable?.sha256 || "") !== String(asset.sha256 || "")));
     const customFile = custom?.fileName ? path.basename(custom.fileName) : "";
     const customFilePath = customFile ? path.join(customDir, customFile) : "";
     const hasCustom = Boolean(customFile && fs.existsSync(customFilePath));
-    const currentUrl = hasCustom ? cacheBustFileUrl(customFilePath, `/art/custom/${customFile}`) : defaultUrl;
+    const currentUrl = hasCustom
+      ? cacheBustFileUrl(customFilePath, `/art/custom/${customFile}`)
+      : hasPortableReplacement
+        ? cacheBustFileUrl(portableFilePath, `/art/default/${portableFile}`)
+        : defaultUrl;
     const publicAsset = {
       id: asset.id,
       name: asset.name,
@@ -50,9 +63,9 @@ function createArtFileRuntime({
       expectedTypes: Object.keys(acceptedArtTypes),
       defaultUrl,
       currentUrl,
-      hasCustom,
-      fileName: hasCustom ? customFile : asset.defaultFile,
-      updatedAt: hasCustom ? custom.updatedAt : null
+      hasCustom: hasCustom || hasPortableReplacement,
+      fileName: hasCustom ? customFile : portable?.sourceName || portableFile || defaultFile,
+      updatedAt: hasCustom ? custom.updatedAt : portable?.updatedAt || null
     };
     const draftReplacement = readDraftReplacement(asset.id);
     if (!draftReplacement) return publicAsset;

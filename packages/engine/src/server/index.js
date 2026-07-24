@@ -1,6 +1,6 @@
 "use strict";
 
-module.exports = Object.freeze({
+const serverApi = {
   ...require("./value-normalizers"),
   ...require("./runtime-fault-runtime"),
   ...require("./action-effect-state-runtime"),
@@ -51,7 +51,6 @@ module.exports = Object.freeze({
   ...require("./game-flow-normalization-runtime"),
   ...require("./game-readiness-runtime"),
   ...require("./game-service-runtime"),
-  ...require("./game-application-runtime"),
   ...require("./content-game-data-runtime"),
   ...require("./content-migration-runtime"),
   ...require("./room-flow-helpers-runtime"),
@@ -68,4 +67,21 @@ module.exports = Object.freeze({
   ...require("./github-storage-runtime"),
   ...require("./tool-github-sources-runtime"),
   ...require("./save-handlers-runtime")
+};
+
+Object.defineProperties(serverApi, {
+  createGameApplicationRuntime: {
+    enumerable: true,
+    get() {
+      return require("./game-application-runtime").createGameApplicationRuntime;
+    }
+  },
+  publicRuntimeMetadata: {
+    enumerable: true,
+    get() {
+      return require("./game-application-runtime").publicRuntimeMetadata;
+    }
+  }
 });
+
+module.exports = Object.freeze(serverApi);

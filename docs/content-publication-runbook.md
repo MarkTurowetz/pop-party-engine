@@ -31,8 +31,8 @@ npm run validate -- outputs/migrated-content
 npm run content:bootstrap-github -- \
   --bundle tmp/content-bundle \
   --game-build 1.0.17.1057 \
-  --engine-version 1.0.0 \
-  --plugin-version 1.0.0
+  --engine-version 1.1.0 \
+  --plugin-version 1.1.0
 ```
 
 The default is validation-only and performs no network writes. Review the exact bundle root and release tuple printed by the command.

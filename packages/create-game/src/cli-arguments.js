@@ -1,5 +1,7 @@
 "use strict";
 
+const { version: DEFAULT_ENGINE_VERSION } = require("../package.json");
+
 const HELP_TEXT = [
   "Usage: npm create @pop-party/game <name> [options]",
   "",
@@ -38,7 +40,7 @@ function parseCreateGameArguments(argv = []) {
   if (!displayName) throw new Error("Game display name is required");
   return Object.freeze({
     displayName,
-    engineVersion: options.engineVersion || "1.0.0",
+    engineVersion: options.engineVersion || DEFAULT_ENGINE_VERSION,
     starterRoot: options.starterRoot || undefined,
     targetRoot: options.targetRoot || undefined
   });

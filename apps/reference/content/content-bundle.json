@@ -1,15 +1,17 @@
 {
   "schemaVersion": 1,
   "gameId": "pop-party-reference",
-  "engineContentSchemaVersion": "1.0.0",
+  "engineContentSchemaVersion": "1.1.0",
   "flowExpressionLanguageVersion": 1,
   "gameMigrationLevel": 0,
   "semanticRolesPath": "semantic-roles.json",
+  "parentRevision": "",
+  "publishedRevision": "",
   "files": [
     {
       "path": "art/manifest.json",
-      "sha256": "6c391624ed96c675ce1a68bcadc148f7a4cd8dd5d27de0ea16501db0ceffbad2",
-      "bytes": 364020
+      "sha256": "db3748fad1677deef56c283687f7e9dbee5e6e4b4ef6b35e39b7867e29da60a8",
+      "bytes": 366554
     },
     {
       "path": "audio/host-audios.json",
@@ -92,5 +94,5 @@
       "bytes": 2469
     }
   ],
-  "rootHash": "655045fccab674194c4f480b193b00211a62e9e73d3cb0eef7337a314699ffbf"
+  "rootHash": "4f27a13a4abef120aa4adbebd7dc3aac6d431daa864227dcd2fb7dd0ea855d76"
 }

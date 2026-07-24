@@ -61,15 +61,13 @@ try {
   if (!referenceServer.includes('require("./game.config")')) {
     throw new Error("Reference server must load the app-owned game configuration directly");
   }
-  if (!referenceServer.includes('require("./authoring-source-game-data")')) {
-    throw new Error("Reference source metadata must remain behind its explicit authoring-only adapter");
+  if (!referenceServer.includes('require("@pop-party/engine/server/application")')) {
+    throw new Error("Reference server must start through the public engine application boundary");
   }
-  if (!referenceServer.includes('path.join(__dirname, "authoring", "art-manifest.json")')) {
-    throw new Error("Reference local art authoring must use its tracked app-owned seed");
-  }
-  if (referenceServer.includes('require("../../server/art-assets-runtime")')
-    || referenceServer.includes('require("../../server/layout-normalization-runtime")')) {
-    throw new Error("Reference server must load reference-owned art and layout adapters from its app boundary");
+  if (referenceServer.includes("authoring-source-game-data")
+    || referenceServer.includes("createWebServiceRuntime")
+    || referenceServer.includes("createRouterRuntime")) {
+    throw new Error("Reference server must remain a thin game-owned wrapper without engine application assembly");
   }
   const referenceCompatibilityModules = [
     "art-assets-runtime",
@@ -89,7 +87,7 @@ try {
       throw new Error(`Legacy ${moduleName} path must remain only a reference-app compatibility export`);
     }
   }
-  const requiredServerImports = [
+  const requiredPublicImports = [
     "@pop-party/engine/security/admin",
     "@pop-party/engine/security/audit",
     "@pop-party/engine/content/admin",
@@ -103,10 +101,6 @@ try {
     "@pop-party/engine/server/readiness",
     "@pop-party/engine/server/web-service"
   ];
-  const missingServerImports = requiredServerImports.filter((specifier) => !referenceServer.includes(`require("${specifier}")`));
-  if (missingServerImports.length) {
-    throw new Error(`Reference server is missing public engine imports: ${missingServerImports.join(", ")}`);
-  }
   const localRequire = createRequire(path.join(root, "package.json"));
   if (require(path.join(root, "game.config")) !== require(path.join(root, "apps", "reference", "game.config"))) {
     throw new Error("Root game configuration is not a reference-app compatibility export");
@@ -254,6 +248,14 @@ try {
   if (!packed.files.some((file) => file.path === "bin/pop-party.js")) {
     throw new Error("Packed engine is missing the pop-party CLI executable");
   }
+  for (const expected of ["web/index.html", "web/dist/client/.vite/manifest.json", "web/client/styles/legacy-shell.css"]) {
+    if (!packed.files.some((file) => file.path === expected)) {
+      throw new Error(`Packed engine is missing its browser application asset: ${expected}`);
+    }
+  }
+  if (!packed.files.some((file) => /^web\/dist\/client\/assets\/tools-.*\.js$/.test(file.path))) {
+    throw new Error("Packed engine is missing the authenticated tools application bundle");
+  }
   const tarball = path.join(fixtureRoot, packed.filename);
   fs.writeFileSync(path.join(fixtureRoot, "package.json"), `${JSON.stringify({ name: "engine-pack-fixture", private: true }, null, 2)}\n`);
   execFileSync("npm", ["install", tarball, "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: fixtureRoot, stdio: "pipe", env: commandEnvironment });
@@ -324,7 +326,7 @@ try {
     if (typeof toolingApi[exportName] !== "function") throw new Error(`Packed engine tooling entry point is missing ${exportName}`);
   }
   for (const specifier of [
-    ...requiredServerImports,
+    ...requiredPublicImports,
     "@pop-party/engine/server/application",
     "@pop-party/engine/content/migrations",
     "@pop-party/engine/art/lifecycle",

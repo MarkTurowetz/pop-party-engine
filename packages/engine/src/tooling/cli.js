@@ -120,6 +120,10 @@ async function startGameApplication(options = {}) {
     gameDefinition: loaded.gameDefinition,
     engineVersion: options.engineVersion,
     contentSchemaVersion: options.contentSchemaVersion || options.engineVersion,
+    workspaceRoot: loaded.cwd,
+    contentRoot: options.contentRoot,
+    authoringRoot: options.authoringRoot || options.contentRoot,
+    webRoot: options.webRoot,
     host: options.host,
     port: options.port,
     onError: options.onError
@@ -136,6 +140,8 @@ async function startDevelopmentApplication(options = {}) {
   });
   const started = await startGameApplication({
     ...options,
+    contentRoot: development.contentRoot,
+    authoringRoot: development.contentRoot,
     environment: { POP_PARTY_CONTENT_ROOT: development.contentRoot }
   });
   return Object.freeze({ ...started, development });

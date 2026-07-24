@@ -22,12 +22,12 @@ actually validated.
 `.pop-party/content` once from that store's immutable active revision and then
 loads only the game-local copy; it never rewrites or continually resynchronizes
 the source. Both commands use the same release gate before binding the
-application port. The starter service requires exactly one game-owned stage
-and controller bootstrap renderer and exposes immutable release diagnostics.
-Missing or ambiguous renderers leave the port closed instead of installing
-fallback UI. Authenticated tooling is
-deliberately unavailable until a game configures it; the service returns
-`GAME_TOOLING_NOT_CONFIGURED` instead of borrowing reference-app tools.
+application port. The installed package supplies the complete stage,
+controller, room lifecycle, and authenticated core authoring applications.
+Those applications render and edit the consuming game's validated bundle; they
+never borrow reference-app content or require game-owned bootstrap renderers.
+Optional plugin renderers and tool panels are additive to the engine-owned
+application rather than replacements for its core routes.
 
 `pop-party migrate` loads the active immutable snapshot and follows only the
 game plugin's explicit, one-level-at-a-time migration registrations. The default
@@ -86,14 +86,16 @@ likewise consumes the shared action registry and registered layout entities as
 authoritative; it does not carry duplicate runner definitions or synthesize
 game objects from static DOM nodes.
 
-Node applications can own their router while delegating initialization,
-binding, cleanup scheduling, and shutdown to
-`@pop-party/engine/server/web-service`. Bundle-backed games should compose that
-router through `@pop-party/engine/server/game-service`: the engine validates and
-pins the complete active release, creates the request handler from that exact
-snapshot, and only then binds the service port. A failed readiness check or
-invalid handler leaves the port closed and exposes a structured failed state;
-there is no fallback request handler. Browser applications use the
+Generated games start the complete application through
+`@pop-party/engine/server/application`. Lower-level Node applications may own
+their router while delegating initialization, binding, cleanup scheduling, and
+shutdown to `@pop-party/engine/server/web-service`. Bundle-backed custom
+applications compose that router through
+`@pop-party/engine/server/game-service`: the engine validates and pins the
+complete active release, creates the request handler from that exact snapshot,
+and only then binds the service port. A failed readiness check or invalid
+handler leaves the port closed and exposes a structured failed state; there is
+no fallback request handler. Browser applications use the
 side-effect-free `@pop-party/engine/client/text` and
 `@pop-party/engine/client/qr-code` rendering primitives; compatibility globals
 belong only in a game adapter.

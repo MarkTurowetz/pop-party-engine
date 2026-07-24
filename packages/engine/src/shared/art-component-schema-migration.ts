@@ -1,3 +1,4 @@
+// Engine-owned migration contract for persisted art composition data.
 export const ART_COMPONENT_SCHEMA_VERSION = 7;
 const SPRITE_SCHEMA_VERSION = 1;
 const CENTERED_COORDINATE_SCHEMA_VERSION = 2;

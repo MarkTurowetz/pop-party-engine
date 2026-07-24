@@ -1,5 +1,5 @@
-// Server/browser-shared definitions and migrations for Lobby layout widgets.
-// Built to shared/lobby-widget-art.js via `npm run build:shared`.
+// Engine-owned definitions and migrations for Lobby layout widgets.
+// Built beside this source via `npm run build:shared`.
 
 (function (): void {
   "use strict";

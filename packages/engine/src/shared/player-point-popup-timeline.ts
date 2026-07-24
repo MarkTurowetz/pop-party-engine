@@ -1,3 +1,4 @@
+// Engine-owned player points popup lifecycle.
 import type { TimelineDocument } from "./timeline-model";
 
 export function defaultPlayerPointPopupTimeline(): TimelineDocument {

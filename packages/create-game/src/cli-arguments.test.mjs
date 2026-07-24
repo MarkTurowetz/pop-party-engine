@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { HELP_TEXT, parseCreateGameArguments } = require("./cli-arguments");
+const { version: defaultEngineVersion } = require("../package.json");
 
 describe("create-game CLI arguments", () => {
   it("parses the npm initializer name and exact options", () => {
@@ -19,7 +20,7 @@ describe("create-game CLI arguments", () => {
       starterRoot: "/tmp/starter",
       targetRoot: "/tmp/flip-7"
     });
-    expect(parseCreateGameArguments(["My Game"]).engineVersion).toBe("1.0.0");
+    expect(parseCreateGameArguments(["My Game"]).engineVersion).toBe(defaultEngineVersion);
     expect(parseCreateGameArguments(["--help"])).toEqual({ help: true });
     expect(HELP_TEXT).toContain("npm create @pop-party/game");
   });

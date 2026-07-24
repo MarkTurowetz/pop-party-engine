@@ -19,6 +19,11 @@ the configured immutable release; later runs keep that independent local copy.
 Production never reads the development workspace. Both commands validate the
 complete selected release before opening a port.
 
+The resulting service immediately receives the engine-owned stage, controller,
+room lifecycle, and authenticated core tools. Its `src/stage`,
+`src/controller`, and `src/tools` folders begin as empty additive plugin
+boundaries; they do not contain placeholder pages or copies of engine code.
+
 `pop-party migrate` previews the registered, contiguous game migration path.
 It writes nothing unless `--output <new-directory>` is supplied, never mutates
 the source bundle, runs every migration twice to reject nondeterministic output,

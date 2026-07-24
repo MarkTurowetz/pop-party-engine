@@ -1,5 +1,5 @@
-// Dual-use (server require + window global) controller layout widget art-composition map.
-// Built to shared/controller-layout-art-widgets.js via `npm run build:shared`
+// Engine-owned controller layout widget art-composition map.
+// Built beside this source via `npm run build:shared`
 // (committed output). Wrapped in an IIFE so declarations stay local to the shared compilation.
 
 (function (): void {

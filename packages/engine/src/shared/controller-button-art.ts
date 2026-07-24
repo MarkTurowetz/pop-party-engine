@@ -1,5 +1,5 @@
-// Server-shared controller button hierarchy definitions and legacy-flat migration.
-// Built to shared/controller-button-art.js via `npm run build:shared`.
+// Engine-owned controller button hierarchy definitions and legacy-flat migration.
+// Built beside this source via `npm run build:shared`.
 
 (function (): void {
   "use strict";

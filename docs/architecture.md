@@ -9,21 +9,17 @@ concepts into focused modules.
 - `server.js`
   - Compatibility launcher only; it invokes the explicit application startup factory exported by `apps/reference/server.js`.
 - `apps/reference/server.js`
-  - Validates the active game-owned bundle before constructing HTTP routing, room lifecycle, game runtime orchestration, and persistence wiring.
-  - Gameplay composition uses only the validated candidate. Legacy source metadata is passed solely to reference-owned authoring adapters.
-  - This is reference-app composition code and must not be imported by the engine package or generated games.
+  - Thin game-owned wrapper around `@pop-party/engine/server/application`.
+  - Supplies only the reference game definition and its independent content/workspace roots.
 - `apps/reference/game.config.js`
   - Bundle-mode application definition with no embedded runtime data.
-- `apps/reference/authoring-source-game-data.js`
-  - Temporary reference-only bridge for source-file art authoring and legacy bundle export; runtime rooms cannot import it.
 - `apps/reference/server/`
-  - Reference-owned art migrations and default layout adapters used by the template game.
-  - Root modules with matching names are compatibility exports only; new games do not inherit these adapters.
+  - Compatibility exports for older local imports. Canonical application and authoring behavior lives in the engine package.
 - `packages/engine/src/server/game-application-runtime.js`
-  - Owns the public generated-game HTTP bootstrap used by `pop-party start` and `pop-party dev`.
+  - Owns the complete public generated-game application used by `pop-party start` and `pop-party dev`.
   - It validates and pins the complete active release before the service port opens.
-  - Stage and controller routes require exactly one explicit game-plugin bootstrap renderer each; missing or ambiguous renderers stop startup instead of installing engine or reference fallback UI.
-  - Authenticated tooling is not inferred from reference-app code. Until a game registers and configures its tool application, `/tools` fails with `GAME_TOOLING_NOT_CONFIGURED`.
+  - Stage, controller, room lifecycle, and authenticated core tools are engine-owned and render game-owned bundle content.
+  - Optional game plugin contributions are additive; generated games do not recreate core routes or browser applications.
 - `packages/engine/src/server/content-migration-runtime.js`
   - Resolves only explicit namespaced game-plugin migrations, requires a contiguous one-level path, and rejects downgrades.
   - Runs every step twice against the same immutable source and blocks output when the resulting revisions differ.

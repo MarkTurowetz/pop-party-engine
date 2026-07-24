@@ -14,10 +14,11 @@ export function publicRuntimeMetadata(
   gameDefinition: Record<string, unknown>,
   active: GameServiceActiveContext
 ): GameApplicationMetadata;
-export function createGameApplicationRequestHandler(options: {
-  gameDefinition: Record<string, unknown>;
-  active: GameServiceActiveContext;
-}): (request: unknown, response: unknown) => unknown;
 export function createGameApplicationRuntime(
-  options: Omit<GameServiceRuntimeOptions, "createRequestHandler"> & Record<string, unknown>
+  options: Omit<GameServiceRuntimeOptions, "createRequestHandler"> & Readonly<{
+    workspaceRoot?: string;
+    contentRoot?: string;
+    authoringRoot?: string;
+    webRoot?: string;
+  }> & Record<string, unknown>
 ): GameServiceRuntime;

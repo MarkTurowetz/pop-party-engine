@@ -101,7 +101,7 @@ if (!/normalized === "presentation"\) return "stagepresentationtext"/.test(layou
 }
 
 const layoutNormalizerSource = fs.readFileSync(
-  path.join(repoRoot, "apps/reference/server/layout-normalization-runtime.js"),
+  path.join(repoRoot, "packages/engine/src/server/application/layout-normalization-runtime.js"),
   "utf8"
 );
 const engineLayoutNormalizerSource = fs.readFileSync(

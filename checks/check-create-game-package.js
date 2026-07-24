@@ -10,6 +10,7 @@ const { createLocalContentBundleProvider } = require("@pop-party/engine/content/
 const root = path.resolve(__dirname, "..");
 const packageRoot = path.join(root, "packages", "create-game");
 const enginePackageRoot = path.join(root, "packages", "engine");
+const engineVersion = JSON.parse(fs.readFileSync(path.join(enginePackageRoot, "package.json"), "utf8")).version;
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-create-game-"));
 
 try {
@@ -32,12 +33,12 @@ try {
   });
   const packedCli = path.join(fixtureRoot, "node_modules", "@pop-party", "create-game", "bin", "create-game.js");
   const cliTargetRoot = path.join(fixtureRoot, "cli-generated-game");
-  const cliOutput = execFileSync(process.execPath, [packedCli, "CLI Generated Fixture", "--engine-version", "1.0.0", "--output", cliTargetRoot], {
+  const cliOutput = execFileSync(process.execPath, [packedCli, "CLI Generated Fixture", "--engine-version", engineVersion, "--output", cliTargetRoot], {
     cwd: fixtureRoot,
     encoding: "utf8"
   });
   if (!cliOutput.includes(`Created CLI Generated Fixture at ${cliTargetRoot}`)
-    || !cliOutput.includes("Engine: @pop-party/engine@1.0.0")) {
+    || !cliOutput.includes(`Engine: @pop-party/engine@${engineVersion}`)) {
     throw new Error("Packed create-game executable output contract failed");
   }
   if (JSON.parse(fs.readFileSync(path.join(cliTargetRoot, "package.json"), "utf8")).name !== "cli-generated-fixture") {
@@ -46,7 +47,7 @@ try {
   const fixtureRequire = createRequire(path.join(fixtureRoot, "fixture.js"));
   const { generateGame } = fixtureRequire("@pop-party/create-game");
   const targetRoot = path.join(fixtureRoot, "generated-game");
-  generateGame({ displayName: "Generated Fixture", engineVersion: "1.0.0", targetRoot });
+  generateGame({ displayName: "Generated Fixture", engineVersion, targetRoot });
   const generatedManifest = JSON.parse(fs.readFileSync(path.join(targetRoot, "package.json"), "utf8"));
   if (!fs.readFileSync(path.join(targetRoot, "LICENSE"), "utf8").startsWith("MIT License\n")) throw new Error("Generated game is missing its MIT code license");
   if (!fs.existsSync(path.join(targetRoot, "STARTER-ASSET-NOTICES.json"))) throw new Error("Generated game is missing starter asset notices");
@@ -61,7 +62,7 @@ try {
   for (const relativePath of ["src/actions/index.js", "src/stage/index.js", "src/controller/index.js", "src/tools/index.js", "src/plugin/index.js", "tests/config.test.js"]) {
     if (!fs.existsSync(path.join(targetRoot, relativePath))) throw new Error(`Generated game is missing ${relativePath}`);
   }
-  if (generatedManifest.dependencies?.["@pop-party/engine"] !== "1.0.0") throw new Error("Generated game did not pin the exact engine version");
+  if (generatedManifest.dependencies?.["@pop-party/engine"] !== engineVersion) throw new Error("Generated game did not pin the exact engine version");
   if (generatedManifest.scripts?.start !== "pop-party start"
     || generatedManifest.scripts?.dev !== "pop-party dev"
     || generatedManifest.scripts?.migrate !== "pop-party migrate") {
@@ -84,16 +85,30 @@ try {
     env: { ...process.env, npm_config_cache: path.join(fixtureRoot, ".npm-cache") }
   });
   const developmentSmoke = execFileSync(process.execPath, ["-e", `
+    const fs = require("node:fs");
     const { startDevelopmentApplication } = require("@pop-party/engine/tooling");
     (async () => {
-      const first = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: "1.0.0", host: "127.0.0.1", port: 0 });
+      const first = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
       const firstHealth = await (await fetch(first.startup.localUrl + "/health")).json();
+      const constantsResponse = await fetch(first.startup.localUrl + "/api/game-constants");
+      const constantsPayload = await constantsResponse.json();
+      constantsPayload.constants.gameTitle = "Generated Fixture Edited";
+      const saveResponse = await fetch(first.startup.localUrl + "/api/game-constants", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ constants: constantsPayload.constants })
+      });
+      const savedRevision = JSON.parse(fs.readFileSync(".pop-party/content/content-bundle.json", "utf8")).rootHash;
       await first.runtime.stop();
-      const second = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: "1.0.0", host: "127.0.0.1", port: 0 });
+      const second = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
+      const secondConstants = await (await fetch(second.startup.localUrl + "/api/game-constants")).json();
       const result = {
         firstRevision: first.development.revision,
         healthRevision: firstHealth.release.contentRevision,
+        saveStatus: saveResponse.status,
+        savedRevision,
         secondRevision: second.development.revision,
+        secondGameTitle: secondConstants.constants.gameTitle,
         seededFirst: first.development.seeded,
         seededSecond: second.development.seeded
       };
@@ -101,11 +116,14 @@ try {
       process.stdout.write(JSON.stringify(result));
     })().catch((error) => { console.error(error); process.exitCode = 1; });
   `], { cwd: targetRoot, encoding: "utf8" });
-  const development = JSON.parse(developmentSmoke);
+  const development = JSON.parse(developmentSmoke.trim().split(/\r?\n/).at(-1));
   if (!development.seededFirst || development.seededSecond
-    || development.firstRevision !== development.secondRevision
-    || development.firstRevision !== development.healthRevision) {
-    throw new Error("Generated game development workspace did not seed once and remain authoritative");
+    || development.firstRevision !== development.healthRevision
+    || development.saveStatus !== 200
+    || development.savedRevision === development.firstRevision
+    || development.secondRevision !== development.savedRevision
+    || development.secondGameTitle !== "Generated Fixture Edited") {
+    throw new Error("Generated game tools did not persist an independently valid local content revision");
   }
   if (!fs.existsSync(path.join(targetRoot, ".pop-party", "content", "content-bundle.json"))) {
     throw new Error("Generated game development workspace was not created inside the game");
@@ -117,7 +135,7 @@ try {
   }
   execFileSync("npm", ["run", "build"], { cwd: targetRoot, stdio: "pipe" });
   const gameBuild = JSON.parse(fs.readFileSync(path.join(targetRoot, "dist", "pop-party-build.json"), "utf8"));
-  if (gameBuild.gameId !== "generated-fixture" || gameBuild.engineVersion !== "1.0.0") {
+  if (gameBuild.gameId !== "generated-fixture" || gameBuild.engineVersion !== engineVersion) {
     throw new Error("Generated game build manifest does not identify the exact game and engine");
   }
   if (gameBuild.contentRevision !== generatedSnapshot.revision) {

@@ -52,13 +52,9 @@ describe("create-game generator", () => {
     expect(JSON.parse(fs.readFileSync(path.join(targetRoot, "content", "content-bundle.json"), "utf8")).gameId)
       .toBe("flip-7");
     expect(fs.readFileSync(path.join(targetRoot, "src", "plugin", "index.js"), "utf8")).toContain('namespace: "flip-7"');
-    for (const contribution of ["actions", "tools"]) {
+    for (const contribution of ["actions", "stage", "controller", "tools"]) {
       expect(fs.readFileSync(path.join(targetRoot, "src", contribution, "index.js"), "utf8")).toContain("Object.freeze([])");
     }
-    expect(fs.readFileSync(path.join(targetRoot, "src", "stage", "index.js"), "utf8"))
-      .toContain('id: "flip-7.bootstrap-stage"');
-    expect(fs.readFileSync(path.join(targetRoot, "src", "controller", "index.js"), "utf8"))
-      .toContain('id: "flip-7.bootstrap-controller"');
     expect(fs.readFileSync(path.join(targetRoot, "tests", "config.test.js"), "utf8")).toContain("node:test");
     expect(fs.readFileSync(path.join(targetRoot, "game.config.js"), "utf8")).toContain("POP_PARTY_CONTENT_ROOT must remain inside the game workspace");
     expect(fs.readFileSync(path.join(targetRoot, ".gitignore"), "utf8")).toContain(".pop-party/");

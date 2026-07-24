@@ -1,5 +1,5 @@
-// Server-side (CommonJS require) layout text-art id helpers. Built to
-// shared/layout-text-art.js via `npm run build:shared` (committed output). Wrapped in an
+// Engine-owned (CommonJS require) layout text-art id helpers. Built beside this
+// source via `npm run build:shared` (committed output). Wrapped in an
 // IIFE so its declarations stay local to the shared/*.ts compilation's script scope.
 
 (function (): void {

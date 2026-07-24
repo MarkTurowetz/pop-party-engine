@@ -1,0 +1,28 @@
+"use strict";
+// Engine-owned stage layout widget art-composition map.
+// Built beside this source via `npm run build:shared` (committed
+// output). Wrapped in an IIFE so declarations stay local to the shared compilation.
+(function () {
+    "use strict";
+    const layoutWidgetArtCompositionIds = Object.freeze({
+        stagecodepanel: "stage-code-panel",
+        stagecodebadge: "stage-code-widget",
+        stagejoinqr: "join-qr-code",
+        waitingstatus: "waiting-status-widget",
+        joinprompt: "join-widget",
+        startpopup: "countdown-popup",
+        craftingtimer: "crafting-timer-widget",
+        presentclickwidget: "presentation-click-prompt"
+    });
+    function stageLayoutWidgetArtCompositionId(elementId) {
+        return layoutWidgetArtCompositionIds[String(elementId || "").toLowerCase()] || "";
+    }
+    const api = {
+        layoutWidgetArtCompositionIds,
+        stageLayoutWidgetArtCompositionId
+    };
+    if (typeof module !== "undefined" && module.exports)
+        module.exports = api;
+    if (typeof window !== "undefined")
+        window.PartyStageLayoutArtWidgets = api;
+})();

@@ -1,6 +1,7 @@
 "use strict";
 
 function createRouterRuntime({
+  activeRelease,
   adminAuth,
   clonePrompt,
   contentAdmin,
@@ -91,7 +92,7 @@ function createRouterRuntime({
       return;
     }
 
-    if (req.method === "GET" && url.pathname === "/api/health") {
+    if (req.method === "GET" && ["/api/health", "/health", "/healthz"].includes(url.pathname)) {
       sendJson(res, 200, {
         ok: true,
         rooms: rooms.size,
@@ -102,6 +103,7 @@ function createRouterRuntime({
           engineCompatibility: gameDefinition?.engineCompatibility || "",
           contentMode: gameDefinition?.content?.mode || ""
         },
+        release: activeRelease || null,
         adminAuth: adminAuth?.publicStatus() || { mode: "unknown", protected: false },
         runtimeCapabilities: runtimeCapabilities?.publicStatus() || { mode: "unknown", protected: false },
         contentStore: contentStatus || { mode: "disabled", remoteAuthoring: "disabled", enabled: false }

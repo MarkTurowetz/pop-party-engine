@@ -43,9 +43,14 @@ function withDefaultBackgroundLayer(savedLayouts, defaultLayouts) {
 
 function withDefaultArtCompositions(savedManifest, defaultCompositions) {
   const compositions = { ...(savedManifest.compositions || {}) };
+  const deletedCompositionIds = new Set(
+    Array.isArray(savedManifest.deletedCompositionIds)
+      ? savedManifest.deletedCompositionIds.map((id) => String(id || "").trim()).filter(Boolean)
+      : []
+  );
   for (const defaultComposition of defaultCompositions || []) {
     const id = String(defaultComposition?.id || "").trim();
-    if (!id || compositions[id]) continue;
+    if (!id || compositions[id] || deletedCompositionIds.has(id)) continue;
     const copy = JSON.parse(JSON.stringify(defaultComposition));
     delete copy.id;
     compositions[id] = copy;
@@ -154,10 +159,14 @@ function exportLegacyContentBundle(options) {
   const manifest = {
     schemaVersion: 1,
     gameId: gameDefinition.gameId,
-    engineContentSchemaVersion: "1.0.0",
+    engineContentSchemaVersion: String(
+      options.engineContentSchemaVersion || gameDefinition.engineCompatibility || "1.0.0"
+    ),
     flowExpressionLanguageVersion: 1,
     gameMigrationLevel: 0,
     semanticRolesPath: "semantic-roles.json",
+    parentRevision: "",
+    publishedRevision: "",
     files: records,
     rootHash: sha256(Buffer.from(rootHashInput(records), "utf8"))
   };

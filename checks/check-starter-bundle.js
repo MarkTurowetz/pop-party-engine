@@ -5,6 +5,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const gameDefinition = require("../apps/reference/game.config");
+const { version: engineVersion } = require("../packages/engine/package.json");
 const authoringSourceGameData = require("../apps/reference/authoring-source-game-data");
 const { generateGame } = require("../packages/create-game/src/generate-game");
 const { exportLegacyContentBundle } = require("@pop-party/engine/tooling");
@@ -72,7 +73,7 @@ try {
     if (sha256(bytes) !== notice.sha256) throw new Error(`Starter asset notice hash mismatch: ${blobPath}`);
   }
   const generatedRoot = path.join(temporaryRoot, "generated-game");
-  generateGame({ displayName: "Starter Isolation Fixture", engineVersion: "1.0.0", targetRoot: generatedRoot });
+  generateGame({ displayName: "Starter Isolation Fixture", engineVersion, targetRoot: generatedRoot });
   const generatedContentRoot = path.join(generatedRoot, "content");
   const generatedSnapshot = createLocalContentBundleProvider({ root: generatedContentRoot }).loadPublishedRevision();
   if (generatedSnapshot.revision !== starterSnapshot.revision) throw new Error("Generated content bytes changed the starter root hash");

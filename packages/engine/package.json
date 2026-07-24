@@ -1,6 +1,6 @@
 {
   "name": "@pop-party/engine",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Public runtime and authoring infrastructure for Pop Party games.",
   "license": "MIT",
   "repository": {
@@ -48,6 +48,16 @@
       "types": "./src/server/game-application-runtime.d.ts",
       "default": "./src/server/game-application-runtime.js"
     },
+    "./server/application/art-assets": "./src/server/application/art-assets-runtime.js",
+    "./server/application/art-runtime-dependencies": "./src/server/application/art-runtime-dependencies.js",
+    "./server/application/controller-layout-normalization": "./src/server/application/controller-layout-normalization-runtime.js",
+    "./server/application/controller-layout-state": "./src/server/application/controller-layout-state-runtime.js",
+    "./server/application/controller-player-banner-art": "./src/server/application/controller-player-banner-art-runtime.js",
+    "./server/application/layout-normalization": "./src/server/application/layout-normalization-runtime.js",
+    "./server/application/player-widget-point-popup-anchor": "./src/server/application/player-widget-point-popup-anchor-runtime.js",
+    "./server/application/stage-background-art": "./src/server/application/stage-background-art-runtime.js",
+    "./server/application/stage-layout-normalization": "./src/server/application/stage-layout-normalization-runtime.js",
+    "./server/application/stage-layout-state": "./src/server/application/stage-layout-state-runtime.js",
     "./client": {
       "types": "./src/client/index.d.ts",
       "default": "./src/client/index.js"
@@ -165,6 +175,7 @@
     "bin/*.js",
     "src/**/*.js",
     "src/**/*.d.ts",
+    "web/**/*",
     "index.js",
     "index.d.ts",
     "LICENSE",
