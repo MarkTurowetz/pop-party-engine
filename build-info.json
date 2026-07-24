@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1160",
+  "version": "1.0.17.1161",
   "baseVersion": "1.0.17",
-  "buildNumber": 1160,
-  "commit": "f5b7fce9",
-  "branch": "main",
-  "generatedAt": "2026-07-24T19:25:35.754Z"
+  "buildNumber": 1161,
+  "commit": "e6b93929",
+  "branch": "codex/engine-1.1.0",
+  "generatedAt": "2026-07-24T19:36:18.820Z"
 }

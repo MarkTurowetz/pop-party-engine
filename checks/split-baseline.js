@@ -193,6 +193,7 @@ function isApprovedStarterContentPath(logicalPath) {
     "art-manifest.json",
     "art/art-manifest.json",
     "apps/reference/authoring/art-manifest.json",
+    "apps/reference/content/audio/host-audios.json",
     "controller-layouts.json",
     "controller-layouts.default.json",
     "game-constants.json",
@@ -202,7 +203,8 @@ function isApprovedStarterContentPath(logicalPath) {
     "host-audios.json",
     "host-audios.default.json",
     "stage-layouts.json",
-    "stage-layouts.default.json"
+    "stage-layouts.default.json",
+    "packages/create-game/starter/content/audio/host-audios.json"
   ].includes(logicalPath);
 }
 
