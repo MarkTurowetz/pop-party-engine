@@ -52,6 +52,15 @@ through that room's pinned dataset. Trivia selection and host-audio action
 resolution also use the room-owned prompt and audio collections, never a newer
 process-global authoring draft.
 
+The engine application also exposes an explicit
+`sessionContentMode: "latest-saved-authoring"` option for a trusted reference
+authoring service. In that mode, the service assembles and validates a complete
+snapshot from the same saved sources used by its Tools. Running rooms remain
+immutable; a room adopts the cached latest snapshot only when a new room or
+lobby game session begins. Tool saves and unsaved drafts do not reset active
+rooms. Generated games default to `published-release`, so this authoring
+preview mode is never inherited accidentally.
+
 Stage and controller presentation is delivered through the same room pin.
 Authenticated room routes expose that pin's stage layouts, controller layouts,
 art manifest, and immutable art bytes. Browser clients defer their first

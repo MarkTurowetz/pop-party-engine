@@ -17,6 +17,7 @@ function createLocalDraftRuntime({
   readJson,
   resetCraftingTimer,
   onArtAssetsChanged = () => {},
+  preserveActiveRooms = false,
   rooms,
   sendJson,
   syncControllerLayoutsWithFlow,
@@ -66,6 +67,7 @@ function createLocalDraftRuntime({
   }
 
   function broadcastDraftChange(payload) {
+    if (preserveActiveRooms) return;
     for (const room of rooms.values()) {
       if (payload.flow || payload.clearFlow) {
         clearActionTimer(room);

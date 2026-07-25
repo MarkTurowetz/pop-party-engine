@@ -5,6 +5,7 @@ function createLobbyControlHandlersRuntime({
   getRoom,
   lobbyPayload,
   normalizeStageCode,
+  prepareQuitToLobby = async () => {},
   quitRoomToLobby,
   readJson,
   sendJson
@@ -25,6 +26,12 @@ function createLobbyControlHandlersRuntime({
       return;
     }
 
+    try {
+      await prepareQuitToLobby(room);
+    } catch (error) {
+      // quitRoomToLobby will enter the lobby through the cached-session
+      // boundary and surface the authoring-content failure as a runtime fault.
+    }
     quitRoomToLobby(room);
     sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
   }

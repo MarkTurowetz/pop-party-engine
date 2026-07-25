@@ -444,7 +444,7 @@ function createArtAssetsRuntime({
     manifest.organization = normalizeArtOrganization(payload.organization || payload);
     const savedManifest = await saveArtManifest(manifest);
     if (localDraftStore) localDraftStore.artOrganization = null;
-    onArtAssetsChanged({ type: "organization", updatedAt: new Date().toISOString() });
+    await onArtAssetsChanged({ type: "organization", updatedAt: new Date().toISOString() });
     sendJson(res, 200, { ok: true, organization: normalizeArtOrganization(savedManifest.organization), revision: manifestRevision(savedManifest) });
   }
 
@@ -533,7 +533,7 @@ function createArtAssetsRuntime({
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => composition?.id !== definition.id);
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
     }
-    onArtAssetsChanged({ type: "composition", id: definition.id, updatedAt: savedManifest.compositions?.[definition.id]?.updatedAt || manifest.compositions[definition.id].updatedAt });
+    await onArtAssetsChanged({ type: "composition", id: definition.id, updatedAt: savedManifest.compositions?.[definition.id]?.updatedAt || manifest.compositions[definition.id].updatedAt });
     const savedComposition = publicArtComposition(definition, savedManifest);
     sendJson(res, 200, {
       ok: true,
@@ -602,7 +602,7 @@ function createArtAssetsRuntime({
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => !savedIds.has(composition?.id));
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
     }
-    onArtAssetsChanged({ type: "composition-batch", ids: normalized.map((composition) => composition.id), updatedAt });
+    await onArtAssetsChanged({ type: "composition-batch", ids: normalized.map((composition) => composition.id), updatedAt });
     const savedCompositions = normalized.map((composition) => publicArtComposition(composition, savedManifest));
     sendJson(res, 200, {
       ok: true,
@@ -636,7 +636,7 @@ function createArtAssetsRuntime({
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => composition?.id !== safeCompositionId);
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
     }
-    onArtAssetsChanged({ type: "composition-delete", id: safeCompositionId, updatedAt: new Date().toISOString() });
+    await onArtAssetsChanged({ type: "composition-delete", id: safeCompositionId, updatedAt: new Date().toISOString() });
     sendJson(res, 200, { ok: true, compositions: allPublicArtCompositions(savedManifest), revision: manifestRevision(savedManifest) });
   }
 
@@ -719,7 +719,7 @@ function createArtAssetsRuntime({
     }
     const savedCompositions = allPublicArtCompositions(savedManifest);
     const savedReport = createArtCompositionDependencyReport({ compositions: savedCompositions, ...dependencySources });
-    onArtAssetsChanged({ type: "composition-cleanup", ids: requestedIds, updatedAt: new Date().toISOString() });
+    await onArtAssetsChanged({ type: "composition-cleanup", ids: requestedIds, updatedAt: new Date().toISOString() });
     sendJson(res, 200, {
       ok: true,
       compositions: savedCompositions,
@@ -815,7 +815,7 @@ function createArtAssetsRuntime({
       delete localDraftStore.artAssetReplacements[asset.id];
       if (!Object.keys(localDraftStore.artAssetReplacements).length) localDraftStore.artAssetReplacements = null;
     }
-    onArtAssetsChanged({ type: "asset", id: asset.id, updatedAt });
+    await onArtAssetsChanged({ type: "asset", id: asset.id, updatedAt });
     sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, savedManifest), revision: manifestRevision(savedManifest) });
   }
 

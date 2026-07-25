@@ -50,6 +50,7 @@ function createRoomPhaseRuntime({
   getStateActions,
   isRoundIntroStateId,
   normalizeFlowId,
+  prepareLobbySession = () => {},
   prepareVotingCards,
   resetCraftingTimer,
   resolveMomentRouteTarget,
@@ -153,6 +154,12 @@ function createRoomPhaseRuntime({
   }
 
   function enterLobbyPhase(room) {
+    let sessionContentError = null;
+    try {
+      prepareLobbySession(room);
+    } catch (error) {
+      sessionContentError = error;
+    }
     clearCountdownTimer(room);
     clearActionTimer(room);
     room.phase = "lobby";
@@ -195,6 +202,15 @@ function createRoomPhaseRuntime({
     resetGameSessionState(room);
     room.playerSessionKey = "";
     room.numSequentialGames = 0;
+    if (sessionContentError) {
+      room.actionIndex = getStateActions("lobby", room).length;
+      createRuntimeFault(room, {
+        code: String(sessionContentError.code || "AUTHORING_CONTENT_UNAVAILABLE"),
+        message: "The new game session could not load the latest saved authoring content.",
+        expected: "A complete valid saved authoring snapshot",
+        actual: String(sessionContentError.message || sessionContentError)
+      });
+    }
   }
 
   function quitRoomToLobby(room) {

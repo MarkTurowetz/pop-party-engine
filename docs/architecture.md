@@ -20,6 +20,12 @@ concepts into focused modules.
   - It validates and pins the complete active release before the service port opens.
   - Stage, controller, room lifecycle, and authenticated core tools are engine-owned and render game-owned bundle content.
   - Optional game plugin contributions are additive; generated games do not recreate core routes or browser applications.
+- `packages/engine/src/server/authoring-session-content-runtime.js`
+  - Provides the explicit reference-app `latest-saved-authoring` session mode.
+  - Builds one validated bundle snapshot from the same durable sources used by the Tools.
+  - Keeps an active room immutable, then atomically installs the cached latest saved snapshot at a lobby/session boundary.
+  - Missing data, blobs, or release validation stop the new session; the prior pin is never used as a fallback.
+  - Generated games remain on the default `published-release` mode unless their application explicitly opts in.
 - `packages/engine/src/server/content-migration-runtime.js`
   - Resolves only explicit namespaced game-plugin migrations, requires a contiguous one-level path, and rejects downgrades.
   - Runs every step twice against the same immutable source and blocks output when the resulting revisions differ.

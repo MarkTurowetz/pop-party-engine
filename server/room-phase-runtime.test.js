@@ -143,6 +143,49 @@ describe("game termination lifecycle", () => {
     expect(room.numSequentialGames).toBe(0);
     expect(room.players.get("p1")).toMatchObject({ id: "p1", name: "Ava", points: 0, pendingPoints: 0 });
   });
+
+  it("adopts the prepared authoring snapshot before resolving the new lobby entry", () => {
+    const prepareLobbySession = vi.fn((room) => {
+      room.gameData = { revision: "latest-saved" };
+    });
+    const entryActionIndexForPhase = vi.fn((room) => (
+      room.gameData?.revision === "latest-saved" ? 2 : 0
+    ));
+    const runtime = createRouteRuntime({
+      entryActionIndexForPhase,
+      getStateActions: () => [{ id: "old" }, { id: "other" }, { id: "latest-entry" }],
+      prepareLobbySession
+    });
+    const room = { phase: "writing", players: new Map(), pendingFlowEvents: new Set() };
+
+    runtime.enterLobbyPhase(room);
+
+    expect(prepareLobbySession).toHaveBeenCalledWith(room);
+    expect(entryActionIndexForPhase).toHaveBeenCalledWith(room, "lobby");
+    expect(room.actionIndex).toBe(2);
+    expect(room.runtimeFault).toBeNull();
+  });
+
+  it("halts the new lobby visibly instead of falling back after authoring preparation fails", () => {
+    const runtime = createRouteRuntime({
+      getStateActions: () => [{ id: "old-entry" }],
+      prepareLobbySession: () => {
+        throw Object.assign(new Error("saved layout is incomplete"), {
+          code: "AUTHORING_CONTENT_INVALID"
+        });
+      }
+    });
+    const room = { phase: "writing", players: new Map(), pendingFlowEvents: new Set() };
+
+    runtime.enterLobbyPhase(room);
+
+    expect(room.actionIndex).toBe(1);
+    expect(room.runtimeFault).toMatchObject({
+      code: "AUTHORING_CONTENT_INVALID",
+      message: "The new game session could not load the latest saved authoring content.",
+      actual: "saved layout is incomplete"
+    });
+  });
 });
 
 describe("reusable voting moments", () => {
