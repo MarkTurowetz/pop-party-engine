@@ -1,5 +1,11 @@
 {
   "scope": "default",
-  "revision": "4f27a13a4abef120aa4adbebd7dc3aac6d431daa864227dcd2fb7dd0ea855d76",
-  "operations": {}
+  "revision": "9c90245b0eba60557477fd1df02d09f8d7008c2e4abcbb2557b2dbb0dc35e5a4",
+  "operations": {
+    "reference-game-data-migration-20260725-v1": {
+      "fingerprint": "ce8bd7f96c2ddd78589aadf665f5dd26f622a42f275c106f2e04f35603be18aa",
+      "parentRevision": "4f27a13a4abef120aa4adbebd7dc3aac6d431daa864227dcd2fb7dd0ea855d76",
+      "resultRevision": "9c90245b0eba60557477fd1df02d09f8d7008c2e4abcbb2557b2dbb0dc35e5a4"
+    }
+  }
 }
