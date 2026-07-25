@@ -95,6 +95,10 @@ export interface HostAudioLine extends JsonObject {
   id: string;
   text: string;
   url: string;
+  blobPath?: string;
+  sha256?: string;
+  mimeType?: string;
+  sourceName?: string;
 }
 
 export interface HostAudioSet extends JsonObject {
@@ -204,6 +208,7 @@ export type ArtCompositionDependencyReport = Record<string, ArtCompositionDepend
 
 export interface GameFlowResponse {
   ok: true;
+  revision?: string;
   flow: GameFlow;
   savedFlow: GameFlow;
   runtimeFlow: GameFlow;
@@ -215,6 +220,7 @@ export interface GameFlowResponse {
 
 export interface GameFlowSaveResponse {
   ok: true;
+  revision?: string;
   flow: GameFlow;
   runtimeFlow: GameFlow;
   storage: ToolStorageStatus;
@@ -222,6 +228,7 @@ export interface GameFlowSaveResponse {
 
 export interface LayoutResponse<TLayout extends StageLayoutCollection = StageLayoutCollection> {
   ok: true;
+  revision?: string;
   layouts: TLayout;
   savedLayouts: TLayout;
   hasLocalDraft: boolean;
@@ -230,12 +237,14 @@ export interface LayoutResponse<TLayout extends StageLayoutCollection = StageLay
 
 export interface LayoutSaveResponse<TLayout extends StageLayoutCollection = StageLayoutCollection> {
   ok: true;
+  revision?: string;
   layouts: TLayout;
   storage: ToolStorageStatus;
 }
 
 export interface GameConstantsResponse {
   ok: true;
+  revision?: string;
   constants: GameConstants;
   savedConstants: GameConstants;
   hasLocalDraft: boolean;
@@ -244,12 +253,14 @@ export interface GameConstantsResponse {
 
 export interface GameConstantsSaveResponse {
   ok: true;
+  revision?: string;
   constants: GameConstants;
   storage: ToolStorageStatus;
 }
 
 export interface HostAudiosResponse {
   ok: true;
+  revision?: string;
   hostAudios: HostAudios;
   savedHostAudios: HostAudios;
   hasLocalDraft: boolean;
@@ -258,6 +269,7 @@ export interface HostAudiosResponse {
 
 export interface HostAudiosSaveResponse {
   ok: true;
+  revision?: string;
   hostAudios: HostAudios;
   storage: ToolStorageStatus;
 }
@@ -265,6 +277,7 @@ export interface HostAudiosSaveResponse {
 export interface ArtAssetsResponse {
   ok: true;
   revision?: string;
+  draftRevision?: string;
   groups: JsonObject[];
   assets: ArtAsset[];
   compositions: ArtComposition[];
@@ -276,12 +289,14 @@ export interface ArtAssetsResponse {
 export interface ArtOrganizationSaveResponse {
   ok: true;
   revision?: string;
+  draftRevision?: string;
   organization: ArtOrganization;
 }
 
 export interface ArtCompositionSaveResponse {
   ok: true;
   revision?: string;
+  draftRevision?: string;
   composition: ArtComposition;
   compositionRevisions?: Record<string, string>;
 }
@@ -289,12 +304,14 @@ export interface ArtCompositionSaveResponse {
 export interface ArtCompositionDeleteResponse {
   ok: true;
   revision?: string;
+  draftRevision?: string;
   compositions: ArtComposition[];
 }
 
 export interface ArtAssetReplaceResponse {
   ok: true;
   revision?: string;
+  draftRevision?: string;
   asset: ArtAsset;
 }
 

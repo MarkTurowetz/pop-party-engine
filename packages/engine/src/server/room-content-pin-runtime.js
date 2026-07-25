@@ -19,7 +19,8 @@ function publicReleaseTuple(release) {
     engineVersion: String(release.engineVersion || ""),
     pluginVersion: String(release.pluginVersion || ""),
     contentRevision: String(release.contentRevision || ""),
-    releaseRevision: String(release.releaseRevision || "")
+    releaseRevision: String(release.releaseRevision || ""),
+    contentSource: String(release.contentSource || "published-release")
   });
 }
 
@@ -102,7 +103,7 @@ function createRoomContentPinRuntime(options = {}) {
         details: { diagnostics: validation.diagnostics || [] }
       });
     }
-    room.releasePin = Object.freeze({ ...release });
+    room.releasePin = Object.freeze({ ...release, contentSource: "published-release" });
     room.contentSnapshot = snapshot;
     room.gameData = gameData;
     return publicReleaseTuple(release);

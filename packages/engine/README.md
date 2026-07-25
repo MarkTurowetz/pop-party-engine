@@ -64,6 +64,13 @@ An authoring application may supply `authoringRepository` as its game-owned
 default for GitHub persistence. Environment variables still take precedence,
 and generated games do not inherit the reference application's repository.
 
+For production single-service authoring, games use the revisioned GitHub App
+store instead of `latest-saved-authoring`. Every engine Tool writes the same
+game-owned draft bundle, including content-addressed art and Host Audio bytes.
+Public rooms pin only published releases. Authenticated, CSRF-protected
+`POST /api/admin/preview-rooms` requests explicitly create rooms pinned to the
+latest complete draft. Both room kinds remain immutable after creation.
+
 Stage and controller presentation is delivered through the same room pin.
 Authenticated room routes expose that pin's stage layouts, controller layouts,
 art manifest, and immutable art bytes. Browser clients defer their first

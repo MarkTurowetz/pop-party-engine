@@ -59,10 +59,10 @@ function createArtManifestStoreRuntime({
     return normalize(await loadSource(), "Art manifest source");
   }
 
-  async function saveArtManifest(manifest) {
+  async function saveArtManifest(manifest, metadata = {}) {
     const normalized = normalize(manifest);
     if (typeof writeSource !== "function") return writeArtManifest(normalized);
-    return normalize(await writeSource(normalized), "Saved art manifest");
+    return normalize(await writeSource(normalized, metadata), "Saved art manifest");
   }
 
   return Object.freeze({ loadArtManifest, readArtManifest, saveArtManifest, writeArtManifest });

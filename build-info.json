@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1166",
+  "version": "1.0.17.1168",
   "baseVersion": "1.0.17",
-  "buildNumber": 1166,
-  "commit": "bc70167f",
-  "branch": "codex/fix-lobby-qr-overlay",
-  "generatedAt": "2026-07-25T19:15:10.255Z"
+  "buildNumber": 1168,
+  "commit": "c13fe424",
+  "branch": "codex/engine-durable-authoring",
+  "generatedAt": "2026-07-25T21:34:56.789Z"
 }

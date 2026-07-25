@@ -103,7 +103,7 @@ function createRevisionedContentStoreRuntime(options = {}) {
           actualRevision: current.revision
         });
       }
-      const next = replaceSnapshotFiles(current, replacements);
+      const next = replaceSnapshotFiles(current, replacements, { allowNewFiles: true });
       const validation = validateSnapshot(next);
       if (validation?.ok === false) {
         const error = new Error("Draft content validation failed");

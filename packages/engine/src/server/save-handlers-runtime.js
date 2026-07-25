@@ -34,14 +34,32 @@ function createSaveHandlersRuntime({
 }) {
   function storagePayload(store, path) {
     const isGithub = store.storageKind === "github";
+    const isRevisioned = store.storageKind === "github-app-draft";
     return {
       kind: store.storageKind,
-      durable: isGithub && hasGithubToken(),
+      durable: isRevisioned || (isGithub && hasGithubToken()),
       error: store.error || "",
       repo: isGithub ? githubRepo : "",
       branch: isGithub ? githubBranch : "",
-      path: isGithub ? path : ""
+      path: isGithub || isRevisioned ? path : ""
     };
+  }
+
+  function writeMetadata(payload) {
+    const metadata = {
+      expectedRevision: String(payload?.revision || ""),
+      idempotencyKey: String(payload?.idempotencyKey || "")
+    };
+    return metadata.expectedRevision || metadata.idempotencyKey ? metadata : null;
+  }
+
+  function writeValue(writer, value, payload) {
+    const metadata = writeMetadata(payload);
+    return metadata ? writer(value, metadata) : writer(value);
+  }
+
+  function revisionPayload(store) {
+    return store.revision ? { revision: store.revision } : {};
   }
 
   async function readSavePayload(req, maxBytes) {
@@ -82,7 +100,7 @@ function createSaveHandlersRuntime({
       maxBytes: 128 * 1024,
       label: "Game flow",
       save: async (payload) => {
-        const flow = await writeGameFlow(payload.flow || payload);
+        const flow = await writeValue(writeGameFlow, payload.flow || payload, payload);
         localDraftStore.flow = null;
         return flow;
       },
@@ -103,6 +121,7 @@ function createSaveHandlersRuntime({
         ok: true,
         flow,
         runtimeFlow: normalizeGameFlow(flow),
+        ...revisionPayload(gameFlowStore),
         storage: storagePayload(gameFlowStore, gameFlowPath)
       })
     });
@@ -113,7 +132,7 @@ function createSaveHandlersRuntime({
       maxBytes: 32 * 1024,
       label: "Game constants",
       save: async (payload) => {
-        const constants = await writeGameConstants(payload.constants || payload);
+        const constants = await writeValue(writeGameConstants, payload.constants || payload, payload);
         localDraftStore.constants = null;
         return constants;
       },
@@ -125,6 +144,7 @@ function createSaveHandlersRuntime({
       response: (constants) => ({
         ok: true,
         constants,
+        ...revisionPayload(gameConstantsStore),
         storage: storagePayload(gameConstantsStore, gameConstantsPath)
       })
     });
@@ -135,13 +155,14 @@ function createSaveHandlersRuntime({
       maxBytes: 128 * 1024,
       label: "Stage layouts",
       save: async (payload) => {
-        const layouts = await writeStageLayouts(payload.layouts || payload);
+        const layouts = await writeValue(writeStageLayouts, payload.layouts || payload, payload);
         localDraftStore.layouts = null;
         return layouts;
       },
       response: (layouts) => ({
         ok: true,
         layouts,
+        ...revisionPayload(stageLayoutsStore),
         storage: storagePayload(stageLayoutsStore, stageLayoutsPath)
       })
     });
@@ -152,13 +173,14 @@ function createSaveHandlersRuntime({
       maxBytes: 128 * 1024,
       label: "Controller layouts",
       save: async (payload) => {
-        const layouts = await writeControllerLayouts(payload.layouts || payload);
+        const layouts = await writeValue(writeControllerLayouts, payload.layouts || payload, payload);
         localDraftStore.controllerLayouts = null;
         return layouts;
       },
       response: (layouts) => ({
         ok: true,
         layouts,
+        ...revisionPayload(controllerLayoutsStore),
         storage: storagePayload(controllerLayoutsStore, controllerLayoutsPath)
       })
     });
@@ -169,7 +191,7 @@ function createSaveHandlersRuntime({
       maxBytes: 256 * 1024,
       label: "Host audios",
       save: async (payload) => {
-        const hostAudios = await writeHostAudios(payload.hostAudios || payload);
+        const hostAudios = await writeValue(writeHostAudios, payload.hostAudios || payload, payload);
         localDraftStore.hostAudios = null;
         return hostAudios;
       },
@@ -181,6 +203,7 @@ function createSaveHandlersRuntime({
       response: (hostAudios) => ({
         ok: true,
         hostAudios: normalizeHostAudios(hostAudios),
+        ...revisionPayload(hostAudiosStore),
         storage: storagePayload(hostAudiosStore, hostAudiosPath)
       })
     });

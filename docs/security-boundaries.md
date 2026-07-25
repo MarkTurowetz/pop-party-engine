@@ -34,7 +34,13 @@ The browser stores runtime capabilities only in per-window `sessionStorage`. The
 
 Do not enable `github` or `required` in production until OAuth secrets, callback URLs, asset isolation, room teardown invalidation, and the deployment security checklist are complete.
 
-The revisioned GitHub provider and its routes are separately gated. `PARTY_GAME_CONTENT_STORE=github` constructs the read/pin provider, while `PARTY_GAME_REMOTE_AUTHORING=enabled` exposes authenticated draft, validation, publish, and rollback APIs. Production refuses the latter unless GitHub administrator authentication is also enabled. Both settings default to `disabled`.
+The revisioned GitHub provider and its routes are separately gated. `PARTY_GAME_CONTENT_STORE=github` constructs the read/pin provider, while `PARTY_GAME_REMOTE_AUTHORING=enabled` exposes authenticated Tool writes, draft preview, validation, publish, and rollback APIs. Production refuses the latter unless GitHub administrator authentication is also enabled. Tool JSON and binary uploads use one compare-and-swap draft bundle; a partial GitHub write is never authoritative. Both settings default to `disabled`.
+
+Public `POST /api/stage/rooms` creation always pins an immutable published
+release. Only an authenticated, CSRF-protected
+`POST /api/admin/preview-rooms` request may pin the latest complete draft.
+Preview rooms receive normal room-scoped runtime capabilities and remain pinned
+to that draft revision for their lifetime.
 
 ## Authored SVG
 

@@ -15,7 +15,13 @@ function harness({ room: roomOverride } = {}) {
       artGroups: [{ id: "group" }],
       artOrganization: { stage: { order: ["logo"] } },
       defaultArtCompositions: [{ id: "composition" }],
-      artAssets: [{ id: "logo", name: "Logo", mimeType: "image/svg+xml", blobPath: "blobs/logo.svg", sourceName: "logo.svg" }]
+      artAssets: [{ id: "logo", name: "Logo", mimeType: "image/svg+xml", blobPath: "blobs/logo.svg", sourceName: "logo.svg" }],
+      defaultHostAudios: {
+        hostAudios: [{
+          id: "intro",
+          lines: [{ id: "welcome", mimeType: "audio/mpeg", blobPath: "blobs/welcome.mp3" }]
+        }]
+      }
     }
   };
   const sendJson = vi.fn();
@@ -73,5 +79,21 @@ describe("room runtime content", () => {
     const unpinned = harness({ room: {} });
     unpinned.runtime.sendRoomRuntimeContent({}, "ABCD", "stage-layouts");
     expect(unpinned.sendJson).toHaveBeenLastCalledWith({}, 409, expect.objectContaining({ errorCode: "ROOM_CONTENT_NOT_PINNED" }));
+  });
+
+  it("serves Host Audio bytes only from the room's pinned content snapshot", () => {
+    const audioBytes = Buffer.from("ID3 room pinned audio");
+    const { room, runtime } = harness();
+    room.contentSnapshot.readBytes = vi.fn(() => audioBytes);
+    const response = { writeHead: vi.fn(), end: vi.fn() };
+
+    runtime.serveRoomHostAudio(response, "abcd", "welcome");
+
+    expect(room.contentSnapshot.readBytes).toHaveBeenCalledWith("blobs/welcome.mp3");
+    expect(response.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      "Content-Type": "audio/mpeg",
+      "Cache-Control": "private, max-age=31536000, immutable"
+    }));
+    expect(response.end).toHaveBeenCalledWith(audioBytes);
   });
 });

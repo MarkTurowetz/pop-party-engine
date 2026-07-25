@@ -31,6 +31,7 @@ function createRuntimeCapabilityRuntime(options = {}) {
   const readJson = options.readJson;
   const sendJson = options.sendJson;
   const pinNewRoom = options.pinNewRoom;
+  const pinPreviewRoom = options.pinPreviewRoom;
   const deleteRoom = typeof options.deleteRoom === "function" ? options.deleteRoom : () => {};
   const eventTicketMaxAgeMs = Number(options.eventTicketMaxAgeMs || 30_000);
   const createWindowsByAddress = new Map();
@@ -150,7 +151,7 @@ function createRuntimeCapabilityRuntime(options = {}) {
     return true;
   }
 
-  async function handleCreateRoom(req, res) {
+  async function createRoom(req, res, { preview = false } = {}) {
     if (!rateLimitRoomCreation(req)) return deny(res, "ROOM_CREATE_RATE_LIMIT", "Too many room creation attempts", 429);
     let payload;
     try {
@@ -166,20 +167,39 @@ function createRuntimeCapabilityRuntime(options = {}) {
     }
     let room = getExistingRoom(stageCode);
     let capability = stageHeader(req);
+    if (preview && room && (
+      room.releasePin?.contentSource !== "draft-preview"
+      || (mode === "required" && !verifyStage(req, room))
+    )) {
+      deny(res, "ROOM_ALREADY_EXISTS", "Draft preview requires a new room code or its existing stage capability", 409);
+      return;
+    }
     if (room && mode === "required" && !verifyStage(req, room)) {
       deny(res, "ROOM_ALREADY_EXISTS", "That room already exists in another stage session", 409);
       return;
     }
     if (!room) {
       room = getRoom(stageCode);
-      if (typeof pinNewRoom === "function") {
+      const pinner = preview ? pinPreviewRoom : pinNewRoom;
+      if (typeof pinner !== "function") {
+        deleteRoom(stageCode);
+        sendJson(res, 409, {
+          ok: false,
+          error: preview ? "Draft preview rooms are not enabled" : "Room content pinning is not enabled",
+          errorCode: preview ? "DRAFT_PREVIEW_DISABLED" : "ROOM_CONTENT_PIN_DISABLED"
+        });
+        return;
+      }
+      if (typeof pinner === "function") {
         try {
-          await pinNewRoom(room);
+          await pinner(room);
         } catch (error) {
           deleteRoom(stageCode);
           sendJson(res, 503, {
             ok: false,
-            error: "Room could not pin the active content release",
+            error: preview
+              ? "Room could not pin the latest complete authoring draft"
+              : "Room could not pin the active content release",
             errorCode: error.code || "ROOM_CONTENT_PIN_FAILED"
           });
           return;
@@ -188,6 +208,14 @@ function createRuntimeCapabilityRuntime(options = {}) {
     }
     if (!capability || !verifyStage(req, room)) capability = issueStageCapability(room);
     sendJson(res, 200, { ok: true, stageCode, stageCapability: capability, release: publicReleaseTuple(room.releasePin) });
+  }
+
+  function handleCreateRoom(req, res) {
+    return createRoom(req, res);
+  }
+
+  function handleCreatePreviewRoom(req, res) {
+    return createRoom(req, res, { preview: true });
   }
 
   function handleCreateEventTicket(req, res, stageCode) {
@@ -222,6 +250,7 @@ function createRuntimeCapabilityRuntime(options = {}) {
   return Object.freeze({
     authorizeRequest,
     handleCreateEventTicket,
+    handleCreatePreviewRoom,
     handleCreateRoom,
     issuePlayerCapability,
     newPlayerIdentity,

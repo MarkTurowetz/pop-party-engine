@@ -1,6 +1,6 @@
 {
   "name": "@pop-party/engine",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Public runtime and authoring infrastructure for Pop Party games.",
   "license": "MIT",
   "repository": {
@@ -150,9 +150,17 @@
       "types": "./src/server/content-admin-handlers-runtime.d.ts",
       "default": "./src/server/content-admin-handlers-runtime.js"
     },
+    "./content/tool-authoring": {
+      "types": "./src/server/revisioned-tool-authoring-runtime.d.ts",
+      "default": "./src/server/revisioned-tool-authoring-runtime.js"
+    },
     "./rooms/content-pin": {
       "types": "./src/server/room-content-pin-runtime.d.ts",
       "default": "./src/server/room-content-pin-runtime.js"
+    },
+    "./rooms/draft-preview": {
+      "types": "./src/server/draft-preview-room-runtime.d.ts",
+      "default": "./src/server/draft-preview-room-runtime.js"
     },
     "./security/admin": {
       "types": "./src/server/admin-auth-runtime.d.ts",

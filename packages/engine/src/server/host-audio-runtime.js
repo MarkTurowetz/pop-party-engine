@@ -23,11 +23,19 @@ function createHostAudioRuntime({ normalizeFlowId, random = Math.random }) {
 
   function normalizeHostAudioLine(line, lineIndex, hostAudioId) {
     const fallbackId = `${hostAudioId}-line-${lineIndex + 1}`;
-    return {
+    const normalized = {
       id: normalizeFlowId(line?.id || fallbackId, fallbackId),
       text: cleanHostAudioText(line?.text, ""),
       url: cleanHostAudioUrl(line?.url || line?.audioUrl)
     };
+    const blobPath = cleanHostAudioUrl(line?.blobPath);
+    if (blobPath) {
+      normalized.blobPath = blobPath;
+      normalized.sha256 = String(line?.sha256 || "").trim().slice(0, 64);
+      normalized.mimeType = String(line?.mimeType || "").trim().slice(0, 120);
+      normalized.sourceName = cleanHostAudioText(line?.sourceName, "");
+    }
+    return normalized;
   }
 
   function normalizeHostAudioLines(lines, hostAudioId) {
@@ -105,14 +113,16 @@ function createHostAudioRuntime({ normalizeFlowId, random = Math.random }) {
       lineId: line?.id || "",
       lineIndex,
       text: line?.text || "",
-      url: line?.url || ""
+      url: line?.url || "",
+      blobPath: line?.blobPath || "",
+      mimeType: line?.mimeType || ""
     };
   }
 
   function resolveHostAudioAction(room, action, source) {
     if (!action || action.type !== "playHostAudio") return action;
     const hostAudio = findHostAudio(source, action.hostAudioId);
-    const lines = (hostAudio?.lines || []).filter((line) => line && (line.url || line.text));
+    const lines = (hostAudio?.lines || []).filter((line) => line && (line.url || line.blobPath || line.text));
     if (!hostAudio || lines.length === 0) {
       return {
         ...action,
@@ -136,7 +146,9 @@ function createHostAudioRuntime({ normalizeFlowId, random = Math.random }) {
       ...action,
       hostAudioName: selection.hostAudioName,
       hostAudioLine: selection,
-      audioUrl: selection.url,
+      audioUrl: selection.blobPath
+        ? `/api/stage/${encodeURIComponent(String(room?.stageCode || ""))}/content/host-audio/${encodeURIComponent(selection.lineId)}`
+        : selection.url,
       hostAudioText: selection.text
     };
   }

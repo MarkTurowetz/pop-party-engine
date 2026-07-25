@@ -99,7 +99,33 @@ function createRoomRuntimeContentRuntime(options = {}) {
     res.end(bytes);
   }
 
-  return Object.freeze({ sendRoomRuntimeContent, serveRoomArtAsset });
+  function serveRoomHostAudio(res, rawStageCode, rawLineId) {
+    const pinned = pinnedRoom(res, rawStageCode);
+    if (!pinned) return;
+    const { room } = pinned;
+    const lineId = String(rawLineId || "");
+    const line = room.gameData.defaultHostAudios.hostAudios
+      .flatMap((hostAudio) => hostAudio.lines || [])
+      .find((candidate) => candidate.id === lineId);
+    if (!line?.blobPath) {
+      sendJson(res, 404, { ok: false, error: "Pinned Host Audio asset not found", errorCode: "ROOM_HOST_AUDIO_NOT_FOUND" });
+      return;
+    }
+    try {
+      const bytes = room.contentSnapshot.readBytes(line.blobPath);
+      res.writeHead(200, {
+        "Content-Type": String(line.mimeType || "application/octet-stream"),
+        "Content-Length": bytes.length,
+        "Cache-Control": "private, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff"
+      });
+      res.end(bytes);
+    } catch (error) {
+      sendJson(res, 500, { ok: false, error: "Pinned Host Audio asset is invalid", errorCode: "ROOM_HOST_AUDIO_INVALID" });
+    }
+  }
+
+  return Object.freeze({ sendRoomRuntimeContent, serveRoomArtAsset, serveRoomHostAudio });
 }
 
 module.exports = Object.freeze({ createRoomRuntimeContentRuntime });

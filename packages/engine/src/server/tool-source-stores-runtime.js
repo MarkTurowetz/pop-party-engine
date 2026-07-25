@@ -9,11 +9,14 @@ function createToolSourceStoresRuntime({
   readLocalStageLayoutsSource,
   storageKind
 }) {
-  const normalizedStorageKind = storageKind === "github" ? "github" : "local";
+  const normalizedStorageKind = ["github", "github-app-draft"].includes(storageKind)
+    ? storageKind
+    : "local";
 
   const gameFlowStore = {
     source: readLocalGameFlowSource(),
     remoteSha: "",
+    revision: "",
     storageKind: normalizedStorageKind,
     loadedAt: 0,
     error: "",
@@ -23,6 +26,7 @@ function createToolSourceStoresRuntime({
   const gameConstantsStore = {
     source: readLocalGameConstantsSource(),
     remoteSha: "",
+    revision: "",
     storageKind: normalizedStorageKind,
     loadedAt: 0,
     error: ""
@@ -31,6 +35,7 @@ function createToolSourceStoresRuntime({
   const stageLayoutsStore = {
     source: readLocalStageLayoutsSource(),
     remoteSha: "",
+    revision: "",
     storageKind: normalizedStorageKind,
     loadedAt: 0,
     error: ""
@@ -39,6 +44,7 @@ function createToolSourceStoresRuntime({
   const controllerLayoutsStore = {
     source: readLocalControllerLayoutsSource(),
     remoteSha: "",
+    revision: "",
     storageKind: normalizedStorageKind,
     loadedAt: 0,
     error: ""
@@ -47,6 +53,7 @@ function createToolSourceStoresRuntime({
   const hostAudiosStore = {
     source: readLocalHostAudiosSource(),
     remoteSha: "",
+    revision: "",
     storageKind: normalizedStorageKind,
     loadedAt: 0,
     error: ""
@@ -55,6 +62,7 @@ function createToolSourceStoresRuntime({
   const artManifestStore = {
     source: readLocalArtManifestSource(),
     remoteSha: "",
+    revision: "",
     storageKind: normalizedStorageKind,
     loadedAt: 0,
     error: ""

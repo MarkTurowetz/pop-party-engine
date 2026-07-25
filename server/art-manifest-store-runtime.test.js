@@ -58,4 +58,24 @@ describe("Art manifest store", () => {
     const { runtime: invalidWriterRuntime } = createRuntime({ writeSource: async () => undefined });
     await expect(invalidWriterRuntime.saveArtManifest({})).rejects.toThrow("Saved art manifest must be a JSON object");
   });
+
+  it("forwards durable compare-and-swap metadata to the authoritative writer", async () => {
+    let receivedMetadata = null;
+    const { runtime } = createRuntime({
+      writeSource: async (manifest, metadata) => {
+        receivedMetadata = metadata;
+        return manifest;
+      }
+    });
+
+    await runtime.saveArtManifest(
+      { compositions: {} },
+      { expectedRevision: "draft-revision-1", idempotencyKey: "art-save-0001" }
+    );
+
+    expect(receivedMetadata).toEqual({
+      expectedRevision: "draft-revision-1",
+      idempotencyKey: "art-save-0001"
+    });
+  });
 });

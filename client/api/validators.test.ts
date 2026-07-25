@@ -236,7 +236,7 @@ describe("Game data API", () => {
   });
 
   it("validates data saved through the API wrapper", async () => {
-    const fetchImpl = vi.fn(async () => jsonResponse(flowSaveResponse()));
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse(flowSaveResponse()));
     const api = createGameDataApi({ fetchImpl });
 
     await expect(api.flow.saveGameFlow({ states: [] })).resolves.toMatchObject({
@@ -244,13 +244,20 @@ describe("Game data API", () => {
       flow: { states: [{ id: "lobby" }] }
     });
     expect(fetchImpl).toHaveBeenCalledWith("/api/game-flow", {
-      body: JSON.stringify({ flow: { states: [] } }),
+      body: expect.any(String),
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json"
       },
       credentials: "same-origin",
       method: "POST"
+    });
+    const request = fetchImpl.mock.calls[0]?.[1];
+    expect(request).toBeDefined();
+    expect(JSON.parse(String(request!.body))).toMatchObject({
+      flow: { states: [] },
+      revision: "",
+      idempotencyKey: expect.stringMatching(/^flow:/)
     });
   });
 

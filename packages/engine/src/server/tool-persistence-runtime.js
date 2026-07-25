@@ -47,6 +47,7 @@ function createToolPersistenceRuntime({
   readLocalStageLayoutsSource,
   readHostAudiosSource,
   readStageLayoutsSource,
+  revisionedAuthoring = null,
   stageLayoutsBackupDir,
   stageLayoutsFile,
   stageLayoutsGithubPath,
@@ -65,6 +66,7 @@ function createToolPersistenceRuntime({
   }
 
   async function loadSource({
+    bundlePath,
     label,
     normalize = (value) => value,
     path,
@@ -75,6 +77,21 @@ function createToolPersistenceRuntime({
     selectRemoteSource,
     store
   }) {
+    if (store.storageKind === "github-app-draft") {
+      if (!revisionedAuthoring) throw new Error(`Revisioned ${label} authoring is unavailable.`);
+      try {
+        const durable = await revisionedAuthoring.readJson(bundlePath, { refresh });
+        store.source = normalize(durable.value);
+        store.revision = durable.revision;
+        store.loadedAt = Date.now();
+        store.error = "";
+        return readCurrent();
+      } catch (cause) {
+        const error = new Error(`Durable ${label} draft unavailable: ${cause.message}`, { cause });
+        store.error = error.message;
+        throw error;
+      }
+    }
     if (store.storageKind !== "github") {
       store.source = normalize(readLocal());
       store.loadedAt = Date.now();
@@ -109,6 +126,7 @@ function createToolPersistenceRuntime({
   function loadArtManifestSource({ refresh = false } = {}) {
     return loadSource({
       label: "art manifest",
+      bundlePath: "art/manifest.json",
       normalize: normalizeArtManifest,
       path: artManifestGithubPath,
       readCurrent: readArtManifestSource,
@@ -123,6 +141,7 @@ function createToolPersistenceRuntime({
   function loadGameConstantsSource({ refresh = false } = {}) {
     return loadSource({
       label: "game constants",
+      bundlePath: "constants.json",
       normalize: normalizeGameConstants,
       path: gameConstantsGithubPath,
       readCurrent: readGameConstantsSource,
@@ -137,6 +156,7 @@ function createToolPersistenceRuntime({
   function loadStageLayoutsSource({ refresh = false } = {}) {
     return loadSource({
       label: "stage layouts",
+      bundlePath: "layouts/stage.json",
       normalize: normalizeStageLayouts,
       path: stageLayoutsGithubPath,
       readCurrent: readStageLayoutsSource,
@@ -151,6 +171,7 @@ function createToolPersistenceRuntime({
   function loadControllerLayoutsSource({ refresh = false } = {}) {
     return loadSource({
       label: "controller layouts",
+      bundlePath: "layouts/controller.json",
       normalize: normalizeControllerLayouts,
       path: controllerLayoutsGithubPath,
       readCurrent: readControllerLayoutsSource,
@@ -165,6 +186,7 @@ function createToolPersistenceRuntime({
   function loadGameFlowSource({ refresh = false } = {}) {
     return loadSource({
       label: "game flow",
+      bundlePath: "flow.json",
       path: gameFlowGithubPath,
       readCurrent: readGameFlowSource,
       readLocal: readLocalGameFlowSource,
@@ -178,6 +200,7 @@ function createToolPersistenceRuntime({
   function loadHostAudiosSource({ refresh = false } = {}) {
     return loadSource({
       label: "host audio",
+      bundlePath: "audio/host-audios.json",
       normalize: normalizeHostAudios,
       path: hostAudiosGithubPath,
       readCurrent: readHostAudiosSource,
@@ -189,9 +212,24 @@ function createToolPersistenceRuntime({
     });
   }
 
-  async function writeGameConstants(constants) {
+  async function saveRevisioned(store, logicalPath, value, normalize, metadata = {}) {
+    const saved = await revisionedAuthoring.writeJson(logicalPath, value, metadata);
+    store.source = normalize(saved.value);
+    store.revision = saved.revision;
+    store.loadedAt = Date.now();
+    store.error = "";
+    return store.source;
+  }
+
+  async function writeGameConstants(constants, metadata = {}) {
     const normalized = normalizeGameConstants(constants);
     backupJsonFile(gameConstantsFile, gameConstantsBackupDir, "game-constants");
+    if (gameConstantsStore.storageKind === "github-app-draft") {
+      return saveRevisioned(gameConstantsStore, "constants.json", normalized, normalizeGameConstants, {
+        ...metadata,
+        operation: "constants"
+      });
+    }
     if (gameConstantsStore.storageKind === "github") {
       if (!githubToken) {
         throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
@@ -210,10 +248,16 @@ function createToolPersistenceRuntime({
     return readGameConstantsSource();
   }
 
-  async function writeStageLayouts(layouts) {
+  async function writeStageLayouts(layouts, metadata = {}) {
     const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
     const normalized = syncStageLayoutsWithFlow(layouts, flow);
     backupJsonFile(stageLayoutsFile, stageLayoutsBackupDir, "stage-layouts");
+    if (stageLayoutsStore.storageKind === "github-app-draft") {
+      return saveRevisioned(stageLayoutsStore, "layouts/stage.json", normalized, normalizeStageLayouts, {
+        ...metadata,
+        operation: "stage-layouts"
+      });
+    }
     if (stageLayoutsStore.storageKind === "github") {
       if (!githubToken) {
         throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
@@ -232,10 +276,16 @@ function createToolPersistenceRuntime({
     return readStageLayoutsSource();
   }
 
-  async function writeControllerLayouts(layouts) {
+  async function writeControllerLayouts(layouts, metadata = {}) {
     const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
     const normalized = syncControllerLayoutsWithFlow(layouts, flow);
     backupJsonFile(controllerLayoutsFile, controllerLayoutsBackupDir, "controller-layouts");
+    if (controllerLayoutsStore.storageKind === "github-app-draft") {
+      return saveRevisioned(controllerLayoutsStore, "layouts/controller.json", normalized, normalizeControllerLayouts, {
+        ...metadata,
+        operation: "controller-layouts"
+      });
+    }
     if (controllerLayoutsStore.storageKind === "github") {
       if (!githubToken) {
         throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
@@ -254,13 +304,19 @@ function createToolPersistenceRuntime({
     return readControllerLayoutsSource();
   }
 
-  async function writeGameFlow(flow) {
+  async function writeGameFlow(flow, metadata = {}) {
     const existingFlow = await loadGameFlowSource({ refresh: true });
     const merged = mergeFlowWithExistingSubActions(flow, existingFlow);
     assertUniqueGameFlowIds(merged);
     const normalized = normalizeGameFlow(merged);
     assertUniqueGameFlowIds(normalized);
     backupJsonFile(gameFlowFile, gameFlowBackupDir, "game-flow");
+    if (gameFlowStore.storageKind === "github-app-draft") {
+      return saveRevisioned(gameFlowStore, "flow.json", normalized, normalizeGameFlow, {
+        ...metadata,
+        operation: "flow"
+      });
+    }
     if (gameFlowStore.storageKind === "github") {
       if (!githubToken) {
         throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
@@ -279,9 +335,15 @@ function createToolPersistenceRuntime({
     return normalized;
   }
 
-  async function writeHostAudios(hostAudios) {
+  async function writeHostAudios(hostAudios, metadata = {}) {
     const normalized = normalizeHostAudios(hostAudios);
     backupJsonFile(hostAudiosFile, hostAudiosBackupDir, "host-audios");
+    if (hostAudiosStore.storageKind === "github-app-draft") {
+      return saveRevisioned(hostAudiosStore, "audio/host-audios.json", normalized, normalizeHostAudios, {
+        ...metadata,
+        operation: "host-audios"
+      });
+    }
     if (hostAudiosStore.storageKind === "github") {
       if (!githubToken) {
         throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");
@@ -300,8 +362,14 @@ function createToolPersistenceRuntime({
     return readHostAudiosSource();
   }
 
-  async function writeArtManifest(manifest) {
+  async function writeArtManifest(manifest, metadata = {}) {
     const normalized = normalizeArtManifest(manifest);
+    if (artManifestStore.storageKind === "github-app-draft") {
+      return saveRevisioned(artManifestStore, "art/manifest.json", normalized, normalizeArtManifest, {
+        ...metadata,
+        operation: "art-manifest"
+      });
+    }
     if (artManifestStore.storageKind === "github") {
       if (!githubToken) {
         throw new Error("GAME_FLOW_GITHUB_TOKEN is not configured. Refusing to save to ephemeral local storage.");

@@ -175,7 +175,7 @@ function createGithubContentBundleStore(options = {}) {
     if (String(expectedRevision || "") !== draft.snapshot.revision) {
       throw new ContentStoreConflictError("Draft revision is stale", { code: "DRAFT_REVISION_CONFLICT", expectedRevision: String(expectedRevision || ""), actualRevision: draft.snapshot.revision });
     }
-    const next = replaceSnapshotFiles(draft.snapshot, replacements);
+    const next = replaceSnapshotFiles(draft.snapshot, replacements, { allowNewFiles: true });
     const validation = await validateSnapshot(next);
     if (validation?.ok === false) throw Object.assign(new Error("Draft content validation failed"), { code: "CONTENT_VALIDATION_FAILED", diagnostics: validation.diagnostics || [] });
     const operations = { ...(draft.state.operations || {}), [key]: { fingerprint, parentRevision: draft.snapshot.revision, resultRevision: next.revision } };
