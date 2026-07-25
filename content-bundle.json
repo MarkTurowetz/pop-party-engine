@@ -5,18 +5,18 @@
   "flowExpressionLanguageVersion": 1,
   "gameMigrationLevel": 0,
   "semanticRolesPath": "semantic-roles.json",
-  "parentRevision": "",
+  "parentRevision": "4f27a13a4abef120aa4adbebd7dc3aac6d431daa864227dcd2fb7dd0ea855d76",
   "publishedRevision": "",
   "files": [
     {
       "path": "art/manifest.json",
-      "sha256": "db3748fad1677deef56c283687f7e9dbee5e6e4b4ef6b35e39b7867e29da60a8",
-      "bytes": 366554
+      "sha256": "c4450d995cd528129cc6e5cecc8e4f4ffe6461797d9e0ac0cfeb44104a8ccae8",
+      "bytes": 365751
     },
     {
       "path": "audio/host-audios.json",
-      "sha256": "2450d81b9ef4ab3d964e4074c97068fb46c1ed3737b0cd3e8f7dc3deec3f506a",
-      "bytes": 23
+      "sha256": "1624de850ae759af5a12021f60cb6f530cc7c0e0c5cd44221aad623ccc87d0ec",
+      "bytes": 727
     },
     {
       "path": "blobs/1c14e1db26cfb96105b2cbf60591a18329834078cc65e14373715d4ec06f07ef.svg",
@@ -65,8 +65,8 @@
     },
     {
       "path": "flow.json",
-      "sha256": "fa8d18f055dd2f4e8d2e0b20dde032d8e05813d49526a70663482fd50a4dd8a4",
-      "bytes": 42838
+      "sha256": "8614f7b67f570034e86328631c892540e862111231ad41f40145aa12bad74a93",
+      "bytes": 46486
     },
     {
       "path": "game-data/runtime.json",
@@ -75,13 +75,13 @@
     },
     {
       "path": "layouts/controller.json",
-      "sha256": "d3504c4a9f3aee1a62d85af0f3a13e7e06570e50ebbf1d1064480d538dffb04a",
-      "bytes": 21305
+      "sha256": "8d555a13251470764d3644ce9e9a4f4d55ab0007afd6a8bcbe8f4382060146e9",
+      "bytes": 45086
     },
     {
       "path": "layouts/stage.json",
-      "sha256": "d80f75ab53e53530d69e985a8d484b9b0382f78ad4b6bc48bdc0a2111762ed34",
-      "bytes": 4683
+      "sha256": "95ff3a94d10ea2679162b9782486f2c6ad371ef150b4ebeb7bd7c45a5351203d",
+      "bytes": 20101
     },
     {
       "path": "prompts/prompts.json",
@@ -94,5 +94,5 @@
       "bytes": 2469
     }
   ],
-  "rootHash": "4f27a13a4abef120aa4adbebd7dc3aac6d431daa864227dcd2fb7dd0ea855d76"
+  "rootHash": "9c90245b0eba60557477fd1df02d09f8d7008c2e4abcbb2557b2dbb0dc35e5a4"
 }
