@@ -48,9 +48,20 @@ export function artComponentBoundsInComposition(
     const canvasWidth = Math.max(1, Number(canvas.width || 1));
     const canvasHeight = Math.max(1, Number(canvas.height || 1));
     for (const component of (current.components as Dict[]) || []) {
+      const referencedId = component.kind === "reference" ? String(component.artCompositionId || "") : "";
+      const referenced = referencedId && !referencePath.has(referencedId)
+        ? getComposition(referencedId)
+        : null;
+      const referencedCanvas = (referenced?.canvas as Dict) || {};
       const scale = Number.isFinite(Number(component.scale)) ? Number(component.scale) : 1;
-      const width = (Number(component.width || 1) / canvasWidth) * region.width * scale;
-      const height = (Number(component.height || 1) / canvasHeight) * region.height * scale;
+      const sourceWidth = referenced
+        ? Math.max(1, Number(referencedCanvas.width || 1))
+        : Math.max(1, Number(component.width || 1));
+      const sourceHeight = referenced
+        ? Math.max(1, Number(referencedCanvas.height || 1))
+        : Math.max(1, Number(component.height || 1));
+      const width = (sourceWidth / canvasWidth) * region.width * scale;
+      const height = (sourceHeight / canvasHeight) * region.height * scale;
       const x = region.left + (Number(component.x || 0) / canvasWidth) * region.width;
       const y = region.top + (Number(component.y || 0) / canvasHeight) * region.height;
       if (component.id === componentId) return { x, y, width, height };
@@ -58,10 +69,6 @@ export function artComponentBoundsInComposition(
         const nestedChild = visit({ ...current, components: component.children }, region, referencePath);
         if (nestedChild) return nestedChild;
       }
-      if (component.kind !== "reference") continue;
-      const referencedId = String(component.artCompositionId || "");
-      if (!referencedId || referencePath.has(referencedId)) continue;
-      const referenced = getComposition(referencedId);
       if (!referenced) continue;
       const nextPath = new Set(referencePath);
       nextPath.add(referencedId);
