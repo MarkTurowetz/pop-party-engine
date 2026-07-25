@@ -20,7 +20,8 @@ function fixture() {
     ["layouts/stage.json", Buffer.from("{}\n")],
     ["layouts/controller.json", Buffer.from("{}\n")],
     ["audio/host-audios.json", Buffer.from("{}\n")],
-    ["art/manifest.json", Buffer.from('{"assets":[]}\n')],
+    ["art/manifest.json", Buffer.from('{"assets":[{"id":"base-art","blobPath":"blobs/base.svg","mimeType":"image/svg+xml"}],"compositions":{"base-composition":{"name":"Base"}}}\n')],
+    ["blobs/base.svg", Buffer.from("<svg></svg>\n")],
     ["prompts/prompts.json", Buffer.from('{"prompts":[]}\n')],
     ["semantic-roles.json", Buffer.from("{}\n")],
     ["game-data/runtime.json", Buffer.from("{}\n")]
@@ -42,7 +43,7 @@ function fixture() {
     contentRevision: baseSnapshot.revision
   });
   const sources = {
-    artManifest: { assets: [], compositions: {} },
+    artManifest: { compositions: {} },
     constants: { gameTitle: "Draft One" },
     controllerLayouts: { states: [{ id: "lobby" }] },
     flow: { states: [{ id: "lobby", entryTargetActionId: "show", actions: [{ id: "show" }] }] },
@@ -67,6 +68,7 @@ function fixture() {
     loadHostAudios: loader("hostAudios"),
     loadStageLayouts: loader("stageLayouts"),
     materializeGameData: (snapshot) => ({
+      artManifest: snapshot.readJson("art/manifest.json"),
       defaultGameConstants: snapshot.readJson("constants.json"),
       defaultGameFlow: snapshot.readJson("flow.json")
     }),
@@ -87,6 +89,14 @@ describe("latest-saved authoring session content", () => {
     await runtime.pinNewRoom(room);
     const firstRevision = room.releasePin.contentRevision;
     expect(room.gameData.defaultGameConstants.gameTitle).toBe("Draft One");
+    expect(room.gameData.artManifest.assets).toEqual([{
+      id: "base-art",
+      blobPath: "blobs/base.svg",
+      mimeType: "image/svg+xml"
+    }]);
+    expect(room.gameData.artManifest.compositions).toEqual({
+      "base-composition": { name: "Base" }
+    });
 
     sources.constants.gameTitle = "Draft Two";
     await runtime.refresh();

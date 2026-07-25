@@ -57,6 +57,27 @@ function createAuthoringSessionContentRuntime(options = {}) {
   let currentError = null;
   let refreshPromise = null;
 
+  function completeArtManifest(baseSnapshot, authoringManifest) {
+    const baseManifest = baseSnapshot.readJson(AUTHORING_JSON_PATHS.artManifest);
+    const deletedCompositionIds = Array.isArray(authoringManifest?.deletedCompositionIds)
+      ? authoringManifest.deletedCompositionIds.map((id) => String(id || "")).filter(Boolean)
+      : [];
+    const compositions = {
+      ...(baseManifest.compositions || {}),
+      ...(authoringManifest?.compositions || {})
+    };
+    for (const compositionId of deletedCompositionIds) delete compositions[compositionId];
+    return {
+      ...baseManifest,
+      ...authoringManifest,
+      compositions,
+      deletedCompositionIds,
+      assets: Array.isArray(authoringManifest?.assets)
+        ? authoringManifest.assets
+        : baseManifest.assets
+    };
+  }
+
   function referencedBlobReplacements(baseSnapshot, artManifest) {
     const replacements = {};
     for (const asset of Array.isArray(artManifest?.assets) ? artManifest.assets : []) {
@@ -83,14 +104,15 @@ function createAuthoringSessionContentRuntime(options = {}) {
       await loader({ refresh: true })
     ]));
     const sources = Object.fromEntries(sourceEntries);
+    const artManifest = completeArtManifest(baseSnapshot, sources.artManifest);
     const replacements = {
-      [AUTHORING_JSON_PATHS.artManifest]: sources.artManifest,
+      [AUTHORING_JSON_PATHS.artManifest]: artManifest,
       [AUTHORING_JSON_PATHS.constants]: sources.constants,
       [AUTHORING_JSON_PATHS.controllerLayouts]: sources.controllerLayouts,
       [AUTHORING_JSON_PATHS.flow]: sources.flow,
       [AUTHORING_JSON_PATHS.hostAudios]: sources.hostAudios,
       [AUTHORING_JSON_PATHS.stageLayouts]: sources.stageLayouts,
-      ...referencedBlobReplacements(baseSnapshot, sources.artManifest)
+      ...referencedBlobReplacements(baseSnapshot, artManifest)
     };
     const snapshot = replaceSnapshotFiles(baseSnapshot, replacements, { allowNewFiles: true });
     if (snapshot.manifest.gameId !== gameId) {

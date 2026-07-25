@@ -60,6 +60,9 @@ immutable; a room adopts the cached latest snapshot only when a new room or
 lobby game session begins. Tool saves and unsaved drafts do not reset active
 rooms. Generated games default to `published-release`, so this authoring
 preview mode is never inherited accidentally.
+An authoring application may supply `authoringRepository` as its game-owned
+default for GitHub persistence. Environment variables still take precedence,
+and generated games do not inherit the reference application's repository.
 
 Stage and controller presentation is delivered through the same room pin.
 Authenticated room routes expose that pin's stage layouts, controller layouts,

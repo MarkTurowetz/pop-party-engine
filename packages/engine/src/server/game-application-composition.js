@@ -138,7 +138,10 @@ const HOST_AUDIOS_FILE = path.resolve(AUTHORING_ROOT, process.env.HOST_AUDIOS_FI
 const HOST_AUDIOS_BACKUP_DIR = path.join(ROOT, ".pop-party", "backups", "host-audios");
 const GAME_FLOW_GITHUB_TOKEN = process.env.GAME_FLOW_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "";
 const GAME_FLOW_STORAGE = String(process.env.GAME_FLOW_STORAGE || (GAME_FLOW_GITHUB_TOKEN ? "github" : "local")).toLowerCase();
-const GAME_FLOW_GITHUB_REPO = process.env.GAME_FLOW_GITHUB_REPO || process.env.GITHUB_REPOSITORY || "";
+const GAME_FLOW_GITHUB_REPO = process.env.GAME_FLOW_GITHUB_REPO
+  || process.env.GITHUB_REPOSITORY
+  || options.authoringRepository
+  || "";
 const GAME_FLOW_GITHUB_BRANCH = process.env.GAME_FLOW_GITHUB_BRANCH || "game-data";
 const GAME_FLOW_GITHUB_BASE_BRANCH = process.env.GAME_FLOW_GITHUB_BASE_BRANCH || "main";
 const GAME_FLOW_GITHUB_PATH = process.env.GAME_FLOW_GITHUB_PATH || "game-flow.json";
