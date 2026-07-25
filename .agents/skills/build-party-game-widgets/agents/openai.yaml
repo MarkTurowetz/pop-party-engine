@@ -1,4 +1,0 @@
-interface:
-  display_name: "Build Party Game Widgets"
-  short_description: "Construct layered Art Manager widgets"
-  default_prompt: "Use $build-party-game-widgets to construct or review this Art Manager widget hierarchy."
