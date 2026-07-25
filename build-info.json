@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1164",
+  "version": "1.0.17.1166",
   "baseVersion": "1.0.17",
-  "buildNumber": 1164,
-  "commit": "d32eb7fa",
-  "branch": "main",
-  "generatedAt": "2026-07-25T05:22:06.521Z"
+  "buildNumber": 1166,
+  "commit": "bc70167f",
+  "branch": "codex/fix-lobby-qr-overlay",
+  "generatedAt": "2026-07-25T19:15:10.255Z"
 }

@@ -96,8 +96,8 @@ describe("PartyGameStageWidgetArt (ported widget-art-renderer)", () => {
           artCompositionId: "child",
           x: 130,
           y: 150,
-          width: 260,
-          height: 300,
+          width: 1,
+          height: 1,
           scale: 1
         }]
       },
@@ -113,6 +113,44 @@ describe("PartyGameStageWidgetArt (ported widget-art-renderer)", () => {
       "qr-placeholder",
       (id) => compositions[id] || null
     )).toEqual({ x: 130, y: 124, width: 212, height: 212 });
+  });
+
+  it("tracks child canvas changes instead of stale parent reference dimensions", () => {
+    const compositions: Record<string, Record<string, unknown>> = {
+      parent: {
+        id: "parent",
+        canvas: { width: 520, height: 600 },
+        components: [{
+          id: "join-qr-code-art",
+          kind: "reference",
+          artCompositionId: "child",
+          x: 260,
+          y: 300,
+          width: 1,
+          height: 1,
+          scale: 2
+        }]
+      },
+      child: {
+        id: "child",
+        canvas: { width: 260, height: 300 },
+        components: [{
+          id: "qr-placeholder",
+          kind: "shape",
+          x: 130,
+          y: 124,
+          width: 212,
+          height: 212,
+          scale: 1
+        }]
+      }
+    };
+
+    expect(artComponentBoundsInComposition(
+      compositions.parent,
+      "qr-placeholder",
+      (id) => compositions[id] || null
+    )).toEqual({ x: 260, y: 248, width: 424, height: 424 });
   });
 
   it("installs the global bridge on import", () => {
