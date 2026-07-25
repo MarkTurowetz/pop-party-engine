@@ -36,6 +36,7 @@ export interface HostAudioController {
     lineIndex: number,
     patch: Partial<Pick<HostAudioLine, "text" | "url">>
   ): void;
+  uploadLineAsset(setIndex: number, lineIndex: number, file: File): Promise<HostAudios | null>;
   undo(): void;
   redo(): void;
   revert(): void;
@@ -141,12 +142,38 @@ export function createHostAudioController(
       mutate((draft) => {
         const set = draft.hostAudios[setIndex];
         if (!set || !set.lines[lineIndex]) return;
-        if (Object.prototype.hasOwnProperty.call(patch, "url") && !String(patch.url || "").trim()) {
+        if (Object.prototype.hasOwnProperty.call(patch, "url")
+          && !String(patch.url || "").trim()
+          && !set.lines[lineIndex].blobPath) {
           set.lines = set.lines.filter((_, i) => i !== lineIndex);
           return;
         }
         set.lines[lineIndex] = { ...set.lines[lineIndex], ...patch };
       }),
+    uploadLineAsset: async (setIndex, lineIndex, file) => {
+      const set = current.hostAudios[setIndex];
+      const line = set?.lines[lineIndex];
+      if (!set || !line || !api.uploadHostAudioAsset) return null;
+      saving = true;
+      error = null;
+      emit();
+      try {
+        const response = await api.uploadHostAudioAsset(current, set.id, line.id, file);
+        current = normalizeHostAudios(response.hostAudios);
+        savedSnapshot = hostAudiosSnapshot(current);
+        undoStack.length = 0;
+        redoStack.length = 0;
+        sessionDraftPublisher?.markSaved(savedSnapshot);
+        saving = false;
+        emit();
+        return current;
+      } catch (caught) {
+        saving = false;
+        error = caught instanceof Error ? caught.message : String(caught);
+        emit();
+        return null;
+      }
+    },
 
     undo: () => {
       const previous = undoStack.pop();

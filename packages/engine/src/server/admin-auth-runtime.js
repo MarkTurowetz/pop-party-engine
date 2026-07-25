@@ -10,8 +10,17 @@ const TOOL_PATHS = new Set([
 const ADMIN_API_PATHS = new Set([
   "/api/local-draft", "/api/tool-drafts", "/api/game-flow", "/api/game-constants",
   "/api/host-audios", "/api/stage-layouts", "/api/controller-layouts",
+  "/api/host-audios/assets",
   "/api/art-organization", "/api/art-compositions", "/api/art-compositions/cleanup"
 ]);
+const DRAFT_PREVIEW_PATHS = new Set(["/", "/stage", "/s"]);
+
+function isDraftPreviewUrl(url) {
+  if (!DRAFT_PREVIEW_PATHS.has(url.pathname.toLowerCase())) return false;
+  const preview = String(url.searchParams.get("preview") || "").toLowerCase();
+  const role = String(url.searchParams.get("role") || "stage").toLowerCase();
+  return preview === "draft" && role === "stage";
+}
 
 function randomToken(bytes = 32) {
   return crypto.randomBytes(bytes).toString("base64url");
@@ -34,7 +43,8 @@ function safeReturnTo(value) {
   const candidate = String(value || "");
   try {
     const url = new URL(candidate, "http://local.invalid");
-    return url.origin === "http://local.invalid" && TOOL_PATHS.has(url.pathname.toLowerCase())
+    return url.origin === "http://local.invalid"
+      && (TOOL_PATHS.has(url.pathname.toLowerCase()) || isDraftPreviewUrl(url))
       ? `${url.pathname}${url.search}`
       : "/tools";
   } catch (error) {
@@ -122,13 +132,18 @@ function createAdminAuthRuntime(options = {}) {
 
   function isToolPath(url) {
     const role = String(url.searchParams.get("role") || "").toLowerCase();
-    return TOOL_PATHS.has(url.pathname.toLowerCase()) || (url.pathname === "/" && role && role !== "stage" && role !== "controller");
+    return TOOL_PATHS.has(url.pathname.toLowerCase())
+      || isDraftPreviewUrl(url)
+      || (url.pathname === "/" && role && role !== "stage" && role !== "controller");
   }
 
   function isAdminApiRequest(req, url) {
     if (url.pathname === "/api/admin/session") return false;
+    if (url.pathname.startsWith("/api/admin/")) return true;
     if (ADMIN_API_PATHS.has(url.pathname)) return req.method !== "GET" || url.pathname === "/api/local-draft" || url.pathname === "/api/tool-drafts";
     if (/^\/api\/art-(?:assets|compositions)\/[a-z0-9-]+$/i.test(url.pathname)) return req.method === "POST" || req.method === "DELETE";
+    if (/^\/api\/art-assets\/[a-z0-9-]+\/blob$/i.test(url.pathname)) return true;
+    if (/^\/api\/host-audios\/assets\/[a-z0-9-]+\/[a-z0-9-]+$/i.test(url.pathname)) return true;
     if (url.pathname.startsWith("/api/content/")) return true;
     return false;
   }
@@ -235,4 +250,4 @@ function createAdminAuthRuntime(options = {}) {
   return Object.freeze({ isAdminApiRequest, isToolPath, publicStatus, requireApi, requirePage, tryHandle });
 }
 
-module.exports = { ADMIN_API_PATHS, TOOL_PATHS, cookieMap, createAdminAuthRuntime, isLoopback, safeReturnTo };
+module.exports = { ADMIN_API_PATHS, TOOL_PATHS, cookieMap, createAdminAuthRuntime, isDraftPreviewUrl, isLoopback, safeReturnTo };

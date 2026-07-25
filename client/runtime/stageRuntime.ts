@@ -1021,7 +1021,33 @@ async function setupStage(): Promise<void> {
   initStageTextObjects();
   w().listenForArtAssetsChanged!(reloadStageArtAssets);
   const stageCode = w().getOrCreateStageCode!();
-  const room = (await w().postJson!("/api/stage/rooms", { stageCode })) as Dict;
+  const isDraftPreview = new URLSearchParams(location.search).get("preview") === "draft";
+  let room: Dict;
+  if (isDraftPreview) {
+    const sessionResponse = await fetch("/api/admin/session", {
+      headers: { Accept: "application/json" },
+      credentials: "same-origin"
+    });
+    const session = await sessionResponse.json() as Dict;
+    if (!sessionResponse.ok || !session.csrfToken) throw new Error("Administrator authentication is required for draft preview");
+    const roomResponse = await fetch("/api/admin/preview-rooms", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-CSRF-Token": String(session.csrfToken),
+        ...(w().getSessionValue?.(`partyTemplateStageCapability:${stageCode}`)
+          ? { "X-Stage-Capability": w().getSessionValue!(`partyTemplateStageCapability:${stageCode}`) }
+          : {})
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ stageCode })
+    });
+    room = await roomResponse.json() as Dict;
+    if (!roomResponse.ok) throw new Error(String(room.error || "Draft preview room could not be created"));
+  } else {
+    room = (await w().postJson!("/api/stage/rooms", { stageCode })) as Dict;
+  }
   const stageCapability = String(room.stageCapability || "");
   if (stageCapability) w().setSessionValue!(`partyTemplateStageCapability:${stageCode}`, stageCapability);
   setStageCodeDisplays(stageCode);

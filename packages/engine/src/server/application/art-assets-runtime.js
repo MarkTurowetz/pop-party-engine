@@ -59,7 +59,10 @@ function createArtAssetsRuntime({
   manifestFile,
   onArtAssetsChanged = () => {},
   readJson,
+  readAuthoringRevision = null,
+  readDurableDraft = null,
   sendJson,
+  writeArtAssetBundle = null,
   writeArtManifestSource = null
 }) {
   artCompositions = artCompositions.map((composition) => migrateLegacyArtCompositionSchema(JSON.parse(JSON.stringify(composition))));
@@ -75,11 +78,36 @@ function createArtAssetsRuntime({
     contentTypeForFile,
     customDir,
     defaultDir,
+    portableAssetUrl: typeof readDurableDraft === "function"
+      ? (asset) => `/api/art-assets/${encodeURIComponent(asset.id)}/blob`
+      : null,
     readDraftReplacement: (assetId) => localDraftStore?.artAssetReplacements?.[assetId] || null,
     sendJson,
     svgResponseHeaders
   });
   const { cleanId, cleanNumber, cleanText, normalizeComponent } = createArtComponentNormalizationRuntime({ acceptedArtTypes, artAssets });
+
+  function draftRevisionPayload() {
+    const revision = typeof readAuthoringRevision === "function"
+      ? String(readAuthoringRevision() || "")
+      : "";
+    return revision ? { draftRevision: revision } : {};
+  }
+
+  function draftWriteMetadata(payload = {}) {
+    if (typeof readAuthoringRevision !== "function") return {};
+    const expectedRevision = String(payload.draftRevision || "");
+    if (!expectedRevision) {
+      const error = new Error("A durable draft revision is required; reload Art Manager before saving");
+      error.code = "DRAFT_REVISION_REQUIRED";
+      error.status = 409;
+      throw error;
+    }
+    return {
+      expectedRevision,
+      idempotencyKey: String(payload.idempotencyKey || "")
+    };
+  }
 
   function normalizeCompositionComponents(defaultComponents = [], savedComponents = null) {
     const defaultById = new Map((defaultComponents || []).map((component) => [component.id, component]));
@@ -424,7 +452,8 @@ function createArtAssetsRuntime({
       compositions,
       ...dependencyReport,
       organization: normalizeArtOrganization(localDraftStore?.artOrganization || manifest.organization),
-      revision: manifestRevision(manifest)
+      revision: manifestRevision(manifest),
+      ...draftRevisionPayload()
     });
   }
 
@@ -438,14 +467,24 @@ function createArtAssetsRuntime({
     }
     const manifest = await loadArtManifest();
     if (!revisionMatches(payload, manifest)) {
-      sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before saving", revision: manifestRevision(manifest) });
+      sendJson(res, 409, {
+        ok: false,
+        error: "Art manifest changed; reload before saving",
+        revision: manifestRevision(manifest),
+        ...draftRevisionPayload()
+      });
       return;
     }
     manifest.organization = normalizeArtOrganization(payload.organization || payload);
-    const savedManifest = await saveArtManifest(manifest);
+    const savedManifest = await saveArtManifest(manifest, draftWriteMetadata(payload));
     if (localDraftStore) localDraftStore.artOrganization = null;
     await onArtAssetsChanged({ type: "organization", updatedAt: new Date().toISOString() });
-    sendJson(res, 200, { ok: true, organization: normalizeArtOrganization(savedManifest.organization), revision: manifestRevision(savedManifest) });
+    sendJson(res, 200, {
+      ok: true,
+      organization: normalizeArtOrganization(savedManifest.organization),
+      revision: manifestRevision(savedManifest),
+      ...draftRevisionPayload()
+    });
   }
 
   function normalizeArtCompositionsDraft(source = []) {
@@ -494,7 +533,7 @@ function createArtAssetsRuntime({
       currentCompositions: allPublicArtCompositions(manifest)
     });
     if (saveConflict) {
-      sendJson(res, 409, saveConflict);
+      sendJson(res, 409, { ...saveConflict, ...draftRevisionPayload() });
       return;
     }
     const previousCompositions = allPublicArtCompositions(manifest);
@@ -528,7 +567,7 @@ function createArtAssetsRuntime({
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
       return;
     }
-    const savedManifest = await saveArtManifest(geometryManifest);
+    const savedManifest = await saveArtManifest(geometryManifest, draftWriteMetadata(payload));
     if (Array.isArray(localDraftStore?.artCompositions)) {
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => composition?.id !== definition.id);
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
@@ -539,7 +578,8 @@ function createArtAssetsRuntime({
       ok: true,
       composition: savedComposition,
       compositionRevisions: { [savedComposition.id]: compositionRevision(savedComposition) },
-      revision: manifestRevision(savedManifest)
+      revision: manifestRevision(savedManifest),
+      ...draftRevisionPayload()
     });
   }
 
@@ -564,7 +604,7 @@ function createArtAssetsRuntime({
       currentCompositions: allPublicArtCompositions(manifest)
     });
     if (saveConflict) {
-      sendJson(res, 409, saveConflict);
+      sendJson(res, 409, { ...saveConflict, ...draftRevisionPayload() });
       return;
     }
     const previousCompositions = allPublicArtCompositions(manifest);
@@ -596,7 +636,7 @@ function createArtAssetsRuntime({
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
       return;
     }
-    const savedManifest = await saveArtManifest(geometryCandidate);
+    const savedManifest = await saveArtManifest(geometryCandidate, draftWriteMetadata(payload));
     if (Array.isArray(localDraftStore?.artCompositions)) {
       const savedIds = new Set(normalized.map((composition) => composition.id));
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => !savedIds.has(composition?.id));
@@ -608,7 +648,8 @@ function createArtAssetsRuntime({
       ok: true,
       compositions: savedCompositions,
       compositionRevisions: Object.fromEntries(savedCompositions.map((composition) => [composition.id, compositionRevision(composition)])),
-      revision: manifestRevision(savedManifest)
+      revision: manifestRevision(savedManifest),
+      ...draftRevisionPayload()
     });
   }
 
@@ -623,7 +664,12 @@ function createArtAssetsRuntime({
     const requestUrl = new URL(req.url || "", "http://localhost");
     const revision = requestUrl.searchParams.get("revision") || "";
     if (revision && revision !== manifestRevision(manifest)) {
-      sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before deleting", revision: manifestRevision(manifest) });
+      sendJson(res, 409, {
+        ok: false,
+        error: "Art manifest changed; reload before deleting",
+        revision: manifestRevision(manifest),
+        ...draftRevisionPayload()
+      });
       return;
     }
     manifest.compositions = manifest.compositions && typeof manifest.compositions === "object" ? manifest.compositions : {};
@@ -631,13 +677,20 @@ function createArtAssetsRuntime({
     const deletedIds = deletedCompositionIds(manifest);
     if (hasBaseComposition(safeCompositionId)) deletedIds.add(safeCompositionId);
     manifest.deletedCompositionIds = [...deletedIds];
-    const savedManifest = await saveArtManifest(manifest);
+    const savedManifest = await saveArtManifest(manifest, draftWriteMetadata({
+      draftRevision: requestUrl.searchParams.get("draftRevision") || ""
+    }));
     if (Array.isArray(localDraftStore?.artCompositions)) {
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => composition?.id !== safeCompositionId);
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
     }
     await onArtAssetsChanged({ type: "composition-delete", id: safeCompositionId, updatedAt: new Date().toISOString() });
-    sendJson(res, 200, { ok: true, compositions: allPublicArtCompositions(savedManifest), revision: manifestRevision(savedManifest) });
+    sendJson(res, 200, {
+      ok: true,
+      compositions: allPublicArtCompositions(savedManifest),
+      revision: manifestRevision(savedManifest),
+      ...draftRevisionPayload()
+    });
   }
 
   async function handleCleanupArtCompositions(req, res) {
@@ -673,6 +726,7 @@ function createArtAssetsRuntime({
           error: "Some trashed assets changed elsewhere. Review them before deleting.",
           conflictingCompositionIds: conflicts,
           revision: manifestRevision(manifest),
+          ...draftRevisionPayload(),
           compositions: currentCompositions,
           ...currentReport
         });
@@ -691,6 +745,7 @@ function createArtAssetsRuntime({
         error: "One or more trashed assets are still referenced.",
         blockingDependencies,
         revision: manifestRevision(manifest),
+        ...draftRevisionPayload(),
         ...currentReport
       });
       return;
@@ -712,7 +767,7 @@ function createArtAssetsRuntime({
       sendJson(res, 409, { ok: false, error: "Art composition validation failed", issues: validationIssues });
       return;
     }
-    const savedManifest = await saveArtManifest(candidate);
+    const savedManifest = await saveArtManifest(candidate, draftWriteMetadata(payload));
     if (Array.isArray(localDraftStore?.artCompositions)) {
       localDraftStore.artCompositions = localDraftStore.artCompositions.filter((composition) => !deleting.has(composition?.id));
       if (!localDraftStore.artCompositions.length) localDraftStore.artCompositions = null;
@@ -725,6 +780,7 @@ function createArtAssetsRuntime({
       compositions: savedCompositions,
       organization: normalizeArtOrganization(savedManifest.organization),
       revision: manifestRevision(savedManifest),
+      ...draftRevisionPayload(),
       ...savedReport
     });
   }
@@ -761,10 +817,14 @@ function createArtAssetsRuntime({
       }
     }
 
-    fs.mkdirSync(customDir, { recursive: true });
     const manifest = await loadArtManifest();
     if (!revisionMatches(payload, manifest)) {
-      sendJson(res, 409, { ok: false, error: "Art manifest changed; reload before saving", revision: manifestRevision(manifest) });
+      sendJson(res, 409, {
+        ok: false,
+        error: "Art manifest changed; reload before saving",
+        revision: manifestRevision(manifest),
+        ...draftRevisionPayload()
+      });
       return;
     }
     const portableAssetIndex = Array.isArray(manifest.assets)
@@ -778,15 +838,12 @@ function createArtAssetsRuntime({
     const savedFileName = portableAsset
       ? `${contentHash}${expectedExt}`
       : `${asset.id}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}${expectedExt}`;
-    const savedFilePath = path.join(customDir, savedFileName);
-    const stagedFilePath = `${savedFilePath}.tmp`;
-    fs.writeFileSync(stagedFilePath, buffer, { mode: 0o600 });
-    fs.renameSync(stagedFilePath, savedFilePath);
+    const blobPath = `blobs/${savedFileName}`;
     const updatedAt = new Date().toISOString();
     if (portableAsset) {
       manifest.assets[portableAssetIndex] = {
         ...portableAsset,
-        blobPath: `blobs/${savedFileName}`,
+        blobPath,
         sha256: contentHash,
         sourceName: fileName,
         mimeType,
@@ -800,23 +857,80 @@ function createArtAssetsRuntime({
         updatedAt
       };
     }
+
     let savedManifest;
-    try {
-      savedManifest = await saveArtManifest(manifest);
-    } catch (error) {
-      try { fs.unlinkSync(savedFilePath); } catch (cleanupError) { /* Best-effort rollback of a staged replacement. */ }
-      throw error;
-    }
-    if (!portableAsset && previousFile && previousFile !== savedFileName) {
-      const previousPath = path.join(customDir, path.basename(previousFile));
-      try { if (fs.existsSync(previousPath)) fs.unlinkSync(previousPath); } catch (error) { /* Stale inactive files are harmless. */ }
+    if (typeof writeArtAssetBundle === "function") {
+      if (!portableAsset) {
+        sendJson(res, 409, {
+          ok: false,
+          error: "Durable art replacement requires this asset to be declared in art/manifest.json"
+        });
+        return;
+      }
+      savedManifest = await writeArtAssetBundle({
+        manifest,
+        blobPath,
+        bytes: buffer,
+        ...draftWriteMetadata(payload)
+      });
+    } else {
+      fs.mkdirSync(customDir, { recursive: true });
+      const savedFilePath = path.join(customDir, savedFileName);
+      const stagedFilePath = `${savedFilePath}.tmp`;
+      fs.writeFileSync(stagedFilePath, buffer, { mode: 0o600 });
+      fs.renameSync(stagedFilePath, savedFilePath);
+      try {
+        savedManifest = await saveArtManifest(manifest);
+      } catch (error) {
+        try { fs.unlinkSync(savedFilePath); } catch (cleanupError) { /* Best-effort rollback of a staged replacement. */ }
+        throw error;
+      }
+      if (!portableAsset && previousFile && previousFile !== savedFileName) {
+        const previousPath = path.join(customDir, path.basename(previousFile));
+        try { if (fs.existsSync(previousPath)) fs.unlinkSync(previousPath); } catch (error) { /* Stale inactive files are harmless. */ }
+      }
     }
     if (localDraftStore?.artAssetReplacements) {
       delete localDraftStore.artAssetReplacements[asset.id];
       if (!Object.keys(localDraftStore.artAssetReplacements).length) localDraftStore.artAssetReplacements = null;
     }
     await onArtAssetsChanged({ type: "asset", id: asset.id, updatedAt });
-    sendJson(res, 200, { ok: true, asset: publicArtAsset(asset, savedManifest), revision: manifestRevision(savedManifest) });
+    sendJson(res, 200, {
+      ok: true,
+      asset: publicArtAsset(asset, savedManifest),
+      revision: manifestRevision(savedManifest),
+      ...draftRevisionPayload()
+    });
+  }
+
+  async function serveDurableArtAsset(res, assetId) {
+    if (typeof readDurableDraft !== "function") {
+      sendJson(res, 404, { ok: false, error: "Durable art assets are not enabled" });
+      return;
+    }
+    try {
+      const draft = await readDurableDraft();
+      const manifest = migrateLegacyArtManifestSchema(draft.snapshot.readJson("art/manifest.json")).manifest;
+      const asset = Array.isArray(manifest.assets)
+        ? manifest.assets.find((candidate) => candidate?.id === assetId)
+        : null;
+      if (!asset?.blobPath) {
+        sendJson(res, 404, { ok: false, error: "Durable art asset not found" });
+        return;
+      }
+      const bytes = draft.snapshot.readBytes(asset.blobPath);
+      if (asset.mimeType === "image/svg+xml") assertSafeSvg(bytes);
+      res.writeHead(200, {
+        "Content-Type": String(asset.mimeType || "application/octet-stream"),
+        "Content-Length": bytes.length,
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+        ...(asset.mimeType === "image/svg+xml" ? svgResponseHeaders() : {})
+      });
+      res.end(bytes);
+    } catch (error) {
+      sendJson(res, 500, { ok: false, error: "Durable art asset is invalid" });
+    }
   }
 
   return {
@@ -833,6 +947,7 @@ function createArtAssetsRuntime({
     publicArtComposition,
     readArtManifest,
     sendArtAssetList,
+    serveDurableArtAsset,
     serveArtFile
   };
 }

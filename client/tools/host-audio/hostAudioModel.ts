@@ -34,11 +34,19 @@ function normalizeLines(lines: unknown, hostAudioId: string): HostAudioLine[] {
       suffix += 1;
     }
     usedIds.add(id);
-    return {
+    const normalized: HostAudioLine = {
       id,
       text: String(line.text || "").slice(0, 240),
       url: String(line.url || line.audioUrl || "").trim().slice(0, 2000)
     };
+    const blobPath = String(line.blobPath || "").trim().slice(0, 2000);
+    if (blobPath) {
+      normalized.blobPath = blobPath;
+      normalized.sha256 = String(line.sha256 || "").trim().slice(0, 64);
+      normalized.mimeType = String(line.mimeType || "").trim().slice(0, 120);
+      normalized.sourceName = String(line.sourceName || "").trim().slice(0, 240);
+    }
+    return normalized;
   });
 }
 

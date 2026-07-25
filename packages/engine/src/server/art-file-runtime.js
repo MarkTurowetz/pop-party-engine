@@ -8,6 +8,7 @@ function createArtFileRuntime({
   contentTypeForFile,
   customDir,
   defaultDir,
+  portableAssetUrl = null,
   readDraftReplacement = () => null,
   sendJson,
   svgResponseHeaders = () => ({ "X-Content-Type-Options": "nosniff" })
@@ -41,6 +42,36 @@ function createArtFileRuntime({
       ? manifest.assets.find((candidate) => candidate?.id === asset.id)
       : null;
     const portableFile = path.posix.basename(String(portable?.blobPath || ""));
+    if (portable && typeof portableAssetUrl === "function") {
+      const url = String(portableAssetUrl(asset, portable) || "");
+      const hasReplacement = String(portable?.sha256 || "") !== String(asset.sha256 || "")
+        || String(portable?.blobPath || "") !== String(asset.blobPath || "");
+      const publicAsset = {
+        id: asset.id,
+        name: asset.name,
+        category: asset.category,
+        parent: asset.parent,
+        use: asset.use,
+        sharedBy: asset.sharedBy || [],
+        expectedTypes: Object.keys(acceptedArtTypes),
+        defaultUrl: url,
+        currentUrl: url,
+        hasCustom: hasReplacement,
+        fileName: portable?.sourceName || portableFile,
+        updatedAt: portable?.updatedAt || null
+      };
+      const draftReplacement = readDraftReplacement(asset.id);
+      return draftReplacement
+        ? {
+            ...publicAsset,
+            currentUrl: draftReplacement.dataUrl,
+            hasCustom: true,
+            hasDraft: true,
+            fileName: draftReplacement.fileName || publicAsset.fileName,
+            updatedAt: draftReplacement.updatedAt || null
+          }
+        : publicAsset;
+    }
     const portableFilePath = portableFile ? path.join(defaultDir, portableFile) : "";
     const hasPortableReplacement = Boolean(portableFile
       && fs.existsSync(portableFilePath)

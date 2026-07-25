@@ -8,7 +8,13 @@ function request({ method = "POST", headers = {}, remoteAddress = "127.0.0.1" } 
   return { method, headers, socket: { remoteAddress } };
 }
 
-function createHarness({ mode = "required", payload = {}, eventTicketMaxAgeMs, pinNewRoom = vi.fn(async () => {}) } = {}) {
+function createHarness({
+  mode = "required",
+  payload = {},
+  eventTicketMaxAgeMs,
+  pinNewRoom = vi.fn(async () => {}),
+  pinPreviewRoom = vi.fn(async () => {})
+} = {}) {
   const rooms = new Map();
   const response = {};
   const sendJson = vi.fn((_res, status, body) => Object.assign(response, { status, body }));
@@ -30,6 +36,7 @@ function createHarness({ mode = "required", payload = {}, eventTicketMaxAgeMs, p
     readJson: async () => payload,
     sendJson,
     pinNewRoom,
+    pinPreviewRoom,
     deleteRoom: (stageCode) => rooms.delete(stageCode),
     eventTicketMaxAgeMs
   });
@@ -139,6 +146,32 @@ describe("runtime capability authorization", () => {
     await harness.runtime.handleCreateRoom(request(), {});
     expect(harness.response).toMatchObject({ status: 503, body: { errorCode: "ACTIVE_RELEASE_INCOMPATIBLE" } });
     expect(harness.rooms.has("ABCD")).toBe(false);
+  });
+
+  it("creates draft preview rooms only through the preview pinner and refuses existing room codes", async () => {
+    const pinNewRoom = vi.fn(async () => {});
+    const pinPreviewRoom = vi.fn(async (room) => {
+      room.releasePin = { contentRevision: "draft-1", contentSource: "draft-preview" };
+    });
+    const harness = createHarness({
+      payload: { stageCode: "DRAFT" },
+      pinNewRoom,
+      pinPreviewRoom
+    });
+
+    await harness.runtime.handleCreatePreviewRoom(request(), {});
+    expect(pinPreviewRoom).toHaveBeenCalledTimes(1);
+    expect(pinNewRoom).not.toHaveBeenCalled();
+    expect(harness.response.body.release).toMatchObject({
+      contentRevision: "draft-1",
+      contentSource: "draft-preview"
+    });
+
+    const capability = harness.response.body.stageCapability;
+    await harness.runtime.handleCreatePreviewRoom(request(), {});
+    expect(harness.response).toMatchObject({ status: 409, body: { errorCode: "ROOM_ALREADY_EXISTS" } });
+    await harness.runtime.handleCreatePreviewRoom(request({ headers: { "x-stage-capability": capability } }), {});
+    expect(harness.response).toMatchObject({ status: 200, body: { stageCapability: capability } });
   });
 
   it("refuses to construct strict mode without a content pinner", () => {

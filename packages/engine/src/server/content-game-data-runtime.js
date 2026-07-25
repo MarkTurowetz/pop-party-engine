@@ -1,5 +1,6 @@
 "use strict";
 
+const crypto = require("node:crypto");
 const { availableFlowActionTypes } = require("../shared/flow-action-registry");
 const { createGameFlowMergeRuntime } = require("./game-flow-merge-runtime");
 
@@ -42,6 +43,27 @@ function requiredJson(snapshot, logicalPath) {
     throw new Error("Bundle game data requires a validated content snapshot");
   }
   return snapshot.readJson(logicalPath);
+}
+
+function validateBlobReference(snapshot, record, logicalPath) {
+  const blobPath = String(record?.blobPath || "");
+  if (!blobPath) return;
+  let bytes;
+  try {
+    bytes = snapshot.readBytes(blobPath);
+  } catch (error) {
+    throw new Error(`Bundle binary reference is missing: ${logicalPath}.blobPath -> ${blobPath}`);
+  }
+  const expectedHash = String(record?.sha256 || "");
+  if (expectedHash) {
+    const actualHash = crypto.createHash("sha256").update(bytes).digest("hex");
+    if (actualHash !== expectedHash) {
+      throw new Error(`Bundle binary reference hash does not match: ${logicalPath}.sha256`);
+    }
+  }
+  if (!String(record?.mimeType || "").trim()) {
+    throw new Error(`Bundle binary reference requires a MIME type: ${logicalPath}.mimeType`);
+  }
 }
 
 function createBundleGameData(snapshot) {
@@ -88,6 +110,14 @@ function createBundleGameData(snapshot) {
 
   const hostAudios = requiredObject(requiredJson(snapshot, "audio/host-audios.json"), "audio/host-audios.json");
   requiredArray(hostAudios.hostAudios, "audio/host-audios.json.hostAudios");
+  hostAudios.hostAudios.forEach((hostAudio, hostAudioIndex) => {
+    requiredArray(hostAudio?.lines, `audio/host-audios.json.hostAudios[${hostAudioIndex}].lines`)
+      .forEach((line, lineIndex) => validateBlobReference(
+        snapshot,
+        line,
+        `audio/host-audios.json.hostAudios[${hostAudioIndex}].lines[${lineIndex}]`
+      ));
+  });
 
   const promptDocument = requiredObject(requiredJson(snapshot, "prompts/prompts.json"), "prompts/prompts.json");
   requiredArray(promptDocument.prompts, "prompts/prompts.json.prompts");
@@ -95,6 +125,11 @@ function createBundleGameData(snapshot) {
   const artManifest = requiredObject(requiredJson(snapshot, "art/manifest.json"), "art/manifest.json");
   const compositions = requiredObject(artManifest.compositions, "art/manifest.json.compositions");
   requiredArray(artManifest.assets, "art/manifest.json.assets");
+  artManifest.assets.forEach((asset, assetIndex) => validateBlobReference(
+    snapshot,
+    asset,
+    `art/manifest.json.assets[${assetIndex}]`
+  ));
 
   const runtimeDocument = requiredObject(requiredJson(snapshot, "game-data/runtime.json"), "game-data/runtime.json");
   if (runtimeDocument.schemaVersion !== 1) {

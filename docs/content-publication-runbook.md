@@ -31,8 +31,8 @@ npm run validate -- outputs/migrated-content
 npm run content:bootstrap-github -- \
   --bundle tmp/content-bundle \
   --game-build 1.0.17.1057 \
-  --engine-version 1.1.0 \
-  --plugin-version 1.1.0
+  --engine-version 1.2.0 \
+  --plugin-version 1.2.0
 ```
 
 The default is validation-only and performs no network writes. Review the exact bundle root and release tuple printed by the command.
@@ -59,3 +59,26 @@ Repeat the reviewed command with `--apply`. It creates the initial immutable con
 First enable `PARTY_GAME_CONTENT_STORE=github` with remote authoring disabled and verify health/readiness plus room revision pinning. Enable `PARTY_GAME_RUNTIME_CAPABILITIES=required` only after this passes. Enable `PARTY_GAME_REMOTE_AUTHORING=enabled` only after GitHub admin OAuth, CSRF, isolated assets, backups, and rollback checks pass.
 
 Never enable these gates as a workaround for missing refs or invalid content. Fix the reported bootstrap/readiness diagnostic instead.
+
+## Single-service independent game contract
+
+An independent game may run public gameplay, authenticated Tools, and draft
+preview rooms in one service. It must provide:
+
+- `PARTY_GAME_CONTENT_STORE=github`
+- `PARTY_GAME_REMOTE_AUTHORING=enabled`
+- `PARTY_GAME_CONTENT_GITHUB_REPO=owner/game`
+- `PARTY_GAME_CONTENT_GITHUB_APP_ID`
+- `PARTY_GAME_CONTENT_GITHUB_INSTALLATION_ID`
+- `PARTY_GAME_CONTENT_GITHUB_PRIVATE_KEY`
+- `PARTY_GAME_ADMIN_AUTH_MODE=github`
+- `PARTY_GAME_GITHUB_OAUTH_CLIENT_ID`
+- `PARTY_GAME_GITHUB_OAUTH_CLIENT_SECRET`
+- `PARTY_GAME_GITHUB_OAUTH_CALLBACK_URL`
+- `PARTY_GAME_ADMIN_GITHUB_USER_ID`
+- `PARTY_GAME_RUNTIME_CAPABILITIES=required`
+
+`PARTY_GAME_AUTHORING_SCOPE` defaults to `default`. Ref names are configurable
+with `PARTY_GAME_CONTENT_REF`, `PARTY_GAME_CONTENT_DRAFT_REF_PREFIX`, and
+`PARTY_GAME_RELEASE_REF`. Credentials and repository identity remain
+game-owned deployment configuration and are never embedded in the engine.

@@ -63,6 +63,10 @@ function assertOk(value: Record<string, unknown>, endpoint: string): void {
   if (value.ok !== true) throw new ApiValidationError(endpoint, "response must include ok: true");
 }
 
+function assertOptionalRevision(value: Record<string, unknown>, endpoint: string): void {
+  if (value.revision !== undefined) assertString(value.revision, endpoint, "revision");
+}
+
 function assertStorageStatus(value: unknown, endpoint: string, label = "storage"): void {
   const storage = assertRecord(value, endpoint, label);
   assertString(storage.kind, endpoint, `${label}.kind`);
@@ -126,6 +130,7 @@ function assertArtComposition(value: unknown, endpoint: string, label: string): 
 export function validateHealthResponse(value: unknown, endpoint = "/api/health"): HealthResponse {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
+  assertOptionalRevision(response, endpoint);
   assertNumber(response.rooms, endpoint, "rooms");
   return value as HealthResponse;
 }
@@ -133,6 +138,7 @@ export function validateHealthResponse(value: unknown, endpoint = "/api/health")
 export function validateGameFlowResponse(value: unknown, endpoint = "/api/game-flow"): GameFlowResponse {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
+  assertOptionalRevision(response, endpoint);
   assertFlow(response.flow, endpoint, "flow");
   assertFlow(response.savedFlow, endpoint, "savedFlow");
   assertFlow(response.runtimeFlow, endpoint, "runtimeFlow");
@@ -146,6 +152,7 @@ export function validateGameFlowResponse(value: unknown, endpoint = "/api/game-f
 export function validateGameFlowSaveResponse(value: unknown, endpoint = "/api/game-flow"): GameFlowSaveResponse {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
+  assertOptionalRevision(response, endpoint);
   assertFlow(response.flow, endpoint, "flow");
   assertFlow(response.runtimeFlow, endpoint, "runtimeFlow");
   assertStorageStatus(response.storage, endpoint);
@@ -158,6 +165,7 @@ export function validateLayoutResponse<TLayout extends LayoutResponse["layouts"]
 ): LayoutResponse<TLayout> {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
+  assertOptionalRevision(response, endpoint);
   assertLayoutCollection(response.layouts, endpoint, "layouts");
   assertLayoutCollection(response.savedLayouts, endpoint, "savedLayouts");
   assertBoolean(response.hasLocalDraft, endpoint, "hasLocalDraft");
@@ -171,6 +179,7 @@ export function validateLayoutSaveResponse<TLayout extends LayoutSaveResponse["l
 ): LayoutSaveResponse<TLayout> {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
+  assertOptionalRevision(response, endpoint);
   assertLayoutCollection(response.layouts, endpoint, "layouts");
   assertStorageStatus(response.storage, endpoint);
   return value as LayoutSaveResponse<TLayout>;
@@ -179,6 +188,7 @@ export function validateLayoutSaveResponse<TLayout extends LayoutSaveResponse["l
 export function validateGameConstantsResponse(value: unknown, endpoint = "/api/game-constants"): GameConstantsResponse {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
+  assertOptionalRevision(response, endpoint);
   assertConstants(response.constants, endpoint, "constants");
   assertConstants(response.savedConstants, endpoint, "savedConstants");
   assertBoolean(response.hasLocalDraft, endpoint, "hasLocalDraft");
@@ -189,6 +199,7 @@ export function validateGameConstantsResponse(value: unknown, endpoint = "/api/g
 export function validateGameConstantsSaveResponse(value: unknown, endpoint = "/api/game-constants"): GameConstantsSaveResponse {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
+  assertOptionalRevision(response, endpoint);
   assertConstants(response.constants, endpoint, "constants");
   assertStorageStatus(response.storage, endpoint);
   return value as GameConstantsSaveResponse;
@@ -197,6 +208,7 @@ export function validateGameConstantsSaveResponse(value: unknown, endpoint = "/a
 export function validateHostAudiosResponse(value: unknown, endpoint = "/api/host-audios"): HostAudiosResponse {
   const response = assertRecord(value, endpoint, "response");
   assertOk(response, endpoint);
+  assertOptionalRevision(response, endpoint);
   assertHostAudios(response.hostAudios, endpoint, "hostAudios");
   assertHostAudios(response.savedHostAudios, endpoint, "savedHostAudios");
   assertBoolean(response.hasLocalDraft, endpoint, "hasLocalDraft");
@@ -226,6 +238,7 @@ export function validateArtAssetsResponse(value: unknown, endpoint = "/api/art-a
   if (response.dependencies !== undefined) assertRecord(response.dependencies, endpoint, "dependencies");
   if (response.compositionRevisions !== undefined) assertRecord(response.compositionRevisions, endpoint, "compositionRevisions");
   if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
+  if (response.draftRevision !== undefined) assertString(response.draftRevision, endpoint, "draftRevision");
   return value as ArtAssetsResponse;
 }
 
@@ -234,6 +247,7 @@ export function validateArtOrganizationSaveResponse(value: unknown, endpoint = "
   assertOk(response, endpoint);
   assertRecord(response.organization, endpoint, "organization");
   if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
+  if (response.draftRevision !== undefined) assertString(response.draftRevision, endpoint, "draftRevision");
   return value as ArtOrganizationSaveResponse;
 }
 
@@ -242,6 +256,7 @@ export function validateArtCompositionSaveResponse(value: unknown, endpoint = "/
   assertOk(response, endpoint);
   assertArtComposition(response.composition, endpoint, "composition");
   if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
+  if (response.draftRevision !== undefined) assertString(response.draftRevision, endpoint, "draftRevision");
   if (response.compositionRevisions !== undefined) assertRecord(response.compositionRevisions, endpoint, "compositionRevisions");
   return value as ArtCompositionSaveResponse;
 }
@@ -253,6 +268,7 @@ export function validateArtCompositionDeleteResponse(value: unknown, endpoint = 
     assertArtComposition(composition, endpoint, `compositions[${index}]`);
   });
   if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
+  if (response.draftRevision !== undefined) assertString(response.draftRevision, endpoint, "draftRevision");
   return value as ArtCompositionDeleteResponse;
 }
 
@@ -274,5 +290,6 @@ export function validateArtAssetReplaceResponse(value: unknown, endpoint = "/api
   assertOk(response, endpoint);
   assertArtAsset(response.asset, endpoint, "asset");
   if (response.revision !== undefined) assertString(response.revision, endpoint, "revision");
+  if (response.draftRevision !== undefined) assertString(response.draftRevision, endpoint, "draftRevision");
   return value as ArtAssetReplaceResponse;
 }

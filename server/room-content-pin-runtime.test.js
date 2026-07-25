@@ -38,9 +38,12 @@ describe("room content revision pinning", () => {
   it("pins one complete active release before room use", async () => {
     const { runtime, release, snapshot, gameData } = harness();
     const room = {};
-    await expect(runtime.pinNewRoom(room)).resolves.toEqual(release);
+    await expect(runtime.pinNewRoom(room)).resolves.toEqual({
+      ...release,
+      contentSource: "published-release"
+    });
 
-    expect(room.releasePin).toEqual(release);
+    expect(room.releasePin).toEqual({ ...release, contentSource: "published-release" });
     expect(room.contentSnapshot).toBe(snapshot);
     expect(room.gameData).toBe(gameData);
     expect(() => { room.releasePin.contentRevision = "changed"; }).toThrow();

@@ -77,6 +77,7 @@ export function createStartHandlersRuntime(options: Record<string, unknown>): Re
 export function createPlayerSessionHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLobbyPayloadRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createHostAudioRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createHostAudioAssetsRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createTriviaContentRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export const TEXT_ANSWER_ACTION_CONFIGS: Readonly<Record<string, unknown>>;
 export function isTextAnswerAction(actionOrType: unknown): boolean;
@@ -94,6 +95,7 @@ export * from "./game-readiness-runtime";
 export * from "./game-service-runtime";
 export * from "./game-application-runtime";
 export * from "./content-game-data-runtime";
+export function selectApplicationContentStores(options?: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export * from "./content-migration-runtime";
 export function createRoomFlowHelpersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGameConstantsRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
@@ -107,6 +109,8 @@ export function createToolSourceReadersRuntime(options: Record<string, unknown>)
 export function createToolSourceStoresRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function assertUniqueGameFlowIds(flow: unknown): void;
 export function createToolPersistenceRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export * from "./revisioned-tool-authoring-runtime";
+export * from "./draft-preview-room-runtime";
 export function createGithubStorageRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createToolGithubSourcesRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createSaveHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

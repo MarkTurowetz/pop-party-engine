@@ -1,6 +1,7 @@
 export interface RoomRuntimeContentRuntime {
   sendRoomRuntimeContent(response: Record<string, unknown>, stageCode: string, kind: string): void;
   serveRoomArtAsset(response: Record<string, unknown>, stageCode: string, assetId: string): void;
+  serveRoomHostAudio(response: Record<string, unknown>, stageCode: string, lineId: string): void;
 }
 
 export function createRoomRuntimeContentRuntime(options: {

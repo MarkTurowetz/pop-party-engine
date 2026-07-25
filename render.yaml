@@ -11,25 +11,37 @@ services:
         value: 22
       - key: PARTY_GAME_USE_VITE_ENTRIES
         value: 1
-      - key: GAME_FLOW_STORAGE
+      - key: PARTY_GAME_CONTENT_STORE
         value: github
-      - key: GAME_FLOW_GITHUB_REPO
+      - key: PARTY_GAME_REMOTE_AUTHORING
+        value: enabled
+      - key: PARTY_GAME_AUTHORING_SCOPE
+        value: default
+      - key: PARTY_GAME_CONTENT_GITHUB_REPO
         value: MarkTurowetz/pop-party-engine
-      - key: GAME_FLOW_GITHUB_BRANCH
-        value: game-data
-      - key: GAME_FLOW_GITHUB_BASE_BRANCH
-        value: main
-      - key: GAME_FLOW_GITHUB_PATH
-        value: game-flow.json
-      - key: GAME_CONSTANTS_GITHUB_PATH
-        value: game-constants.json
-      - key: STAGE_LAYOUTS_GITHUB_PATH
-        value: stage-layouts.json
-      - key: CONTROLLER_LAYOUTS_GITHUB_PATH
-        value: controller-layouts.json
-      - key: HOST_AUDIOS_GITHUB_PATH
-        value: host-audios.json
-      - key: ART_MANIFEST_GITHUB_PATH
-        value: art-manifest.json
-      - key: GAME_FLOW_GITHUB_TOKEN
+      - key: PARTY_GAME_CONTENT_BASE_REF
+        value: heads/main
+      - key: PARTY_GAME_CONTENT_REF
+        value: heads/game-data-v2
+      - key: PARTY_GAME_CONTENT_DRAFT_REF_PREFIX
+        value: heads/game-drafts/
+      - key: PARTY_GAME_RELEASE_REF
+        value: heads/game-releases
+      - key: PARTY_GAME_CONTENT_GITHUB_APP_ID
         sync: false
+      - key: PARTY_GAME_CONTENT_GITHUB_INSTALLATION_ID
+        sync: false
+      - key: PARTY_GAME_CONTENT_GITHUB_PRIVATE_KEY
+        sync: false
+      - key: PARTY_GAME_ADMIN_AUTH_MODE
+        value: github
+      - key: PARTY_GAME_GITHUB_OAUTH_CLIENT_ID
+        sync: false
+      - key: PARTY_GAME_GITHUB_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: PARTY_GAME_GITHUB_OAUTH_CALLBACK_URL
+        value: https://pop-party.onrender.com/auth/github/callback
+      - key: PARTY_GAME_ADMIN_GITHUB_USER_ID
+        sync: false
+      - key: PARTY_GAME_RUNTIME_CAPABILITIES
+        value: required

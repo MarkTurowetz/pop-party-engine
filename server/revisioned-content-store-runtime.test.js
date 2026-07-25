@@ -130,4 +130,22 @@ describe("revisioned content store", () => {
     const error = new ContentStoreConflictError("stale", { code: "TEST", expectedRevision: "a", actualRevision: "b" });
     expect(error).toMatchObject({ status: 409, code: "TEST", expectedRevision: "a", actualRevision: "b" });
   });
+
+  it("atomically adds content-addressed binary files to a draft", () => {
+    const runtime = store();
+    const initial = runtime.readDraft();
+    const bytes = Buffer.from("binary asset");
+    const saved = runtime.writeDraft({
+      expectedRevision: initial.revision,
+      idempotencyKey: "binary-save-0001",
+      replacements: {
+        "blobs/new-asset.bin": bytes,
+        "constants.json": { gameTitle: "Binary revision" }
+      }
+    });
+    const draft = runtime.readDraft();
+    expect(draft.revision).toBe(saved.revision);
+    expect(draft.snapshot.readBytes("blobs/new-asset.bin")).toEqual(bytes);
+    expect(draft.snapshot.readJson("constants.json")).toEqual({ gameTitle: "Binary revision" });
+  });
 });

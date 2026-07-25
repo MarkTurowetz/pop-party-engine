@@ -44,6 +44,7 @@ describe("admin auth runtime", () => {
     expect(safeReturnTo("/art?tab=stage")).toBe("/art?tab=stage");
     expect(safeReturnTo("https://evil.test/art")).toBe("/tools");
     expect(safeReturnTo("/stage")).toBe("/tools");
+    expect(safeReturnTo("/stage?preview=draft")).toBe("/stage?preview=draft");
   });
 
   it("permits the local bypass only from loopback", () => {
@@ -92,5 +93,9 @@ describe("admin auth runtime", () => {
     expect(runtime.requireApi(request({ method: "POST", cookie }), missingCsrf, { mutation: true })).toBe(false);
     expect(missingCsrf.status).toBe(403);
     expect(runtime.requireApi(request({ method: "POST", cookie, headers: { "x-csrf-token": session.csrfToken } }), response(), { mutation: true })).toBe(true);
+    expect(runtime.isAdminApiRequest(
+      request({ method: "POST" }),
+      new URL("https://game.test/api/admin/preview-rooms")
+    )).toBe(true);
   });
 });

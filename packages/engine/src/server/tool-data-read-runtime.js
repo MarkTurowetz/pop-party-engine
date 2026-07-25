@@ -31,14 +31,19 @@ function createToolDataReadRuntime({
 }) {
   function storagePayload(store, path) {
     const isGithub = store.storageKind === "github";
+    const isRevisioned = store.storageKind === "github-app-draft";
     return {
       kind: store.storageKind,
-      durable: isGithub && hasGithubToken(),
+      durable: isRevisioned || (isGithub && hasGithubToken()),
       error: store.error || "",
       repo: isGithub ? githubRepo : "",
       branch: isGithub ? githubBranch : "",
-      path: isGithub ? path : ""
+      path: isGithub || isRevisioned ? path : ""
     };
+  }
+
+  function revisionPayload(store) {
+    return store.revision ? { revision: store.revision } : {};
   }
 
   async function sendGameFlow(res) {
@@ -50,6 +55,7 @@ function createToolDataReadRuntime({
       savedFlow: flow,
       runtimeFlow: normalizeGameFlow(responseFlow),
       hasLocalDraft: Boolean(localDraftStore.flow),
+      ...revisionPayload(gameFlowStore),
       storage: storagePayload(gameFlowStore, gameFlowPath),
       availableActionTypes: availableFlowActionTypes,
       availableTransitions: availableFlowTransitions
@@ -64,6 +70,7 @@ function createToolDataReadRuntime({
       constants: normalizeGameConstants(responseConstants),
       savedConstants: normalizeGameConstants(constants),
       hasLocalDraft: Boolean(localDraftStore.constants),
+      ...revisionPayload(gameConstantsStore),
       storage: storagePayload(gameConstantsStore, gameConstantsPath)
     });
   }
@@ -79,6 +86,7 @@ function createToolDataReadRuntime({
       layouts: responseLayouts,
       savedLayouts: syncedLayouts,
       hasLocalDraft: Boolean(localDraftStore.layouts),
+      ...revisionPayload(stageLayoutsStore),
       storage: storagePayload(stageLayoutsStore, stageLayoutsPath)
     });
   }
@@ -94,6 +102,7 @@ function createToolDataReadRuntime({
       layouts: responseLayouts,
       savedLayouts: syncedLayouts,
       hasLocalDraft: Boolean(localDraftStore.controllerLayouts),
+      ...revisionPayload(controllerLayoutsStore),
       storage: storagePayload(controllerLayoutsStore, controllerLayoutsPath)
     });
   }
@@ -106,6 +115,7 @@ function createToolDataReadRuntime({
       hostAudios: normalizeHostAudios(responseHostAudios),
       savedHostAudios: normalizeHostAudios(hostAudios),
       hasLocalDraft: Boolean(localDraftStore.hostAudios),
+      ...revisionPayload(hostAudiosStore),
       storage: storagePayload(hostAudiosStore, hostAudiosPath)
     });
   }

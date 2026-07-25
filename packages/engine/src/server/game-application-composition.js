@@ -18,9 +18,12 @@ const {
   createCountdownRuntime,
   createControllerInputPayloadRuntime,
   createControllerSubmitHandlersRuntime,
+  createBundleGameData,
+  selectApplicationContentStores,
   createCraftingTimerRuntime,
   createDecisionActionNormalizationRuntime,
   createDecisionRuntime,
+  createDraftPreviewRoomRuntime,
   createFlowNavigationRuntime,
   createFlowActionPublicRuntime,
   createFlowTargetRuntime,
@@ -28,6 +31,7 @@ const {
   createGameFlowNormalizationRuntime,
   createGameConstantsRuntime,
   createHostAudioRuntime,
+  createHostAudioAssetsRuntime,
   createInactivePlayerSweepRuntime,
   createInputStateRuntime,
   createLobbyControlHandlersRuntime,
@@ -44,6 +48,7 @@ const {
   createRoomPhaseRuntime,
   createRoomStateRuntime,
   createRoomRuntimeContentRuntime,
+  createRevisionedToolAuthoringRuntime,
   createRouterRuntime,
   createStageActionHandlersRuntime,
   createStageEventsRuntime,
@@ -199,15 +204,34 @@ const adminAuth = createAdminAuthRuntime({
 const contentEnvironment = createContentStoreEnvironmentRuntime({
   env: process.env,
   isProduction: process.env.NODE_ENV === "production",
-  adminAuthMode: ADMIN_AUTH_MODE
+  adminAuthMode: ADMIN_AUTH_MODE,
+  validateSnapshot: (snapshot) => {
+    try {
+      createBundleGameData(snapshot);
+      return { ok: true, diagnostics: [] };
+    } catch (error) {
+      return {
+        ok: false,
+        diagnostics: [{ code: "CONTENT_GAME_DATA_INVALID", message: String(error?.message || error) }]
+      };
+    }
+  }
 });
-const contentStore = GAME_DEFINITION.content.store || contentEnvironment.contentStore;
-const roomContentStore = GAME_DEFINITION.content.store || contentEnvironment.contentStore || createLocalContentBundleProvider({
-  root: CONTENT_ROOT,
-  gameBuild: GAME_DEFINITION.version,
-  engineVersion: GAME_DEFINITION.engineCompatibility,
-  pluginVersion: GAME_DEFINITION.version
+const fallbackContentStore = contentEnvironment.contentStore || GAME_DEFINITION.content.store
+  ? null
+  : createLocalContentBundleProvider({
+      root: CONTENT_ROOT,
+      gameBuild: GAME_DEFINITION.version,
+      engineVersion: GAME_DEFINITION.engineCompatibility,
+      pluginVersion: GAME_DEFINITION.version
+    });
+const selectedContentStores = selectApplicationContentStores({
+  environmentStore: contentEnvironment.contentStore,
+  gameStore: GAME_DEFINITION.content.store,
+  fallbackStore: fallbackContentStore
 });
+const contentStore = selectedContentStores.authoringStore;
+const roomContentStore = selectedContentStores.roomStore;
 const runtimeGameDefinition = defineGame({
   gameId: GAME_DEFINITION.gameId,
   displayName: GAME_DEFINITION.displayName,
@@ -246,6 +270,18 @@ const contentAdmin = contentEnvironment.remoteAuthoring === "enabled"
       audit: (req, event) => adminAudit.record(req, event)
     })
   : null;
+const revisionedToolAuthoring = contentEnvironment.remoteAuthoring === "enabled"
+  ? createRevisionedToolAuthoringRuntime({
+      contentStore,
+      scope: process.env.PARTY_GAME_AUTHORING_SCOPE || "default"
+    })
+  : null;
+if (revisionedToolAuthoring && SESSION_CONTENT_MODE === "latest-saved-authoring") {
+  throw new Error(
+    "Durable remote authoring cannot make public rooms use latest-saved-authoring; create authenticated draft preview rooms instead"
+  );
+}
+const TOOL_STORAGE_KIND = revisionedToolAuthoring ? "github-app-draft" : GAME_FLOW_STORAGE;
 
 const {
   normalizeGameConstants
@@ -282,6 +318,17 @@ const publishedRoomContentPins = createRoomContentPinRuntime({
   gameId: runtimeGameDefinition.gameId,
   validateRelease: roomReleaseValidator
 });
+const draftPreviewRooms = revisionedToolAuthoring
+  ? createDraftPreviewRoomRuntime({
+      contentStore,
+      scope: process.env.PARTY_GAME_AUTHORING_SCOPE || "default",
+      gameId: runtimeGameDefinition.gameId,
+      gameBuild: runtimeGameDefinition.version,
+      engineVersion: runtimeGameDefinition.engineCompatibility,
+      pluginVersion: runtimeGameDefinition.version,
+      validateRelease: roomReleaseValidator
+    })
+  : null;
 let authoringSessionContent = null;
 let pinNewRoomForSession = (room) => publishedRoomContentPins.pinNewRoom(room);
 
@@ -294,12 +341,16 @@ const runtimeCapabilities = createRuntimeCapabilityRuntime({
   readJson,
   sendJson,
   pinNewRoom: (room) => pinNewRoomForSession(room),
+  pinPreviewRoom: draftPreviewRooms
+    ? (room) => draftPreviewRooms.pinPreviewRoom(room)
+    : null,
   deleteRoom: (stageCode) => rooms.delete(stageCode)
 });
 
 const {
   sendRoomRuntimeContent,
-  serveRoomArtAsset
+  serveRoomArtAsset,
+  serveRoomHostAudio
 } = createRoomRuntimeContentRuntime({
   getExistingRoom,
   normalizeStageCode,
@@ -587,6 +638,7 @@ const {
   normalizeArtCompositionsDraft,
   normalizeArtOrganization,
   sendArtAssetList,
+  serveDurableArtAsset,
   serveArtFile
 } = createArtAssetsRuntime({
   acceptedArtTypes,
@@ -615,8 +667,32 @@ const {
   manifestFile: ART_MANIFEST_FILE,
   onArtAssetsChanged: broadcastArtAssetsChanged,
   readJson,
+  readAuthoringRevision: revisionedToolAuthoring
+    ? () => artManifestStore.revision
+    : null,
+  readDurableDraft: revisionedToolAuthoring
+    ? () => revisionedToolAuthoring.readDraft({ refresh: true })
+    : null,
   sendJson,
-  writeArtManifestSource: (manifest) => writeArtManifest(manifest)
+  writeArtAssetBundle: revisionedToolAuthoring
+    ? async ({ manifest, blobPath, bytes, expectedRevision, idempotencyKey }) => {
+        const result = await revisionedToolAuthoring.writeFiles({
+          [blobPath]: bytes,
+          "art/manifest.json": manifest
+        }, {
+          expectedRevision,
+          idempotencyKey,
+          operation: "art-asset"
+        });
+        const savedManifest = result.snapshot.readJson("art/manifest.json");
+        artManifestStore.source = savedManifest;
+        artManifestStore.revision = result.revision;
+        artManifestStore.loadedAt = Date.now();
+        artManifestStore.error = "";
+        return savedManifest;
+      }
+    : null,
+  writeArtManifestSource: (manifest, metadata) => writeArtManifest(manifest, metadata)
 });
 
 const {
@@ -851,7 +927,7 @@ const {
   readLocalGameFlowSource,
   readLocalHostAudiosSource,
   readLocalStageLayoutsSource,
-  storageKind: GAME_FLOW_STORAGE
+  storageKind: TOOL_STORAGE_KIND
 });
 
 const {
@@ -910,6 +986,7 @@ const {
   readLocalStageLayoutsSource,
   readHostAudiosSource,
   readStageLayoutsSource,
+  revisionedAuthoring: revisionedToolAuthoring,
   stageLayoutsBackupDir: STAGE_LAYOUTS_BACKUP_DIR,
   stageLayoutsFile: STAGE_LAYOUTS_FILE,
   stageLayoutsGithubPath: STAGE_LAYOUTS_GITHUB_PATH,
@@ -919,6 +996,17 @@ const {
   writeGithubGameFlowSource,
   writeGithubJsonSource,
   writeJsonFile: writeAuthoringJsonFile,
+});
+
+const {
+  handleUpload: handleUploadHostAudioAsset,
+  serveDraftAsset: serveDraftHostAudioAsset
+} = createHostAudioAssetsRuntime({
+  authoring: revisionedToolAuthoring,
+  hostAudiosStore,
+  normalizeHostAudios,
+  readJson,
+  sendJson
 });
 
 if (SESSION_CONTENT_MODE === "latest-saved-authoring") {
@@ -1345,6 +1433,7 @@ const {
   handleSaveGameConstants,
   handleSaveGameFlow,
   handleSaveHostAudios,
+  handleUploadHostAudioAsset,
   handleSaveStageLayouts,
   handleSelectAvatar,
   handleStart,
@@ -1364,10 +1453,13 @@ const {
   sendStageLayouts,
   sendRoomRuntimeContent,
   serveArtFile,
+  serveDurableArtAsset,
   serveBuildAsset,
   serveClientFile,
   serveIndex,
   serveRoomArtAsset,
+  serveRoomHostAudio,
+  serveDraftHostAudioAsset,
   serveSharedFile,
 });
 
@@ -1382,6 +1474,7 @@ const {
 });
 
 async function initializeAuthoritativeToolSources() {
+  if (revisionedToolAuthoring) await revisionedToolAuthoring.initialize();
   await Promise.all([
     loadGameFlowSource({ refresh: true }),
     loadGameConstantsSource({ refresh: true }),

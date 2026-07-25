@@ -44,7 +44,8 @@ function createLobbyPayloadRuntime({
         engineVersion: String(room.releasePin.engineVersion || ""),
         pluginVersion: String(room.releasePin.pluginVersion || ""),
         contentRevision: String(room.releasePin.contentRevision || ""),
-        releaseRevision: String(room.releasePin.releaseRevision || "")
+        releaseRevision: String(room.releasePin.releaseRevision || ""),
+        contentSource: String(room.releasePin.contentSource || "published-release")
       } : null,
       momentVisitId: Number(room.momentVisitId || 0),
       runtimeFault,

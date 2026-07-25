@@ -37,6 +37,12 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
     });
   };
 
+  const lineAudioUrl = (hostAudioId: string, line: { id: string; url: string; blobPath?: string }) => (
+    line.blobPath
+      ? `/api/host-audios/assets/${encodeURIComponent(hostAudioId)}/${encodeURIComponent(line.id)}`
+      : line.url
+  );
+
   const addSet = () => {
     controller.addSet();
     const next = controller.getState().hostAudios.hostAudios.at(-1);
@@ -177,12 +183,25 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
                     />
                   </label>
                   <div className="host-audio-line-controls">
+                    <label>
+                      <span className="sr-only">Upload audio</span>
+                      <input
+                        type="file"
+                        accept="audio/mpeg,audio/mp4,audio/ogg,audio/wav,audio/webm"
+                        data-upload-host-audio-line={`${selectedSetIndex}:${lineIndex}`}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void controller.uploadLineAsset(selectedSetIndex, lineIndex, file);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
                     <button
                       className="host-audio-play-button"
                       type="button"
-                      disabled={!line.url}
+                      disabled={!line.url && !line.blobPath}
                       data-play-host-audio-line={`${selectedSetIndex}:${lineIndex}`}
-                      onClick={() => play(line.url)}
+                      onClick={() => play(lineAudioUrl(selectedSet.id, line))}
                     >
                       Play
                     </button>

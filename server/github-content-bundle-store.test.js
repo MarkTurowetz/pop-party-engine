@@ -64,7 +64,10 @@ describe("GitHub content bundle store", () => {
       scope: "mark",
       expectedRevision: draft.revision,
       idempotencyKey: "draft-save-0001",
-      replacements: { "constants.json": { gameTitle: "Flip 7" } }
+      replacements: {
+        "constants.json": { gameTitle: "Flip 7" },
+        "blobs/audio.bin": Buffer.from("durable audio")
+      }
     };
     const saved = await store.writeDraft(saveRequest);
     expect(saved.revision).not.toBe(initial.revision);
@@ -81,6 +84,7 @@ describe("GitHub content bundle store", () => {
     });
     expect(published.contentRevision).toBe(saved.revision);
     expect((await store.loadPublishedRevision(saved.revision)).readJson("constants.json")).toEqual({ gameTitle: "Flip 7" });
+    expect((await store.loadPublishedRevision(saved.revision)).readBytes("blobs/audio.bin")).toEqual(Buffer.from("durable audio"));
 
     store = createGithubContentBundleStore({ git });
     await expect(store.publishDraft({
@@ -139,5 +143,31 @@ describe("GitHub content bundle store", () => {
     const store = createGithubContentBundleStore({ git });
     await store.initialize({ initialSnapshot: fixtureSnapshot(), release });
     await expect(store.loadPublishedRevision("f".repeat(64))).rejects.toThrow(/not published/);
+  });
+
+  it("keeps the previous complete draft authoritative when the GitHub ref CAS fails", async () => {
+    const git = fakeGit();
+    let store = createGithubContentBundleStore({ git });
+    const initial = fixtureSnapshot();
+    await store.initialize({ initialSnapshot: initial, release });
+    const draft = await store.initializeDraft();
+    git.updateRefCas.mockRejectedValueOnce(Object.assign(new Error("simulated ref conflict"), {
+      status: 409,
+      code: "GITHUB_REF_CONFLICT"
+    }));
+
+    await expect(store.writeDraft({
+      expectedRevision: draft.revision,
+      idempotencyKey: "failed-binary-save-0001",
+      replacements: {
+        "constants.json": { gameTitle: "Must not appear" },
+        "blobs/partial.bin": Buffer.from("orphaned but never authoritative")
+      }
+    })).rejects.toMatchObject({ code: "GITHUB_REF_CONFLICT" });
+
+    store = createGithubContentBundleStore({ git });
+    const restarted = await store.readDraft();
+    expect(restarted.revision).toBe(draft.revision);
+    expect(restarted.snapshot.paths).not.toContain("blobs/partial.bin");
   });
 });

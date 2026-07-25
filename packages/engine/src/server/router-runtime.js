@@ -32,6 +32,7 @@ function createRouterRuntime({
   handleSaveGameConstants,
   handleSaveGameFlow,
   handleSaveHostAudios,
+  handleUploadHostAudioAsset,
   handleSaveStageLayouts,
   handleSelectAvatar,
   handleStart,
@@ -51,10 +52,13 @@ function createRouterRuntime({
   sendStageLayouts,
   sendRoomRuntimeContent,
   serveArtFile,
+  serveDurableArtAsset,
   serveBuildAsset,
   serveClientFile,
   serveIndex,
   serveRoomArtAsset,
+  serveRoomHostAudio,
+  serveDraftHostAudioAsset,
   serveSharedFile,
 }) {
   function router(req, res) {
@@ -84,6 +88,11 @@ function createRouterRuntime({
     }
     if (url.pathname.startsWith("/api/content/")) {
       sendJson(res, 404, { ok: false, error: "Revisioned content authoring is not enabled", errorCode: "CONTENT_AUTHORING_DISABLED" });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/preview-rooms") {
+      runtimeCapabilities.handleCreatePreviewRoom(req, res);
       return;
     }
 
@@ -123,10 +132,22 @@ function createRouterRuntime({
       return;
     }
 
+    const runtimeHostAudioMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/content\/host-audio\/([a-z0-9-]+)$/i);
+    if (req.method === "GET" && runtimeHostAudioMatch) {
+      serveRoomHostAudio(res, runtimeHostAudioMatch[1], runtimeHostAudioMatch[2]);
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/art-assets") {
       sendArtAssetList(res).catch((error) => {
         sendJson(res, 500, { ok: false, error: error.message });
       });
+      return;
+    }
+
+    const durableArtAssetMatch = url.pathname.match(/^\/api\/art-assets\/([a-z0-9-]+)\/blob$/i);
+    if (req.method === "GET" && durableArtAssetMatch) {
+      serveDurableArtAsset(res, durableArtAssetMatch[1]);
       return;
     }
 
@@ -194,6 +215,17 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/host-audios") {
       handleSaveHostAudios(req, res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/host-audios/assets") {
+      handleUploadHostAudioAsset(req, res);
+      return;
+    }
+
+    const draftHostAudioMatch = url.pathname.match(/^\/api\/host-audios\/assets\/([a-z0-9-]+)\/([a-z0-9-]+)$/i);
+    if (req.method === "GET" && draftHostAudioMatch) {
+      serveDraftHostAudioAsset(res, draftHostAudioMatch[1], draftHostAudioMatch[2]);
       return;
     }
 
