@@ -19,4 +19,33 @@ describe("lobby control handlers", () => {
     expect(Object.keys(runtime).sort()).toEqual(["handleLobby", "handleQuitToLobby"]);
     expect(runtime.handlePresentHi).toBeUndefined();
   });
+
+  it("refreshes authoring content before entering the quit lobby", async () => {
+    const room = { stageCode: "ABCD" };
+    const calls = [];
+    const response = {};
+    const runtime = createLobbyControlHandlersRuntime({
+      getExistingRoom: () => room,
+      getRoom: vi.fn(),
+      lobbyPayload: () => ({ phase: room.phase }),
+      normalizeStageCode: (value) => value,
+      prepareQuitToLobby: async () => {
+        calls.push("refresh");
+      },
+      quitRoomToLobby: () => {
+        calls.push("quit");
+        room.phase = "lobby";
+      },
+      readJson: async () => ({ stageCode: "ABCD" }),
+      sendJson: (_res, status, body) => {
+        response.status = status;
+        response.body = body;
+      }
+    });
+
+    await runtime.handleQuitToLobby({}, {});
+
+    expect(calls).toEqual(["refresh", "quit"]);
+    expect(response).toEqual({ status: 200, body: { ok: true, lobby: { phase: "lobby" } } });
+  });
 });

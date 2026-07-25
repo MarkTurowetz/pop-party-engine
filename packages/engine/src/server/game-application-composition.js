@@ -91,6 +91,7 @@ const { createToolSourceStoresRuntime } = require("./tool-source-stores-runtime"
 const { createContentAdminHandlersRuntime } = require("@pop-party/engine/content/admin");
 const { createContentStoreEnvironmentRuntime } = require("@pop-party/engine/content/environment");
 const { createLocalContentBundleProvider } = require("@pop-party/engine/content/local");
+const { createAuthoringSessionContentRuntime } = require("./authoring-session-content-runtime");
 const { refreshLocalContentBundle } = require("./local-content-bundle-writer");
 const { createControllerLayoutNormalizationRuntime } = require("./application/controller-layout-normalization-runtime");
 const { createControllerLayoutStateRuntime } = require("./application/controller-layout-state-runtime");
@@ -152,6 +153,10 @@ const ART_CUSTOM_DIR = path.join(AUTHORING_ROOT, "blobs");
 const ART_MANIFEST_FILE = path.join(AUTHORING_ROOT, "art", "manifest.json");
 const ADMIN_AUTH_MODE = String(process.env.PARTY_GAME_ADMIN_AUTH_MODE || "legacy-open").toLowerCase();
 const RUNTIME_CAPABILITY_MODE = String(process.env.PARTY_GAME_RUNTIME_CAPABILITIES || "legacy").toLowerCase();
+const SESSION_CONTENT_MODE = String(options.sessionContentMode || "published-release").toLowerCase();
+if (!["published-release", "latest-saved-authoring"].includes(SESSION_CONTENT_MODE)) {
+  throw new Error(`Unsupported session content mode: ${SESSION_CONTENT_MODE}`);
+}
 const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
 const START_GO_HOLD_MS = 700;
@@ -265,14 +270,17 @@ const {
   getRoom
 } = createRoomStateRuntime({ rooms });
 
-const roomContentPins = createRoomContentPinRuntime({
+const roomReleaseValidator = createGameReleaseValidator({
+  gameDefinition: runtimeGameDefinition,
+  engineVersion: runtimeGameDefinition.engineCompatibility
+});
+const publishedRoomContentPins = createRoomContentPinRuntime({
   contentStore: roomContentStore,
   gameId: runtimeGameDefinition.gameId,
-  validateRelease: createGameReleaseValidator({
-    gameDefinition: runtimeGameDefinition,
-    engineVersion: runtimeGameDefinition.engineCompatibility
-  })
+  validateRelease: roomReleaseValidator
 });
+let authoringSessionContent = null;
+let pinNewRoomForSession = (room) => publishedRoomContentPins.pinNewRoom(room);
 
 const runtimeCapabilities = createRuntimeCapabilityRuntime({
   mode: RUNTIME_CAPABILITY_MODE,
@@ -282,7 +290,7 @@ const runtimeCapabilities = createRuntimeCapabilityRuntime({
   normalizeStageCode,
   readJson,
   sendJson,
-  pinNewRoom: roomContentPins?.pinNewRoom,
+  pinNewRoom: (room) => pinNewRoomForSession(room),
   deleteRoom: (stageCode) => rooms.delete(stageCode)
 });
 
@@ -414,10 +422,18 @@ const {
   sendSse
 } = createRoomBroadcastRuntime({ getLobbyPayload: () => lobbyPayload });
 
-function broadcastArtAssetsChanged(payload) {
+async function broadcastArtAssetsChanged(payload) {
   for (const room of rooms.values()) {
     for (const client of room.stageClients) {
       sendSse(client, "artAssetsChanged", payload);
+    }
+  }
+  if (authoringSessionContent) {
+    try {
+      await authoringSessionContent.refresh();
+    } catch (error) {
+      // The saved authoring data remains durable. A new session will fail
+      // closed with the same diagnostic instead of reusing the older cache.
     }
   }
 }
@@ -438,6 +454,10 @@ let _applyRoomActionEffectsFn;
 const applyRoomActionEffectsProxy = (room, action) => _applyRoomActionEffectsFn?.(room, action);
 let _releasePendingFlowEventsFn;
 const releasePendingFlowEventsProxy = (room) => _releasePendingFlowEventsFn?.(room) === true;
+let _prepareLobbySessionFn = () => {};
+const prepareLobbySessionProxy = (room) => _prepareLobbySessionFn(room);
+let _refreshBeforeSessionBoundaryFn = async () => {};
+const refreshBeforeSessionBoundaryProxy = (room) => _refreshBeforeSessionBoundaryFn(room);
 
 const {
   clearActionTimer,
@@ -720,6 +740,7 @@ const {
   getStateActions,
   isRoundIntroStateId,
   normalizeFlowId,
+  prepareLobbySession: prepareLobbySessionProxy,
   prepareVotingCards,
   resetCraftingTimer,
   resolveMomentRouteTarget,
@@ -897,6 +918,28 @@ const {
   writeJsonFile: writeAuthoringJsonFile,
 });
 
+if (SESSION_CONTENT_MODE === "latest-saved-authoring") {
+  authoringSessionContent = createAuthoringSessionContentRuntime({
+    authoringRoot: AUTHORING_ROOT,
+    baseContentStore: roomContentStore,
+    gameId: runtimeGameDefinition.gameId,
+    gameBuild: runtimeGameDefinition.version,
+    engineVersion: runtimeGameDefinition.engineCompatibility,
+    pluginVersion: runtimeGameDefinition.version,
+    loadArtManifest: loadArtManifestSource,
+    loadConstants: loadGameConstantsSource,
+    loadControllerLayouts: loadControllerLayoutsSource,
+    loadFlow: loadGameFlowSource,
+    loadHostAudios: loadHostAudiosSource,
+    loadStageLayouts: loadStageLayoutsSource,
+    validateRelease: roomReleaseValidator
+  });
+  await authoringSessionContent.refresh();
+  pinNewRoomForSession = (room) => authoringSessionContent.pinNewRoom(room);
+  _prepareLobbySessionFn = (room) => authoringSessionContent.prepareLobbySession(room);
+  _refreshBeforeSessionBoundaryFn = () => authoringSessionContent.refreshBeforeSessionBoundary();
+}
+
 const {
   handleLocalDraft,
   sendLocalDraft
@@ -917,6 +960,7 @@ const {
   readJson,
   resetCraftingTimer,
   onArtAssetsChanged: broadcastArtAssetsChanged,
+  preserveActiveRooms: SESSION_CONTENT_MODE === "latest-saved-authoring",
   rooms,
   sendJson,
   syncControllerLayoutsWithFlow,
@@ -947,6 +991,16 @@ const {
   localDraftStore,
   normalizeHostAudios,
   normalizeGameFlow,
+  onSaved: async () => {
+    if (!authoringSessionContent) return;
+    try {
+      await authoringSessionContent.refresh();
+    } catch (error) {
+      // Saving remains durable. The next session boundary will report the
+      // invalid/unavailable snapshot instead of falling back to old content.
+    }
+  },
+  preserveActiveRooms: SESSION_CONTENT_MODE === "latest-saved-authoring",
   readJson,
   resetCraftingTimer,
   rooms,
@@ -1244,6 +1298,7 @@ const {
   getRoom,
   lobbyPayload,
   normalizeStageCode,
+  prepareQuitToLobby: refreshBeforeSessionBoundaryProxy,
   quitRoomToLobby,
   readJson,
   sendJson

@@ -17,6 +17,8 @@ function createSaveHandlersRuntime({
   localDraftStore,
   normalizeHostAudios,
   normalizeGameFlow,
+  onSaved = async () => {},
+  preserveActiveRooms = false,
   readJson,
   resetCraftingTimer,
   rooms,
@@ -70,7 +72,8 @@ function createSaveHandlersRuntime({
       return;
     }
 
-    options.afterSave?.(saved);
+    if (!preserveActiveRooms) options.afterSave?.(saved);
+    await onSaved({ label: options.label, saved });
     sendJson(res, 200, options.response(saved));
   }
 

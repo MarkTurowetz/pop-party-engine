@@ -30,9 +30,11 @@ function createHarness(payload, overrides = {}) {
     localDraftStore: {},
     normalizeGameFlow: (flow) => flow,
     normalizeHostAudios: (hostAudios) => hostAudios,
+    onSaved: overrides.onSaved,
+    preserveActiveRooms: overrides.preserveActiveRooms,
     readJson: async () => payload,
     resetCraftingTimer: vi.fn(),
-    rooms: new Map(),
+    rooms: overrides.rooms || new Map(),
     sendJson: (_res, status, body) => {
       response = { status, body };
     },
@@ -40,7 +42,7 @@ function createHarness(payload, overrides = {}) {
     stageLayoutsStore: store(),
     writeControllerLayouts,
     writeGameConstants: vi.fn(),
-    writeGameFlow: vi.fn(),
+    writeGameFlow: overrides.writeGameFlow || vi.fn(async (flow) => flow),
     writeHostAudios: vi.fn(),
     writeStageLayouts: vi.fn()
   });
@@ -105,5 +107,35 @@ describe("tool save response contract", () => {
         errorCode: "CONTENT_REVISION_CONFLICT"
       }
     });
+  });
+
+  it("refreshes the next authoring snapshot without disturbing active rooms", async () => {
+    const room = {
+      actionIndex: 4,
+      subroutinePath: ["nested"],
+      subroutineStack: [{ actionIndex: 2 }]
+    };
+    const onSaved = vi.fn(async () => {});
+    const harness = createHarness(
+      { flow: { states: [{ id: "lobby", actions: [] }] } },
+      {
+        onSaved,
+        preserveActiveRooms: true,
+        rooms: new Map([["ABCD", room]])
+      }
+    );
+
+    await harness.runtime.handleSaveGameFlow({}, {});
+
+    expect(room).toEqual({
+      actionIndex: 4,
+      subroutinePath: ["nested"],
+      subroutineStack: [{ actionIndex: 2 }]
+    });
+    expect(onSaved).toHaveBeenCalledWith({
+      label: "Game flow",
+      saved: { states: [{ id: "lobby", actions: [] }] }
+    });
+    expect(harness.response().status).toBe(200);
   });
 });

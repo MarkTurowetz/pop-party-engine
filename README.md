@@ -97,6 +97,25 @@ colors. Art Manager saves composition edits, including voting-card component
 positions and colors, to `ART_MANIFEST_GITHUB_PATH` so deploys and app commits
 do not reset them.
 
+### Template Session Preview
+
+The reference service at `pop-party.onrender.com` runs in
+`latest-saved-authoring` session mode. Its Tools remain connected to the
+template's durable authoring sources. A room snapshots the latest complete
+saved flow, constants, stage/controller layouts, host audio, art manifest, and
+art blobs when the room is created or a game returns to the lobby. Tool saves
+and unsaved Tool drafts never rewind or replace a game already in progress.
+
+Refreshing a browser hydrates the existing room and does not replay flow
+actions. Quitting, completing a game, or creating a new room starts a fresh
+session from the latest saved authoring snapshot. If that snapshot is missing
+or invalid, the new session stops with a runtime diagnostic instead of using
+the preceding room pin or the packaged starter content.
+
+Generated games do not inherit this reference-only preview behavior. They use
+immutable published release pins by default and opt into newer exact
+`@pop-party/engine` versions independently.
+
 ## Chrome Controller Spawner
 
 An unpacked Chrome extension lives in `chrome-extension/`.

@@ -19,6 +19,7 @@ export function createGameApplicationRuntime(
     workspaceRoot?: string;
     contentRoot?: string;
     authoringRoot?: string;
+    sessionContentMode?: "published-release" | "latest-saved-authoring";
     webRoot?: string;
   }> & Record<string, unknown>
 ): GameServiceRuntime;

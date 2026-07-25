@@ -10,6 +10,7 @@ async function startReferenceApplication(options = {}) {
     workspaceRoot: path.resolve(__dirname, "../.."),
     contentRoot: path.join(__dirname, "content"),
     authoringRoot: path.join(__dirname, "content"),
+    sessionContentMode: "latest-saved-authoring",
     webRoot: path.resolve(__dirname, "../.."),
     host: options.host || process.env.HOST || "0.0.0.0",
     port: options.port ?? Number(process.env.PORT || 3000)
