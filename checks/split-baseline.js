@@ -192,6 +192,7 @@ function isApprovedStarterContentPath(logicalPath) {
   return [
     "art-manifest.json",
     "art/art-manifest.json",
+    "audio/host-audios.json",
     "apps/reference/authoring/art-manifest.json",
     "apps/reference/content/audio/host-audios.json",
     "controller-layouts.json",
