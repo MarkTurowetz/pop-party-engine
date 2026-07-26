@@ -24,6 +24,7 @@ function parseAudioDataUrl(value) {
 
 function createHostAudioAssetsRuntime(options = {}) {
   const authoring = options.authoring;
+  const livePrototype = options.livePrototype;
   const normalizeHostAudios = options.normalizeHostAudios;
   const hostAudiosStore = options.hostAudiosStore;
   const readJson = options.readJson;
@@ -33,7 +34,7 @@ function createHostAudioAssetsRuntime(options = {}) {
   }
 
   async function handleUpload(req, res) {
-    if (!authoring) {
+    if (!authoring && !livePrototype) {
       sendJson(res, 409, {
         ok: false,
         error: "Durable Host Audio asset authoring is not enabled",
@@ -71,6 +72,44 @@ function createHostAudioAssetsRuntime(options = {}) {
     line.sha256 = sha256;
     line.mimeType = parsed.mimeType;
     line.sourceName = String(payload.fileName || `host-audio${parsed.extension}`).slice(0, 240);
+
+    if (livePrototype) {
+      try {
+        const state = await livePrototype.stageBinary(
+          String(req.headers["x-pop-party-authoring-session"] || ""),
+          blobPath,
+          parsed.bytes,
+          (drafts) => {
+            drafts.hostAudios = hostAudios;
+          }
+        );
+        hostAudiosStore.source = hostAudios;
+        hostAudiosStore.revision = state.workingRevision;
+        hostAudiosStore.loadedAt = Date.now();
+        hostAudiosStore.error = "";
+        sendJson(res, 200, {
+          ok: true,
+          hostAudios,
+          revision: state.workingRevision,
+          storage: {
+            kind: "live-prototype",
+            durable: false,
+            error: "",
+            repo: "",
+            branch: "",
+            path: "audio/host-audios.json"
+          },
+          asset: { blobPath, sha256, mimeType: parsed.mimeType, sourceName: line.sourceName }
+        });
+      } catch (error) {
+        sendJson(res, error?.status || 400, {
+          ok: false,
+          error: `Host Audio asset could not be staged: ${error.message}`,
+          errorCode: error.code || "HOST_AUDIO_ASSET_STAGE_FAILED"
+        });
+      }
+      return;
+    }
 
     try {
       const saved = await authoring.writeFiles({
@@ -110,13 +149,15 @@ function createHostAudioAssetsRuntime(options = {}) {
   }
 
   async function serveDraftAsset(res, hostAudioId, lineId) {
-    if (!authoring) {
+    if (!authoring && !livePrototype) {
       sendJson(res, 404, { ok: false, error: "Durable Host Audio asset authoring is not enabled" });
       return;
     }
     try {
-      const draft = await authoring.readDraft({ refresh: true });
-      const hostAudios = normalizeHostAudios(draft.snapshot.readJson("audio/host-audios.json"));
+      const snapshot = livePrototype
+        ? livePrototype.readWorkingSnapshot()
+        : (await authoring.readDraft({ refresh: true })).snapshot;
+      const hostAudios = normalizeHostAudios(snapshot.readJson("audio/host-audios.json"));
       const line = hostAudios.hostAudios
         .find((candidate) => candidate.id === String(hostAudioId || ""))
         ?.lines.find((candidate) => candidate.id === String(lineId || ""));
@@ -124,7 +165,7 @@ function createHostAudioAssetsRuntime(options = {}) {
         sendJson(res, 404, { ok: false, error: "Host Audio asset not found" });
         return;
       }
-      const bytes = draft.snapshot.readBytes(line.blobPath);
+      const bytes = snapshot.readBytes(line.blobPath);
       res.writeHead(200, {
         "Content-Type": String(line.mimeType || "application/octet-stream"),
         "Content-Length": bytes.length,

@@ -36,6 +36,8 @@ const {
   createInputStateRuntime,
   createLobbyControlHandlersRuntime,
   createLobbyPayloadRuntime,
+  createLivePrototypeHandlersRuntime,
+  createLivePrototypeWorkspaceRuntime,
   createMomentRouteRuntime,
   createPauseRuntime,
   createPlayerPublicRuntime,
@@ -166,6 +168,12 @@ const SESSION_CONTENT_MODE = String(options.sessionContentMode || "published-rel
 if (!["published-release", "latest-saved-authoring"].includes(SESSION_CONTENT_MODE)) {
   throw new Error(`Unsupported session content mode: ${SESSION_CONTENT_MODE}`);
 }
+const AUTHORING_MODE = String(
+  options.authoringMode || process.env.PARTY_GAME_AUTHORING_MODE || "standard"
+).toLowerCase();
+if (!["standard", "live-prototype"].includes(AUTHORING_MODE)) {
+  throw new Error(`Unsupported authoring mode: ${AUTHORING_MODE}`);
+}
 const CONTROLLER_TIMEOUT_MS = 10000;
 const HEARTBEAT_INTERVAL_MS = 25000;
 const START_GO_HOLD_MS = 700;
@@ -178,7 +186,9 @@ const localDraftStore = {
   hostAudios: null,
   artCompositions: null,
   artOrganization: null,
-  artAssetReplacements: null
+  artAssetReplacements: null,
+  artDeletedCompositionIds: null,
+  binaryFiles: {}
 };
 
 function writeAuthoringJsonFile(filePath, value) {
@@ -272,18 +282,25 @@ const contentAdmin = contentEnvironment.remoteAuthoring === "enabled"
       audit: (req, event) => adminAudit.record(req, event)
     })
   : null;
-const revisionedToolAuthoring = contentEnvironment.remoteAuthoring === "enabled"
+const durableToolAuthoring = contentEnvironment.remoteAuthoring === "enabled"
   ? createRevisionedToolAuthoringRuntime({
       contentStore,
       scope: process.env.PARTY_GAME_AUTHORING_SCOPE || "default"
     })
   : null;
+const revisionedToolAuthoring = AUTHORING_MODE === "live-prototype"
+  ? null
+  : durableToolAuthoring;
 if (revisionedToolAuthoring && SESSION_CONTENT_MODE === "latest-saved-authoring") {
   throw new Error(
     "Durable remote authoring cannot make public rooms use latest-saved-authoring; create authenticated draft preview rooms instead"
   );
 }
-const TOOL_STORAGE_KIND = revisionedToolAuthoring ? "github-app-draft" : GAME_FLOW_STORAGE;
+const TOOL_STORAGE_KIND = AUTHORING_MODE === "live-prototype"
+  ? "live-prototype"
+  : revisionedToolAuthoring
+    ? "github-app-draft"
+    : GAME_FLOW_STORAGE;
 
 const {
   normalizeGameConstants
@@ -840,6 +857,65 @@ const {
 });
 _enterGamePhaseFn = enterGamePhase;
 
+let livePrototypeWorkspace = null;
+let livePrototypeHandlers = null;
+if (AUTHORING_MODE === "live-prototype") {
+  if (!contentStore || typeof contentStore.commitWorkspace !== "function") {
+    throw new Error("live-prototype authoring requires a durable revisioned content store");
+  }
+  livePrototypeWorkspace = createLivePrototypeWorkspaceRuntime({
+    acceptedArtTypes,
+    contentStore,
+    leaseMs: Number(process.env.PARTY_GAME_AUTHORING_LEASE_MS || 20000),
+    localDraftStore,
+    release: {
+      gameId: runtimeGameDefinition.gameId,
+      gameBuild: runtimeGameDefinition.version,
+      engineVersion: runtimeGameDefinition.engineCompatibility,
+      pluginVersion: runtimeGameDefinition.version
+    },
+    rooms,
+    onSnapshotChanged: (snapshot) => installLivePrototypeToolSources(snapshot),
+    validateSnapshot: (snapshot) => createBundleGameData(snapshot),
+    installRoomSnapshot: async (room, snapshot, release, { reset }) => {
+      const gameData = createBundleGameData(snapshot);
+      const validation = await roomReleaseValidator({
+        gameData,
+        release: {
+          ...release,
+          gameId: runtimeGameDefinition.gameId,
+          gameBuild: runtimeGameDefinition.version,
+          engineVersion: runtimeGameDefinition.engineCompatibility,
+          pluginVersion: runtimeGameDefinition.version
+        },
+        snapshot
+      });
+      if (validation?.ok === false) {
+        const error = new Error("The working bundle is incompatible with this game build");
+        error.code = "WORKING_BUNDLE_INCOMPATIBLE";
+        error.diagnostics = validation.diagnostics || [];
+        throw error;
+      }
+      room.releasePin = Object.freeze({
+        ...release,
+        contentSource: reset ? "live-prototype" : String(release.contentSource || "published-release")
+      });
+      room.contentSnapshot = snapshot;
+      room.gameData = gameData;
+      if (reset) {
+        enterLobbyPhase(room);
+        broadcastLobby(room);
+      }
+    }
+  });
+  livePrototypeHandlers = createLivePrototypeHandlersRuntime({
+    workspace: livePrototypeWorkspace,
+    readJson,
+    sendJson
+  });
+  pinNewRoomForSession = (room) => livePrototypeWorkspace.pinNewRoom(room);
+}
+
 const {
   advanceRoomAfterAction,
   completeCountdownTrigger,
@@ -942,6 +1018,25 @@ const {
   storageKind: TOOL_STORAGE_KIND
 });
 
+function installLivePrototypeToolSources(snapshot) {
+  if (!snapshot) return;
+  const loadedAt = Date.now();
+  const values = [
+    [gameFlowStore, normalizeGameFlow(snapshot.readJson("flow.json"))],
+    [gameConstantsStore, normalizeGameConstants(snapshot.readJson("constants.json"))],
+    [stageLayoutsStore, normalizeStageLayouts(snapshot.readJson("layouts/stage.json"))],
+    [controllerLayoutsStore, normalizeControllerLayouts(snapshot.readJson("layouts/controller.json"))],
+    [hostAudiosStore, normalizeHostAudios(snapshot.readJson("audio/host-audios.json"))],
+    [artManifestStore, cloneJson(snapshot.readJson("art/manifest.json"))]
+  ];
+  for (const [store, source] of values) {
+    store.source = source;
+    store.revision = snapshot.revision;
+    store.loadedAt = loadedAt;
+    store.error = "";
+  }
+}
+
 const {
   loadArtManifestSource,
   loadControllerLayoutsSource,
@@ -1015,6 +1110,7 @@ const {
   serveDraftAsset: serveDraftHostAudioAsset
 } = createHostAudioAssetsRuntime({
   authoring: revisionedToolAuthoring,
+  livePrototype: livePrototypeWorkspace,
   hostAudiosStore,
   normalizeHostAudios,
   readJson,
@@ -1059,11 +1155,16 @@ const {
   normalizeArtCompositionsDraft,
   normalizeArtOrganization,
   normalizeStageLayouts,
+  onDraftChanged: livePrototypeWorkspace
+    ? ({ req }) => livePrototypeWorkspace.applyDraft(
+        String(req.headers["x-pop-party-authoring-session"] || "")
+      )
+    : null,
   readGameFlow,
   readJson,
   resetCraftingTimer,
   onArtAssetsChanged: broadcastArtAssetsChanged,
-  preserveActiveRooms: SESSION_CONTENT_MODE === "latest-saved-authoring",
+  preserveActiveRooms: SESSION_CONTENT_MODE === "latest-saved-authoring" || Boolean(livePrototypeWorkspace),
   rooms,
   sendJson,
   syncControllerLayoutsWithFlow,
@@ -1417,7 +1518,8 @@ const {
   contentStatus: {
     mode: contentEnvironment.mode,
     remoteAuthoring: contentEnvironment.remoteAuthoring,
-    enabled: contentEnvironment.enabled
+    enabled: contentEnvironment.enabled,
+    authoringMode: AUTHORING_MODE
   },
   gameDefinition: runtimeGameDefinition,
   handleActionEffect,
@@ -1431,6 +1533,7 @@ const {
   handleInputEvent,
   handleJoin,
   handleLeave,
+  livePrototype: livePrototypeHandlers,
   handleLobby,
   handleLocalDraft,
   handlePause,
@@ -1486,6 +1589,10 @@ const {
 });
 
 async function initializeAuthoritativeToolSources() {
+  if (livePrototypeWorkspace) {
+    await livePrototypeWorkspace.initialize();
+    return;
+  }
   if (revisionedToolAuthoring) await revisionedToolAuthoring.initialize();
   await Promise.all([
     loadGameFlowSource({ refresh: true }),
@@ -1502,7 +1609,12 @@ const webService = createWebServiceRuntime({
   port: PORT,
   host: HOST,
   initialize: initializeAuthoritativeToolSources,
-  sweep: sweepInactivePlayers,
+  sweep: () => {
+    sweepInactivePlayers();
+    if (livePrototypeWorkspace) {
+      void livePrototypeWorkspace.sweep().catch(() => {});
+    }
+  },
   sweepIntervalMs: 2000,
   onStarted: options.onStarted
 });

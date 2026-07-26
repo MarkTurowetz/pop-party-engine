@@ -71,6 +71,25 @@ Public rooms pin only published releases. Authenticated, CSRF-protected
 `POST /api/admin/preview-rooms` requests explicitly create rooms pinned to the
 latest complete draft. Both room kinds remain immutable after creation.
 
+Prototype games may instead opt into `authoringMode: "live-prototype"` (or
+`PARTY_GAME_AUTHORING_MODE=live-prototype`). Opening the authenticated Tools
+surface creates one project-scoped, memory-only workspace from the active
+release. Unsaved Flow, Constants, Stage Layout, Controller Layout, Host Audio,
+Art composition, and binary art/audio edits immediately replace the complete
+snapshot used by that service's stage and controllers and reset rooms to the
+lobby without erasing player identity. Invalid intermediate bundles remain
+visible as authoring errors and never replace the last valid working snapshot.
+Refreshing Tools starts a clean workspace; closing it is enforced by a short
+heartbeat lease; restarting the service also discards unsaved work.
+
+In live-prototype mode, Save means publish. The full working bundle is
+validated, its content and binary blobs are written, and one final expected-ref
+compare-and-swap activates that exact revision. A failed write leaves the
+previous release authoritative. This mode requires the game-owned revisioned
+GitHub store, GitHub administrator authentication with CSRF protection, one
+service instance, and game-specific provider configuration; the engine embeds
+no repository or credential identity.
+
 Stage and controller presentation is delivered through the same room pin.
 Authenticated room routes expose that pin's stage layouts, controller layouts,
 art manifest, and immutable art bytes. Browser clients defer their first

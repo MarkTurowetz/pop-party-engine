@@ -66,6 +66,19 @@ constants, stage layouts, controller layouts, Host Audio, art compositions, and
 content-addressed art/audio blobs are committed atomically. A failed ref update
 leaves the previous complete draft authoritative.
 
+The reference template additionally opts into:
+
+```text
+PARTY_GAME_AUTHORING_MODE=live-prototype
+```
+
+In this single-author mode, unsaved Tool changes immediately update and reset
+the template stage/controllers from one valid memory-only snapshot. Refreshing
+Tools or allowing its short heartbeat lease to expire discards those changes.
+Save validates the whole JSON-and-binary workspace and atomically activates it,
+so Save means publish. Independent games must opt in separately and provide
+their own GitHub App, repository, OAuth, and release refs.
+
 ### Template Session Preview
 
 Public rooms always pin the immutable active release. Authenticated authors

@@ -104,6 +104,9 @@ export function createStageLayoutNormalizationRuntime(options: Record<string, un
 export function createControllerLayoutNormalizationRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLayoutSyncRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createLocalDraftRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function buildLivePrototypeSnapshot(snapshot: unknown, drafts: Record<string, unknown>, options?: Record<string, unknown>): unknown;
+export function createLivePrototypeWorkspaceRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createLivePrototypeHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createToolDataReadRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createToolSourceReadersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createToolSourceStoresRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

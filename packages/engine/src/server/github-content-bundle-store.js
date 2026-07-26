@@ -251,6 +251,90 @@ function createGithubContentBundleStore(options = {}) {
     return Object.freeze({ scope, contentRevision: draft.snapshot.revision, release: active, diagnostics: validation?.diagnostics || [] });
   }
 
+  async function commitWorkspace({ snapshot, expectedActiveRevision, idempotencyKey, release }) {
+    if (!snapshot?.revision || typeof snapshot.readBytes !== "function") {
+      throw new Error("Workspace commit requires a complete content snapshot");
+    }
+    const key = requiredIdempotencyKey(idempotencyKey);
+    const releaseState = await readReleaseState();
+    const fingerprint = stableHash({
+      expectedActiveRevision,
+      release,
+      contentRevision: snapshot.revision
+    });
+    const prior = releaseState.revisions.operations?.[key];
+    if (prior) {
+      if (prior.fingerprint !== fingerprint) {
+        throw new ContentStoreConflictError("Idempotency key was already used for a different workspace commit", {
+          code: "IDEMPOTENCY_KEY_REUSE"
+        });
+      }
+      return Object.freeze({
+        contentRevision: prior.contentRevision,
+        release: Object.freeze(prior.release),
+        diagnostics: []
+      });
+    }
+    if (String(expectedActiveRevision || "") !== releaseState.release.releaseRevision) {
+      throw new ContentStoreConflictError("Active release changed before workspace commit", {
+        code: "ACTIVE_RELEASE_CONFLICT",
+        expectedRevision: String(expectedActiveRevision || ""),
+        actualRevision: releaseState.release.releaseRevision
+      });
+    }
+    const validation = await validateSnapshot(snapshot);
+    if (validation?.ok === false) {
+      throw Object.assign(new Error("Workspace content validation failed"), {
+        code: "CONTENT_VALIDATION_FAILED",
+        diagnostics: validation.diagnostics || []
+      });
+    }
+
+    // The content and release commits form one fast-forward chain. The only
+    // authoritative mutation is the final release-ref CAS, so a failed write
+    // can leave only unreachable commits, never a partially active bundle.
+    const contentCommitSha = await commitFiles({
+      files: snapshotFiles(snapshot),
+      message: `Commit workspace content ${snapshot.revision} [${key}]`,
+      parentSha: releaseState.ref.sha
+    });
+    const active = createReleaseRecord({
+      ...release,
+      gameId: snapshot.manifest.gameId,
+      contentRevision: snapshot.revision
+    }, releaseState.release.releaseRevision);
+    const operations = {
+      ...(releaseState.revisions.operations || {}),
+      [key]: { fingerprint, contentRevision: snapshot.revision, release: active }
+    };
+    const operationKeys = Object.keys(operations);
+    for (const staleKey of operationKeys.slice(0, Math.max(0, operationKeys.length - 100))) {
+      delete operations[staleKey];
+    }
+    const revisions = {
+      ...releaseState.revisions,
+      [snapshot.revision]: {
+        contentCommitSha,
+        publishedByRelease: active.releaseRevision
+      },
+      operations
+    };
+    const releaseCommitSha = await commitFiles({
+      files: new Map([
+        [ACTIVE_RELEASE_PATH, jsonBytes(active)],
+        [PUBLISHED_REVISIONS_PATH, jsonBytes(revisions)]
+      ]),
+      message: `Activate workspace release ${active.releaseRevision} [${key}]`,
+      parentSha: contentCommitSha
+    });
+    await git.updateRefCas(releaseRef, releaseState.ref.sha, releaseCommitSha);
+    return Object.freeze({
+      contentRevision: snapshot.revision,
+      release: active,
+      diagnostics: validation?.diagnostics || []
+    });
+  }
+
   async function getActiveRelease() {
     return (await readReleaseState()).release;
   }
@@ -294,7 +378,7 @@ function createGithubContentBundleStore(options = {}) {
     return Object.freeze({ contentRevision: target, release: active, diagnostics: validation?.diagnostics || [] });
   }
 
-  return Object.freeze({ getActiveRelease, initialize, initializeDraft, listRevisions, loadPublishedRevision, publishDraft, readDraft, rollback, validateDraft, writeDraft });
+  return Object.freeze({ commitWorkspace, getActiveRelease, initialize, initializeDraft, listRevisions, loadPublishedRevision, publishDraft, readDraft, rollback, validateDraft, writeDraft });
 }
 
 module.exports = { createGithubContentBundleStore };

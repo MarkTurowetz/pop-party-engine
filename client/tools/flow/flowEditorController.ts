@@ -59,6 +59,7 @@ import { serializeGameFlowForSave } from "./flowSerialization";
 import { flowSubroutineActions } from "./flowSubroutines";
 import { type RemoveFlowRouteBranchOptions } from "./flowMutations";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
+import { requestLivePrototypeSave } from "../common/livePrototypeWorkspace";
 import { rootRouteNodeIds, rootStateIds } from "./flowRootGraph";
 
 /** All selectable action ids across the flow (primary, sub-actions, decision branches). */
@@ -555,6 +556,7 @@ export function createFlowEditorController(
       commit(snapshot);
     },
     save: async () => {
+      if (requestLivePrototypeSave()) return store.snapshot().flow;
       patch({ saving: true, error: null });
       try {
         const payload = serializeGameFlowForSave(store.snapshot().flow);

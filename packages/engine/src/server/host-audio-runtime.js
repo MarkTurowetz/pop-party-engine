@@ -147,7 +147,7 @@ function createHostAudioRuntime({ normalizeFlowId, random = Math.random }) {
       hostAudioName: selection.hostAudioName,
       hostAudioLine: selection,
       audioUrl: selection.blobPath
-        ? `/api/stage/${encodeURIComponent(String(room?.stageCode || ""))}/content/host-audio/${encodeURIComponent(selection.lineId)}`
+        ? `/api/stage/${encodeURIComponent(String(room?.stageCode || ""))}/content/host-audio/${encodeURIComponent(selection.lineId)}?revision=${encodeURIComponent(String(room?.releasePin?.contentRevision || ""))}`
         : selection.url,
       hostAudioText: selection.text
     };

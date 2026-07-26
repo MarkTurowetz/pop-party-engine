@@ -2,6 +2,7 @@ import type { LayoutApi } from "../../api/layoutApi";
 import { gameTextDefaultFontFamily } from "../../textFonts";
 import type { JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
+import { requestLivePrototypeSave } from "../common/livePrototypeWorkspace";
 import { layoutGroups, layoutSnapshot, type LayoutMode } from "./layoutModel";
 
 export interface LayoutEditorState {
@@ -214,6 +215,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       scheduleDraft();
     },
     save: async () => {
+      if (requestLivePrototypeSave()) return true;
       saving = true;
       error = null;
       emit();

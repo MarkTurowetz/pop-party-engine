@@ -25,8 +25,8 @@ function createRoomRuntimeContentRuntime(options = {}) {
     return { room, stageCode };
   }
 
-  function publicArtAsset(asset, stageCode) {
-    const url = `/api/stage/${encodeURIComponent(stageCode)}/content/art-assets/${encodeURIComponent(String(asset.id || ""))}`;
+  function publicArtAsset(asset, stageCode, revision) {
+    const url = `/api/stage/${encodeURIComponent(stageCode)}/content/art-assets/${encodeURIComponent(String(asset.id || ""))}?revision=${encodeURIComponent(String(revision || ""))}`;
     return {
       id: String(asset.id || ""),
       name: String(asset.name || asset.id || "Art Asset"),
@@ -60,7 +60,7 @@ function createRoomRuntimeContentRuntime(options = {}) {
       sendJson(res, 200, {
         ok: true,
         groups: room.gameData.artGroups,
-        assets: room.gameData.artAssets.map((asset) => publicArtAsset(asset, stageCode)),
+        assets: room.gameData.artAssets.map((asset) => publicArtAsset(asset, stageCode, room.releasePin.contentRevision)),
         compositions: room.gameData.defaultArtCompositions,
         organization: room.gameData.artOrganization || {},
         revision: room.releasePin.contentRevision
@@ -70,10 +70,22 @@ function createRoomRuntimeContentRuntime(options = {}) {
     sendJson(res, 404, { ok: false, error: "Runtime content kind not found", errorCode: "ROOM_CONTENT_KIND_NOT_FOUND" });
   }
 
-  function serveRoomArtAsset(res, rawStageCode, rawAssetId) {
+  function revisionMatches(res, room, expectedRevision) {
+    if (!expectedRevision || String(expectedRevision) === String(room.releasePin.contentRevision || "")) return true;
+    sendJson(res, 409, {
+      ok: false,
+      error: "Runtime content revision changed",
+      errorCode: "ROOM_CONTENT_REVISION_CHANGED",
+      revision: room.releasePin.contentRevision
+    });
+    return false;
+  }
+
+  function serveRoomArtAsset(res, rawStageCode, rawAssetId, expectedRevision = "") {
     const pinned = pinnedRoom(res, rawStageCode);
     if (!pinned) return;
     const { room } = pinned;
+    if (!revisionMatches(res, room, expectedRevision)) return;
     const assetId = String(rawAssetId || "");
     const asset = room.gameData.artAssets.find((candidate) => candidate.id === assetId);
     if (!asset?.blobPath) {
@@ -99,10 +111,11 @@ function createRoomRuntimeContentRuntime(options = {}) {
     res.end(bytes);
   }
 
-  function serveRoomHostAudio(res, rawStageCode, rawLineId) {
+  function serveRoomHostAudio(res, rawStageCode, rawLineId, expectedRevision = "") {
     const pinned = pinnedRoom(res, rawStageCode);
     if (!pinned) return;
     const { room } = pinned;
+    if (!revisionMatches(res, room, expectedRevision)) return;
     const lineId = String(rawLineId || "");
     const line = room.gameData.defaultHostAudios.hostAudios
       .flatMap((hostAudio) => hostAudio.lines || [])

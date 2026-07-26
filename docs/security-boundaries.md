@@ -36,6 +36,13 @@ Do not enable `github` or `required` in production until OAuth secrets, callback
 
 The revisioned GitHub provider and its routes are separately gated. `PARTY_GAME_CONTENT_STORE=github` constructs the read/pin provider, while `PARTY_GAME_REMOTE_AUTHORING=enabled` exposes authenticated Tool writes, draft preview, validation, publish, and rollback APIs. Production refuses the latter unless GitHub administrator authentication is also enabled. Tool JSON and binary uploads use one compare-and-swap draft bundle; a partial GitHub write is never authoritative. Both settings default to `disabled`.
 
+`PARTY_GAME_AUTHORING_MODE=live-prototype` is an additional explicit opt-in for a
+single-author, single-instance service. Its workspace/session, heartbeat,
+discard, Tool-draft, binary upload, and Save endpoints remain administrator and
+CSRF protected. Unsaved data is process memory only. Save writes the complete
+game-owned bundle and makes it authoritative with one final release-ref CAS;
+orphaned Git objects from a failed CAS are never readable as the active release.
+
 Public `POST /api/stage/rooms` creation always pins an immutable published
 release. Only an authenticated, CSRF-protected
 `POST /api/admin/preview-rooms` request may pin the latest complete draft.
