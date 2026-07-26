@@ -155,6 +155,46 @@ function createRevisionedContentStoreRuntime(options = {}) {
     });
   }
 
+  function commitWorkspace({ snapshot, expectedActiveRevision, idempotencyKey, release }) {
+    if (!snapshot?.revision || typeof snapshot.readBytes !== "function") {
+      throw new Error("Workspace commit requires a complete content snapshot");
+    }
+    const fingerprint = stableHash({
+      expectedActiveRevision,
+      release,
+      contentRevision: snapshot.revision
+    });
+    return rememberIdempotent("workspace-commit", "active", idempotencyKey, fingerprint, () => {
+      if (String(expectedActiveRevision || "") !== activeRelease.releaseRevision) {
+        throw new ContentStoreConflictError("Active release changed before workspace commit", {
+          code: "ACTIVE_RELEASE_CONFLICT",
+          expectedRevision: String(expectedActiveRevision || ""),
+          actualRevision: activeRelease.releaseRevision
+        });
+      }
+      const validation = validateSnapshot(snapshot);
+      if (validation?.ok === false) {
+        const error = new Error("Workspace content validation failed");
+        error.code = "CONTENT_VALIDATION_FAILED";
+        error.diagnostics = validation.diagnostics || [];
+        throw error;
+      }
+      const stored = snapshotCopy(snapshot);
+      snapshots.set(stored.revision, stored);
+      publishedRevisions.add(stored.revision);
+      activeRelease = createReleaseRecord({
+        ...release,
+        gameId: stored.manifest.gameId,
+        contentRevision: stored.revision
+      }, activeRelease.releaseRevision);
+      return Object.freeze({
+        contentRevision: stored.revision,
+        release: cloneRelease(activeRelease),
+        diagnostics: validation?.diagnostics || []
+      });
+    });
+  }
+
   function rollback({ targetContentRevision, expectedActiveRevision, idempotencyKey, release }) {
     const target = String(targetContentRevision || "");
     const fingerprint = stableHash({ target, expectedActiveRevision, release });
@@ -195,6 +235,7 @@ function createRevisionedContentStoreRuntime(options = {}) {
   }
 
   return Object.freeze({
+    commitWorkspace,
     getActiveRelease,
     listRevisions,
     loadPublishedRevision,

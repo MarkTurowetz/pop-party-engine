@@ -1,6 +1,7 @@
 import type { GameConstants, JsonObject } from "../../types/game-data";
 import type { ConstantsApi } from "../../api/constantsApi";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
+import { requestLivePrototypeSave } from "../common/livePrototypeWorkspace";
 import {
   constantsSnapshot,
   normalizeCustomConstantType,
@@ -182,6 +183,7 @@ export function createConstantsController(options: ConstantsControllerOptions): 
       scheduleDraft();
     },
     save: async () => {
+      if (requestLivePrototypeSave()) return current;
       saving = true;
       error = null;
       emit();

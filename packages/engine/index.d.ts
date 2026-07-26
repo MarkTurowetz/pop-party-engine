@@ -42,6 +42,12 @@ export interface ContentSnapshot {
 }
 
 export interface ContentStore {
+  commitWorkspace?(input: {
+    snapshot: ContentSnapshot;
+    expectedActiveRevision: string;
+    idempotencyKey: string;
+    release: Readonly<Record<string, unknown>>;
+  }): unknown | Promise<unknown>;
   getActiveRelease(): unknown | Promise<unknown>;
   loadPublishedRevision(revision: string): ContentSnapshot | Promise<ContentSnapshot>;
 }

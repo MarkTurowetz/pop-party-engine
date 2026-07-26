@@ -48,7 +48,7 @@ describe("room runtime content", () => {
     expect(sendJson).toHaveBeenLastCalledWith(response, 200, expect.objectContaining({
       assets: [expect.objectContaining({
         id: "logo",
-        currentUrl: "/api/stage/ABCD/content/art-assets/logo",
+        currentUrl: "/api/stage/ABCD/content/art-assets/logo?revision=content-1",
         requiresAuthenticatedFetch: true
       })],
       compositions: [{ id: "composition" }],
@@ -95,5 +95,15 @@ describe("room runtime content", () => {
       "Cache-Control": "private, max-age=31536000, immutable"
     }));
     expect(response.end).toHaveBeenCalledWith(audioBytes);
+  });
+
+  it("rejects a binary URL from an older working revision", () => {
+    const { runtime, sendJson } = harness();
+    const response = {};
+    runtime.serveRoomArtAsset(response, "abcd", "logo", "content-stale");
+    expect(sendJson).toHaveBeenLastCalledWith(response, 409, expect.objectContaining({
+      errorCode: "ROOM_CONTENT_REVISION_CHANGED",
+      revision: "content-1"
+    }));
   });
 });

@@ -9,6 +9,9 @@ const TOOL_PATHS = new Set([
 ]);
 const ADMIN_API_PATHS = new Set([
   "/api/local-draft", "/api/tool-drafts", "/api/game-flow", "/api/game-constants",
+  "/api/authoring/workspace", "/api/authoring/workspace/session",
+  "/api/authoring/workspace/heartbeat", "/api/authoring/workspace/discard",
+  "/api/authoring/workspace/save",
   "/api/host-audios", "/api/stage-layouts", "/api/controller-layouts",
   "/api/host-audios/assets",
   "/api/art-organization", "/api/art-compositions", "/api/art-compositions/cleanup"

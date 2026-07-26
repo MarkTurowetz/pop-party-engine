@@ -18,6 +18,7 @@ function createRouterRuntime({
   handleInputEvent,
   handleJoin,
   handleLeave,
+  livePrototype,
   handleLobby,
   handleLocalDraft,
   handlePause,
@@ -86,6 +87,37 @@ function createRouterRuntime({
       if (req.method === "GET" && url.pathname === "/api/content/active-release") return void contentAdmin.handleActiveRelease(req, res);
       if (req.method === "GET" && url.pathname === "/api/content/revisions") return void contentAdmin.handleListRevisions(req, res);
     }
+
+    if (livePrototype) {
+      if (req.method === "GET" && url.pathname === "/api/authoring/workspace") {
+        livePrototype.sendState(res);
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/authoring/workspace/session") {
+        void livePrototype.handleBegin(req, res);
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/authoring/workspace/heartbeat") {
+        void livePrototype.handleHeartbeat(req, res);
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/authoring/workspace/discard") {
+        void livePrototype.handleDiscard(req, res);
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/authoring/workspace/save") {
+        void livePrototype.handleSave(req, res);
+        return;
+      }
+    }
+    if (url.pathname.startsWith("/api/authoring/workspace")) {
+      sendJson(res, 404, {
+        ok: false,
+        error: "Live prototype authoring is not enabled",
+        errorCode: "LIVE_PROTOTYPE_DISABLED"
+      });
+      return;
+    }
     if (url.pathname.startsWith("/api/content/")) {
       sendJson(res, 404, { ok: false, error: "Revisioned content authoring is not enabled", errorCode: "CONTENT_AUTHORING_DISABLED" });
       return;
@@ -128,13 +160,13 @@ function createRouterRuntime({
 
     const runtimeArtAssetMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/content\/art-assets\/([a-z0-9-]+)$/i);
     if (req.method === "GET" && runtimeArtAssetMatch) {
-      serveRoomArtAsset(res, runtimeArtAssetMatch[1], runtimeArtAssetMatch[2]);
+      serveRoomArtAsset(res, runtimeArtAssetMatch[1], runtimeArtAssetMatch[2], url.searchParams.get("revision"));
       return;
     }
 
     const runtimeHostAudioMatch = url.pathname.match(/^\/api\/stage\/([A-Z0-9]{1,6})\/content\/host-audio\/([a-z0-9-]+)$/i);
     if (req.method === "GET" && runtimeHostAudioMatch) {
-      serveRoomHostAudio(res, runtimeHostAudioMatch[1], runtimeHostAudioMatch[2]);
+      serveRoomHostAudio(res, runtimeHostAudioMatch[1], runtimeHostAudioMatch[2], url.searchParams.get("revision"));
       return;
     }
 

@@ -26,6 +26,12 @@ concepts into focused modules.
   - Keeps an active room immutable, then atomically installs the cached latest saved snapshot at a lobby/session boundary.
   - Missing data, blobs, or release validation stop the new session; the prior pin is never used as a fallback.
   - Generated games remain on the default `published-release` mode unless their application explicitly opts in.
+- `packages/engine/src/server/live-prototype-workspace-runtime.js`
+  - Provides the opt-in single-service `live-prototype` authoring mode.
+  - Builds one complete memory-only working snapshot from every Tool draft and atomically installs only valid snapshots into the project's rooms.
+  - Resets rooms to the lobby when the working revision changes while retaining joined-player identity.
+  - Discards unsaved work on Tool refresh, session replacement, service restart, or heartbeat-lease expiry.
+  - Commits the complete JSON and binary bundle through one final release-ref compare-and-swap, so Save is publish and partial writes never become authoritative.
 - `packages/engine/src/server/content-migration-runtime.js`
   - Resolves only explicit namespaced game-plugin migrations, requires a contiguous one-level path, and rejects downgrades.
   - Runs every step twice against the same immutable source and blocks output when the resulting revisions differ.

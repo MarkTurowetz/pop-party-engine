@@ -19,6 +19,19 @@ export interface SessionDraftPublisher {
   dispose(options?: { clear?: boolean }): void;
 }
 
+const activeFlushers = new Set<() => Promise<void>>();
+
+function reportAuthoringError(error: unknown): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("pop-party-authoring-error", {
+    detail: { message: error instanceof Error ? error.message : String(error) }
+  }));
+}
+
+export async function flushAllSessionDraftPublishers(): Promise<void> {
+  await Promise.all([...activeFlushers].map((flush) => flush()));
+}
+
 /**
  * Debounced publisher for unsaved, in-memory tool-data drafts.
  *
@@ -32,6 +45,7 @@ export function createSessionDraftPublisher(
   let savedSnapshot = options.savedSnapshot;
   let lastPublishedSnapshot = options.hasDraft ? "" : savedSnapshot;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let pendingSnapshot: string | null = null;
   const delayMs = Math.max(0, Number(options.delayMs ?? 75));
 
   function clearTimer(): void {
@@ -42,17 +56,40 @@ export function createSessionDraftPublisher(
 
   async function publish(snapshot: string, publishOptions: { force?: boolean } = {}): Promise<void> {
     if (!publishOptions.force && snapshot === lastPublishedSnapshot) return;
+    const previousSnapshot = lastPublishedSnapshot;
     lastPublishedSnapshot = snapshot;
-    await options.postDraft(options.draftMessage(snapshot));
+    try {
+      await options.postDraft(options.draftMessage(snapshot));
+    } catch (error) {
+      lastPublishedSnapshot = previousSnapshot;
+      pendingSnapshot = snapshot;
+      throw error;
+    }
     options.onPublished?.();
   }
 
   async function clear(): Promise<void> {
     if (lastPublishedSnapshot === savedSnapshot) return;
+    const previousSnapshot = lastPublishedSnapshot;
     lastPublishedSnapshot = savedSnapshot;
-    await options.postDraft(options.clearMessage);
+    try {
+      await options.postDraft(options.clearMessage);
+    } catch (error) {
+      lastPublishedSnapshot = previousSnapshot;
+      pendingSnapshot = savedSnapshot;
+      throw error;
+    }
     options.onCleared?.();
   }
+
+  const flush = async (): Promise<void> => {
+    clearTimer();
+    if (pendingSnapshot === null) return;
+    const snapshot = pendingSnapshot;
+    pendingSnapshot = null;
+    await (snapshot === savedSnapshot ? clear() : publish(snapshot));
+  };
+  activeFlushers.add(flush);
 
   return {
     markSaved(snapshot) {
@@ -62,16 +99,17 @@ export function createSessionDraftPublisher(
     },
     schedule(snapshot) {
       clearTimer();
+      pendingSnapshot = snapshot;
       timer = setTimeout(() => {
         timer = null;
-        const action = snapshot === savedSnapshot ? clear() : publish(snapshot);
-        void action.catch(() => undefined);
+        void flush().catch(reportAuthoringError);
       }, delayMs);
     },
     publish,
     clear,
     dispose(disposeOptions = {}) {
       clearTimer();
+      activeFlushers.delete(flush);
       if (disposeOptions.clear) void clear().catch(() => undefined);
     }
   };

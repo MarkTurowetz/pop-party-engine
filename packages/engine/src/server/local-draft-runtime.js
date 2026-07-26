@@ -13,6 +13,7 @@ function createLocalDraftRuntime({
   normalizeGameFlow,
   normalizeHostAudios,
   normalizeStageLayouts,
+  onDraftChanged = null,
   readGameFlow,
   readJson,
   resetCraftingTimer,
@@ -34,6 +35,7 @@ function createLocalDraftRuntime({
       artCompositions: localDraftStore.artCompositions,
       artOrganization: localDraftStore.artOrganization,
       artAssetReplacements: localDraftStore.artAssetReplacements,
+      artDeletedCompositionIds: localDraftStore.artDeletedCompositionIds,
       hasFlowDraft: Boolean(localDraftStore.flow),
       hasConstantsDraft: Boolean(localDraftStore.constants),
       hasLayoutDraft: Boolean(localDraftStore.layouts),
@@ -92,6 +94,7 @@ function createLocalDraftRuntime({
       return;
     }
 
+    const previousDraft = { ...localDraftStore, binaryFiles: { ...(localDraftStore.binaryFiles || {}) } };
     if (payload.clearFlow) localDraftStore.flow = null;
     if (payload.clearConstants) localDraftStore.constants = null;
     if (payload.clearLayouts) localDraftStore.layouts = null;
@@ -100,6 +103,7 @@ function createLocalDraftRuntime({
     if (payload.clearArtCompositions) localDraftStore.artCompositions = null;
     if (payload.clearArtOrganization) localDraftStore.artOrganization = null;
     if (payload.clearArtAssetReplacements) localDraftStore.artAssetReplacements = null;
+    if (payload.clearArtDeletedCompositionIds) localDraftStore.artDeletedCompositionIds = null;
 
     if (!applyDraftValue(res, "flow", payload.flow, normalizeGameFlow, "Local flow draft")) return;
     if (!applyDraftValue(res, "constants", payload.constants, normalizeGameConstants, "Local constants draft")) return;
@@ -109,8 +113,32 @@ function createLocalDraftRuntime({
     if (!applyDraftValue(res, "artCompositions", payload.artCompositions, normalizeArtCompositionsDraft, "Local art composition draft")) return;
     if (!applyDraftValue(res, "artOrganization", payload.artOrganization, normalizeArtOrganization, "Local art organization draft")) return;
     if (!applyDraftValue(res, "artAssetReplacements", payload.artAssetReplacements, normalizeArtAssetReplacementsDraft, "Local art asset replacement draft")) return;
+    if (!applyDraftValue(
+      res,
+      "artDeletedCompositionIds",
+      payload.artDeletedCompositionIds,
+      (value) => {
+        if (!Array.isArray(value)) throw new Error("must be an array");
+        return [...new Set(value.map(String).filter((id) => /^[a-z0-9][a-z0-9_-]{0,79}$/.test(id)))];
+      },
+      "Local deleted art composition draft"
+    )) return;
 
     syncDraftLayoutsToFlow();
+    if (typeof onDraftChanged === "function") {
+      try {
+        await onDraftChanged({ payload, req });
+      } catch (error) {
+        Object.assign(localDraftStore, previousDraft);
+        sendJson(res, error?.status || 400, {
+          ok: false,
+          error: `Working bundle is invalid: ${error.message}`,
+          errorCode: error.code || "WORKING_BUNDLE_INVALID",
+          diagnostics: error.diagnostics || []
+        });
+        return;
+      }
+    }
     broadcastDraftChange(payload);
     if (
       payload.artCompositions ||
@@ -119,6 +147,8 @@ function createLocalDraftRuntime({
       payload.clearArtOrganization ||
       payload.artAssetReplacements ||
       payload.clearArtAssetReplacements
+      || payload.artDeletedCompositionIds
+      || payload.clearArtDeletedCompositionIds
     ) {
       onArtAssetsChanged({ type: "art-draft", updatedAt: new Date().toISOString() });
     }

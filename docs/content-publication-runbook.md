@@ -31,8 +31,8 @@ npm run validate -- outputs/migrated-content
 npm run content:bootstrap-github -- \
   --bundle tmp/content-bundle \
   --game-build 1.0.17.1057 \
-  --engine-version 1.2.3 \
-  --plugin-version 1.2.3
+  --engine-version 1.3.0 \
+  --plugin-version 1.0.17
 ```
 
 The default is validation-only and performs no network writes. Review the exact bundle root and release tuple printed by the command.
@@ -82,3 +82,15 @@ preview rooms in one service. It must provide:
 with `PARTY_GAME_CONTENT_REF`, `PARTY_GAME_CONTENT_DRAFT_REF_PREFIX`, and
 `PARTY_GAME_RELEASE_REF`. Credentials and repository identity remain
 game-owned deployment configuration and are never embedded in the engine.
+
+For the single-author prototype workflow, add:
+
+- `PARTY_GAME_AUTHORING_MODE=live-prototype`
+
+This remains an explicit per-game opt-in. It requires the same GitHub store,
+remote-authoring, OAuth, CSRF, and runtime-capability settings above, but the
+ordinary Tool workflow no longer reads or publishes a GitHub draft branch.
+Unsaved edits live only in that service process and immediately replace the
+project's running room snapshot. Save validates and activates the complete
+working bundle through one release-ref CAS. Keep the deployment at one instance;
+multiple instances cannot share the memory-only working workspace.

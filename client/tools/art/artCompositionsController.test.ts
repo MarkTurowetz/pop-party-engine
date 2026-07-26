@@ -1133,7 +1133,8 @@ describe("createArtCompositionsController", () => {
       await vi.advanceTimersByTimeAsync(1);
 
       expect(postDraft).toHaveBeenLastCalledWith({
-        artCompositions: [expect.objectContaining({ id: "a", components: [expect.objectContaining({ kind: "shape" })] })]
+        artCompositions: [expect.objectContaining({ id: "a", components: [expect.objectContaining({ kind: "shape" })] })],
+        artDeletedCompositionIds: []
       });
     } finally {
       vi.useRealTimers();

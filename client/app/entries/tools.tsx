@@ -19,7 +19,7 @@ import "../../runtime/stageTextRenderer";
 import "../../runtime/layoutRuntime";
 import "../../runtime/stageRuntime";
 // The /tools dashboard tab router (defines setupToolDashboard, dispatched by app-shell).
-import { registerDashboardTool, showDashboardTool } from "../../runtime/toolDashboard";
+import { registerDashboardTool, registerDashboardWorkspaceSave, showDashboardTool } from "../../runtime/toolDashboard";
 import "../../runtime/visualObject";
 import "../../runtime/gameObject";
 import "../../runtime/qrCode";
@@ -61,6 +61,8 @@ import { mountArtEditor, saveMountedArtEditor } from "../../tools/art/mountArtEd
 import type { MountedArtEditor } from "../../tools/art/mountArtEditor";
 import { mountLayoutEditor } from "../../tools/layout/mountLayoutEditor";
 import type { MountedLayoutEditor } from "../../tools/layout/mountLayoutEditor";
+import { beginLivePrototypeWorkspace } from "../../tools/common/livePrototypeWorkspace";
+import { flushAllSessionDraftPublishers } from "../../tools/common/sessionDraftPublisher";
 
 // The TS tool dashboard (toolDashboard.ts) drives the tabs via registerDashboardTool:
 // each tool registers its dirty/save/setup, routed into its React controller. This
@@ -73,16 +75,26 @@ export const legacyToolsScripts = legacyScriptsForRole("tools");
 export const toolsContext = createToolAppContext({ surface: "tools" });
 
 installToolContextAdapter(toolsContext);
+const livePrototypeWorkspace = beginLivePrototypeWorkspace(toolsContext.api.client);
+void livePrototypeWorkspace.then((workspace) => {
+  if (!workspace) return;
+  registerDashboardWorkspaceSave(async () => {
+    await flushAllSessionDraftPublishers();
+    await workspace.save();
+    window.location.reload();
+    return true;
+  });
+});
 
 let flowController: FlowEditorController | null = null;
-void mountFlowEditor({
+void livePrototypeWorkspace.then(() => mountFlowEditor({
   api: toolsContext.api.flow,
   artApi: toolsContext.api.art,
   draftApi: toolsContext.api.drafts,
   layoutApi: toolsContext.api.layout,
   surface: toolsContext.surface,
   revealScreen: false
-}).then((mounted) => {
+})).then((mounted) => {
   flowController = mounted.controller;
 });
 registerDashboardTool("flow", {
@@ -93,12 +105,12 @@ registerDashboardTool("flow", {
 });
 
 let constantsController: ConstantsController | null = null;
-void mountConstantsEditor({
+void livePrototypeWorkspace.then(() => mountConstantsEditor({
   api: toolsContext.api.constants,
   draftApi: toolsContext.api.drafts,
   surface: toolsContext.surface,
   revealScreen: false
-}).then((mounted) => {
+})).then((mounted) => {
   constantsController = mounted.controller;
 });
 registerDashboardTool("constants", {
@@ -109,12 +121,12 @@ registerDashboardTool("constants", {
 });
 
 let hostAudioController: HostAudioController | null = null;
-void mountHostAudioEditor({
+void livePrototypeWorkspace.then(() => mountHostAudioEditor({
   api: toolsContext.api.hostAudio,
   draftApi: toolsContext.api.drafts,
   surface: toolsContext.surface,
   revealScreen: false
-}).then((mounted) => {
+})).then((mounted) => {
   hostAudioController = mounted.controller;
 });
 registerDashboardTool("host-audio", {
@@ -138,13 +150,13 @@ const openArtComposition = (compositionId: string) => {
   void showDashboardTool("art");
   if (selectArtComposition(compositionId)) pendingArtCompositionId = "";
 };
-void mountArtEditor({
+void livePrototypeWorkspace.then(() => mountArtEditor({
   api: toolsContext.api.art,
   draftApi: toolsContext.api.drafts,
   initialCompositionId: initialArtCompositionId,
   surface: toolsContext.surface,
   revealScreen: false
-}).then((mounted) => {
+})).then((mounted) => {
   artEditor = mounted;
   if (pendingArtCompositionId && selectArtComposition(pendingArtCompositionId)) pendingArtCompositionId = "";
 });
@@ -173,14 +185,14 @@ registerDashboardTool("art", {
 });
 
 let layoutEditor: MountedLayoutEditor | null = null;
-void mountLayoutEditor({
+void livePrototypeWorkspace.then(() => mountLayoutEditor({
   api: toolsContext.api.layout,
   artApi: toolsContext.api.art,
   draftApi: toolsContext.api.drafts,
   onOpenArtComposition: openArtComposition,
   surface: toolsContext.surface,
   revealScreen: false
-}).then((mounted) => {
+})).then((mounted) => {
   layoutEditor = mounted;
   mounted.setMode(window.activeToolId === "controller-layout" ? "controller" : "stage");
 });

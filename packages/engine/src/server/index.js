@@ -63,6 +63,8 @@ const serverApi = {
   ...require("./controller-layout-normalization-runtime"),
   ...require("./layout-sync-runtime"),
   ...require("./local-draft-runtime"),
+  ...require("./live-prototype-workspace-runtime"),
+  ...require("./live-prototype-handlers-runtime"),
   ...require("./tool-data-read-runtime"),
   ...require("./tool-source-readers-runtime"),
   ...require("./tool-source-stores-runtime"),

@@ -51,7 +51,16 @@ function createApiClient(options = {}) {
 
   async function mutationHeaders() {
     const csrfToken = await adminCsrfToken();
-    return csrfToken ? { "X-CSRF-Token": csrfToken } : {};
+    let authoringSession = "";
+    try {
+      authoringSession = String(globalThis.sessionStorage?.getItem("pop-party-authoring-session") || "");
+    } catch (error) {
+      authoringSession = "";
+    }
+    return {
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+      ...(authoringSession ? { "X-Pop-Party-Authoring-Session": authoringSession } : {})
+    };
   }
 
   return Object.freeze({

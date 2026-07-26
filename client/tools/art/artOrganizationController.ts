@@ -1,6 +1,7 @@
 import type { ArtApi } from "../../api/artApi";
 import type { ArtAsset, ArtComposition, ArtOrganization, JsonObject } from "../../types/game-data";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
+import { requestLivePrototypeSave } from "../common/livePrototypeWorkspace";
 import {
   cleanOrganizationForSave,
   folderIdFromKey,
@@ -235,6 +236,7 @@ export function createArtOrganizationController(
       scheduleDraft();
     },
     save: async () => {
+      if (requestLivePrototypeSave()) return true;
       saving = true;
       error = null;
       emit();

@@ -20,6 +20,7 @@ export function createGameApplicationRuntime(
     contentRoot?: string;
     authoringRoot?: string;
     authoringRepository?: string;
+    authoringMode?: "standard" | "live-prototype";
     sessionContentMode?: "published-release" | "latest-saved-authoring";
     webRoot?: string;
   }> & Record<string, unknown>

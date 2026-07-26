@@ -11,6 +11,9 @@ async function startReferenceApplication(options = {}) {
     contentRoot: path.join(__dirname, "content"),
     authoringRoot: path.join(__dirname, "content"),
     authoringRepository: "MarkTurowetz/pop-party-engine",
+    authoringMode: process.env.PARTY_GAME_REMOTE_AUTHORING === "enabled"
+      ? "live-prototype"
+      : "standard",
     sessionContentMode: process.env.PARTY_GAME_REMOTE_AUTHORING === "enabled"
       ? "published-release"
       : "latest-saved-authoring",

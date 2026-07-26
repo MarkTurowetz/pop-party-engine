@@ -1,6 +1,7 @@
 import type { ArtApi } from "../../api/artApi";
 import type { ArtAsset, JsonObject } from "../../types/game-data";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
+import { requestLivePrototypeSave } from "../common/livePrototypeWorkspace";
 
 /**
  * Controller for the Art asset manager (slice 1 of the Art tool). Holds the
@@ -98,6 +99,7 @@ export function createArtAssetsController(options: ArtAssetsControllerOptions): 
       scheduleDraft();
     },
     save: async () => {
+      if (requestLivePrototypeSave()) return true;
       if (!pending.size) return true;
       saving = true;
       error = null;

@@ -1,6 +1,7 @@
 import type { HostAudioLine, HostAudios, JsonObject } from "../../types/game-data";
 import type { HostAudioApi } from "../../api/hostAudioApi";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
+import { requestLivePrototypeSave } from "../common/livePrototypeWorkspace";
 import {
   hostAudiosSnapshot,
   makeHostAudioReferenceId,
@@ -160,10 +161,14 @@ export function createHostAudioController(
       try {
         const response = await api.uploadHostAudioAsset(current, set.id, line.id, file);
         current = normalizeHostAudios(response.hostAudios);
-        savedSnapshot = hostAudiosSnapshot(current);
         undoStack.length = 0;
         redoStack.length = 0;
-        sessionDraftPublisher?.markSaved(savedSnapshot);
+        if (response.storage?.kind === "live-prototype") {
+          sessionDraftPublisher?.schedule(hostAudiosSnapshot(current));
+        } else {
+          savedSnapshot = hostAudiosSnapshot(current);
+          sessionDraftPublisher?.markSaved(savedSnapshot);
+        }
         saving = false;
         emit();
         return current;
@@ -199,6 +204,7 @@ export function createHostAudioController(
       sessionDraftPublisher?.schedule(hostAudiosSnapshot(current));
     },
     save: async () => {
+      if (requestLivePrototypeSave()) return current;
       saving = true;
       error = null;
       emit();

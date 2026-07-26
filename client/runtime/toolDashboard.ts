@@ -46,10 +46,15 @@ const TOOL_METADATA: ToolMetadata[] = [
 const toolHooks = new Map<string, DashboardToolHooks>();
 let savingAllTools = false;
 let dashboardEventsInstalled = false;
+let workspaceSave: (() => Promise<unknown>) | null = null;
 
 /** Register a /tools tab's dirty/save/setup behaviour (called by tools.tsx). */
 export function registerDashboardTool(id: string, hooks: DashboardToolHooks): void {
   toolHooks.set(id, hooks);
+}
+
+export function registerDashboardWorkspaceSave(save: (() => Promise<unknown>) | null): void {
+  workspaceSave = save;
 }
 
 function metadataFor(toolId: string | null): ToolMetadata | null {
@@ -107,16 +112,20 @@ async function saveAllTools(): Promise<void> {
   setGlobalSaveStatus();
   let failed = false;
   try {
-    for (const tool of dirtyTools) {
-      const hooks = toolHooks.get(tool.id);
-      const saved = await hooks?.save();
-      if (saved === false || saved === null) {
-        const detail = hooks?.getError?.();
-        throw new Error(
-          detail
-            ? `${tool.label}: ${detail}`
-            : `${tool.label} did not save. Review the tool error and try again.`
-        );
+    if (workspaceSave) {
+      await workspaceSave();
+    } else {
+      for (const tool of dirtyTools) {
+        const hooks = toolHooks.get(tool.id);
+        const saved = await hooks?.save();
+        if (saved === false || saved === null) {
+          const detail = hooks?.getError?.();
+          throw new Error(
+            detail
+              ? `${tool.label}: ${detail}`
+              : `${tool.label} did not save. Review the tool error and try again.`
+          );
+        }
       }
     }
   } catch (error) {
@@ -174,6 +183,9 @@ function setupToolDashboard(): void {
   if (!dashboardEventsInstalled) {
     w().globalSaveButton?.addEventListener("click", saveAllTools);
     document.addEventListener("keydown", handleDashboardKeydown);
+    window.addEventListener?.("pop-party-authoring-error", ((event: CustomEvent<{ message?: string }>) => {
+      setGlobalSaveStatus(event.detail?.message || "The working bundle is invalid.");
+    }) as EventListener);
     dashboardEventsInstalled = true;
   }
   updateGlobalSaveButton();

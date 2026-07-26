@@ -2,6 +2,7 @@ import type { ArtApi } from "../../api/artApi";
 import type { ArtComponent, ArtComposition, ArtCompositionDependencyReport, JsonObject } from "../../types/game-data";
 import { ApiError } from "../../api/http";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
+import { requestLivePrototypeSave } from "../common/livePrototypeWorkspace";
 import {
   artCompositionSnapshot,
   hydrateArtCompositionForEditing,
@@ -542,8 +543,11 @@ export function createArtCompositionsController(
         postDraft: options.postDraft,
         savedSnapshot: savedCompositionsDraftSnapshot,
         delayMs: options.draftPublishDelayMs,
-        clearMessage: { clearArtCompositions: true },
-        draftMessage: (snapshot) => ({ artCompositions: JSON.parse(snapshot) as ArtComposition[] })
+        clearMessage: { clearArtCompositions: true, clearArtDeletedCompositionIds: true },
+        draftMessage: (snapshot) => ({
+          artCompositions: JSON.parse(snapshot) as ArtComposition[],
+          artDeletedCompositionIds: [...trashedCompositionIds]
+        })
       })
     : null;
 
@@ -1115,6 +1119,7 @@ export function createArtCompositionsController(
       scheduleDraft();
     },
     save: async (saveOptions = {}) => {
+      if (requestLivePrototypeSave()) return true;
       if (trashedCompositionIds.size && !saveOptions.commitTrash) {
         error = `Review ${trashedCompositionIds.size} trashed ${trashedCompositionIds.size === 1 ? "asset" : "assets"} before deleting permanently.`;
         emit();
