@@ -1511,7 +1511,7 @@ const {
 const {
   router
 } = createRouterRuntime({
-  activeRelease: activeRuntime.release,
+  activeRelease: () => livePrototypeWorkspace?.state().release || activeRuntime.release,
   adminAuth,
   clonePrompt,
   contentAdmin,

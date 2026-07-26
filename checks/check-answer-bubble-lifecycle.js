@@ -71,6 +71,10 @@ async function main() {
     await page.waitForFunction(() => Boolean(
       window.PartyGamePlayerRoster &&
       window.PartyGameArtObject &&
+      window.currentStageState &&
+      window.artComposition?.("player-answer-bubble")?.timeline?.tracks?.some(
+        (track) => track.targetId === "answer-text"
+      ) &&
       window.artComposition?.("prefab-player-widget-mc") &&
       window.artComposition?.("crafting-timer-widget") &&
       window.artComposition?.("wipe-widget-mc")
@@ -86,9 +90,16 @@ async function main() {
         }
         throw new Error(message);
       };
+      await window.setupStage();
+      const testCompositions = new Map(
+        (window.artCompositions || []).map((composition) => [
+          composition.id,
+          structuredClone(composition)
+        ])
+      );
       // Match the saved Player Answer Bubble contract: its static text component
       // remains manual-size while each semantic state opts into auto-fit.
-      const authoredBubble = window.artComposition("player-answer-bubble");
+      const authoredBubble = testCompositions.get("player-answer-bubble");
       const authoredAnswerTrack = authoredBubble?.timeline?.tracks?.find((track) => track.targetId === "answer-text");
       for (const keyframe of authoredAnswerTrack?.keyframes || []) keyframe.props.autoFitText = true;
       const hostElement = document.createElement("section");
@@ -99,7 +110,7 @@ async function main() {
         host: hostElement,
         document,
         gameObjectApi: window.PartyGameGameObject,
-        getComposition: (id) => window.artComposition(id)
+        getComposition: (id) => testCompositions.get(id) || null
       });
       const makePlayer = (hidden, correct = null) => ({
         id: "p1",

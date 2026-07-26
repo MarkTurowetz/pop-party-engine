@@ -16,7 +16,14 @@ try {
     root: process.cwd(),
     outputRoot,
     gameDefinition: { ...gameDefinition, gameData: authoringSourceGameData },
-    artManifestPath: "apps/reference/authoring/art-manifest.json",
+    artManifestPath: "apps/reference/content/art/manifest.json",
+    sourcePaths: {
+      flow: "apps/reference/content/flow.json",
+      constants: "apps/reference/content/constants.json",
+      stageLayouts: "apps/reference/content/layouts/stage.json",
+      controllerLayouts: "apps/reference/content/layouts/controller.json",
+      hostAudios: "apps/reference/content/audio/host-audios.json"
+    },
     force: process.argv.includes("--force")
   });
   console.log(`Legacy content exported: ${outputRoot}`);

@@ -144,10 +144,11 @@ concepts into focused modules.
     unfinished inputs do not enter that confirmation state. The active input payload and the
     player's serialized `done` answer are the sole authority for this routing; it is not a game-flow
     action and cannot advance the flow.
-    Controller layout syncing retains only Join, Lobby, the semantic controller layouts, and any
-    custom layout explicitly referenced by a `Set Controller Layout` flow action. It does not mirror
-    ordinary stage moment ids into the Controller Layout Tool; an unassigned in-game phase uses the
-    Presentation layout as its fallback.
+    Controller layout syncing adds Join, Lobby, and the semantic controller layouts without deleting
+    any previously authored layout state. Runtime selection still uses semantic controller layout ids
+    (or an explicit `Set Controller Layout` target), but Tool reads and saves are lossless: an older
+    moment-specific or temporarily unreferenced layout remains editable and cannot disappear merely
+    because the current flow does not select it.
   - Selector-backed Join and Lobby controls begin `controller-layout-hidden`. The active controller
     layout removes that gate only after it has positioned the host and attached authored art, so
     native HTML labels, inputs, and buttons cannot flash during initial load or room entry. Joining

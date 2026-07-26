@@ -42,7 +42,7 @@ function layouts() {
 }
 
 describe("controller layout syncing", () => {
-  it("keeps only Join, Lobby, semantic layouts, and layouts explicitly referenced by the flow", () => {
+  it("preserves every authored layout while adding missing semantic layouts", () => {
     const flow = {
       states: [
         {
@@ -72,14 +72,17 @@ describe("controller layout syncing", () => {
     expect(synced.states.map((state) => state.id)).toEqual([
       "join",
       "lobby",
+      "intro",
+      "voice-moment",
       "controller-presentation",
       "custom-used",
       "route-used",
-      "controller-voice-input"
+      "custom-unused",
+      "controller-voice-input",
     ]);
   });
 
-  it("does not recreate controller layouts for ordinary stage moment ids", () => {
+  it("does not discard ordinary moment layouts that were authored before semantic routing", () => {
     const synced = runtime().syncControllerLayoutsWithFlow(layouts(), {
       states: [{ id: "voice-moment", name: "Voice Moment", actions: [] }],
       routeNodes: []
@@ -88,8 +91,37 @@ describe("controller layout syncing", () => {
     expect(synced.states.map((state) => state.id)).toEqual([
       "join",
       "lobby",
+      "intro",
+      "voice-moment",
       "controller-presentation",
-      "controller-voice-input"
+      "custom-used",
+      "route-used",
+      "custom-unused",
+      "controller-voice-input",
+    ]);
+  });
+});
+
+describe("stage layout syncing", () => {
+  it("preserves unreferenced authored states while adding missing flow states", () => {
+    const synced = runtime().syncStageLayoutsWithFlow(layouts(), {
+      states: [
+        { id: "lobby", name: "Lobby", actions: [] },
+        { id: "new-moment", name: "New Moment", actions: [] }
+      ],
+      routeNodes: []
+    });
+
+    expect(synced.states.map((state) => state.id)).toEqual([
+      "join",
+      "lobby",
+      "intro",
+      "voice-moment",
+      "controller-presentation",
+      "custom-used",
+      "route-used",
+      "custom-unused",
+      "new-moment",
     ]);
   });
 });
