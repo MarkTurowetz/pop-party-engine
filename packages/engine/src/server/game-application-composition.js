@@ -84,6 +84,7 @@ const {
 const { createWebServiceRuntime } = require("@pop-party/engine/server/web-service");
 const { defineGame } = require("@pop-party/engine/game");
 const { createGameReadinessRuntime, createGameReleaseValidator } = require("@pop-party/engine/server/readiness");
+const { ENGINE_CONTENT_SCHEMA_VERSION } = require("@pop-party/engine/content/schema");
 const { createGithubStorageRuntime } = require("./github-storage-runtime");
 const { createLayoutSyncRuntime } = require("./layout-sync-runtime");
 const { createLocalDraftRuntime } = require("./local-draft-runtime");
@@ -243,7 +244,8 @@ const runtimeGameDefinition = defineGame({
 });
 const runtimeReadiness = createGameReadinessRuntime({
   gameDefinition: runtimeGameDefinition,
-  engineVersion: runtimeGameDefinition.engineCompatibility
+  engineVersion: runtimeGameDefinition.engineCompatibility,
+  contentSchemaVersion: ENGINE_CONTENT_SCHEMA_VERSION
 });
 const activeRuntime = await runtimeReadiness.check();
 const {
@@ -311,7 +313,8 @@ const {
 
 const roomReleaseValidator = createGameReleaseValidator({
   gameDefinition: runtimeGameDefinition,
-  engineVersion: runtimeGameDefinition.engineCompatibility
+  engineVersion: runtimeGameDefinition.engineCompatibility,
+  contentSchemaVersion: ENGINE_CONTENT_SCHEMA_VERSION
 });
 const publishedRoomContentPins = createRoomContentPinRuntime({
   contentStore: roomContentStore,

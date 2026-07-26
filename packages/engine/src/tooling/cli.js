@@ -119,7 +119,7 @@ async function startGameApplication(options = {}) {
   const runtime = createGameApplicationRuntime({
     gameDefinition: loaded.gameDefinition,
     engineVersion: options.engineVersion,
-    contentSchemaVersion: options.contentSchemaVersion || options.engineVersion,
+    contentSchemaVersion: options.contentSchemaVersion,
     workspaceRoot: loaded.cwd,
     contentRoot: options.contentRoot,
     authoringRoot: options.authoringRoot || options.contentRoot,

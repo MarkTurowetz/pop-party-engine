@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1172",
+  "version": "1.0.17.1174",
   "baseVersion": "1.0.17",
-  "buildNumber": 1172,
-  "commit": "bc21f332",
-  "branch": "codex/allow-durable-host-audio-audit",
-  "generatedAt": "2026-07-26T01:55:13.108Z"
+  "buildNumber": 1174,
+  "commit": "3c767b0e",
+  "branch": "codex/decouple-content-schema-1.2.2",
+  "generatedAt": "2026-07-26T02:17:03.809Z"
 }
