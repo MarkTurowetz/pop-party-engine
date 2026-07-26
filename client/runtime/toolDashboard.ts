@@ -5,6 +5,7 @@
 // … shim globals. App-shell DOM refs are read via window.
 
 export interface DashboardToolHooks {
+  getError?: () => string | null;
   isDirty: () => boolean;
   save: () => Promise<unknown> | unknown;
   setup: () => void | Promise<unknown>;
@@ -21,6 +22,7 @@ declare global {
     setupToolDashboard?: () => void;
     artCompositionsPendingDeleteCount?: () => number;
     globalSaveButton?: HTMLButtonElement;
+    globalSaveStatus?: HTMLElement;
     unsafeChangesModal?: HTMLElement;
     unsafeCancelButton?: HTMLElement;
     unsafeSaveButton?: HTMLElement;
@@ -71,6 +73,13 @@ function updateGlobalSaveButton(): void {
   globalSaveButton.dataset.dashboardDirty = dirty ? "true" : "false";
 }
 
+function setGlobalSaveStatus(message = ""): void {
+  const status = w().globalSaveStatus;
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("hidden", !message);
+}
+
 async function saveAllTools(): Promise<void> {
   const globalSaveButton = w().globalSaveButton;
   if (!globalSaveButton) return;
@@ -81,6 +90,7 @@ async function saveAllTools(): Promise<void> {
   }
   const dirtyTools = TOOL_METADATA.filter((tool) => isToolDirty(tool.id));
   if (!dirtyTools.length) {
+    setGlobalSaveStatus();
     updateGlobalSaveButton();
     return;
   }
@@ -94,17 +104,27 @@ async function saveAllTools(): Promise<void> {
   globalSaveButton.textContent = "Saving";
   globalSaveButton.dataset.saveError = "false";
   globalSaveButton.title = "";
+  setGlobalSaveStatus();
   let failed = false;
   try {
     for (const tool of dirtyTools) {
-      const saved = await toolHooks.get(tool.id)?.save();
-      if (saved === false) throw new Error(`${tool.label} did not save. Review the tool error and try again.`);
+      const hooks = toolHooks.get(tool.id);
+      const saved = await hooks?.save();
+      if (saved === false || saved === null) {
+        const detail = hooks?.getError?.();
+        throw new Error(
+          detail
+            ? `${tool.label}: ${detail}`
+            : `${tool.label} did not save. Review the tool error and try again.`
+        );
+      }
     }
   } catch (error) {
     failed = true;
     globalSaveButton.dataset.saveError = "true";
     globalSaveButton.textContent = "Save failed";
     globalSaveButton.title = error instanceof Error ? error.message : String(error);
+    setGlobalSaveStatus(globalSaveButton.title);
   } finally {
     savingAllTools = false;
     if (!failed) globalSaveButton.textContent = "Save All";

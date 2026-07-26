@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { FlowAction, GameFlow } from "../../types/game-data";
+import { ToolSaveError } from "../common/ToolSaveError";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowPreviewModel } from "./flowPreviewModel";
@@ -32,6 +33,7 @@ export interface FlowToolAppProps {
   canRevert?: boolean;
   canSave?: boolean;
   canUndo?: boolean;
+  error?: string | null;
   flowActionTypes?: FlowActionTypeMeta[];
   flowNodeDepth?: string;
   flow?: GameFlow | null;
@@ -66,6 +68,7 @@ export function FlowToolApp({
   canRevert = false,
   canSave = false,
   canUndo = false,
+  error = null,
   flowActionTypes = [],
   flow = null,
   flowNodeDepth = "subroutine",
@@ -149,6 +152,7 @@ export function FlowToolApp({
       header={
         <>
           <h2>{activeSubroutine?.name || activeSubroutine?.id || "Game Flow"}</h2>
+          <ToolSaveError error={error} source="flow" />
           <dl className="tool-workspace-stats">
             <div>
               <dt>Subroutines</dt>

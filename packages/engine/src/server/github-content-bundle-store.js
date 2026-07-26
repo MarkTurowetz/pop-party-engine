@@ -34,6 +34,7 @@ function createGithubContentBundleStore(options = {}) {
   const releaseRef = options.releaseRef || "heads/game-releases";
   const baseRef = options.baseRef || "heads/main";
   const validateSnapshot = typeof options.validateSnapshot === "function" ? options.validateSnapshot : () => ({ ok: true, diagnostics: [] });
+  const knownDraftHeads = new Map();
 
   function draftRef(scope) {
     return `${draftRefPrefix}${normalizeScope(scope)}`;
@@ -85,11 +86,17 @@ function createGithubContentBundleStore(options = {}) {
     const scope = normalizeScope(scopeInput);
     const ref = await git.getRef(draftRef(scope));
     if (!ref?.sha) throw new Error(`Draft scope is not initialized: ${scope}`);
+    const known = knownDraftHeads.get(scope);
+    if (known && (ref.sha === known.ref.sha || ref.sha === known.parentRefSha)) {
+      return known;
+    }
     const { entries } = await treeFileMap(ref.sha);
     const state = parseJson(await readFile(entries, DRAFT_STATE_PATH), DRAFT_STATE_PATH);
     const snapshot = await loadSnapshotAtCommit(ref.sha, "bundle/");
     if (state.revision !== snapshot.revision) throw new Error("Draft state revision does not match its bundle");
-    return { scope, ref, state, snapshot };
+    const loaded = { scope, ref, state, snapshot, parentRefSha: "" };
+    knownDraftHeads.set(scope, loaded);
+    return loaded;
   }
 
   async function readReleaseState() {
@@ -151,6 +158,13 @@ function createGithubContentBundleStore(options = {}) {
     });
     try {
       await git.createRef(refName, commitSha);
+      knownDraftHeads.set(scope, {
+        scope,
+        ref: { ref: refName, sha: commitSha },
+        state,
+        snapshot,
+        parentRefSha: ""
+      });
     } catch (error) {
       if (error.status !== 422) throw error;
     }
@@ -188,6 +202,13 @@ function createGithubContentBundleStore(options = {}) {
       parentSha: draft.ref.sha
     });
     await git.updateRefCas(draft.ref.ref, draft.ref.sha, commitSha);
+    knownDraftHeads.set(scope, {
+      scope,
+      ref: { ref: draft.ref.ref, sha: commitSha },
+      state,
+      snapshot: next,
+      parentRefSha: draft.ref.sha
+    });
     return Object.freeze({ scope, revision: next.revision, parentRevision: draft.snapshot.revision, diagnostics: validation?.diagnostics || [] });
   }
 

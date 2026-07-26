@@ -8,6 +8,7 @@ interface DashboardHarness {
   pressSaveAllHotkey: () => Promise<{ prevented: boolean }>;
   registerDashboardTool: typeof import("./toolDashboard").registerDashboardTool;
   setupToolDashboard: () => void;
+  status: HTMLElement;
 }
 
 function classListStub(): DOMTokenList {
@@ -39,6 +40,10 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
     disabled: true,
     textContent: "Save All"
   } as unknown as HTMLButtonElement;
+  const status = {
+    classList: classListStub(),
+    textContent: ""
+  } as unknown as HTMLElement;
   const globals = globalThis as Record<string, unknown>;
   globals.document = {
     addEventListener: vi.fn((type: string, listener: Listener) => documentListeners.set(type, listener)),
@@ -50,6 +55,7 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
     location: { search: "" }
   };
   globals.globalSaveButton = button;
+  globals.globalSaveStatus = status;
   globals.toolDashboardBar = { classList: classListStub() } as unknown as HTMLElement;
   globals.toolTabs = [];
 
@@ -80,7 +86,8 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
       return { prevented };
     },
     registerDashboardTool: dashboard.registerDashboardTool,
-    setupToolDashboard
+    setupToolDashboard,
+    status
   };
 }
 
@@ -90,6 +97,7 @@ afterEach(() => {
   delete globals.document;
   delete globals.window;
   delete globals.globalSaveButton;
+  delete globals.globalSaveStatus;
   delete globals.toolDashboardBar;
   delete globals.toolTabs;
   delete globals.activeToolId;
@@ -147,6 +155,7 @@ describe("toolDashboard Save All", () => {
   it("keeps a rejected save visible instead of reporting a false success", async () => {
     const harness = await createDashboardHarness();
     harness.registerDashboardTool("art", {
+      getError: () => "GitHub returned a stale draft",
       isDirty: () => true,
       save: vi.fn(async () => false),
       setup: vi.fn()
@@ -158,7 +167,24 @@ describe("toolDashboard Save All", () => {
     expect(harness.button.disabled).toBe(false);
     expect(harness.button.dataset.saveError).toBe("true");
     expect(harness.button.textContent).toBe("Save failed");
-    expect(harness.button.title).toContain("Art Manager did not save");
+    expect(harness.button.title).toContain("GitHub returned a stale draft");
+    expect(harness.status.textContent).toContain("GitHub returned a stale draft");
+  });
+
+  it("treats a null controller result as a visible failed save", async () => {
+    const harness = await createDashboardHarness();
+    harness.registerDashboardTool("flow", {
+      getError: () => "Draft revision conflict",
+      isDirty: () => true,
+      save: vi.fn(async () => null),
+      setup: vi.fn()
+    });
+
+    harness.setupToolDashboard();
+    await harness.clickSaveAll();
+
+    expect(harness.button.dataset.saveError).toBe("true");
+    expect(harness.status.textContent).toContain("Draft revision conflict");
   });
 
   it("commits a focused inspector field before checking dirty tools", async () => {

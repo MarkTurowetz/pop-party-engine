@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ToolSaveError } from "../common/ToolSaveError";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { ConstantsController } from "./constantsController";
 import { CUSTOM_CONSTANT_TYPES, type CustomConstant, type NormalizedGameConstants } from "./constantsModel";
@@ -44,7 +45,8 @@ function listValueToText(value: unknown): string {
  * with no window.PartyGame* bridge.
  */
 export function ConstantsEditor({ controller, surface = "constants" }: ConstantsEditorProps) {
-  const { constants, dirty, saving, canUndo, canRedo } = useConstantsEditor(controller);
+  const { constants, dirty, saving, canUndo, canRedo, error } =
+    useConstantsEditor(controller);
   const [sectionId, setSectionId] = useState<ConstantsSectionId>("built-in");
 
   const customValueControl = (constant: CustomConstant, index: number) => {
@@ -149,6 +151,7 @@ export function ConstantsEditor({ controller, surface = "constants" }: Constants
         onRedo: () => controller.redo()
       }}
     >
+      <ToolSaveError error={error} source="constants" />
       {sectionId === "built-in" ? (
         <section className="flow-react-panel" data-constants-react-component="built-in">
         <h3>Game Constants</h3>

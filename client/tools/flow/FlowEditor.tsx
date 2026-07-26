@@ -80,7 +80,7 @@ export function FlowEditor({
   surface = "flow",
   previewMode = "replace"
 }: FlowEditorProps) {
-  const { snapshot, dirty, saving } = useFlowEditor(controller);
+  const { snapshot, dirty, saving, error } = useFlowEditor(controller);
   const flow = snapshot.flow;
   const selection = snapshot.selection;
   const selectedStateId = selection.selectedFlowStateId;
@@ -660,6 +660,7 @@ export function FlowEditor({
         canRevert={dirty}
         canSave={dirty}
         canUndo={snapshot.canUndo}
+        error={error}
         flow={flow}
         flowActionTypes={flowActionTypes}
         flowNodeDepth={nodeDepth}

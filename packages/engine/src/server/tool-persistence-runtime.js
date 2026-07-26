@@ -65,6 +65,10 @@ function createToolPersistenceRuntime({
     return manifest;
   }
 
+  function shouldRefresh(store) {
+    return store.storageKind === "github" || store.storageKind === "github-app-draft";
+  }
+
   async function loadSource({
     bundlePath,
     label,
@@ -249,7 +253,7 @@ function createToolPersistenceRuntime({
   }
 
   async function writeStageLayouts(layouts, metadata = {}) {
-    const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+    const flow = await loadGameFlowSource({ refresh: shouldRefresh(gameFlowStore) });
     const normalized = syncStageLayoutsWithFlow(layouts, flow);
     backupJsonFile(stageLayoutsFile, stageLayoutsBackupDir, "stage-layouts");
     if (stageLayoutsStore.storageKind === "github-app-draft") {
@@ -277,7 +281,7 @@ function createToolPersistenceRuntime({
   }
 
   async function writeControllerLayouts(layouts, metadata = {}) {
-    const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+    const flow = await loadGameFlowSource({ refresh: shouldRefresh(gameFlowStore) });
     const normalized = syncControllerLayoutsWithFlow(layouts, flow);
     backupJsonFile(controllerLayoutsFile, controllerLayoutsBackupDir, "controller-layouts");
     if (controllerLayoutsStore.storageKind === "github-app-draft") {

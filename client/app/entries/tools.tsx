@@ -86,6 +86,7 @@ void mountFlowEditor({
   flowController = mounted.controller;
 });
 registerDashboardTool("flow", {
+  getError: () => flowController?.getState().error ?? null,
   isDirty: () => flowController?.getState().dirty ?? false,
   save: () => flowController?.save() ?? Promise.resolve(),
   setup: revealScreen("flowScreen")
@@ -101,6 +102,7 @@ void mountConstantsEditor({
   constantsController = mounted.controller;
 });
 registerDashboardTool("constants", {
+  getError: () => constantsController?.getState().error ?? null,
   isDirty: () => constantsController?.getState().dirty ?? false,
   save: () => constantsController?.save() ?? Promise.resolve(),
   setup: revealScreen("constantsScreen")
@@ -116,6 +118,7 @@ void mountHostAudioEditor({
   hostAudioController = mounted.controller;
 });
 registerDashboardTool("host-audio", {
+  getError: () => hostAudioController?.getState().error ?? null,
   isDirty: () => hostAudioController?.getState().dirty ?? false,
   save: () => hostAudioController?.save() ?? Promise.resolve(),
   setup: revealScreen("hostAudioScreen")
@@ -146,6 +149,15 @@ void mountArtEditor({
   if (pendingArtCompositionId && selectArtComposition(pendingArtCompositionId)) pendingArtCompositionId = "";
 });
 registerDashboardTool("art", {
+  getError: () => {
+    if (!artEditor) return null;
+    return (
+      artEditor.assetsController.getState().error ||
+      artEditor.compositionsController.getState().error ||
+      artEditor.organizationController.getState().error ||
+      null
+    );
+  },
   isDirty: () =>
     Boolean(
       artEditor &&
@@ -173,6 +185,7 @@ void mountLayoutEditor({
   mounted.setMode(window.activeToolId === "controller-layout" ? "controller" : "stage");
 });
 registerDashboardTool("layout", {
+  getError: () => layoutEditor?.stageController.getState().error ?? null,
   isDirty: () => layoutEditor?.stageController.getState().dirty ?? false,
   save: () => layoutEditor?.stageController.save() ?? Promise.resolve(),
   setup: () => {
@@ -181,6 +194,7 @@ registerDashboardTool("layout", {
   }
 });
 registerDashboardTool("controller-layout", {
+  getError: () => layoutEditor?.controllerController.getState().error ?? null,
   isDirty: () => layoutEditor?.controllerController.getState().dirty ?? false,
   save: () => layoutEditor?.controllerController.save() ?? Promise.resolve(),
   setup: () => {

@@ -12,6 +12,7 @@ import { gameTextHtml } from "../../runtime/gameTextMarkup";
 import { gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
 import { ArtPreviewRenderer, assetUrlMap, compositionMap, type ArtTextOverride } from "../art/ArtPreviewRenderer";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
+import { ToolSaveError } from "../common/ToolSaveError";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { LayoutController } from "./layoutController";
 import { ControllerConfigurationPicker, LayoutElementTagEditor } from "./LayoutTagControls";
@@ -531,6 +532,10 @@ export function LayoutEditor({
         onRedo: () => controller.redo()
       }}
     >
+      <ToolSaveError
+        error={state.error}
+        source={mode === "stage" ? "layout" : "controller-layout"}
+      />
       <div className="tool-main-columns layout-workspace-content">
         <section
           ref={previewPanelRef}

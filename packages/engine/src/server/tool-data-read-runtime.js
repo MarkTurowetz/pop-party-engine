@@ -46,8 +46,12 @@ function createToolDataReadRuntime({
     return store.revision ? { revision: store.revision } : {};
   }
 
+  function shouldRefresh(store) {
+    return store.storageKind === "github" || store.storageKind === "github-app-draft";
+  }
+
   async function sendGameFlow(res) {
-    const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+    const flow = await loadGameFlowSource({ refresh: shouldRefresh(gameFlowStore) });
     const responseFlow = localDraftStore.flow || flow;
     sendJson(res, 200, {
       ok: true,
@@ -63,7 +67,7 @@ function createToolDataReadRuntime({
   }
 
   async function sendGameConstants(res) {
-    const constants = await loadGameConstantsSource({ refresh: gameConstantsStore.storageKind === "github" });
+    const constants = await loadGameConstantsSource({ refresh: shouldRefresh(gameConstantsStore) });
     const responseConstants = localDraftStore.constants || constants;
     sendJson(res, 200, {
       ok: true,
@@ -76,8 +80,8 @@ function createToolDataReadRuntime({
   }
 
   async function sendStageLayouts(res) {
-    const layouts = await loadStageLayoutsSource({ refresh: stageLayoutsStore.storageKind === "github" });
-    const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+    const layouts = await loadStageLayoutsSource({ refresh: shouldRefresh(stageLayoutsStore) });
+    const flow = await loadGameFlowSource({ refresh: shouldRefresh(gameFlowStore) });
     const activeFlow = localDraftStore.flow || flow;
     const syncedLayouts = syncStageLayoutsWithFlow(layouts, activeFlow);
     const responseLayouts = localDraftStore.layouts ? syncStageLayoutsWithFlow(localDraftStore.layouts, activeFlow) : syncedLayouts;
@@ -92,8 +96,8 @@ function createToolDataReadRuntime({
   }
 
   async function sendControllerLayouts(res) {
-    const layouts = await loadControllerLayoutsSource({ refresh: controllerLayoutsStore.storageKind === "github" });
-    const flow = await loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" });
+    const layouts = await loadControllerLayoutsSource({ refresh: shouldRefresh(controllerLayoutsStore) });
+    const flow = await loadGameFlowSource({ refresh: shouldRefresh(gameFlowStore) });
     const activeFlow = localDraftStore.flow || flow;
     const syncedLayouts = syncControllerLayoutsWithFlow(layouts, activeFlow);
     const responseLayouts = localDraftStore.controllerLayouts ? syncControllerLayoutsWithFlow(localDraftStore.controllerLayouts, activeFlow) : syncedLayouts;
@@ -108,7 +112,7 @@ function createToolDataReadRuntime({
   }
 
   async function sendHostAudios(res) {
-    const hostAudios = await loadHostAudiosSource({ refresh: hostAudiosStore.storageKind === "github" });
+    const hostAudios = await loadHostAudiosSource({ refresh: shouldRefresh(hostAudiosStore) });
     const responseHostAudios = localDraftStore.hostAudios || hostAudios;
     sendJson(res, 200, {
       ok: true,

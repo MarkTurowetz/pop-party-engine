@@ -32,4 +32,14 @@ describe("FlowToolApp shell", () => {
     expect(markup).not.toContain('data-flow-react-component="route-inspector"');
     expect(markup).not.toContain(" hidden");
   });
+
+  it("renders the actual save error as an accessible alert", () => {
+    const markup = renderToStaticMarkup(
+      <FlowToolApp error="Draft revision conflict" flow={{ states: [] }} visible />
+    );
+
+    expect(markup).toContain('data-tool-save-error="flow"');
+    expect(markup).toContain('role="alert"');
+    expect(markup).toContain("Draft revision conflict");
+  });
 });
