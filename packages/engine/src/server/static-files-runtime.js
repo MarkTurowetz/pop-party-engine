@@ -181,7 +181,8 @@ function createStaticFilesRuntime({
   indexFile,
   root,
   sendJson,
-  sharedRoot
+  sharedRoot,
+  viteManifestRoot = root
 }) {
   function serveIndex(res, url = null) {
     fs.readFile(indexFile, (error, data) => {
@@ -191,7 +192,7 @@ function createStaticFilesRuntime({
       }
       const role = routeRoleForUrl(url);
       const stylesheetLinks = renderStylesheetLinks(stylesForRole(role));
-      const viteEntryScript = viteEntryScriptForRole(root, role);
+      const viteEntryScript = viteEntryScriptForRole(viteManifestRoot, role);
       const html = renderViteBody(String(data), role)
         .replace(BODY_OPEN, `${BODY_OPEN}\n${runtimeConfigScript(gameDefinition)}`)
         .replace(LEGACY_STYLESHEET_PATTERN, stylesheetLinks)

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "gameId": "pop-party-reference",
-  "engineContentSchemaVersion": "1.2.0",
+  "engineContentSchemaVersion": "1.2.1",
   "flowExpressionLanguageVersion": 1,
   "gameMigrationLevel": 0,
   "semanticRolesPath": "semantic-roles.json",

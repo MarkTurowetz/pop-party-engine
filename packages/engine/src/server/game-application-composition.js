@@ -709,7 +709,8 @@ const {
   indexFile: INDEX_FILE,
   root: ROOT,
   sendJson,
-  sharedRoot: SHARED_ROOT
+  sharedRoot: SHARED_ROOT,
+  viteManifestRoot: WEB_ROOT
 });
 
 const {

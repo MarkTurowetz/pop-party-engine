@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1168",
+  "version": "1.0.17.1170",
   "baseVersion": "1.0.17",
-  "buildNumber": 1168,
-  "commit": "c13fe424",
-  "branch": "codex/engine-durable-authoring",
-  "generatedAt": "2026-07-25T21:34:56.789Z"
+  "buildNumber": 1170,
+  "commit": "421b4af2",
+  "branch": "codex/fix-packed-web-entry",
+  "generatedAt": "2026-07-26T01:42:19.750Z"
 }

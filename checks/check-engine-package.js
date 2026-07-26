@@ -248,7 +248,12 @@ try {
   if (!packed.files.some((file) => file.path === "bin/pop-party.js")) {
     throw new Error("Packed engine is missing the pop-party CLI executable");
   }
-  for (const expected of ["web/index.html", "web/dist/client/.vite/manifest.json", "web/client/styles/legacy-shell.css"]) {
+  for (const expected of [
+    "web/index.html",
+    "web/dist/client/.vite/manifest.json",
+    "web/client/app/legacy/app-shell.js",
+    "web/client/styles/legacy-shell.css"
+  ]) {
     if (!packed.files.some((file) => file.path === expected)) {
       throw new Error(`Packed engine is missing its browser application asset: ${expected}`);
     }
@@ -259,6 +264,11 @@ try {
   const tarball = path.join(fixtureRoot, packed.filename);
   fs.writeFileSync(path.join(fixtureRoot, "package.json"), `${JSON.stringify({ name: "engine-pack-fixture", private: true }, null, 2)}\n`);
   execFileSync("npm", ["install", tarball, "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: fixtureRoot, stdio: "pipe", env: commandEnvironment });
+  execFileSync(
+    process.execPath,
+    [path.join(root, "checks", "check-packed-engine-web-runtime.js"), tarball, engineManifest.version],
+    { cwd: root, stdio: "inherit", env: commandEnvironment }
+  );
   const cliHelp = execFileSync(process.execPath, [path.join(fixtureRoot, "node_modules", "@pop-party", "engine", "bin", "pop-party.js"), "--help"], { cwd: fixtureRoot, encoding: "utf8" });
   if (!cliHelp.includes("validate [content-directory]")
     || !cliHelp.includes("start [game-config]")

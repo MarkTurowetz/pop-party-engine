@@ -25,6 +25,11 @@ fs.rmSync(target, { recursive: true, force: true });
 fs.mkdirSync(target, { recursive: true });
 fs.copyFileSync(requiredPath("index.html"), path.join(target, "index.html"));
 fs.cpSync(requiredPath("client", "styles"), path.join(target, "client", "styles"), { recursive: true });
+fs.mkdirSync(path.join(target, "client", "app", "legacy"), { recursive: true });
+fs.copyFileSync(
+  requiredPath("client", "app", "legacy", "app-shell.js"),
+  path.join(target, "client", "app", "legacy", "app-shell.js")
+);
 fs.cpSync(requiredPath("dist", "client"), path.join(target, "dist", "client"), { recursive: true });
 fs.mkdirSync(path.join(target, "shared"), { recursive: true });
 for (const fileName of sharedRuntimeFiles) {
