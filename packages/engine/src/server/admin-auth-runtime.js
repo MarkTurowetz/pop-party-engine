@@ -143,7 +143,12 @@ function createAdminAuthRuntime(options = {}) {
   function isAdminApiRequest(req, url) {
     if (url.pathname === "/api/admin/session") return false;
     if (url.pathname.startsWith("/api/admin/")) return true;
-    if (ADMIN_API_PATHS.has(url.pathname)) return req.method !== "GET" || url.pathname === "/api/local-draft" || url.pathname === "/api/tool-drafts";
+    if (ADMIN_API_PATHS.has(url.pathname)) {
+      return req.method !== "GET"
+        || url.pathname === "/api/local-draft"
+        || url.pathname === "/api/tool-drafts"
+        || url.pathname === "/api/authoring/workspace";
+    }
     if (/^\/api\/art-(?:assets|compositions)\/[a-z0-9-]+$/i.test(url.pathname)) return req.method === "POST" || req.method === "DELETE";
     if (/^\/api\/art-assets\/[a-z0-9-]+\/blob$/i.test(url.pathname)) return true;
     if (/^\/api\/host-audios\/assets\/[a-z0-9-]+\/[a-z0-9-]+$/i.test(url.pathname)) return true;

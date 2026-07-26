@@ -5,6 +5,14 @@ const require = createRequire(import.meta.url);
 const { createAdminAuthRuntime } = require("./admin-auth-runtime");
 
 describe("live prototype administrator boundary", () => {
+  it("protects the working workspace state from unauthenticated reads", () => {
+    const auth = createAdminAuthRuntime({ mode: "legacy-open" });
+    expect(auth.isAdminApiRequest(
+      { method: "GET" },
+      new URL("https://game.test/api/authoring/workspace")
+    )).toBe(true);
+  });
+
   it("classifies every workspace mutation as an authenticated administrator API", () => {
     const auth = createAdminAuthRuntime({ mode: "legacy-open" });
     for (const pathname of [
