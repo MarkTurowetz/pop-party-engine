@@ -2,6 +2,7 @@
 
 const crypto = require("node:crypto");
 const { normalizeBundlePath } = require("../shared/content-bundle-schema");
+const { replaceSnapshotFiles } = require("./content-snapshot-runtime");
 
 function idempotencyKey(value, prefix = "tool-save") {
   const supplied = String(value || "").trim();
@@ -72,12 +73,22 @@ function createRevisionedToolAuthoringRuntime(options = {}) {
         idempotencyKey: idempotencyKey(metadata.idempotencyKey, metadata.operation || "tool-save"),
         replacements
       });
-      currentDraft = await contentStore.readDraft(scope);
-      if (currentDraft.revision !== result.revision) {
+      const authoritativeSnapshot = replaceSnapshotFiles(draft.snapshot, replacements, {
+        allowNewFiles: true
+      });
+      if (authoritativeSnapshot.revision !== result.revision) {
         throw Object.assign(new Error("Durable draft verification failed after save"), {
           code: "DRAFT_WRITE_VERIFICATION_FAILED"
         });
       }
+      // A successful compare-and-swap is authoritative. Do not immediately
+      // reread the branch ref: GitHub can briefly return its predecessor even
+      // though the new commit is already durable.
+      currentDraft = Object.freeze({
+        scope,
+        revision: result.revision,
+        snapshot: authoritativeSnapshot
+      });
       return {
         scope,
         revision: currentDraft.revision,

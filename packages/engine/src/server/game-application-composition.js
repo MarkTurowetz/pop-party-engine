@@ -652,12 +652,20 @@ const {
   contentTypeForFile,
   customDir: ART_CUSTOM_DIR,
   defaultDir: ART_DEFAULT_DIR,
-  loadArtManifestSource: () => loadArtManifestSource({ refresh: artManifestStore.storageKind === "github" }),
+  loadArtManifestSource: () => loadArtManifestSource({
+    refresh: ["github", "github-app-draft"].includes(artManifestStore.storageKind)
+  }),
   loadArtDependencySources: async () => {
     const [stageLayouts, controllerLayouts, flow] = await Promise.all([
-      loadStageLayoutsSource({ refresh: stageLayoutsStore.storageKind === "github" }),
-      loadControllerLayoutsSource({ refresh: controllerLayoutsStore.storageKind === "github" }),
-      loadGameFlowSource({ refresh: gameFlowStore.storageKind === "github" })
+      loadStageLayoutsSource({
+        refresh: ["github", "github-app-draft"].includes(stageLayoutsStore.storageKind)
+      }),
+      loadControllerLayoutsSource({
+        refresh: ["github", "github-app-draft"].includes(controllerLayoutsStore.storageKind)
+      }),
+      loadGameFlowSource({
+        refresh: ["github", "github-app-draft"].includes(gameFlowStore.storageKind)
+      })
     ]);
     return {
       stageLayouts: localDraftStore.layouts || stageLayouts,

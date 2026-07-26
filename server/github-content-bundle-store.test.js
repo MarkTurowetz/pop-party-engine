@@ -5,6 +5,9 @@ const require = createRequire(import.meta.url);
 const schema = require("../shared/content-bundle-schema");
 const { buildManifest, createContentSnapshot } = require("./content-snapshot-runtime");
 const { createGithubContentBundleStore } = require("./github-content-bundle-store");
+const { createRevisionedToolAuthoringRuntime } = require(
+  "../packages/engine/src/server/revisioned-tool-authoring-runtime"
+);
 
 function fixtureSnapshot() {
   const files = new Map(schema.REQUIRED_CONTENT_PATHS.map((logicalPath) => [logicalPath, Buffer.from(`${JSON.stringify({ path: logicalPath })}\n`)]));
@@ -26,15 +29,25 @@ function fakeGit() {
   const blobs = new Map();
   const trees = new Map([["base-tree", []]]);
   const commits = new Map([["base-commit", { sha: "base-commit", treeSha: "base-tree", parentShas: [], message: "base" }]]);
+  const staleAfterUpdate = new Set();
+  const staleRead = new Map();
   return {
     refs,
+    staleAfterNextUpdate: (ref) => staleAfterUpdate.add(ref),
     createBlob: vi.fn(async (bytes) => { const sha = next("blob"); blobs.set(sha, Buffer.from(bytes)); return sha; }),
     readBlob: vi.fn(async (sha) => Buffer.from(blobs.get(sha))),
     createTree: vi.fn(async (entries) => { const sha = next("tree"); trees.set(sha, entries.map((entry) => ({ ...entry, type: "blob" }))); return sha; }),
     readTree: vi.fn(async (sha) => trees.get(sha).map((entry) => ({ ...entry }))),
     createCommit: vi.fn(async ({ message, treeSha, parentSha }) => { const sha = next("commit"); commits.set(sha, { sha, treeSha, parentShas: parentSha ? [parentSha] : [], message }); return sha; }),
     getCommit: vi.fn(async (sha) => ({ ...commits.get(sha) })),
-    getRef: vi.fn(async (ref) => refs.has(ref) ? { ref, sha: refs.get(ref) } : null),
+    getRef: vi.fn(async (ref) => {
+      if (staleRead.has(ref)) {
+        const sha = staleRead.get(ref);
+        staleRead.delete(ref);
+        return { ref, sha };
+      }
+      return refs.has(ref) ? { ref, sha: refs.get(ref) } : null;
+    }),
     createRef: vi.fn(async (ref, sha) => {
       if (refs.has(ref)) throw Object.assign(new Error("exists"), { status: 422 });
       refs.set(ref, sha);
@@ -44,6 +57,7 @@ function fakeGit() {
       const actual = refs.get(ref) || "";
       if (actual !== expectedSha) throw Object.assign(new Error("conflict"), { status: 409, code: "GITHUB_REF_CONFLICT", expectedSha, actualSha: actual });
       refs.set(ref, sha);
+      if (staleAfterUpdate.delete(ref)) staleRead.set(ref, expectedSha);
       return { ref, sha };
     })
   };
@@ -169,5 +183,40 @@ describe("GitHub content bundle store", () => {
     const restarted = await store.readDraft();
     expect(restarted.revision).toBe(draft.revision);
     expect(restarted.snapshot.paths).not.toContain("blobs/partial.bin");
+  });
+
+  it("keeps a successful CAS authoritative through a stale reload and a clean restart", async () => {
+    const git = fakeGit();
+    let store = createGithubContentBundleStore({ git });
+    const initial = fixtureSnapshot();
+    await store.initialize({ initialSnapshot: initial, release });
+    const authoring = createRevisionedToolAuthoringRuntime({ contentStore: store });
+    const draft = await authoring.initialize();
+    git.staleAfterNextUpdate("heads/game-drafts/default");
+
+    const saved = await authoring.writeJson(
+      "constants.json",
+      { gameTitle: "Durable latest title" },
+      {
+        expectedRevision: draft.revision,
+        idempotencyKey: "stale-ref-save-0001",
+        operation: "constants"
+      }
+    );
+    expect(saved.value).toEqual({ gameTitle: "Durable latest title" });
+
+    const reloaded = await authoring.readJson("constants.json", { refresh: true });
+    expect(reloaded).toMatchObject({
+      revision: saved.revision,
+      value: { gameTitle: "Durable latest title" }
+    });
+
+    store = createGithubContentBundleStore({ git });
+    const restartedAuthoring = createRevisionedToolAuthoringRuntime({ contentStore: store });
+    const restarted = await restartedAuthoring.initialize();
+    expect(restarted.revision).toBe(saved.revision);
+    expect(restarted.snapshot.readJson("constants.json")).toEqual({
+      gameTitle: "Durable latest title"
+    });
   });
 });

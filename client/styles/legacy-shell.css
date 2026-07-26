@@ -106,7 +106,23 @@ button:disabled {
 
 .tool-dashboard-actions {
   display: flex;
+  align-items: flex-end;
+  flex-direction: column;
   justify-content: end;
+  gap: 4px;
+}
+
+.tool-dashboard-save-status,
+.tool-save-error {
+  max-width: min(640px, 80vw);
+  margin: 0;
+  border: 3px solid #8b1223;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #8b1223;
+  background: #fff1f3;
+  font-weight: 900;
+  overflow-wrap: anywhere;
 }
 
 .tool-tab {

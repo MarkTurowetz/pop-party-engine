@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { HostAudioController } from "./hostAudioController";
 import { useHostAudioEditor } from "./useHostAudioEditor";
+import { ToolSaveError } from "../common/ToolSaveError";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 
 export interface HostAudioEditorProps {
@@ -13,7 +14,8 @@ export interface HostAudioEditorProps {
  * client-side preview playback. Routes every edit through the typed controller.
  */
 export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudioEditorProps) {
-  const { hostAudios, dirty, saving, canUndo, canRedo } = useHostAudioEditor(controller);
+  const { hostAudios, dirty, saving, canUndo, canRedo, error } =
+    useHostAudioEditor(controller);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [selectedSetId, setSelectedSetId] = useState(() => hostAudios.hostAudios[0]?.id || "");
   const selectedSet =
@@ -116,6 +118,7 @@ export function HostAudioEditor({ controller, surface = "host-audio" }: HostAudi
         onRedo: () => controller.redo()
       }}
     >
+      <ToolSaveError error={error} source="host-audio" />
       {selectedSet ? (
         <section
           className="tool-detail-grid"

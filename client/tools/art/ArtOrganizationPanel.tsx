@@ -1,5 +1,6 @@
 import { useState, type DragEvent } from "react";
 import type { ArtOrganizationController } from "./artOrganizationController";
+import { ToolSaveError } from "../common/ToolSaveError";
 import { folderIdFromKey, type OrgItem, type OrgSurface } from "./organizationModel";
 import { useArtOrganization } from "./useArtOrganization";
 
@@ -17,7 +18,8 @@ const DND_TYPE = "application/x-art-organizer-key";
  * organization.
  */
 export function ArtOrganizationPanel({ controller, surface }: ArtOrganizationPanelProps) {
-  const { organization, surfaceItems, dirty, saving, canUndo } = useArtOrganization(controller);
+  const { organization, surfaceItems, dirty, saving, canUndo, error } =
+    useArtOrganization(controller);
   const [folderName, setFolderName] = useState("");
   const state = organization[surface];
   const items = surfaceItems[surface];
@@ -94,6 +96,7 @@ export function ArtOrganizationPanel({ controller, surface }: ArtOrganizationPan
 
   return (
     <section className="flow-react-panel" data-art-react-component="organization" data-art-org-surface={surface}>
+      <ToolSaveError error={error} source="art-organization" />
       <div className="flow-editor-controls">
         <h3>Organization — {surface}</h3>
         <input
