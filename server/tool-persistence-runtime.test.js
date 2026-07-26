@@ -5,6 +5,75 @@ const require = createRequire(import.meta.url);
 const { assertUniqueGameFlowIds, createToolPersistenceRuntime } = require("./tool-persistence-runtime");
 
 describe("game flow persistence safeguards", () => {
+  it("reads an installed live prototype snapshot without falling back to packaged content", async () => {
+    const authoritative = { states: [{ id: "authoritative" }] };
+    const readLocalGameFlowSource = vi.fn(() => ({ states: [{ id: "stale-local" }] }));
+    const gameFlowStore = {
+      storageKind: "live-prototype",
+      source: authoritative,
+      revision: "working-revision",
+      loadedAt: Date.now(),
+      error: ""
+    };
+    const runtime = createToolPersistenceRuntime({
+      gameFlowStore,
+      readGameFlowSource: () => gameFlowStore.source,
+      readLocalGameFlowSource
+    });
+
+    await expect(runtime.loadGameFlowSource({ refresh: true })).resolves.toEqual(authoritative);
+    expect(readLocalGameFlowSource).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a live prototype snapshot has not been installed", async () => {
+    const readLocalGameFlowSource = vi.fn(() => ({ states: [{ id: "stale-local" }] }));
+    const gameFlowStore = {
+      storageKind: "live-prototype",
+      source: { states: [] },
+      revision: "",
+      loadedAt: 0,
+      error: ""
+    };
+    const runtime = createToolPersistenceRuntime({
+      gameFlowStore,
+      readGameFlowSource: () => gameFlowStore.source,
+      readLocalGameFlowSource
+    });
+
+    await expect(runtime.loadGameFlowSource()).rejects.toThrow(/Live prototype game flow source is unavailable/);
+    expect(readLocalGameFlowSource).not.toHaveBeenCalled();
+    expect(gameFlowStore.error).toMatch(/unavailable/);
+  });
+
+  it("rejects direct live prototype writes instead of modifying packaged content", async () => {
+    const existing = { states: [{ id: "authoritative", actions: [] }], routeNodes: [] };
+    const writeJsonFile = vi.fn();
+    const gameFlowStore = {
+      storageKind: "live-prototype",
+      source: existing,
+      revision: "working-revision",
+      loadedAt: Date.now(),
+      error: ""
+    };
+    const runtime = createToolPersistenceRuntime({
+      gameFlowFile: "game-flow.json",
+      gameFlowBackupDir: "backups",
+      gameFlowStore,
+      readGameFlowSource: () => gameFlowStore.source,
+      readLocalGameFlowSource: vi.fn(),
+      mergeFlowWithExistingSubActions: (flow) => flow,
+      normalizeGameFlow: (flow) => flow,
+      backupJsonFile: vi.fn(),
+      writeJsonFile
+    });
+
+    await expect(runtime.writeGameFlow(existing)).rejects.toMatchObject({
+      code: "LIVE_PROTOTYPE_DIRECT_WRITE_REJECTED",
+      status: 409
+    });
+    expect(writeJsonFile).not.toHaveBeenCalled();
+  });
+
   it("rejects authoritative GitHub reads when credentials are missing", async () => {
     const gameFlowStore = {
       storageKind: "github",
