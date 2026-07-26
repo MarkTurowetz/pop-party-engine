@@ -9,7 +9,7 @@ function createToolSourceStoresRuntime({
   readLocalStageLayoutsSource,
   storageKind
 }) {
-  const normalizedStorageKind = ["github", "github-app-draft"].includes(storageKind)
+  const normalizedStorageKind = ["github", "github-app-draft", "live-prototype"].includes(storageKind)
     ? storageKind
     : "local";
 

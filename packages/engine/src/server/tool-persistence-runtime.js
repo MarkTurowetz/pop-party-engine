@@ -69,6 +69,27 @@ function createToolPersistenceRuntime({
     return store.storageKind === "github" || store.storageKind === "github-app-draft";
   }
 
+  function requireLivePrototypeSource(store, label, readCurrent) {
+    if (!store.loadedAt || !store.revision) {
+      const error = new Error(`Live prototype ${label} source is unavailable.`);
+      error.code = "LIVE_PROTOTYPE_SOURCE_UNAVAILABLE";
+      store.error = error.message;
+      throw error;
+    }
+    store.error = "";
+    return readCurrent();
+  }
+
+  function rejectLivePrototypeDirectWrite(store, label) {
+    if (store.storageKind !== "live-prototype") return;
+    const error = new Error(
+      `Live prototype ${label} must be saved through the atomic authoring workspace.`
+    );
+    error.code = "LIVE_PROTOTYPE_DIRECT_WRITE_REJECTED";
+    error.status = 409;
+    throw error;
+  }
+
   async function loadSource({
     bundlePath,
     label,
@@ -81,6 +102,9 @@ function createToolPersistenceRuntime({
     selectRemoteSource,
     store
   }) {
+    if (store.storageKind === "live-prototype") {
+      return requireLivePrototypeSource(store, label, readCurrent);
+    }
     if (store.storageKind === "github-app-draft") {
       if (!revisionedAuthoring) throw new Error(`Revisioned ${label} authoring is unavailable.`);
       try {
@@ -226,6 +250,7 @@ function createToolPersistenceRuntime({
   }
 
   async function writeGameConstants(constants, metadata = {}) {
+    rejectLivePrototypeDirectWrite(gameConstantsStore, "game constants");
     const normalized = normalizeGameConstants(constants);
     backupJsonFile(gameConstantsFile, gameConstantsBackupDir, "game-constants");
     if (gameConstantsStore.storageKind === "github-app-draft") {
@@ -253,6 +278,7 @@ function createToolPersistenceRuntime({
   }
 
   async function writeStageLayouts(layouts, metadata = {}) {
+    rejectLivePrototypeDirectWrite(stageLayoutsStore, "stage layouts");
     const flow = await loadGameFlowSource({ refresh: shouldRefresh(gameFlowStore) });
     const normalized = syncStageLayoutsWithFlow(layouts, flow);
     backupJsonFile(stageLayoutsFile, stageLayoutsBackupDir, "stage-layouts");
@@ -281,6 +307,7 @@ function createToolPersistenceRuntime({
   }
 
   async function writeControllerLayouts(layouts, metadata = {}) {
+    rejectLivePrototypeDirectWrite(controllerLayoutsStore, "controller layouts");
     const flow = await loadGameFlowSource({ refresh: shouldRefresh(gameFlowStore) });
     const normalized = syncControllerLayoutsWithFlow(layouts, flow);
     backupJsonFile(controllerLayoutsFile, controllerLayoutsBackupDir, "controller-layouts");
@@ -309,6 +336,7 @@ function createToolPersistenceRuntime({
   }
 
   async function writeGameFlow(flow, metadata = {}) {
+    rejectLivePrototypeDirectWrite(gameFlowStore, "game flow");
     const existingFlow = await loadGameFlowSource({ refresh: true });
     const merged = mergeFlowWithExistingSubActions(flow, existingFlow);
     assertUniqueGameFlowIds(merged);
@@ -340,6 +368,7 @@ function createToolPersistenceRuntime({
   }
 
   async function writeHostAudios(hostAudios, metadata = {}) {
+    rejectLivePrototypeDirectWrite(hostAudiosStore, "host audio");
     const normalized = normalizeHostAudios(hostAudios);
     backupJsonFile(hostAudiosFile, hostAudiosBackupDir, "host-audios");
     if (hostAudiosStore.storageKind === "github-app-draft") {
@@ -367,6 +396,7 @@ function createToolPersistenceRuntime({
   }
 
   async function writeArtManifest(manifest, metadata = {}) {
+    rejectLivePrototypeDirectWrite(artManifestStore, "art manifest");
     const normalized = normalizeArtManifest(manifest);
     if (artManifestStore.storageKind === "github-app-draft") {
       return saveRevisioned(artManifestStore, "art/manifest.json", normalized, normalizeArtManifest, {
