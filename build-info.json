@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1170",
+  "version": "1.0.17.1172",
   "baseVersion": "1.0.17",
-  "buildNumber": 1170,
-  "commit": "421b4af2",
-  "branch": "codex/fix-packed-web-entry",
-  "generatedAt": "2026-07-26T01:42:19.750Z"
+  "buildNumber": 1172,
+  "commit": "bc21f332",
+  "branch": "codex/allow-durable-host-audio-audit",
+  "generatedAt": "2026-07-26T01:55:13.108Z"
 }

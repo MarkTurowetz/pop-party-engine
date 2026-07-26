@@ -23,6 +23,7 @@ describe("split baseline tooling", () => {
     expect(isApprovedStarterContentPath("game-flow.json")).toBe(true);
     expect(isApprovedStarterContentPath("apps/reference/authoring/art-manifest.json")).toBe(true);
     expect(isApprovedStarterContentPath("apps/reference/content/audio/host-audios.json")).toBe(true);
+    expect(isApprovedStarterContentPath("audio/host-audios.json")).toBe(true);
     expect(isApprovedStarterContentPath("packages/create-game/starter/content/audio/host-audios.json")).toBe(true);
     expect(isApprovedStarterContentPath("games/flip-7/game-flow.json")).toBe(false);
   });
