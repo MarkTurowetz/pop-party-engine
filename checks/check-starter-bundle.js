@@ -45,7 +45,7 @@ try {
     root,
     outputRoot: reproducedRoot,
     gameDefinition: { ...gameDefinition, gameData: authoringSourceGameData },
-    artManifestPath: "apps/reference/authoring/art-manifest.json",
+    artManifestPath: "apps/reference/content/art/manifest.json",
     sourcePaths: {
       flow: "apps/reference/content/flow.json",
       constants: "apps/reference/content/constants.json",

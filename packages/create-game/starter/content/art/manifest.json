@@ -13478,7 +13478,8 @@
     "player-object-stego",
     "player-object-trike",
     "player-object-raptor",
-    "player-object-bronto"
+    "player-object-bronto",
+    "prefab-crafting-timer-mc"
   ],
   "organization": {
     "stage": {
@@ -13547,7 +13548,8 @@
           "composition:join-widget",
           "composition:waiting-status-widget",
           "composition:countdown-popup",
-          "composition:join-qr-code"
+          "composition:join-qr-code",
+          "composition:prefab-layout-text-field-text"
         ],
         "folder-bff56326-48c1-48ac-9938-abac6bed9fa7": [
           "composition:player-point-popup",

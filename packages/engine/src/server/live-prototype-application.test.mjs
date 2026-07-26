@@ -161,6 +161,13 @@ describe("live prototype application integration", () => {
       const duringSession = await readFlow(startup.localUrl);
       expect(duringSession.revision).toBe(durableSnapshot.revision);
       expect(hasDurableAction(duringSession)).toBe(true);
+      const controllerLayouts = await readTool(startup.localUrl, "/api/controller-layouts");
+      const controllerStateIds = controllerLayouts.layouts.states.map((state) => state.id);
+      expect(controllerStateIds).toContain("writing-moment");
+      expect(controllerStateIds).toContain("controller-text-input");
+      await post(startup.localUrl, "/api/tool-drafts", {
+        controllerLayouts: controllerLayouts.layouts
+      }, headers);
 
       const saved = await post(startup.localUrl, "/api/authoring/workspace/save", {
         idempotencyKey: "preserve-durable-flow-0001"
@@ -176,6 +183,9 @@ describe("live prototype application integration", () => {
       const afterRestart = await readFlow(startup.localUrl);
       expect(hasDurableAction(afterRestart)).toBe(true);
       expect(afterRestart.revision).toBe(store.getActiveRelease().contentRevision);
+      const controllerLayouts = await readTool(startup.localUrl, "/api/controller-layouts");
+      expect(controllerLayouts.layouts.states.map((state) => state.id))
+        .toContain("writing-moment");
     } finally {
       await runtime.stop();
     }
@@ -226,6 +236,8 @@ describe("live prototype application integration", () => {
       }, saveHeaders);
       expect(saved.saved).toBe(true);
       expect((await lobby(startup.localUrl)).gameTitle).toBe("Durable live title");
+      const health = await (await fetch(`${startup.localUrl}/api/health`)).json();
+      expect(health.release.contentRevision).toBe(saved.workingRevision);
     } finally {
       await runtime.stop();
     }

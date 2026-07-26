@@ -62,6 +62,10 @@ function createRouterRuntime({
   serveDraftHostAudioAsset,
   serveSharedFile,
 }) {
+  function currentActiveRelease() {
+    return typeof activeRelease === "function" ? activeRelease() : activeRelease;
+  }
+
   function router(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
 
@@ -144,7 +148,7 @@ function createRouterRuntime({
           engineCompatibility: gameDefinition?.engineCompatibility || "",
           contentMode: gameDefinition?.content?.mode || ""
         },
-        release: activeRelease || null,
+        release: currentActiveRelease() || null,
         adminAuth: adminAuth?.publicStatus() || { mode: "unknown", protected: false },
         runtimeCapabilities: runtimeCapabilities?.publicStatus() || { mode: "unknown", protected: false },
         contentStore: contentStatus || { mode: "disabled", remoteAuthoring: "disabled", enabled: false }

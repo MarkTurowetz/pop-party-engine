@@ -53,7 +53,18 @@ function fixture() {
       availableFlowTransitions: []
     }
   };
-  return { root, outputRoot, gameDefinition };
+  return {
+    root,
+    outputRoot,
+    gameDefinition,
+    sourcePaths: {
+      flow: "game-flow.json",
+      constants: "game-constants.json",
+      stageLayouts: "stage-layouts.json",
+      controllerLayouts: "controller-layouts.json",
+      hostAudios: "host-audios.json"
+    }
+  };
 }
 
 afterEach(() => {
@@ -84,10 +95,19 @@ describe("legacy content bundle exporter", () => {
     );
     const manifest = exportLegacyContentBundle({
       ...options,
-      sourcePaths: { flow: "tracked/flow.json" }
+      sourcePaths: { ...options.sourcePaths, flow: "tracked/flow.json" }
     });
     const snapshot = createLocalContentBundleProvider({ root: options.outputRoot }).loadPublishedRevision(manifest.rootHash);
 
     expect(snapshot.readJson("flow.json").states[0].id).toBe("tracked");
+  });
+
+  it("fails closed when any legacy source path is left implicit", () => {
+    const options = fixture();
+    delete options.sourcePaths.flow;
+
+    expect(() => exportLegacyContentBundle(options))
+      .toThrow(/requires an explicit flow source path/i);
+    expect(fs.existsSync(options.outputRoot)).toBe(false);
   });
 });

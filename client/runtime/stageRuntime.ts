@@ -1016,7 +1016,9 @@ async function subscribeToStage(stageCode: string): Promise<void> {
   });
 }
 
-async function setupStage(): Promise<void> {
+let stageSetupPromise: Promise<void> | null = null;
+
+async function setupStageOnce(): Promise<void> {
   w().stageScreen.classList.remove("hidden");
   initStageTextObjects();
   w().listenForArtAssetsChanged!(reloadStageArtAssets);
@@ -1073,6 +1075,16 @@ async function setupStage(): Promise<void> {
     if (w().currentStageState) w().applyStageLayoutForPhase!((w().currentStageState as Dict).phase as string);
   });
   await subscribeToStage(stageCode);
+}
+
+function setupStage(): Promise<void> {
+  if (!stageSetupPromise) {
+    stageSetupPromise = setupStageOnce().catch((error) => {
+      stageSetupPromise = null;
+      throw error;
+    });
+  }
+  return stageSetupPromise;
 }
 
 // Install the orchestrator entry points + the names other scripts read as globals,

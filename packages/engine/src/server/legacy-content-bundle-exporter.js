@@ -17,9 +17,34 @@ function firstExisting(root, candidates) {
   throw new Error(`None of the legacy sources exist: ${candidates.join(", ")}`);
 }
 
-function sourceCandidates(sourcePaths, key, fallbacks) {
+const REQUIRED_SOURCE_KEYS = Object.freeze([
+  "flow",
+  "constants",
+  "stageLayouts",
+  "controllerLayouts",
+  "hostAudios"
+]);
+
+function requiredSourcePath(root, sourcePaths, key) {
   const configured = String(sourcePaths?.[key] || "").trim();
-  return configured ? [configured] : fallbacks;
+  if (!configured) {
+    throw new Error(
+      `Legacy export requires an explicit ${key} source path; refusing to guess from volatile local files`
+    );
+  }
+  const resolved = path.resolve(root, configured);
+  const relative = path.relative(root, resolved);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(`Legacy export source must be a file inside the declared root: ${configured}`);
+  }
+  if (!fs.existsSync(resolved)) throw new Error(`Legacy export source does not exist: ${configured}`);
+  return resolved;
+}
+
+function requiredSourcePaths(root, sourcePaths) {
+  return Object.fromEntries(
+    REQUIRED_SOURCE_KEYS.map((key) => [key, requiredSourcePath(root, sourcePaths, key)])
+  );
 }
 
 function writeBundleFile(outputRoot, logicalPath, value, records) {
@@ -61,6 +86,7 @@ function withDefaultArtCompositions(savedManifest, defaultCompositions) {
 function exportLegacyContentBundle(options) {
   const root = path.resolve(options.root);
   const outputRoot = path.resolve(options.outputRoot);
+  const sourcePaths = requiredSourcePaths(root, options.sourcePaths || {});
   if (fs.existsSync(outputRoot)) {
     if (!options.force) throw new Error(`Bundle output already exists: ${outputRoot}`);
     fs.rmSync(outputRoot, { recursive: true, force: true });
@@ -68,18 +94,14 @@ function exportLegacyContentBundle(options) {
   fs.mkdirSync(outputRoot, { recursive: true });
   const gameDefinition = options.gameDefinition;
   const gameData = gameDefinition.gameData;
-  const sourcePaths = options.sourcePaths || {};
   const records = [];
   writeBundleFile(
     outputRoot,
     "flow.json",
-    readJson(firstExisting(root, sourceCandidates(sourcePaths, "flow", ["game-flow.json", "game-flow.default.json"]))),
+    readJson(sourcePaths.flow),
     records
   );
-  const savedConstants = readJson(firstExisting(
-    root,
-    sourceCandidates(sourcePaths, "constants", ["game-constants.json", "game-constants.default.json"])
-  ));
+  const savedConstants = readJson(sourcePaths.constants);
   writeBundleFile(outputRoot, "constants.json", {
     ...gameData.defaultGameConstants,
     ...savedConstants,
@@ -93,10 +115,7 @@ function exportLegacyContentBundle(options) {
     outputRoot,
     "layouts/stage.json",
     withDefaultBackgroundLayer(
-      readJson(firstExisting(
-        root,
-        sourceCandidates(sourcePaths, "stageLayouts", ["stage-layouts.json", "stage-layouts.default.json"])
-      )),
+      readJson(sourcePaths.stageLayouts),
       gameData.defaultStageLayouts
     ),
     records
@@ -104,19 +123,13 @@ function exportLegacyContentBundle(options) {
   writeBundleFile(
     outputRoot,
     "layouts/controller.json",
-    readJson(firstExisting(
-      root,
-      sourceCandidates(sourcePaths, "controllerLayouts", ["controller-layouts.json", "controller-layouts.default.json"])
-    )),
+    readJson(sourcePaths.controllerLayouts),
     records
   );
   writeBundleFile(
     outputRoot,
     "audio/host-audios.json",
-    readJson(firstExisting(
-      root,
-      sourceCandidates(sourcePaths, "hostAudios", ["host-audios.json", "host-audios.default.json"])
-    )),
+    readJson(sourcePaths.hostAudios),
     records
   );
   writeBundleFile(outputRoot, "prompts/prompts.json", { prompts: gameData.multipleChoicePrompts }, records);
