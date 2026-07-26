@@ -2,7 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { rootHashInput } = require("../shared/content-bundle-schema");
+const { ENGINE_CONTENT_SCHEMA_VERSION, rootHashInput } = require("../shared/content-bundle-schema");
 const { sha256 } = require("./local-content-bundle-provider");
 
 function readJson(filePath) {
@@ -160,7 +160,7 @@ function exportLegacyContentBundle(options) {
     schemaVersion: 1,
     gameId: gameDefinition.gameId,
     engineContentSchemaVersion: String(
-      options.engineContentSchemaVersion || gameDefinition.engineCompatibility || "1.0.0"
+      options.engineContentSchemaVersion || ENGINE_CONTENT_SCHEMA_VERSION
     ),
     flowExpressionLanguageVersion: 1,
     gameMigrationLevel: 0,

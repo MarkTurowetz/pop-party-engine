@@ -5,6 +5,7 @@ const {
   semanticRoleTargetKey,
   validateSemanticRoleDocument
 } = require("../shared/semantic-role-schema");
+const { ENGINE_CONTENT_SCHEMA_VERSION } = require("../shared/content-bundle-schema");
 const { createBundleGameData } = require("./content-game-data-runtime");
 
 class GameReadinessError extends Error {
@@ -58,7 +59,7 @@ function createGameReleaseValidator(options = {}) {
   const game = options.gameDefinition;
   if (!game || typeof game !== "object") throw new Error("Game release validation requires a defined game");
   const engineVersion = String(options.engineVersion || "").trim();
-  const contentSchemaVersion = String(options.contentSchemaVersion || engineVersion).trim();
+  const contentSchemaVersion = String(options.contentSchemaVersion || ENGINE_CONTENT_SCHEMA_VERSION).trim();
   if (!engineVersion) throw new Error("Game release validation requires the running engine version");
 
   return async function validateGameRelease(context = {}) {
@@ -101,7 +102,7 @@ function createGameReadinessRuntime(options = {}) {
     throw new Error("Game readiness requires a bundle content store");
   }
   const engineVersion = String(options.engineVersion || "").trim();
-  const contentSchemaVersion = String(options.contentSchemaVersion || engineVersion).trim();
+  const contentSchemaVersion = String(options.contentSchemaVersion || ENGINE_CONTENT_SCHEMA_VERSION).trim();
   if (!engineVersion) throw new Error("Game readiness requires the running engine version");
   const validateGameRelease = createGameReleaseValidator({
     gameDefinition: game,

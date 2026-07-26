@@ -52,7 +52,7 @@ function fixture(overrides = {}) {
   };
   const snapshot = {
     revision: "content-1",
-    manifest: { gameId: "fixture-game", engineContentSchemaVersion: "1.0.0", semanticRolesPath: "semantic-roles.json" },
+    manifest: { gameId: "fixture-game", engineContentSchemaVersion: "1.2.0", semanticRolesPath: "semantic-roles.json" },
     readJson: vi.fn((logicalPath) => structuredClone(documents[logicalPath]))
   };
   const release = {
@@ -83,6 +83,19 @@ function fixture(overrides = {}) {
 }
 
 describe("game readiness runtime", () => {
+  it("keeps content-schema compatibility independent from engine patch releases", async () => {
+    const { game } = fixture({
+      game: { engineCompatibility: "1.2.2" },
+      release: { engineVersion: "1.2.2" }
+    });
+    const runtime = createGameReadinessRuntime({ gameDefinition: game, engineVersion: "1.2.2" });
+
+    await expect(runtime.check()).resolves.toMatchObject({
+      release: { engineVersion: "1.2.2", contentRevision: "content-1" },
+      snapshot: { manifest: { engineContentSchemaVersion: "1.2.0" } }
+    });
+  });
+
   it("returns an immutable active tuple only after the entire bundle is compatible", async () => {
     const validator = vi.fn(async () => ({ ok: true }));
     const { game } = fixture({ validators: [{ id: "fixture.validate", value: validator }] });

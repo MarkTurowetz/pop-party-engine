@@ -57,7 +57,7 @@ async function createGameMigration(options = {}) {
   const validateRelease = createGameReleaseValidator({
     gameDefinition: loaded.gameDefinition,
     engineVersion,
-    contentSchemaVersion: options.contentSchemaVersion || engineVersion
+    contentSchemaVersion: options.contentSchemaVersion
   });
   const migration = createContentMigrationRuntime({
     gameDefinition: loaded.gameDefinition,

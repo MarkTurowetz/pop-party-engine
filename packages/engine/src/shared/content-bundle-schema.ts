@@ -29,6 +29,9 @@
   }
 
   const CONTENT_BUNDLE_SCHEMA_VERSION = 1;
+  // Content compatibility advances only when the persisted bundle contract
+  // changes. It is intentionally independent from the npm engine version.
+  const ENGINE_CONTENT_SCHEMA_VERSION = "1.2.0";
   const CONTENT_BUNDLE_MANIFEST_PATH = "content-bundle.json";
   const REQUIRED_CONTENT_PATHS = Object.freeze([
     "flow.json",
@@ -156,6 +159,7 @@
   return {
     CONTENT_BUNDLE_MANIFEST_PATH,
     CONTENT_BUNDLE_SCHEMA_VERSION,
+    ENGINE_CONTENT_SCHEMA_VERSION,
     REQUIRED_CONTENT_PATHS,
     canonicalizeJson,
     normalizeBundlePath,

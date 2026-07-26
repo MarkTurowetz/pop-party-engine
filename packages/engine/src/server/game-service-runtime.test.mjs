@@ -50,7 +50,7 @@ function gameFixture(events, releaseOverrides = {}) {
   };
   const snapshot = {
     revision: "content-1",
-    manifest: { gameId: "fixture-game", engineContentSchemaVersion: "1.0.0", semanticRolesPath: "semantic-roles.json" },
+    manifest: { gameId: "fixture-game", engineContentSchemaVersion: "1.2.0", semanticRolesPath: "semantic-roles.json" },
     readJson(logicalPath) {
       return structuredClone(documents[logicalPath]);
     }

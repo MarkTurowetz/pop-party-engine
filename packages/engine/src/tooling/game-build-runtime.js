@@ -39,7 +39,7 @@ async function createGameBuild(options = {}) {
   const readiness = createGameReadinessRuntime({
     gameDefinition: loaded.gameDefinition,
     engineVersion,
-    contentSchemaVersion: options.contentSchemaVersion || engineVersion
+    contentSchemaVersion: options.contentSchemaVersion
   });
   const active = await readiness.check();
   const outputRoot = path.resolve(loaded.cwd, options.outputDirectory || "dist");

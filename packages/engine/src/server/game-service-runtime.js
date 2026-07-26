@@ -31,7 +31,7 @@ function createGameServiceRuntime(options = {}) {
   const readiness = createGameReadinessRuntime({
     gameDefinition: options.gameDefinition,
     engineVersion: options.engineVersion,
-    contentSchemaVersion: options.contentSchemaVersion || options.engineVersion
+    contentSchemaVersion: options.contentSchemaVersion
   });
   const initialize = typeof options.initialize === "function" ? options.initialize : async () => {};
   const onStarted = typeof options.onStarted === "function" ? options.onStarted : async () => {};
