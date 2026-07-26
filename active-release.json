@@ -1,9 +1,9 @@
 {
   "gameId": "pop-party-reference",
   "gameBuild": "1.0.17",
-  "engineVersion": "1.2.0",
+  "engineVersion": "1.2.2",
   "pluginVersion": "1.0.17",
   "contentRevision": "9c90245b0eba60557477fd1df02d09f8d7008c2e4abcbb2557b2dbb0dc35e5a4",
-  "previousReleaseRevision": "ce680f7b30034a078ff8596121107952460460d0a38650c24eac5cb0dce3673c",
-  "releaseRevision": "7d2e63da4913d49e4d762413e356d3976884957116e1afd19486862a219f168d"
+  "previousReleaseRevision": "7d2e63da4913d49e4d762413e356d3976884957116e1afd19486862a219f168d",
+  "releaseRevision": "549c61a257989ccdf06d4a0df41bcf9612b6e8258f48fc2294a6ce7698b1f582"
 }
