@@ -10,8 +10,8 @@
   "files": [
     {
       "path": "art/manifest.json",
-      "sha256": "b583ce30fb5c2ced2289afe764a28be12410bfdc6c7ce6171f8e0869ba0135e3",
-      "bytes": 366641
+      "sha256": "c4450d995cd528129cc6e5cecc8e4f4ffe6461797d9e0ac0cfeb44104a8ccae8",
+      "bytes": 365751
     },
     {
       "path": "audio/host-audios.json",
@@ -65,8 +65,8 @@
     },
     {
       "path": "flow.json",
-      "sha256": "c4ec28d1d49d33314c4cf2463fec5de2992f5929b65e3136d9eabe47334e6d7c",
-      "bytes": 51456
+      "sha256": "cbcb31c288519a12fed3976b481330acccd01a1751a504530f6a12520eb22e82",
+      "bytes": 27038
     },
     {
       "path": "game-data/runtime.json",
@@ -94,5 +94,5 @@
       "bytes": 2469
     }
   ],
-  "rootHash": "2af49894b93a1435d888f49e5bcb64f575f1e7345c16dfce08bf02ca30b49453"
+  "rootHash": "12e15ebee30eccfcd482d90fa0c5e3a222856e98aa4789a4ea14e32b426cb4ac"
 }

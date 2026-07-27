@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1187",
+  "version": "1.0.17.1189",
   "baseVersion": "1.0.17",
-  "buildNumber": 1187,
-  "commit": "311add5a",
-  "branch": "codex/restore-latest-template-game-data",
-  "generatedAt": "2026-07-26T20:55:31.884Z"
+  "buildNumber": 1189,
+  "commit": "e3514f6d",
+  "branch": "codex/restore-complete-pre-migration-game-data",
+  "generatedAt": "2026-07-27T00:27:39.753Z"
 }

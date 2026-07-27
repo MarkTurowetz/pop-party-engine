@@ -4,14 +4,12 @@ const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const gameDefinition = require("../apps/reference/game.config");
 const { version: engineVersion } = require("../packages/engine/package.json");
-const authoringSourceGameData = require("../apps/reference/authoring-source-game-data");
 const { generateGame } = require("../packages/create-game/src/generate-game");
-const { exportLegacyContentBundle } = require("@pop-party/engine/tooling");
 const { createLocalContentBundleProvider } = require("@pop-party/engine/content/local");
 
 const root = path.resolve(__dirname, "..");
+const referenceRoot = path.join(root, "apps", "reference", "content");
 const committedRoot = path.join(root, "packages", "create-game", "starter", "content");
 const noticesPath = path.join(root, "packages", "create-game", "starter", "ASSET-NOTICES.json");
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-starter-check-"));
@@ -40,24 +38,26 @@ function inventory(directory) {
 }
 
 try {
-  const reproducedRoot = path.join(temporaryRoot, "reproduced");
-  exportLegacyContentBundle({
-    root,
-    outputRoot: reproducedRoot,
-    gameDefinition: { ...gameDefinition, gameData: authoringSourceGameData },
-    artManifestPath: "apps/reference/content/art/manifest.json",
-    sourcePaths: {
-      flow: "apps/reference/content/flow.json",
-      constants: "apps/reference/content/constants.json",
-      stageLayouts: "apps/reference/content/layouts/stage.json",
-      controllerLayouts: "apps/reference/content/layouts/controller.json",
-      hostAudios: "apps/reference/content/audio/host-audios.json"
-    }
-  });
-  const committedInventory = inventory(committedRoot);
-  const reproducedInventory = inventory(reproducedRoot);
-  if (JSON.stringify(committedInventory) !== JSON.stringify(reproducedInventory)) {
-    throw new Error("Committed starter bundle is not reproducible from the current reference snapshot");
+  const committedInventory = inventory(committedRoot)
+    .filter((record) => record.path !== "content-bundle.json");
+  const referenceInventory = inventory(referenceRoot)
+    .filter((record) => record.path !== "content-bundle.json");
+  if (JSON.stringify(committedInventory) !== JSON.stringify(referenceInventory)) {
+    throw new Error("Committed starter content bytes do not match the current reference snapshot");
+  }
+  const referenceManifest = JSON.parse(
+    fs.readFileSync(path.join(referenceRoot, "content-bundle.json"), "utf8")
+  );
+  const committedManifest = JSON.parse(
+    fs.readFileSync(path.join(committedRoot, "content-bundle.json"), "utf8")
+  );
+  const expectedStarterManifest = {
+    ...referenceManifest,
+    parentRevision: "",
+    publishedRevision: ""
+  };
+  if (JSON.stringify(committedManifest) !== JSON.stringify(expectedStarterManifest)) {
+    throw new Error("Committed starter manifest is not the reference manifest with publication metadata cleared");
   }
   const starterSnapshot = createLocalContentBundleProvider({ root: committedRoot }).loadPublishedRevision();
   const artManifest = JSON.parse(fs.readFileSync(path.join(committedRoot, "art", "manifest.json"), "utf8"));
