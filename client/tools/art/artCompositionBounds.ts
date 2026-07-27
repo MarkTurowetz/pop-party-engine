@@ -1,4 +1,5 @@
 import type { ArtComponent, ArtComposition } from "../../types/game-data";
+import { artCompositionFrameZeroOverrides } from "./artReferenceFrameOverrides";
 
 export interface ArtBounds {
   minX: number;
@@ -214,4 +215,19 @@ export function artCompositionContentBounds(
   options: ArtCompositionContentBoundsOptions = {}
 ): ArtBounds {
   return artCompositionContentBoundsWithResolver(composition, (id) => compositionById.get(id) || null, options);
+}
+
+/**
+ * Editor-facing intrinsic artwork bounds for a composition at its resting
+ * frame. References still render through their authored source canvas; this
+ * measurement is only for selection chrome, inherited inspector dimensions,
+ * and pointer geometry that should follow the visible child artwork.
+ */
+export function artCompositionFrameZeroContentBounds(
+  composition: ArtComposition,
+  compositionById: Map<string, ArtComposition>
+): ArtBounds {
+  return artCompositionContentBounds(composition, compositionById, {
+    timelineFrameOverrides: artCompositionFrameZeroOverrides(composition, compositionById)
+  });
 }

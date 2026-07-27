@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ArtComposition } from "../../types/game-data";
-import { artCompositionContentBounds, artCompositionVisualBounds } from "./artCompositionBounds";
+import {
+  artCompositionContentBounds,
+  artCompositionFrameZeroContentBounds,
+  artCompositionVisualBounds
+} from "./artCompositionBounds";
 
 function composition(id: string, overrides: Partial<ArtComposition> = {}): ArtComposition {
   return {
@@ -128,5 +132,37 @@ describe("artCompositionContentBounds", () => {
     });
 
     expect(result).toEqual({ minX: -300, minY: -90, maxX: 100, maxY: -10, width: 400, height: 80 });
+  });
+
+  it("updates resting content dimensions when child artwork changes inside a stale canvas", () => {
+    const popup = composition("popup", {
+      canvas: { width: 700, height: 130 },
+      components: [
+        { id: "card", name: "Card", kind: "shape", x: 350, y: 65, width: 660, height: 104 }
+      ]
+    });
+    const map = new Map([[popup.id, popup]]);
+
+    expect(artCompositionFrameZeroContentBounds(popup, map)).toEqual({
+      minX: 20,
+      minY: 13,
+      maxX: 680,
+      maxY: 117,
+      width: 660,
+      height: 104
+    });
+
+    popup.components = [
+      { id: "card", name: "Card", kind: "shape", x: 350, y: 65, width: 150, height: 150 }
+    ];
+
+    expect(artCompositionFrameZeroContentBounds(popup, map)).toEqual({
+      minX: 275,
+      minY: -10,
+      maxX: 425,
+      maxY: 140,
+      width: 150,
+      height: 150
+    });
   });
 });
