@@ -107,6 +107,19 @@ async function lobby(baseUrl) {
   return (await (await fetch(`${baseUrl}/api/stage/LIVE/lobby`)).json()).lobby;
 }
 
+async function roomControllerLayouts(baseUrl) {
+  const response = await fetch(`${baseUrl}/api/stage/LIVE/content/controller-layouts`);
+  expect(response.status).toBe(200);
+  return (await response.json()).layouts;
+}
+
+function lobbyControllerElementIds(layouts) {
+  return layouts.states
+    .find((state) => state.id === "lobby")
+    .elements
+    .map((element) => element.id);
+}
+
 describe("live prototype application integration", () => {
   it("serves and preserves durable Tool content when packaged content is stale", async () => {
     const { durableSnapshot, store } = fixtureStoreWithDurableFlow();
@@ -146,8 +159,15 @@ describe("live prototype application integration", () => {
         .toBe("Durable Tool Content");
       expect((await readTool(startup.localUrl, "/api/stage-layouts")).layouts.canvas.width)
         .toBe(1919);
-      expect((await readTool(startup.localUrl, "/api/controller-layouts")).layouts.canvas.width)
-        .toBe(391);
+      const controllerLayouts = (await readTool(startup.localUrl, "/api/controller-layouts")).layouts;
+      expect(controllerLayouts.canvas.width).toBe(391);
+      expect(lobbyControllerElementIds(controllerLayouts)).toContain("controllerlobbybuttoncontainer");
+      expect(lobbyControllerElementIds(controllerLayouts)).not.toContain("startgamebutton");
+      await post(startup.localUrl, "/api/stage/rooms", { stageCode: "LIVE" });
+      const pinnedControllerLayouts = await roomControllerLayouts(startup.localUrl);
+      expect(lobbyControllerElementIds(pinnedControllerLayouts)).toEqual(
+        lobbyControllerElementIds(controllerLayouts)
+      );
       expect((await readTool(startup.localUrl, "/api/host-audios")).hostAudios.hostAudios)
         .toContainEqual(expect.objectContaining({ id: "durable-only-host-audio" }));
       expect((await readTool(startup.localUrl, "/api/art-assets")).compositions)
@@ -161,12 +181,12 @@ describe("live prototype application integration", () => {
       const duringSession = await readFlow(startup.localUrl);
       expect(duringSession.revision).toBe(durableSnapshot.revision);
       expect(hasDurableAction(duringSession)).toBe(true);
-      const controllerLayouts = await readTool(startup.localUrl, "/api/controller-layouts");
-      const controllerStateIds = controllerLayouts.layouts.states.map((state) => state.id);
+      const currentControllerLayouts = await readTool(startup.localUrl, "/api/controller-layouts");
+      const controllerStateIds = currentControllerLayouts.layouts.states.map((state) => state.id);
       expect(controllerStateIds).toContain("writing-moment");
       expect(controllerStateIds).toContain("controller-text-input");
       await post(startup.localUrl, "/api/tool-drafts", {
-        controllerLayouts: controllerLayouts.layouts
+        controllerLayouts: currentControllerLayouts.layouts
       }, headers);
 
       const saved = await post(startup.localUrl, "/api/authoring/workspace/save", {
@@ -247,6 +267,51 @@ describe("live prototype application integration", () => {
     try {
       await post(startup.localUrl, "/api/stage/rooms", { stageCode: "LIVE" });
       expect((await lobby(startup.localUrl)).gameTitle).toBe("Durable live title");
+    } finally {
+      await runtime.stop();
+    }
+  });
+
+  it("normalizes legacy controller button targets for published rooms", async () => {
+    const store = fixtureStore();
+    const runtime = createGameApplicationRuntime({
+      gameDefinition: game(store),
+      workspaceRoot: projectRoot,
+      contentRoot: path.join(projectRoot, "apps/reference/content"),
+      authoringRoot: path.join(projectRoot, "apps/reference/content"),
+      webRoot: projectRoot,
+      authoringMode: "standard",
+      host: "127.0.0.1",
+      port: 0
+    });
+    const startup = await runtime.start();
+    try {
+      await post(startup.localUrl, "/api/stage/rooms", { stageCode: "LIVE" });
+      const layouts = await roomControllerLayouts(startup.localUrl);
+      const elements = layouts.states.flatMap((state) => state.elements);
+      const lobbyElements = layouts.states.find((state) => state.id === "lobby").elements;
+      expect(lobbyElements).toContainEqual(expect.objectContaining({
+        id: "controllerlobbybuttoncontainer",
+        selector: "#controllerLobbyButtonContainer",
+        artCompositionId: ""
+      }));
+      expect(elements).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: "controllerjoinbuttoncontainer", selector: "#controllerJoinButtonContainer" }),
+        expect.objectContaining({ id: "controllerlobbybuttoncontainer", selector: "#controllerLobbyButtonContainer" }),
+        expect.objectContaining({ id: "controllertextsubmitbuttoncontainer", selector: "#controllerTextSubmitButtonContainer" }),
+        expect.objectContaining({ id: "controllervoicebuttoncontainer", selector: "#controllerVoiceButtonContainer" }),
+        expect.objectContaining({ id: "controllermicaccessbuttoncontainer", selector: "#controllerMicAccessButtonContainer" })
+      ]));
+      const elementIds = elements.map((element) => element.id);
+      for (const legacyElementId of [
+        "joinbutton",
+        "startgamebutton",
+        "controllertextsubmitbutton",
+        "controllervoicebutton",
+        "controllermicaccessbutton"
+      ]) {
+        expect(elementIds).not.toContain(legacyElementId);
+      }
     } finally {
       await runtime.stop();
     }

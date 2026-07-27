@@ -336,6 +336,7 @@ const roomReleaseValidator = createGameReleaseValidator({
 const publishedRoomContentPins = createRoomContentPinRuntime({
   contentStore: roomContentStore,
   gameId: runtimeGameDefinition.gameId,
+  materializeGameData: materializeRuntimeGameData,
   validateRelease: roomReleaseValidator
 });
 const draftPreviewRooms = revisionedToolAuthoring
@@ -346,6 +347,7 @@ const draftPreviewRooms = revisionedToolAuthoring
       gameBuild: runtimeGameDefinition.version,
       engineVersion: runtimeGameDefinition.engineCompatibility,
       pluginVersion: runtimeGameDefinition.version,
+      materializeGameData: materializeRuntimeGameData,
       validateRelease: roomReleaseValidator
     })
   : null;
@@ -630,6 +632,14 @@ const {
   readGameFlow
 });
 
+function materializeRuntimeGameData(snapshot) {
+  const gameData = createBundleGameData(snapshot);
+  return Object.freeze({
+    ...gameData,
+    defaultControllerLayouts: normalizeControllerLayouts(gameData.defaultControllerLayouts)
+  });
+}
+
 const githubStorage = createGithubStorageRuntime({
   baseBranch: GAME_FLOW_GITHUB_BASE_BRANCH,
   branch: GAME_FLOW_GITHUB_BRANCH,
@@ -876,9 +886,9 @@ if (AUTHORING_MODE === "live-prototype") {
     },
     rooms,
     onSnapshotChanged: (snapshot) => installLivePrototypeToolSources(snapshot),
-    validateSnapshot: (snapshot) => createBundleGameData(snapshot),
+    validateSnapshot: (snapshot) => materializeRuntimeGameData(snapshot),
     installRoomSnapshot: async (room, snapshot, release, { reset }) => {
-      const gameData = createBundleGameData(snapshot);
+      const gameData = materializeRuntimeGameData(snapshot);
       const validation = await roomReleaseValidator({
         gameData,
         release: {
@@ -1131,6 +1141,7 @@ if (SESSION_CONTENT_MODE === "latest-saved-authoring") {
     loadFlow: loadGameFlowSource,
     loadHostAudios: loadHostAudiosSource,
     loadStageLayouts: loadStageLayoutsSource,
+    materializeGameData: materializeRuntimeGameData,
     validateRelease: roomReleaseValidator
   });
   await authoringSessionContent.refresh();
