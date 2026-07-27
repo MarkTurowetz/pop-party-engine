@@ -261,6 +261,34 @@ describe("ArtPreviewRenderer transform origins", () => {
     expect(markup).toContain("left:-300px;top:-90px;width:400px;height:80px");
   });
 
+  it("keeps reference rendering on the source canvas while selection chrome follows child artwork", () => {
+    const popup = {
+      id: "popup",
+      canvas: { width: 700, height: 130 },
+      components: [{ id: "card", kind: "shape", x: 350, y: 65, width: 150, height: 150 }]
+    } as ArtComposition;
+    const reference = {
+      id: "popup-slot",
+      kind: "reference",
+      artCompositionId: popup.id,
+      x: 350,
+      y: 65,
+      scale: 0.92
+    } as ArtComponent;
+
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer
+        components={[reference]}
+        compositionById={new Map([[popup.id, popup]])}
+        selectedIds={new Set([reference.id])}
+      />
+    );
+
+    expect(markup).toContain("width:700px;height:130px;transform:scale(0.92)");
+    expect(markup).toContain("left:275px;top:-10px;width:150px;height:150px");
+    expect(markup).toContain("left:419px;top:134px;width:12px;height:12px");
+  });
+
   it("does not leak an unscoped parent override into a same-named nested child", () => {
     const child = {
       id: "child",

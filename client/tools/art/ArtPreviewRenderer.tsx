@@ -9,6 +9,7 @@ import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-da
 import { gameTextHtml } from "../../runtime/gameTextMarkup";
 import type { ArtCanvasLivePositions } from "./artCanvasTransformTransaction";
 import { artReferenceFrameZeroOverrides } from "./artReferenceFrameOverrides";
+import { artCompositionContentBounds } from "./artCompositionBounds";
 import { PartyGameTextFit } from "../../runtime/textFit";
 import {
   componentSupportsShapeStyle,
@@ -124,6 +125,16 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
     () => artReferenceFrameZeroOverrides(props.components || [], props.compositionById),
     [props.components, props.compositionById]
   );
+  const contentFrameOverrides = useMemo(
+    () => {
+      const merged: Record<string, Record<string, unknown>> = { ...referenceFrameOverrides };
+      for (const [targetId, values] of Object.entries(props.timelineFrameOverrides || {})) {
+        merged[targetId] = { ...(merged[targetId] || {}), ...values };
+      }
+      return merged;
+    },
+    [props.timelineFrameOverrides, referenceFrameOverrides]
+  );
 
   const imageSourceFor = (component: ArtComponent, timelineOverride: Record<string, unknown> = {}): string => {
     const imageDataUrl = String(timelineOverride.imageDataUrl ?? get(component, "imageDataUrl") ?? "");
@@ -211,6 +222,20 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
 
     const chromeVisible = layer.interactive !== false && (selected || contentOpacity <= 0.01);
     const containerGuideVisible = kind === "container" && props.interactive !== false && layer.interactive !== false;
+    const referenceContentBounds = referencedComposition && chromeVisible
+      ? artCompositionContentBounds(referencedComposition, props.compositionById, {
+          targetPath: scopedTargetId ? [scopedTargetId] : [],
+          timelineFrameOverrides: contentFrameOverrides
+        })
+      : null;
+    const chromeBounds = referenceContentBounds || {
+      minX: 0,
+      minY: 0,
+      maxX: width,
+      maxY: height,
+      width,
+      height
+    };
 
     const style: CSSProperties = {
       position: "absolute",
@@ -271,7 +296,10 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
 
     const chromeStyle: CSSProperties = {
       position: "absolute",
-      inset: 0,
+      left: chromeBounds.minX,
+      top: chromeBounds.minY,
+      width: chromeBounds.width,
+      height: chromeBounds.height,
       borderRadius: visualStyle.borderRadius,
       border: selected ? "2px solid #ffe156" : "1.5px solid rgba(255, 225, 86, 0.86)",
       boxShadow: selected ? "0 0 0 2px rgba(23, 19, 31, 0.26), 0 0 0 5px rgba(255, 225, 86, 0.2)" : "none",
@@ -364,8 +392,8 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
               onPointerDown={props.onBeginResize ? (event) => props.onBeginResize?.(component, event) : undefined}
               style={{
                 position: "absolute",
-                right: -6,
-                bottom: -6,
+                left: chromeBounds.maxX - 6,
+                top: chromeBounds.maxY - 6,
                 width: 12,
                 height: 12,
                 background: "#ffe156",
@@ -378,11 +406,10 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
               onPointerDown={props.onBeginRotate ? (event) => props.onBeginRotate?.(component, event) : undefined}
               style={{
                 position: "absolute",
-                left: "50%",
-                top: -22,
+                left: chromeBounds.minX + chromeBounds.width / 2 - 6,
+                top: chromeBounds.minY - 22,
                 width: 12,
                 height: 12,
-                marginLeft: -6,
                 borderRadius: "50%",
                 background: "#ffe156",
                 border: "1px solid #17131f",

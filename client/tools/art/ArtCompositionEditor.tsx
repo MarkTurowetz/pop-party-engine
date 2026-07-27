@@ -16,7 +16,10 @@ import {
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { ColorPickerField } from "../common/ColorPickerField";
-import { artCompositionVisualBounds } from "./artCompositionBounds";
+import {
+  artCompositionFrameZeroContentBounds,
+  artCompositionVisualBounds
+} from "./artCompositionBounds";
 import {
   artPreviewScaleFromWheel,
   artPreviewScrollCenteringWorldOrigin,
@@ -721,6 +724,13 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
     const numberValue = Number(value);
     return Number.isFinite(numberValue) ? numberValue : fallback;
   };
+  const referenceContentBoundsFor = (component: ArtComponent) => {
+    if (component.kind !== "reference") return null;
+    const referenced = compositionById.get(String(component.artCompositionId));
+    return referenced
+      ? artCompositionFrameZeroContentBounds(referenced, compositionById)
+      : null;
+  };
   const commitCanvasTransformPatches = (patches: ArtCanvasTransformPatch[]): void => {
     if (!composition || patches.length === 0) return;
     const nextTimeline = applyArtCanvasTransformKeyframes(activeTimeline, patches, timelinePreviewFrame);
@@ -975,16 +985,27 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
       const referenced = component.kind === "reference"
         ? compositions.find((candidate) => candidate.id === component.artCompositionId)
         : null;
-      const width = referenced
-        ? Math.max(1, finiteNumber(referenced.canvas?.width, 1))
+      const referenceBounds = referenced ? referenceContentBoundsFor(component) : null;
+      const sourceWidth = referenced ? Math.max(1, finiteNumber(referenced.canvas?.width, 1)) : 0;
+      const sourceHeight = referenced ? Math.max(1, finiteNumber(referenced.canvas?.height, 1)) : 0;
+      const width = referenceBounds
+        ? Math.max(1, referenceBounds.width)
         : Math.max(1, finiteNumber(frameValues.width ?? get(component, "width"), 1));
-      const height = referenced
-        ? Math.max(1, finiteNumber(referenced.canvas?.height, 1))
+      const height = referenceBounds
+        ? Math.max(1, referenceBounds.height)
         : Math.max(1, finiteNumber(frameValues.height ?? get(component, "height"), 1));
       const scale = finiteNumber(frameValues.scale ?? get(component, "scale"), 1);
-      const visualScale = parent.scale * Math.max(1, Math.abs(scale));
-      const left = parent.left + (x - width / 2) * parent.scale;
-      const top = parent.top + (y - height / 2) * parent.scale;
+      const visualScale = parent.scale * Math.max(0.001, Math.abs(scale));
+      const left = parent.left + (
+        referenceBounds
+          ? x - sourceWidth / 2 + referenceBounds.minX
+          : x - width / 2
+      ) * parent.scale;
+      const top = parent.top + (
+        referenceBounds
+          ? y - sourceHeight / 2 + referenceBounds.minY
+          : y - height / 2
+      ) * parent.scale;
       const interactive = ancestorInteractive && component.locked !== true;
       if (interactive) {
         boxes.push({
@@ -1105,8 +1126,9 @@ export function ArtCompositionEditor({ controller, assets }: ArtCompositionEdito
   const beginResize = (component: ArtComponent, event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     event.stopPropagation();
-    const originW = timelineAwareComponentValue(component, "width", 1);
-    const originH = timelineAwareComponentValue(component, "height", 1);
+    const referenceBounds = referenceContentBoundsFor(component);
+    const originW = referenceBounds?.width || timelineAwareComponentValue(component, "width", 1);
+    const originH = referenceBounds?.height || timelineAwareComponentValue(component, "height", 1);
     const originScale = timelineAwareComponentValue(component, "scale", 1);
     const startX = event.clientX;
     const startY = event.clientY;
@@ -1766,10 +1788,13 @@ function ArtComponentInspector({
       </section>
     );
   }
+  const compositionById = new Map(compositions.map((candidate) => [candidate.id, candidate]));
   const componentFrameValue = (target: ArtComponent, key: string): unknown => {
     if (target.kind === "reference" && (key === "width" || key === "height")) {
-      const source = compositions.find((candidate) => candidate.id === target.artCompositionId);
-      return Number(source?.canvas?.[key] || 1);
+      const source = compositionById.get(String(target.artCompositionId));
+      if (!source) return 1;
+      const bounds = artCompositionFrameZeroContentBounds(source, compositionById);
+      return Number(bounds[key] || 1);
     }
     const values = timelineContext?.valuesById.get(target.id) || {};
     const value = timelineContext && TIMELINE_INSPECTOR_FIELDS.has(key) && Object.prototype.hasOwnProperty.call(values, key)

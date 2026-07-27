@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1191",
+  "version": "1.0.17.1192",
   "baseVersion": "1.0.17",
-  "buildNumber": 1191,
-  "commit": "4ce8a3f3",
-  "branch": "main",
-  "generatedAt": "2026-07-27T16:54:09.560Z"
+  "buildNumber": 1192,
+  "commit": "991db1fb",
+  "branch": "codex/fix-art-reference-bounds",
+  "generatedAt": "2026-07-27T23:04:58.474Z"
 }
