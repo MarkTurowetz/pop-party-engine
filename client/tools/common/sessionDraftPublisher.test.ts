@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createSessionDraftPublisher } from "./sessionDraftPublisher";
+import {
+  createSessionDraftPublisher,
+  republishAllSessionDraftPublishers
+} from "./sessionDraftPublisher";
 
 describe("createSessionDraftPublisher", () => {
   it("debounces draft publishes and clears when returning to the saved snapshot", async () => {
@@ -55,6 +58,47 @@ describe("createSessionDraftPublisher", () => {
       expect(postDraft).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it("republishes the current dirty snapshot after a server-side session reset", async () => {
+    const postDraft = vi.fn(async (message) => message);
+    const publisher = createSessionDraftPublisher({
+      postDraft,
+      savedSnapshot: "saved",
+      delayMs: 0,
+      clearMessage: { clearFlow: true },
+      draftMessage: (snapshot) => ({ flow: snapshot })
+    });
+
+    try {
+      await publisher.publish("dirty");
+      postDraft.mockClear();
+
+      await republishAllSessionDraftPublishers();
+
+      expect(postDraft).toHaveBeenCalledTimes(1);
+      expect(postDraft).toHaveBeenCalledWith({ flow: "dirty" });
+    } finally {
+      publisher.dispose();
+    }
+  });
+
+  it("does not republish clean snapshots", async () => {
+    const postDraft = vi.fn(async (message) => message);
+    const publisher = createSessionDraftPublisher({
+      postDraft,
+      savedSnapshot: "saved",
+      delayMs: 0,
+      clearMessage: { clearFlow: true },
+      draftMessage: (snapshot) => ({ flow: snapshot })
+    });
+
+    try {
+      await republishAllSessionDraftPublishers();
+      expect(postDraft).not.toHaveBeenCalled();
+    } finally {
+      publisher.dispose();
     }
   });
 });

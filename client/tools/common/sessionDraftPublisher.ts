@@ -19,7 +19,12 @@ export interface SessionDraftPublisher {
   dispose(options?: { clear?: boolean }): void;
 }
 
-const activeFlushers = new Set<() => Promise<void>>();
+interface ActivePublisher {
+  flush(): Promise<void>;
+  republish(): Promise<void>;
+}
+
+const activePublishers = new Set<ActivePublisher>();
 
 function reportAuthoringError(error: unknown): void {
   if (typeof window === "undefined") return;
@@ -29,7 +34,11 @@ function reportAuthoringError(error: unknown): void {
 }
 
 export async function flushAllSessionDraftPublishers(): Promise<void> {
-  await Promise.all([...activeFlushers].map((flush) => flush()));
+  await Promise.all([...activePublishers].map(({ flush }) => flush()));
+}
+
+export async function republishAllSessionDraftPublishers(): Promise<void> {
+  await Promise.all([...activePublishers].map(({ republish }) => republish()));
 }
 
 /**
@@ -89,12 +98,19 @@ export function createSessionDraftPublisher(
     pendingSnapshot = null;
     await (snapshot === savedSnapshot ? clear() : publish(snapshot));
   };
-  activeFlushers.add(flush);
+  const republish = async (): Promise<void> => {
+    await flush();
+    if (lastPublishedSnapshot === savedSnapshot) return;
+    await publish(lastPublishedSnapshot, { force: true });
+  };
+  const activePublisher = { flush, republish };
+  activePublishers.add(activePublisher);
 
   return {
     markSaved(snapshot) {
       savedSnapshot = snapshot;
       lastPublishedSnapshot = snapshot;
+      pendingSnapshot = null;
       clearTimer();
     },
     schedule(snapshot) {
@@ -109,7 +125,7 @@ export function createSessionDraftPublisher(
     clear,
     dispose(disposeOptions = {}) {
       clearTimer();
-      activeFlushers.delete(flush);
+      activePublishers.delete(activePublisher);
       if (disposeOptions.clear) void clear().catch(() => undefined);
     }
   };

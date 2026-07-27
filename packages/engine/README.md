@@ -79,8 +79,10 @@ Art composition, and binary art/audio edits immediately replace the complete
 snapshot used by that service's stage and controllers and reset rooms to the
 lobby without erasing player identity. Invalid intermediate bundles remain
 visible as authoring errors and never replace the last valid working snapshot.
-Refreshing Tools starts a clean workspace; closing it is enforced by a short
-heartbeat lease; restarting the service also discards unsaved work.
+Another Tools tab cannot silently replace an active session. Closing the active
+tab is enforced by a short heartbeat lease. A service restart or expired lease
+clears the server copy, but a still-open editor can resume with the same session
+id and must republish its dirty in-memory snapshots before Save.
 
 In live-prototype mode, Save means publish. The full working bundle is
 validated, its content and binary blobs are written, and one final expected-ref

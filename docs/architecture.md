@@ -30,7 +30,8 @@ concepts into focused modules.
   - Provides the opt-in single-service `live-prototype` authoring mode.
   - Builds one complete memory-only working snapshot from every Tool draft and atomically installs only valid snapshots into the project's rooms.
   - Resets rooms to the lobby when the working revision changes while retaining joined-player identity.
-  - Discards unsaved work on Tool refresh, session replacement, service restart, or heartbeat-lease expiry.
+  - Rejects destructive second-tab replacement and lets a still-open editor re-establish its session after a restart or heartbeat-lease expiry.
+  - Requires recovered clients to republish their dirty in-memory snapshots before Save so an empty restored workspace cannot overwrite unsaved browser state.
   - Commits the complete JSON and binary bundle through one final release-ref compare-and-swap, so Save is publish and partial writes never become authoritative.
 - `packages/engine/src/server/content-migration-runtime.js`
   - Resolves only explicit namespaced game-plugin migrations, requires a contiguous one-level path, and rejects downgrades.
