@@ -8,8 +8,8 @@ const { createBundleGameData } = require("../packages/engine/src/server/content-
 const { createContentSnapshot } = require("../packages/engine/src/server/content-snapshot-runtime");
 
 const EXPECTED = Object.freeze({
-  lastUserSavedContentCommit: "a192bbc3684da1e1b26a638cdc2cb5eae9bba6f2",
-  lastUserSavedContentRevision: "12e15ebee30eccfcd482d90fa0c5e3a222856e98aa4789a4ea14e32b426cb4ac"
+  laterToolStateCommit: "e471cafee62ebe0f61195a6591152388487b5fd9",
+  laterToolStateRevision: "2af49894b93a1435d888f49e5bcb64f575f1e7345c16dfce08bf02ca30b49453"
 });
 
 function snapshotFromDirectory(root) {
@@ -84,8 +84,8 @@ function recoverReferenceContent(options = {}) {
   const snapshot = snapshotFromDirectory(referenceRoot);
   assert.equal(
     snapshot.revision,
-    EXPECTED.lastUserSavedContentRevision,
-    "The committed reference content no longer matches the audited last user-saved revision"
+    EXPECTED.laterToolStateRevision,
+    "The committed reference content no longer matches the audited background-capable Tool state"
   );
   const gameData = createBundleGameData(snapshot);
 
@@ -101,18 +101,23 @@ function recoverReferenceContent(options = {}) {
   }
 
   const flow = gameData.defaultGameFlow;
+  const backgroundCompositionCount = gameData.defaultArtCompositions.filter(
+    (composition) => composition.id.startsWith("stage-background")
+  ).length;
   return Object.freeze({
     snapshot,
     summary: Object.freeze({
-      sourceContentCommit: EXPECTED.lastUserSavedContentCommit,
+      sourceContentCommit: EXPECTED.laterToolStateCommit,
       restoredContentRevision: snapshot.revision,
       fileCount: snapshot.paths.length,
       stateCount: flow.states.length,
       startMomentCount: countActions(flow, "startMoment"),
       endMomentCount: countActions(flow, "endMoment"),
+      routeNodeCount: flow.routeNodes.length,
       stageLayoutCount: gameData.defaultStageLayouts.states.length,
       controllerLayoutCount: gameData.defaultControllerLayouts.states.length,
       artCompositionCount: gameData.defaultArtCompositions.length,
+      backgroundCompositionCount,
       artAssetCount: gameData.artAssets.length
     })
   });

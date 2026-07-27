@@ -8,20 +8,22 @@ const {
 } = require("./recover-reference-content-after-legacy-migration");
 
 describe("reference content rollback", () => {
-  it("restores the complete last user-saved bundle without merging later sources", () => {
+  it("preserves the complete background-capable Tool state", () => {
     const result = recoverReferenceContent();
 
-    expect(result.snapshot.revision).toBe(EXPECTED.lastUserSavedContentRevision);
+    expect(result.snapshot.revision).toBe(EXPECTED.laterToolStateRevision);
     expect(result.summary).toEqual({
-      sourceContentCommit: EXPECTED.lastUserSavedContentCommit,
-      restoredContentRevision: EXPECTED.lastUserSavedContentRevision,
+      sourceContentCommit: EXPECTED.laterToolStateCommit,
+      restoredContentRevision: EXPECTED.laterToolStateRevision,
       fileCount: 17,
       stateCount: 10,
       startMomentCount: 1,
-      endMomentCount: 1,
+      endMomentCount: 10,
+      routeNodeCount: 5,
       stageLayoutCount: 10,
       controllerLayoutCount: 18,
       artCompositionCount: 72,
+      backgroundCompositionCount: 10,
       artAssetCount: 8
     });
   });
