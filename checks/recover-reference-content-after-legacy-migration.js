@@ -2,7 +2,6 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const { createBundleGameData } = require("../packages/engine/src/server/content-game-data-runtime");
@@ -13,18 +12,15 @@ const EXPECTED = Object.freeze({
   lastUserSavedContentRevision: "12e15ebee30eccfcd482d90fa0c5e3a222856e98aa4789a4ea14e32b426cb4ac"
 });
 
-function gitBytes(commit, logicalPath) {
-  return childProcess.execFileSync("git", ["show", `${commit}:${logicalPath}`]);
-}
-
-function gitJson(commit, logicalPath) {
-  return JSON.parse(gitBytes(commit, logicalPath).toString("utf8"));
-}
-
-function snapshotAtCommit(commit) {
-  const manifest = gitJson(commit, "content-bundle.json");
+function snapshotFromDirectory(root) {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(root, "content-bundle.json"), "utf8")
+  );
   const files = new Map(
-    manifest.files.map((record) => [record.path, gitBytes(commit, record.path)])
+    manifest.files.map((record) => [
+      record.path,
+      fs.readFileSync(path.join(root, ...record.path.split("/")))
+    ])
   );
   return createContentSnapshot({ manifest, files });
 }
@@ -78,19 +74,23 @@ function countActions(flow, type) {
 }
 
 function recoverReferenceContent(options = {}) {
-  const snapshot = snapshotAtCommit(EXPECTED.lastUserSavedContentCommit);
+  const referenceRoot = path.resolve(
+    __dirname,
+    "..",
+    "apps",
+    "reference",
+    "content"
+  );
+  const snapshot = snapshotFromDirectory(referenceRoot);
   assert.equal(
     snapshot.revision,
     EXPECTED.lastUserSavedContentRevision,
-    "The audited last user-saved content commit no longer resolves to the expected revision"
+    "The committed reference content no longer matches the audited last user-saved revision"
   );
   const gameData = createBundleGameData(snapshot);
 
   if (options.writeReference) {
-    writeSnapshot(
-      path.resolve(__dirname, "..", "apps", "reference", "content"),
-      snapshot
-    );
+    writeSnapshot(referenceRoot, snapshot);
   }
   if (options.writeStarter) {
     writeSnapshot(
@@ -138,6 +138,6 @@ if (require.main === module) {
 module.exports = Object.freeze({
   EXPECTED,
   recoverReferenceContent,
-  snapshotAtCommit,
+  snapshotFromDirectory,
   writeSnapshot
 });

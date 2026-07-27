@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1188",
+  "version": "1.0.17.1189",
   "baseVersion": "1.0.17",
-  "buildNumber": 1188,
-  "commit": "6e0b4472",
+  "buildNumber": 1189,
+  "commit": "e3514f6d",
   "branch": "codex/restore-complete-pre-migration-game-data",
-  "generatedAt": "2026-07-27T00:23:53.036Z"
+  "generatedAt": "2026-07-27T00:27:39.753Z"
 }
