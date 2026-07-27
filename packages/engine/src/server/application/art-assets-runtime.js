@@ -362,7 +362,8 @@ function createArtAssetsRuntime({
 
   function migrateRemovedWidgetComponents(compositionId, components = []) {
     const removedByComposition = {
-      "join-qr-code": new Set(["qr-url"])
+      "join-qr-code": new Set(["qr-url"]),
+      "controller-player-banner": new Set(["banner-name", "banner-card"])
     };
     const removedIds = removedByComposition[compositionId];
     if (!removedIds?.size) return;
