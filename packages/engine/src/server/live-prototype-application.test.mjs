@@ -238,13 +238,20 @@ describe("live prototype application integration", () => {
       expect((await (await fetch(`${startup.localUrl}/api/game-constants`)).json()).constants.gameTitle)
         .toBe("Unsaved live title");
 
-      // A refreshed Tools page begins a replacement session and discards the
-      // abandoned page's unsaved workspace before loading its editors.
-      const refreshedSession = await post(startup.localUrl, "/api/authoring/workspace/session");
-      expect((await lobby(startup.localUrl)).gameTitle).toBe(originalTitle);
+      // Refreshing the same Tools tab resumes its session without discarding
+      // the in-memory workspace.
+      const refreshedSession = await post(
+        startup.localUrl,
+        "/api/authoring/workspace/session",
+        {},
+        headers
+      );
+      expect(refreshedSession.sessionId).toBe(session.sessionId);
+      expect((await lobby(startup.localUrl)).gameTitle).toBe("Unsaved live title");
       await post(startup.localUrl, "/api/authoring/workspace/discard", {
         sessionId: refreshedSession.sessionId
       }, { "X-Pop-Party-Authoring-Session": refreshedSession.sessionId });
+      expect((await lobby(startup.localUrl)).gameTitle).toBe(originalTitle);
 
       const saveSession = await post(startup.localUrl, "/api/authoring/workspace/session");
       const saveHeaders = { "X-Pop-Party-Authoring-Session": saveSession.sessionId };

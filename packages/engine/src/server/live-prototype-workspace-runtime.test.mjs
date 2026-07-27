@@ -204,4 +204,86 @@ describe("live prototype workspace", () => {
     expect(rooms.get("ROOM").gameData.defaultGameConstants.gameTitle)
       .toBe(initialSnapshot.readJson("constants.json").gameTitle);
   });
+
+  it("does not let a second Tools tab replace an active authoring session", async () => {
+    const { drafts, initialSnapshot, workspace } = fixture();
+    await workspace.initialize();
+    const session = await workspace.begin();
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "Still editing"
+    };
+    await workspace.applyDraft(session.sessionId);
+
+    await expect(workspace.begin()).rejects.toMatchObject({
+      code: "AUTHORING_SESSION_BUSY",
+      status: 409
+    });
+    expect(workspace.readWorkingSnapshot().readJson("constants.json").gameTitle)
+      .toBe("Still editing");
+
+    const refreshed = await workspace.begin(session.sessionId);
+    expect(refreshed.sessionId).toBe(session.sessionId);
+    expect(workspace.readWorkingSnapshot().readJson("constants.json").gameTitle)
+      .toBe("Still editing");
+  });
+
+  it("restores an expired session id but requires its client drafts before saving", async () => {
+    let clock = 1_000;
+    const { drafts, initialSnapshot, workspace } = fixture({
+      now: () => clock,
+      leaseMs: 5_000
+    });
+    await workspace.initialize();
+    const session = await workspace.begin();
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "Recover me"
+    };
+    await workspace.applyDraft(session.sessionId);
+
+    clock += 5_001;
+    await workspace.sweep();
+    const restored = await workspace.heartbeat(session.sessionId);
+    expect(restored).toMatchObject({
+      active: true,
+      sessionId: session.sessionId,
+      recoveryRequired: true
+    });
+    await expect(workspace.save(session.sessionId, "premature-save"))
+      .rejects.toMatchObject({ code: "AUTHORING_SESSION_RECOVERY_REQUIRED" });
+
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "Recovered"
+    };
+    const reapplied = await workspace.applyDraft(session.sessionId);
+    expect(reapplied.recoveryRequired).toBe(false);
+    const saved = await workspace.save(session.sessionId, "recovered-save");
+    expect(saved.saved).toBe(true);
+    expect(workspace.readWorkingSnapshot().readJson("constants.json").gameTitle)
+      .toBe("Recovered");
+  });
+
+  it("preserves the first draft payload that re-establishes an inactive session", async () => {
+    let clock = 1_000;
+    const { drafts, initialSnapshot, workspace } = fixture({
+      now: () => clock,
+      leaseMs: 5_000
+    });
+    await workspace.initialize();
+    const session = await workspace.begin();
+    clock += 5_001;
+    await workspace.sweep();
+
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "First recovered payload"
+    };
+    const recovered = await workspace.applyDraft(session.sessionId);
+
+    expect(recovered.recoveryRequired).toBe(false);
+    expect(workspace.readWorkingSnapshot().readJson("constants.json").gameTitle)
+      .toBe("First recovered payload");
+  });
 });

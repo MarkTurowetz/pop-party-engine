@@ -42,6 +42,18 @@ export async function beginLivePrototypeWorkspace(
   } catch (error) {
     const status = Number((error as { status?: unknown })?.status || 0);
     if (status === 404) return null;
+    const errorCode = String(
+      (error as { payload?: { errorCode?: unknown } })?.payload?.errorCode || ""
+    );
+    if (status === 409 && errorCode === "AUTHORING_SESSION_BUSY") {
+      win.sessionStorage.removeItem("pop-party-authoring-session");
+      win.setTimeout(() => {
+        win.dispatchEvent(new CustomEvent("pop-party-authoring-error", {
+          detail: { message: error instanceof Error ? error.message : String(error) }
+        }));
+      }, 0);
+      return null;
+    }
     throw error;
   }
   win.sessionStorage.setItem("pop-party-authoring-session", started.sessionId);

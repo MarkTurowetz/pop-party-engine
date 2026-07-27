@@ -31,7 +31,13 @@ function createLivePrototypeHandlersRuntime(options = {}) {
   }
 
   async function handleBegin(req, res) {
-    await run(res, () => workspace.begin());
+    let payload = {};
+    try {
+      payload = await readJson(req, 64 * 1024);
+    } catch (error) {
+      // A header-only begin request is valid.
+    }
+    await run(res, () => workspace.begin(sessionIdFrom(req, payload)));
   }
 
   async function handleHeartbeat(req, res) {

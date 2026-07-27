@@ -118,15 +118,29 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
   let baselineSnapshot = null;
   let workingSnapshot = null;
   let session = null;
+  let activationPromise = null;
   let workingCounter = 0;
+
+  function staleSessionError() {
+    const error = new Error("The live prototype authoring session is no longer active");
+    error.code = "AUTHORING_SESSION_STALE";
+    error.status = 409;
+    return error;
+  }
+
+  function busySessionError() {
+    const error = new Error(
+      "Another Tools tab has an active live prototype authoring session. Close it before editing here."
+    );
+    error.code = "AUTHORING_SESSION_BUSY";
+    error.status = 409;
+    return error;
+  }
 
   function requireSession(sessionId) {
     const normalized = String(sessionId || "");
     if (!session || normalized !== session.id) {
-      const error = new Error("The live prototype authoring session is no longer active");
-      error.code = "AUTHORING_SESSION_STALE";
-      error.status = 409;
-      throw error;
+      throw staleSessionError();
     }
     session.lastSeenAt = now();
     return session;
@@ -161,19 +175,60 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     clearDraftObject(drafts);
   }
 
-  async function begin() {
-    if (!baselineSnapshot) await initialize();
-    if (session) await discard(session.id);
-    await loadBaseline();
-    clearDraftObject(drafts);
-    workingCounter = 0;
-    session = { id: createSessionId(), startedAt: now(), lastSeenAt: now() };
-    await installEveryRoom(baselineSnapshot, workingRelease());
-    return state();
+  async function activate(sessionId = "", activationOptions = {}) {
+    const activation = (async () => {
+      if (!baselineSnapshot) await initialize();
+      await loadBaseline();
+      if (!activationOptions.preserveDrafts) clearDraftObject(drafts);
+      workingCounter = 0;
+      const resumed = Boolean(sessionId);
+      session = {
+        id: sessionId || createSessionId(),
+        startedAt: now(),
+        lastSeenAt: now(),
+        recoveryRequired: resumed
+      };
+      await installEveryRoom(baselineSnapshot, workingRelease());
+      return state();
+    })();
+    activationPromise = activation;
+    try {
+      return await activation;
+    } catch (error) {
+      session = null;
+      throw error;
+    } finally {
+      if (activationPromise === activation) activationPromise = null;
+    }
+  }
+
+  async function begin(sessionId = "") {
+    const normalized = String(sessionId || "");
+    if (activationPromise) await activationPromise;
+    if (session) {
+      if (normalized && normalized === session.id) {
+        session.lastSeenAt = now();
+        return state();
+      }
+      throw busySessionError();
+    }
+    return activate(normalized);
+  }
+
+  async function ensureSession(sessionId, ensureOptions = {}) {
+    const normalized = String(sessionId || "");
+    if (activationPromise) await activationPromise;
+    if (session) return requireSession(normalized);
+    if (!normalized) throw staleSessionError();
+    await activate(normalized, ensureOptions);
+    return session;
   }
 
   async function applyDraft(sessionId) {
-    requireSession(sessionId);
+    // Local draft handlers normalize the incoming payload into `drafts` before
+    // invoking this hook. Preserve that first recovered payload while the
+    // inactive workspace reloads its durable baseline.
+    const activeSession = await ensureSession(sessionId, { preserveDrafts: true });
     const candidate = buildSnapshot(baselineSnapshot, drafts);
     validateSnapshot(candidate);
     const previousSnapshot = workingSnapshot;
@@ -183,6 +238,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     try {
       await onSnapshotChanged(workingSnapshot, workingRelease());
       await installEveryRoom(workingSnapshot, workingRelease());
+      activeSession.recoveryRequired = false;
       return state();
     } catch (error) {
       workingSnapshot = previousSnapshot;
@@ -194,7 +250,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
   }
 
   async function stageBinary(sessionId, logicalPath, bytes, mutateDrafts) {
-    requireSession(sessionId);
+    await ensureSession(sessionId);
     const previousBinaryFiles = { ...(drafts.binaryFiles || {}) };
     const previousHostAudios = drafts.hostAudios;
     try {
@@ -209,7 +265,15 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
   }
 
   async function save(sessionId, idempotencyKey) {
-    requireSession(sessionId);
+    const activeSession = await ensureSession(sessionId);
+    if (activeSession.recoveryRequired) {
+      const error = new Error(
+        "The authoring session was restored, but its unsaved drafts must be republished before saving"
+      );
+      error.code = "AUTHORING_SESSION_RECOVERY_REQUIRED";
+      error.status = 409;
+      throw error;
+    }
     validateSnapshot(workingSnapshot);
     const result = await contentStore.commitWorkspace({
       snapshot: workingSnapshot,
@@ -230,6 +294,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
   }
 
   async function discard(sessionId) {
+    if (!session) return state();
     requireSession(sessionId);
     clearDraftObject(drafts);
     workingSnapshot = baselineSnapshot;
@@ -242,7 +307,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
   }
 
   async function heartbeat(sessionId) {
-    requireSession(sessionId);
+    await ensureSession(sessionId);
     return state();
   }
 
@@ -266,6 +331,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
       baselineRevision: baselineSnapshot?.revision || "",
       workingRevision: workingSnapshot?.revision || "",
       release: workingRelease(),
+      recoveryRequired: Boolean(session?.recoveryRequired),
       leaseMs
     });
   }
