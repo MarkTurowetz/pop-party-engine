@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1190",
+  "version": "1.0.17.1191",
   "baseVersion": "1.0.17",
-  "buildNumber": 1190,
-  "commit": "fb7b089c",
-  "branch": "codex/restore-exact-legacy-tool-state",
-  "generatedAt": "2026-07-27T01:09:51.102Z"
+  "buildNumber": 1191,
+  "commit": "4ce8a3f3",
+  "branch": "main",
+  "generatedAt": "2026-07-27T16:54:09.560Z"
 }

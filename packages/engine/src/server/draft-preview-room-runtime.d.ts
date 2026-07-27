@@ -9,5 +9,6 @@ export function createDraftPreviewRoomRuntime(options: {
   gameBuild: string;
   engineVersion: string;
   pluginVersion: string;
+  materializeGameData?: (snapshot: unknown) => unknown;
   validateRelease?: (input: Record<string, unknown>) => unknown;
 }): DraftPreviewRoomRuntime;

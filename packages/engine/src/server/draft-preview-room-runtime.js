@@ -10,6 +10,9 @@ function createDraftPreviewRoomRuntime(options = {}) {
   const gameBuild = String(options.gameBuild || "");
   const engineVersion = String(options.engineVersion || "");
   const pluginVersion = String(options.pluginVersion || "");
+  const materializeGameData = typeof options.materializeGameData === "function"
+    ? options.materializeGameData
+    : createBundleGameData;
   const validateRelease = typeof options.validateRelease === "function"
     ? options.validateRelease
     : () => ({ ok: true, diagnostics: [] });
@@ -32,7 +35,7 @@ function createDraftPreviewRoomRuntime(options = {}) {
     }
     let gameData;
     try {
-      gameData = createBundleGameData(draft.snapshot);
+      gameData = materializeGameData(draft.snapshot);
     } catch (error) {
       throw new RoomContentPinError("Authoring draft cannot materialize complete room game data", {
         code: "DRAFT_PREVIEW_GAME_DATA_INVALID",
