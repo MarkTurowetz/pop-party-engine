@@ -124,6 +124,34 @@ async function waitForPublishedPackage(options) {
   throw new Error(`Published package did not appear in the npm registry: ${options.name}@${options.version}`);
 }
 
+async function waitForPublishedPackageSnapshot(options) {
+  const now = options.now || Date.now;
+  const wait = options.wait || ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const timeoutMs = options.timeoutMs ?? 10 * 60 * 1000;
+  const intervalMs = options.intervalMs ?? 5000;
+  const deadline = now() + timeoutMs;
+  let metadata = options.initialMetadata || null;
+  let lastSnapshotError = null;
+  while (now() <= deadline) {
+    metadata = metadata || await remotePackageMetadata(options.name, options.version, options.fetchImpl);
+    if (metadata) {
+      const snapshotSpec = publishedPackageSnapshotSpec(metadata, options.packageId);
+      try {
+        return await options.snapshotFactory(snapshotSpec);
+      } catch (error) {
+        lastSnapshotError = error;
+      }
+    }
+    if (now() + intervalMs > deadline) break;
+    await wait(intervalMs);
+    metadata = null;
+  }
+  const detail = lastSnapshotError ? `: ${lastSnapshotError.message}` : "";
+  throw new Error(
+    `Published package tarball did not become downloadable: ${options.packageId}${detail}`
+  );
+}
+
 async function publishPublicPackage(options) {
   const packagePath = path.resolve(options.packagePath);
   const manifest = packageManifest(packagePath);
@@ -134,7 +162,18 @@ async function publishPublicPackage(options) {
   if (local.id !== packageId) throw new Error(`npm pack reported ${local.id}, expected ${packageId}`);
   const remote = await remotePackageMetadata(manifest.name, manifest.version, options.fetchImpl);
   if (remote) {
-    const published = await snapshotFactory(publishedPackageSnapshotSpec(remote, packageId));
+    const published = await waitForPublishedPackageSnapshot({
+      name: manifest.name,
+      version: manifest.version,
+      packageId,
+      snapshotFactory,
+      initialMetadata: remote,
+      fetchImpl: options.fetchImpl,
+      now: options.now,
+      wait: options.wait,
+      timeoutMs: options.timeoutMs,
+      intervalMs: options.intervalMs
+    });
     assertMatchingContents(local, published, packageId);
     return Object.freeze({ packageId, status: "already-published", digest: local.digest });
   }
@@ -144,16 +183,17 @@ async function publishPublicPackage(options) {
   });
   if (publication.error) throw publication.error;
   if (publication.status !== 0) throw new Error(`npm publish failed for ${packageId} with exit code ${publication.status}`);
-  const publishedMetadata = await waitForPublishedPackage({
+  const published = await waitForPublishedPackageSnapshot({
     name: manifest.name,
     version: manifest.version,
+    packageId,
+    snapshotFactory,
     fetchImpl: options.fetchImpl,
     now: options.now,
     wait: options.wait,
     timeoutMs: options.timeoutMs,
     intervalMs: options.intervalMs
   });
-  const published = await snapshotFactory(publishedPackageSnapshotSpec(publishedMetadata, packageId));
   assertMatchingContents(local, published, packageId);
   return Object.freeze({ packageId, status: "published", digest: local.digest });
 }
@@ -180,5 +220,6 @@ module.exports = {
   publishPublicPackage,
   publishedPackageSnapshotSpec,
   remotePackageMetadata,
-  waitForPublishedPackage
+  waitForPublishedPackage,
+  waitForPublishedPackageSnapshot
 };

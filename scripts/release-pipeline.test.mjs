@@ -323,15 +323,20 @@ describe("idempotent public package publication", () => {
       version: "1.0.0"
     }));
     const spawnSync = vi.fn();
+    let tarballAttempts = 0;
     const snapshotFactory = vi.fn(async (spec) => {
       if (spec === "@pop-party/example@1.0.0") {
         throw new Error("package-spec lookup has not propagated");
+      }
+      if (spec.startsWith("https://") && tarballAttempts++ === 0) {
+        throw new Error("registry tarball has not propagated");
       }
       return {
         id: "@pop-party/example@1.0.0",
         digest: "matching-content"
       };
     });
+    let clock = 0;
     const result = await publishPublicPackage({
       packagePath: root,
       snapshotFactory,
@@ -345,6 +350,10 @@ describe("idempotent public package publication", () => {
           }
         }
       }),
+      now: () => clock,
+      wait: async (milliseconds) => {
+        clock += milliseconds;
+      },
       spawnSync
     });
     expect(result.status).toBe("already-published");
@@ -353,7 +362,57 @@ describe("idempotent public package publication", () => {
       2,
       "https://registry.npmjs.org/@pop-party/example/-/example-1.0.0.tgz"
     );
+    expect(snapshotFactory).toHaveBeenNthCalledWith(
+      3,
+      "https://registry.npmjs.org/@pop-party/example/-/example-1.0.0.tgz"
+    );
     expect(spawnSync).not.toHaveBeenCalled();
+  });
+
+  it("waits for a newly-published registry tarball to become downloadable", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-publish-"));
+    temporaryRoots.push(root);
+    fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({
+      name: "@pop-party/example",
+      version: "1.0.0"
+    }));
+    let registryRequests = 0;
+    const fetchImpl = vi.fn(async () => {
+      registryRequests += 1;
+      if (registryRequests === 1) return response({ status: 404 });
+      return response({
+        json: {
+          dist: {
+            tarball: "https://registry.npmjs.org/@pop-party/example/-/example-1.0.0.tgz"
+          }
+        }
+      });
+    });
+    let tarballAttempts = 0;
+    const snapshotFactory = vi.fn(async (spec) => {
+      if (spec === path.resolve(root)) {
+        return { id: "@pop-party/example@1.0.0", digest: "matching-content" };
+      }
+      if (tarballAttempts++ === 0) throw new Error("registry tarball returned HTTP 404");
+      return { id: "@pop-party/example@1.0.0", digest: "matching-content" };
+    });
+    const spawnSync = vi.fn(() => ({ status: 0 }));
+    let clock = 0;
+
+    await expect(publishPublicPackage({
+      packagePath: root,
+      snapshotFactory,
+      fetchImpl,
+      spawnSync,
+      now: () => clock,
+      wait: async (milliseconds) => {
+        clock += milliseconds;
+      }
+    })).resolves.toMatchObject({ status: "published" });
+
+    expect(spawnSync).toHaveBeenCalledOnce();
+    expect(snapshotFactory).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
   it("fails closed when an existing immutable version has different bytes", async () => {
