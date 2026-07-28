@@ -19,6 +19,11 @@ external release authorities exist. Current setup status:
 - [x] Protect `main`; require the `check` workflow and disallow force pushes.
 - [x] Confirm the repository history audit, starter-asset inventory, and public
    licensing gate all pass from the renamed public repository.
+- [x] Add the reference service's secret Render deploy hook as the repository
+   Actions secret `RENDER_DEPLOY_HOOK_URL`. The hook is a credential and must
+   never be committed or printed.
+- [x] Set the reference service to Auto-Deploy `Off` and keep the Render
+   Blueprint aligned with `autoDeployTrigger: off`.
 
 Both CI workflows are self-contained on the checked-out engine repository.
 They must not fetch a game-specific `game-data` branch; the reference app owns
@@ -27,5 +32,26 @@ its tracked authoring seed and immutable content bundle under `apps/reference`.
 To release, commit the exact same version to both public package manifests and
 the reference app's exact engine dependency, merge that version change to
 `main`, then manually dispatch `publish` with the version and confirmation
-`PUBLISH`. The workflow uses GitHub OIDC and npm provenance; no long-lived npm
-token belongs in repository or environment secrets.
+`PUBLISH`.
+
+The protected workflow owns the complete sequence:
+
+1. run release checks and the complete validation suite;
+2. publish both immutable npm packages, or verify byte-for-byte package content
+   when an interrupted workflow is rerun;
+3. create or verify the immutable GitHub release;
+4. advance only the reference release coordinates on `game-releases`, retaining
+   the exact active content revision through a compare-and-swap update;
+5. trigger Render for the exact released commit; and
+6. verify production health, engine version, release revision, and rendered
+   application build.
+
+If Render cannot be triggered or production does not converge, the workflow
+writes a compensating release record that restores the previous engine
+coordinates. It never rewinds `game-releases` and refuses to overwrite a
+concurrent Tool save or release mutation.
+
+The workflow uses GitHub OIDC and npm provenance; no long-lived npm token
+belongs in repository or environment secrets. Render no longer reacts directly
+to merges because a merged engine commit is not deployable until npm and the
+release tuple are ready.

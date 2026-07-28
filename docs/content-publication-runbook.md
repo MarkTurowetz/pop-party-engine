@@ -60,6 +60,22 @@ First enable `PARTY_GAME_CONTENT_STORE=github` with remote authoring disabled an
 
 Never enable these gates as a workaround for missing refs or invalid content. Fix the reported bootstrap/readiness diagnostic instead.
 
+## Coordinated engine deployment
+
+The reference Render service does not auto-deploy `main`. A merged engine
+version is intentionally incomplete until both public npm packages exist and
+the active reference release targets that exact engine.
+
+Dispatch the protected `publish` workflow with the committed version and the
+`PUBLISH` confirmation. It validates and publishes the packages, advances the
+release coordinates without changing the active content revision, triggers
+Render for the exact commit, and verifies the resulting production tuple.
+
+Do not manually update `game-releases` or clear the Render build cache during a
+normal release. If deployment verification fails, the workflow restores the
+prior coordinates with a new compare-and-swap release record. A concurrent
+content or release mutation stops that rollback rather than being overwritten.
+
 ## Single-service independent game contract
 
 An independent game may run public gameplay, authenticated Tools, and draft
