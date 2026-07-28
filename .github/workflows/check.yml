@@ -21,7 +21,11 @@ jobs:
         run: npm ci
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 5
+        run: >-
+          timeout --signal=TERM --kill-after=15s 120s npx playwright install --with-deps chromium
+          || (echo "Playwright system dependency installation stalled; using the GitHub runner dependencies."
+          && npx playwright install chromium)
 
       - name: Run checks
         run: npm run check
