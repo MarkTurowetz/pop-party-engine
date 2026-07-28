@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1204",
+  "version": "1.0.17.1205",
   "baseVersion": "1.0.17",
-  "buildNumber": 1204,
-  "commit": "85f46643",
-  "branch": "codex/flow-tool-connection-copy-paste",
-  "generatedAt": "2026-07-28T09:01:10.694Z"
+  "buildNumber": 1205,
+  "commit": "ca125479",
+  "branch": "codex/release-engine-1-3-11",
+  "generatedAt": "2026-07-28T09:05:05.280Z"
 }
