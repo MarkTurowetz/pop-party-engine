@@ -379,6 +379,78 @@ describe("createFlowEditorController", () => {
     ).toBeUndefined();
   });
 
+  it("copies and pastes an action into the selected continuation with fresh ids", () => {
+    const flow = flowFixture();
+    flow.states[1].actions.push({
+      id: "act-2",
+      name: "Action 2",
+      type: "message"
+    });
+    flow.states[1].actions[0].nextTargetActionId = "act-2";
+    const controller = createFlowEditorController({ initialFlow: flow, api: fakeApi() });
+
+    expect(controller.copyActionSelection("round-one", ["act-1"])).toBe(true);
+    expect(controller.pasteActionSelection("round-one", "act-1")).toBe(true);
+
+    const actions = controller.getState().snapshot.flow.states[1].actions;
+    const pasted = actions[1];
+    expect(pasted.id).not.toBe("act-1");
+    expect(actions.map((action) => action.id)).toEqual(["act-1", pasted.id, "act-2"]);
+    expect(actions[0].nextTargetActionId).toBe(pasted.id);
+    expect(pasted.nextTargetActionId).toBe("act-2");
+    expect(controller.getState().snapshot.selection.selectedFlowActionId).toBe(pasted.id);
+  });
+
+  it("copies multiple sub-actions from one parent and pastes them onto another action", () => {
+    const flow = flowFixture();
+    flow.states[1].actions = [
+      {
+        id: "act-1",
+        name: "Action 1",
+        type: "message",
+        subActions: [
+          { id: "sub-1", name: "Sub 1", type: "message" },
+          { id: "sub-2", name: "Sub 2", type: "message" }
+        ]
+      },
+      { id: "act-2", name: "Action 2", type: "message", subActions: [] }
+    ];
+    const controller = createFlowEditorController({ initialFlow: flow, api: fakeApi() });
+
+    expect(
+      controller.copyActionSelection("round-one", ["sub-1", "sub-2"])
+    ).toBe(true);
+    expect(controller.pasteActionSelection("round-one", "act-2")).toBe(true);
+
+    const pasted = controller.getState().snapshot.flow.states[1].actions[1].subActions || [];
+    expect(pasted).toHaveLength(2);
+    expect(pasted.map((action) => action.name)).toEqual(["Sub 1", "Sub 2"]);
+    expect(pasted.map((action) => action.id)).not.toEqual(["sub-1", "sub-2"]);
+  });
+
+  it("rejects a copied sub-action selection that spans multiple parent actions", () => {
+    const flow = flowFixture();
+    flow.states[1].actions = [
+      {
+        id: "act-1",
+        name: "Action 1",
+        type: "message",
+        subActions: [{ id: "sub-1", name: "Sub 1", type: "message" }]
+      },
+      {
+        id: "act-2",
+        name: "Action 2",
+        type: "message",
+        subActions: [{ id: "sub-2", name: "Sub 2", type: "message" }]
+      }
+    ];
+    const controller = createFlowEditorController({ initialFlow: flow, api: fakeApi() });
+
+    expect(
+      controller.copyActionSelection("round-one", ["sub-1", "sub-2"])
+    ).toBe(false);
+  });
+
   it("keeps the source action intact while configuring and saving a connected action", async () => {
     const api = fakeApi();
     const controller = createFlowEditorController({

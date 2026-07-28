@@ -28,11 +28,23 @@ import {
   makeDecisionBranchId,
   type FlowDecisionBranch
 } from "./flowDecision";
-import type { FlowNodeExit, FlowNodePoint, FlowNodePositionUpdate } from "./flowNodeGraph";
+import type {
+  FlowNodeExit,
+  FlowNodePoint,
+  FlowNodePositionUpdate,
+  IsInputType
+} from "./flowNodeGraph";
+import {
+  isEmptyFlowTarget,
+  preserveFlowActionContinuation,
+  primaryFlowActionContinuation,
+  setFlowActionContinuation
+} from "./flowActionConnections";
 import { assertFlowModel } from "./flowValidation";
 import {
   findFlowAction,
   findFlowActionContext,
+  findFlowActionContextInList,
   findFlowSubroutine,
   flowSubroutineActions,
   type FlowSubroutine
@@ -52,6 +64,7 @@ function findFlowState(flow: GameFlow, stateId: string): FlowState | undefined {
 export type ApplyFlowActionType = (action: FlowAction, type: string, isSubAction: boolean) => void;
 
 export interface FlowActionTypeCommandOptions {
+  isInputType?: IsInputType;
   nameForType?: FlowActionTypeNamer;
 }
 
@@ -351,6 +364,58 @@ function setRootRouteTarget(
   record.nextTargetActionId = targetId;
 }
 
+function primaryRootRouteTarget(node: FlowRouteNode): string {
+  const record = node as FlowRouteNodeModel;
+  if (isFlowRouteDecisionNode(record)) {
+    const branches = ensureRouteDecisionBranches(node);
+    const noMatch = branches.find((candidate) => candidate.type === "noMatch");
+    const branch =
+      (!isEmptyFlowTarget(noMatch?.targetNodeId || noMatch?.targetActionId)
+        ? noMatch
+        : undefined) ||
+      branches.find(
+        (candidate) =>
+          !isEmptyFlowTarget(candidate.targetNodeId || candidate.targetActionId)
+      ) ||
+      noMatch ||
+      branches[0];
+    return String(branch?.targetNodeId || branch?.targetActionId || "");
+  }
+  if (record.type === "jumpNode") return String(record.jumpTargetActionId || "");
+  return String(record.nextTargetNodeId || record.nextTargetActionId || "");
+}
+
+function preserveRootRouteTarget(
+  node: FlowRouteNode,
+  targetId: string,
+  previousType: string
+): void {
+  if (isEmptyFlowTarget(targetId)) return;
+  const record = node as FlowRouteNodeModel;
+  if (isFlowRouteDecisionNode(record)) {
+    const branches = ensureRouteDecisionBranches(node);
+    const branch =
+      branches.find((candidate) => candidate.type === "noMatch") || branches[0];
+    if (
+      branch &&
+      (previousType !== "decision" ||
+        isEmptyFlowTarget(branch.targetNodeId || branch.targetActionId))
+    ) {
+      branch.targetNodeId = targetId;
+      branch.targetActionId = targetId;
+    }
+    record.branches = branches as unknown as FlowAction["branches"];
+    return;
+  }
+  if (record.type === "jumpNode") {
+    if (previousType !== "jumpNode" || isEmptyFlowTarget(record.jumpTargetActionId)) {
+      record.jumpTargetActionId = targetId;
+    }
+    return;
+  }
+  setRootRouteTarget(node, undefined, targetId);
+}
+
 function connectRootSourceToTarget(
   flow: GameFlow,
   source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
@@ -400,7 +465,8 @@ export function addConnectedFlowActionCommand(
   source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
   position: FlowNodePoint,
   subroutinePath: Iterable<string> = [],
-  newActionId = ""
+  newActionId = "",
+  continuationTargetId = ""
 ): FlowCommand {
   const nodePosition = {
     x: Math.max(0, Math.round(position.x)),
@@ -420,6 +486,10 @@ export function addConnectedFlowActionCommand(
       if (newActionId) result.action.id = newActionId;
       (result.action as Record<string, unknown>).nodePosition = nodePosition;
       connectSourceToAction(ref.subroutine, source, result.action.id);
+      if (continuationTargetId) {
+        (result.action as Record<string, unknown>).stageClickTargetActionId =
+          continuationTargetId;
+      }
     }
   };
 }
@@ -453,7 +523,8 @@ export function connectRootFlowActionCommand(
 export function addConnectedRootFlowActionCommand(
   source: Pick<FlowNodeExit, "kind" | "nodeId" | "field" | "branchId">,
   position: FlowNodePoint,
-  newNodeId?: string
+  newNodeId?: string,
+  continuationTargetId = ""
 ): FlowCommand {
   return {
     id: `add-connected-root-flow-action:${source.nodeId}:${newNodeId || "auto"}`,
@@ -462,6 +533,91 @@ export function addConnectedRootFlowActionCommand(
       if (!canConnectNewAction(source)) return;
       const node = createRootRouteAction(flow, position, newNodeId);
       connectRootSourceToTarget(flow, source, String(node.id || ""));
+      if (continuationTargetId) setRootRouteTarget(node, undefined, continuationTargetId);
+    }
+  };
+}
+
+function cloneFlowActions(actions: FlowAction[]): FlowAction[] {
+  return JSON.parse(JSON.stringify(actions)) as FlowAction[];
+}
+
+export function pasteFlowActionsCommand(
+  stateId: string,
+  insertAfterActionId: string,
+  copiedActions: FlowAction[],
+  isInputType: IsInputType,
+  subroutinePath: Iterable<string> = []
+): FlowCommand {
+  const path = [...subroutinePath].filter(Boolean);
+  const actionSnapshots = cloneFlowActions(copiedActions);
+  return {
+    id: `paste-flow-actions:${stateId}:${insertAfterActionId}`,
+    label: actionSnapshots.length > 1 ? "Paste flow actions" : "Paste flow action",
+    apply: (flow) => {
+      const ref = findFlowSubroutine(flow, stateId, path);
+      if (!ref || !actionSnapshots.length) return;
+      const actions = flowSubroutineActions(ref.subroutine);
+      const targetIndex = actions.findIndex((action) => action.id === insertAfterActionId);
+      if (targetIndex < 0) return;
+
+      const insertionTarget = actions[targetIndex];
+      const formerContinuation = primaryFlowActionContinuation(
+        insertionTarget,
+        isInputType
+      );
+      if (!formerContinuation) return;
+
+      const pastedActions = cloneFlowActions(actionSnapshots);
+      setFlowActionContinuation(
+        insertionTarget,
+        formerContinuation,
+        pastedActions[0].id
+      );
+      pastedActions.forEach((action, index) => {
+        const continuation = primaryFlowActionContinuation(action, isInputType);
+        if (!continuation) return;
+        const nextTarget =
+          pastedActions[index + 1]?.id || formerContinuation.target;
+        setFlowActionContinuation(action, continuation, nextTarget);
+      });
+      actions.splice(targetIndex + 1, 0, ...pastedActions);
+    }
+  };
+}
+
+export function pasteFlowSubActionsCommand(
+  stateId: string,
+  parentActionId: string,
+  copiedSubActions: FlowAction[],
+  selectedSubActionId = "",
+  subroutinePath: Iterable<string> = []
+): FlowCommand {
+  const path = [...subroutinePath].filter(Boolean);
+  const actionSnapshots = cloneFlowActions(copiedSubActions);
+  return {
+    id: `paste-flow-sub-actions:${stateId}:${parentActionId}`,
+    label: actionSnapshots.length > 1 ? "Paste sub-actions" : "Paste sub-action",
+    apply: (flow) => {
+      const ref = findFlowSubroutine(flow, stateId, path);
+      if (!ref || !actionSnapshots.length) return;
+      const context = findFlowActionContextInList(
+        flowSubroutineActions(ref.subroutine),
+        parentActionId
+      );
+      const parentAction = context.action;
+      if (!parentAction || context.isBranch || context.isSubAction) return;
+      if (!Array.isArray(parentAction.subActions)) parentAction.subActions = [];
+      const selectedIndex = selectedSubActionId
+        ? parentAction.subActions.findIndex((action) => action.id === selectedSubActionId)
+        : -1;
+      const insertionIndex =
+        selectedIndex >= 0 ? selectedIndex + 1 : parentAction.subActions.length;
+      parentAction.subActions.splice(
+        insertionIndex,
+        0,
+        ...cloneFlowActions(actionSnapshots)
+      );
     }
   };
 }
@@ -479,7 +635,10 @@ export function setFlowActionTypeCommand(
     apply: (flow) => {
       const context = findFlowActionContext(findFlowState(flow, stateId), actionId);
       if (!context.action) return;
+      const isInputType = options.isInputType || (() => false);
+      const previous = primaryFlowActionContinuation(context.action, isInputType);
       applyType(context.action, type, context.isSubAction);
+      preserveFlowActionContinuation(context.action, previous, isInputType);
       assignFlowActionTypeName(context.action, type, options);
     }
   };
@@ -725,6 +884,10 @@ export function setFlowRouteActionTypeCommand(
     apply: (flow) => {
       const node = findFlowRouteNode(flow, nodeId);
       if (!node) return;
+      const previousTarget = primaryRootRouteTarget(node);
+      const previousType = isFlowRouteDecisionNode(node as FlowRouteNodeModel)
+        ? "decision"
+        : String((node as FlowRouteNodeModel).type || "");
       const record = node as FlowRouteNodeModel;
       record.routeNodeType = "action";
       applyType(record as FlowAction, type, false);
@@ -733,6 +896,7 @@ export function setFlowRouteActionTypeCommand(
         record.nextTargetNodeId = "";
         record.branches = ensureRouteDecisionBranches(record) as unknown as FlowAction["branches"];
       }
+      preserveRootRouteTarget(record, previousTarget, previousType);
     }
   };
 }

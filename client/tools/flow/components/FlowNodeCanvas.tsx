@@ -11,6 +11,7 @@ const MINIMAP_W = 300;
 const MINIMAP_H = 260;
 const NEW_CONNECTED_ACTION_WIDTH = 260;
 const NEW_CONNECTED_ACTION_HEIGHT = 134;
+const NEW_CONNECTED_ACTION_SIDE_GAP = 70;
 const MINIMAP_BACKGROUND =
   "linear-gradient(135deg, rgba(34, 211, 238, 0.24), rgba(255, 79, 163, 0.22)), #160b35";
 
@@ -206,9 +207,42 @@ export interface FlowNodeCanvasProps {
   onBackToSubroutines?: () => void;
   onMoveNode?: (nodeId: string, x: number, y: number) => void;
   onConnect?: (exit: FlowNodeExit, targetNodeId: string) => void;
-  onCreateConnectedAction?: (exit: FlowNodeExit, x: number, y: number) => void;
+  onCreateConnectedAction?: (
+    exit: FlowNodeExit,
+    x: number,
+    y: number,
+    continuationTargetId?: string
+  ) => void;
   onOptimizeLayout?: () => void;
   onSelectNodes?: (nodeIds: string[]) => void;
+}
+
+export function newConnectedActionPosition(
+  pointer: { x: number; y: number },
+  sourceNode?: FlowGraphNode,
+  targetNode?: FlowGraphNode
+): { x: number; y: number } {
+  if (!targetNode) {
+    return {
+      x: Math.max(0, pointer.x - NEW_CONNECTED_ACTION_WIDTH / 2),
+      y: Math.max(0, pointer.y - NEW_CONNECTED_ACTION_HEIGHT / 2)
+    };
+  }
+
+  const sourceCenterX = sourceNode
+    ? sourceNode.x + sourceNode.width / 2
+    : targetNode.x + targetNode.width / 2;
+  const targetCenterX = targetNode.x + targetNode.width / 2;
+  const placeOnLeft = sourceCenterX < targetCenterX;
+  return {
+    x: Math.max(
+      0,
+      placeOnLeft
+        ? targetNode.x - NEW_CONNECTED_ACTION_WIDTH - NEW_CONNECTED_ACTION_SIDE_GAP
+        : targetNode.x + targetNode.width + NEW_CONNECTED_ACTION_SIDE_GAP
+    ),
+    y: Math.max(0, targetNode.y)
+  };
 }
 
 interface MarqueeRect {
@@ -652,24 +686,35 @@ export function FlowNodeCanvas({
       connectRef.current = null;
       setConnectPreview(null);
       if (!connect) return;
-      if ((upEvent.metaKey || upEvent.ctrlKey) && onCreateConnectedAction) {
-        const point = toWorldPoint(upEvent.clientX, upEvent.clientY);
-        onCreateConnectedAction(
-          connect.exit,
-          Math.max(0, point.x - NEW_CONNECTED_ACTION_WIDTH / 2),
-          Math.max(0, point.y - NEW_CONNECTED_ACTION_HEIGHT / 2)
-        );
-        return;
-      }
       const targetEl = document.elementFromPoint(
         upEvent.clientX,
         upEvent.clientY
       ) as HTMLElement | null;
-      const targetNode = targetEl?.closest("[data-node-id]") as HTMLElement | null;
-      const targetId = targetNode?.getAttribute("data-node-id") || "";
-      const targetKind = targetNode?.getAttribute("data-node-kind");
-      if (targetKind === "branch" || targetKind === "subAction") return;
-      if (targetId && targetId !== connect.exit.nodeId) onConnect(connect.exit, targetId);
+      const targetNodeElement = targetEl?.closest("[data-node-id]") as HTMLElement | null;
+      const targetId = targetNodeElement?.getAttribute("data-node-id") || "";
+      const targetKind = targetNodeElement?.getAttribute("data-node-kind");
+      const validTargetId =
+        targetKind !== "branch" &&
+        targetKind !== "subAction" &&
+        targetId !== connect.exit.nodeId
+          ? targetId
+          : "";
+      if ((upEvent.metaKey || upEvent.ctrlKey) && onCreateConnectedAction) {
+        const point = toWorldPoint(upEvent.clientX, upEvent.clientY);
+        const position = newConnectedActionPosition(
+          point,
+          nodes.find((candidate) => candidate.id === connect.exit.nodeId),
+          nodes.find((candidate) => candidate.id === validTargetId)
+        );
+        onCreateConnectedAction(
+          connect.exit,
+          position.x,
+          position.y,
+          validTargetId || undefined
+        );
+        return;
+      }
+      if (validTargetId) onConnect(connect.exit, validTargetId);
     };
 
     document.addEventListener("pointermove", handleMove);

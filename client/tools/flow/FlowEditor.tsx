@@ -455,7 +455,8 @@ export function FlowEditor({
     selection.selectedFlowRouteBranchId
   ]);
 
-  // Delete/Backspace deletes the selection — but never while typing in a field.
+  // Delete/Backspace deletes the selection and Command/Ctrl+C/V manages the
+  // graph clipboard — but never while typing in a field.
   // Undo/redo shortcuts live in the shared ToolWorkspace so every tool uses the
   // same keyboard history contract.
   useEffect(() => {
@@ -467,6 +468,37 @@ export function FlowEditor({
         tag === "TEXTAREA" ||
         tag === "SELECT" ||
         target?.isContentEditable === true;
+      const shortcut = event.metaKey || event.ctrlKey;
+      if (!typing && shortcut && nodeDepth === "subroutine" && selectedStateId) {
+        const key = event.key.toLowerCase();
+        const selectedIds = selectedActionIds.size
+          ? [...selectedActionIds]
+          : selectedActionId
+            ? [selectedActionId]
+            : [];
+        if (
+          key === "c" &&
+          controller.copyActionSelection(
+            selectedStateId,
+            selectedIds,
+            activeSubroutinePath
+          )
+        ) {
+          event.preventDefault();
+          return;
+        }
+        if (
+          key === "v" &&
+          controller.pasteActionSelection(
+            selectedStateId,
+            selectedActionId,
+            activeSubroutinePath
+          )
+        ) {
+          event.preventDefault();
+          return;
+        }
+      }
       if (
         !typing &&
         (event.key === "Delete" || event.key === "Backspace") &&
@@ -478,7 +510,16 @@ export function FlowEditor({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [controller, deleteSelection, selectedStateId, selection.selectedFlowRouteNodeId]);
+  }, [
+    controller,
+    deleteSelection,
+    selectedStateId,
+    selectedActionId,
+    selectedActionIds,
+    activeSubroutinePath,
+    nodeDepth,
+    selection.selectedFlowRouteNodeId
+  ]);
 
   const handlers = useMemo<FlowToolReactShellHandlers>(
     () => ({
@@ -637,10 +678,17 @@ export function FlowEditor({
           activeSubroutinePath
         );
       }}
-      onCreateConnectedAction={(exit, x, y) => {
-        if (nodeDepth === "subroutines") controller.addConnectedRootAction(exit, { x, y });
+      onCreateConnectedAction={(exit, x, y, continuationTargetId) => {
+        if (nodeDepth === "subroutines")
+          controller.addConnectedRootAction(exit, { x, y }, continuationTargetId);
         else if (nodeDepth === "subroutine")
-          controller.addConnectedAction(selectedStateId, exit, { x, y }, activeSubroutinePath);
+          controller.addConnectedAction(
+            selectedStateId,
+            exit,
+            { x, y },
+            activeSubroutinePath,
+            continuationTargetId
+          );
       }}
       onOptimizeLayout={optimizeNodeLayout}
       onSelectNodes={(ids) => {
