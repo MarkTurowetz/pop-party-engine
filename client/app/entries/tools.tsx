@@ -66,7 +66,7 @@ import type { MountedArtEditor } from "../../tools/art/mountArtEditor";
 import { mountLayoutEditor } from "../../tools/layout/mountLayoutEditor";
 import type { MountedLayoutEditor } from "../../tools/layout/mountLayoutEditor";
 import { beginLivePrototypeWorkspace } from "../../tools/common/livePrototypeWorkspace";
-import { republishAllSessionDraftPublishers } from "../../tools/common/sessionDraftPublisher";
+import { checkpointSessionDraftPublishers } from "../../tools/common/sessionDraftPublisher";
 
 // The TS tool dashboard (toolDashboard.ts) drives the tabs via registerDashboardTool:
 // each tool registers its dirty/save/setup, routed into its React controller. This
@@ -84,10 +84,7 @@ void livePrototypeWorkspace.then((workspace) => {
   if (!workspace) return;
   registerDashboardWorkspaceActions({
     save: async () => {
-      // Re-send every dirty in-memory snapshot before capturing the complete
-      // browser-local bundle. This also rebuilds server drafts after a restart.
-      await republishAllSessionDraftPublishers();
-      await workspace.save();
+      await checkpointSessionDraftPublishers(() => workspace.save());
       acceptMountedWorkspaceSave();
       return true;
     },

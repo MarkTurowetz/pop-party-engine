@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  checkpointSessionDraftPublishers,
   createSessionDraftPublisher,
   republishAllSessionDraftPublishers
 } from "./sessionDraftPublisher";
@@ -97,6 +98,113 @@ describe("createSessionDraftPublisher", () => {
     try {
       await republishAllSessionDraftPublishers();
       expect(postDraft).not.toHaveBeenCalled();
+    } finally {
+      publisher.dispose();
+    }
+  });
+
+  it("flushes a pending edit once before checkpointing without forcing a republish", async () => {
+    const postDraft = vi.fn(async (message) => message);
+    const checkpoint = vi.fn(async () => ({ saved: true }));
+    const publisher = createSessionDraftPublisher({
+      postDraft,
+      savedSnapshot: "saved",
+      delayMs: 60_000,
+      clearMessage: { clearFlow: true },
+      draftMessage: (snapshot) => ({ flow: snapshot })
+    });
+
+    try {
+      publisher.schedule("dirty");
+
+      await expect(checkpointSessionDraftPublishers(checkpoint))
+        .resolves.toEqual({ saved: true });
+
+      expect(postDraft).toHaveBeenCalledTimes(1);
+      expect(postDraft).toHaveBeenCalledWith({ flow: "dirty" });
+      expect(checkpoint).toHaveBeenCalledTimes(1);
+    } finally {
+      publisher.dispose();
+    }
+  });
+
+  it("does not republish an already-published edit during a normal checkpoint", async () => {
+    const postDraft = vi.fn(async (message) => message);
+    const checkpoint = vi.fn(async () => ({ saved: true }));
+    const publisher = createSessionDraftPublisher({
+      postDraft,
+      savedSnapshot: "saved",
+      delayMs: 0,
+      clearMessage: { clearFlow: true },
+      draftMessage: (snapshot) => ({ flow: snapshot })
+    });
+
+    try {
+      await publisher.publish("dirty");
+      postDraft.mockClear();
+
+      await checkpointSessionDraftPublishers(checkpoint);
+
+      expect(postDraft).not.toHaveBeenCalled();
+      expect(checkpoint).toHaveBeenCalledTimes(1);
+    } finally {
+      publisher.dispose();
+    }
+  });
+
+  it("republishes dirty snapshots and retries after explicit server recovery", async () => {
+    const postDraft = vi.fn(async (message) => message);
+    const recoveryError = Object.assign(new Error("Recovery required"), {
+      payload: { errorCode: "AUTHORING_SESSION_RECOVERY_REQUIRED" }
+    });
+    const checkpoint = vi.fn()
+      .mockRejectedValueOnce(recoveryError)
+      .mockResolvedValueOnce({ saved: true });
+    const publisher = createSessionDraftPublisher({
+      postDraft,
+      savedSnapshot: "saved",
+      delayMs: 0,
+      clearMessage: { clearFlow: true },
+      draftMessage: (snapshot) => ({ flow: snapshot })
+    });
+
+    try {
+      await publisher.publish("dirty");
+      postDraft.mockClear();
+
+      await expect(checkpointSessionDraftPublishers(checkpoint))
+        .resolves.toEqual({ saved: true });
+
+      expect(postDraft).toHaveBeenCalledTimes(1);
+      expect(postDraft).toHaveBeenCalledWith({ flow: "dirty" });
+      expect(checkpoint).toHaveBeenCalledTimes(2);
+    } finally {
+      publisher.dispose();
+    }
+  });
+
+  it("does not republish or retry unrelated checkpoint errors", async () => {
+    const postDraft = vi.fn(async (message) => message);
+    const failure = new Error("Live prototype authoring is not enabled");
+    const checkpoint = vi.fn(async () => {
+      throw failure;
+    });
+    const publisher = createSessionDraftPublisher({
+      postDraft,
+      savedSnapshot: "saved",
+      delayMs: 0,
+      clearMessage: { clearFlow: true },
+      draftMessage: (snapshot) => ({ flow: snapshot })
+    });
+
+    try {
+      await publisher.publish("dirty");
+      postDraft.mockClear();
+
+      await expect(checkpointSessionDraftPublishers(checkpoint)).rejects.toBe(failure);
+
+      expect(postDraft).not.toHaveBeenCalled();
+      expect(checkpoint).toHaveBeenCalledTimes(1);
     } finally {
       publisher.dispose();
     }
