@@ -131,6 +131,7 @@ function submissionInputDefinition({ id, name, prompt, placeholder }) {
     canCompleteFromStage: true,
     completionCleanup: "text",
     stageActionType: id,
+    stageRunner: "controllerInputBarrier",
     normalize: (action, base, context) => ({
       ...base,
       prompt: context.cleanFlowText(action?.prompt, defaultPrompt),
@@ -175,6 +176,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     canCompleteFromStage: true,
     completionCleanup: "choice",
     stageActionType: "multipleChoiceInput",
+    stageRunner: "controllerInputBarrier",
     normalize: (action, base, context) => ({
       ...base,
       prompt: context.cleanFlowText(action?.prompt, "Answer this question by tapping an answer"),
@@ -202,6 +204,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     canCompleteFromStage: true,
     completionCleanup: "choice",
     stageActionType: "triviaInput",
+    stageRunner: "controllerInputBarrier",
     normalize: (action, base, context) => ({
       ...base,
       contentVariable: context.normalizeFlowVariableName(action?.contentVariable),
@@ -241,6 +244,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     canCompleteFromStage: true,
     completionCleanup: "microphone",
     stageActionType: "requestMicrophoneAccessInput",
+    stageRunner: "controllerInputBarrier",
     normalize: (action, base, context) => {
       const config = microphoneAccessActions?.microphoneAccessActionConfig?.("requestMicrophoneAccessInput") || {};
       return {
@@ -489,6 +493,7 @@ const flowActionDefinitions: FlowActionDefinition[] = [
     category: "input",
     canCompleteFromStage: true,
     stageActionType: "voteOnAnswersInput",
+    stageRunner: "controllerInputBarrier",
     normalize: (action, base, context) => ({
       ...base,
       prompt: context.cleanFlowText(action?.prompt, "Vote for your favorite answer"),
@@ -940,6 +945,9 @@ function validateFlowActionDefinitions(definitions: FlowActionDefinition[]): voi
     stageTypes.add(stageType);
     if (typeof definition.normalize !== "function" || typeof definition.toPublic !== "function") {
       throw new Error(`Flow action ${definition.id} must define normalize and toPublic serializers`);
+    }
+    if (definition.canCompleteFromStage && !definition.stageRunner) {
+      throw new Error(`Flow action ${definition.id} is stage-completable but has no stage runner`);
     }
   }
 }

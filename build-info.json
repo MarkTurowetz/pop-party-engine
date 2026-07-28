@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1195",
+  "version": "1.0.17.1197",
   "baseVersion": "1.0.17",
-  "buildNumber": 1195,
-  "commit": "71c0aea9",
-  "branch": "codex/coordinate-release-deploy",
-  "generatedAt": "2026-07-28T00:59:27.859Z"
+  "buildNumber": 1197,
+  "commit": "d65a432d",
+  "branch": "codex/fix-controller-input-runtime",
+  "generatedAt": "2026-07-28T01:48:38.878Z"
 }

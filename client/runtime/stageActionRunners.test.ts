@@ -3,6 +3,7 @@ import { PartyGameStageActionRunners } from "./stageActionRunners";
 
 const runnerDefinitions = [
   ["doNothing", "immediateComplete"],
+  ["voteOnAnswersInput", "controllerInputBarrier"],
   ["startMoment", "startMoment"],
   ["endMoment", "endMoment"],
   ["transitionState", "immediateComplete"],
@@ -63,6 +64,19 @@ describe("PartyGameStageActionRunners (ported)", () => {
     const runner = PartyGameStageActionRunners.createRunner(c as never);
     runner.run({ id: "a1", type: "doNothing", timing: { mode: "E+", seconds: 0 } }, { isPrimary: true, actionKey: "k" });
     expect(c.completeFlowAction).toHaveBeenCalledWith("callback", "a1");
+  });
+
+  it("holds controller input actions without completing or applying a stage effect", () => {
+    const c = context();
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+
+    runner.run(
+      { id: "vote", type: "voteOnAnswersInput", timing: { mode: "E+", seconds: 0 } },
+      { isPrimary: true, actionKey: "voting:vote" }
+    );
+
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+    expect(c.applyFlowActionEffect).not.toHaveBeenCalled();
   });
 
   it.each([

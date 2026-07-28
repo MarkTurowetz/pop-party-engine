@@ -44,6 +44,29 @@ describe("flow action registry", () => {
     ))).toBe(true);
   });
 
+  it("requires every stage-completable action to declare its stage runner", () => {
+    expect(
+      flowActionDefinitions
+        .filter((definition) => definition.canCompleteFromStage && !definition.stageRunner)
+        .map((definition) => definition.id)
+    ).toEqual([]);
+  });
+
+  it.each([
+    "multipleChoiceInput",
+    "triviaInput",
+    "textSubmissionInput",
+    "voiceSubmissionInput",
+    "requestMicrophoneAccessInput",
+    "voteOnAnswersInput"
+  ])("holds %s on the stage until an authoritative controller event advances it", (type) => {
+    expect(stageActionRunnerDefinitions.find((definition) => definition.type === type)).toEqual({
+      actionId: type,
+      type,
+      runner: "controllerInputBarrier"
+    });
+  });
+
   it("fails closed without converting an unknown action into Display Text", () => {
     const actionRegistry = registry();
     expect(actionRegistry.publicAction(

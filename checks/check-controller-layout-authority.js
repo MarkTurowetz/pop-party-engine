@@ -69,7 +69,11 @@ async function main() {
 
     const staticContext = await browser.newContext({ javaScriptEnabled: false });
     const staticPage = await staticContext.newPage();
-    await staticPage.goto(`http://${host}:${port}/controller`, { waitUntil: "domcontentloaded" });
+    // Stylesheets are render-blocking in a real browser paint, but
+    // DOMContentLoaded may beat their cold CI download. Inspect only after the
+    // load event so this assertion measures the authored pre-runtime gate
+    // rather than an unstyled-document race.
+    await staticPage.goto(`http://${host}:${port}/controller`, { waitUntil: "load" });
     const staticState = await staticPage.evaluate(() => ({
       stageCodeDisplay: getComputedStyle(document.querySelector("#stageCodeField")).display,
       playerNameDisplay: getComputedStyle(document.querySelector("#playerNameField")).display,

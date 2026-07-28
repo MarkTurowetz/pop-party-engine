@@ -66,6 +66,10 @@ function runnerDefinitions(): RunnerDefinition[] {
 function createBehaviorHandlers(context: runnerContext): Record<string, BehaviorHandler> {
   const c = context as Record<string, (...args: never[]) => unknown>;
   return {
+    controllerInputBarrier() {
+      // Controller-held inputs advance only through authoritative server input
+      // events. The stage deliberately renders the action without completing it.
+    },
     immediateComplete(action, runtime) {
       completeWhenActionTargetsFinish(action, runtime, undefined);
     },
