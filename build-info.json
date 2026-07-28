@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1205",
+  "version": "1.0.17.1206",
   "baseVersion": "1.0.17",
-  "buildNumber": 1205,
-  "commit": "ca125479",
-  "branch": "codex/release-engine-1-3-11",
-  "generatedAt": "2026-07-28T09:05:05.280Z"
+  "buildNumber": 1206,
+  "commit": "672e2002",
+  "branch": "codex/fix-release-build-coordinate-1-3-12",
+  "generatedAt": "2026-07-28T09:21:30.825Z"
 }
