@@ -1,5 +1,6 @@
 "use strict";
 
+const crypto = require("node:crypto");
 const { createContentSnapshot, replaceSnapshotFiles } = require("./content-snapshot-runtime");
 const {
   ContentStoreConflictError,
@@ -13,6 +14,7 @@ const MANIFEST_PATH = "content-bundle.json";
 const DRAFT_STATE_PATH = "draft-state.json";
 const ACTIVE_RELEASE_PATH = "active-release.json";
 const PUBLISHED_REVISIONS_PATH = "published-revisions.json";
+const DEFAULT_BLOB_UPLOAD_CONCURRENCY = 6;
 
 function jsonBytes(value) {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`, "utf8");
@@ -26,6 +28,32 @@ function parseJson(bytes, logicalPath) {
   }
 }
 
+function gitBlobSha(bytes) {
+  const buffer = Buffer.from(bytes);
+  return crypto
+    .createHash("sha1")
+    .update(`blob ${buffer.length}\0`)
+    .update(buffer)
+    .digest("hex");
+}
+
+async function mapWithConcurrency(values, concurrency, mapper) {
+  const items = [...values];
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await mapper(items[index], index);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+  );
+  return results;
+}
+
 function createGithubContentBundleStore(options = {}) {
   const git = options.git;
   if (!git) throw new Error("GitHub content bundle store requires a Git Data runtime");
@@ -34,18 +62,32 @@ function createGithubContentBundleStore(options = {}) {
   const releaseRef = options.releaseRef || "heads/game-releases";
   const baseRef = options.baseRef || "heads/main";
   const validateSnapshot = typeof options.validateSnapshot === "function" ? options.validateSnapshot : () => ({ ok: true, diagnostics: [] });
+  const requestedBlobUploadConcurrency = Number(options.blobUploadConcurrency);
+  const blobUploadConcurrency = Math.max(
+    1,
+    Math.min(
+      16,
+      Math.floor(
+        Number.isFinite(requestedBlobUploadConcurrency)
+          ? requestedBlobUploadConcurrency
+          : DEFAULT_BLOB_UPLOAD_CONCURRENCY
+      )
+    )
+  );
   const knownDraftHeads = new Map();
 
   function draftRef(scope) {
     return `${draftRefPrefix}${normalizeScope(scope)}`;
   }
 
-  async function blobEntries(files, prefix = "") {
-    const entries = [];
-    for (const [logicalPath, bytes] of files) {
-      entries.push({ path: `${prefix}${logicalPath}`, sha: await git.createBlob(bytes) });
-    }
-    return entries;
+  async function blobEntries(files, prefix = "", reusableEntries = new Map()) {
+    return mapWithConcurrency(files, blobUploadConcurrency, async ([logicalPath, bytes]) => {
+      const path = `${prefix}${logicalPath}`;
+      const expectedSha = gitBlobSha(bytes);
+      const reusable = reusableEntries.get(path);
+      if (reusable?.sha === expectedSha) return { path, sha: reusable.sha };
+      return { path, sha: await git.createBlob(bytes) };
+    });
   }
 
   function snapshotFiles(snapshot, prefix = "") {
@@ -54,8 +96,11 @@ function createGithubContentBundleStore(options = {}) {
     return files;
   }
 
-  async function commitFiles({ files, message, parentSha }) {
-    const entries = await blobEntries(files);
+  async function commitFiles({ files, message, parentSha, reuseFromSha = "" }) {
+    const reusableEntries = reuseFromSha
+      ? (await treeFileMap(reuseFromSha)).entries
+      : new Map();
+    const entries = await blobEntries(files, "", reusableEntries);
     const treeSha = await git.createTree(entries);
     return git.createCommit({ message, treeSha, parentSha });
   }
@@ -293,10 +338,14 @@ function createGithubContentBundleStore(options = {}) {
     // The content and release commits form one fast-forward chain. The only
     // authoritative mutation is the final release-ref CAS, so a failed write
     // can leave only unreachable commits, never a partially active bundle.
+    const priorContentCommitSha = String(
+      releaseState.revisions[releaseState.release.contentRevision]?.contentCommitSha || ""
+    );
     const contentCommitSha = await commitFiles({
       files: snapshotFiles(snapshot),
       message: `Commit workspace content ${snapshot.revision} [${key}]`,
-      parentSha: releaseState.ref.sha
+      parentSha: releaseState.ref.sha,
+      reuseFromSha: priorContentCommitSha
     });
     const active = createReleaseRecord({
       ...release,

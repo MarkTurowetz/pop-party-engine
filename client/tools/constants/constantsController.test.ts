@@ -65,6 +65,17 @@ describe("createConstantsController", () => {
     expect(controller.getState().dirty).toBe(false);
   });
 
+  it("accepts an atomic workspace save without reloading", () => {
+    const controller = createConstantsController({ initialConstants: initial, api: fakeApi() });
+    controller.setConstant("gameTitle", "Committed");
+
+    controller.acceptWorkspaceSave();
+
+    expect(controller.getState().dirty).toBe(false);
+    controller.setConstant("gameTitle", "Changed again");
+    expect(controller.getState().dirty).toBe(true);
+  });
+
   it("reverts to the last saved snapshot", () => {
     const controller = createConstantsController({ initialConstants: initial, api: fakeApi() });
     controller.setConstant("gameTitle", "Changed");

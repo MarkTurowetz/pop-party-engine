@@ -83,7 +83,7 @@ void livePrototypeWorkspace.then((workspace) => {
     // rebuilds server-side drafts after a service restart or expired lease.
     await republishAllSessionDraftPublishers();
     await workspace.save();
-    window.location.reload();
+    acceptMountedWorkspaceSave();
     return true;
   });
 });
@@ -216,6 +216,17 @@ registerDashboardTool("controller-layout", {
     revealScreen("layoutScreen")();
   }
 });
+
+function acceptMountedWorkspaceSave(): void {
+  flowController?.acceptWorkspaceSave();
+  constantsController?.acceptWorkspaceSave();
+  hostAudioController?.acceptWorkspaceSave();
+  artEditor?.assetsController.acceptWorkspaceSave();
+  artEditor?.compositionsController.acceptWorkspaceSave();
+  artEditor?.organizationController.acceptWorkspaceSave();
+  layoutEditor?.stageController.acceptWorkspaceSave();
+  layoutEditor?.controllerController.acceptWorkspaceSave();
+}
 
 // All five tools are React now — exclude every tool's legacy scripts.
 void bootLegacySurface("tools", {

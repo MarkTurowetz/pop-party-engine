@@ -33,6 +33,7 @@ concepts into focused modules.
   - Rejects destructive second-tab replacement and lets a still-open editor re-establish its session after a restart or heartbeat-lease expiry.
   - Requires recovered clients to republish their dirty in-memory snapshots before Save so an empty restored workspace cannot overwrite unsaved browser state.
   - Commits the complete JSON and binary bundle through one final release-ref compare-and-swap, so Save is publish and partial writes never become authoritative.
+  - Reuses unchanged Git blob ids from the active content commit, uploads only changed blobs with bounded concurrency, and lets mounted Tools accept the successful commit without a browser reload.
 - `packages/engine/src/server/content-migration-runtime.js`
   - Resolves only explicit namespaced game-plugin migrations, requires a contiguous one-level path, and rejects downgrades.
   - Runs every step twice against the same immutable source and blocks output when the resulting revisions differ.
@@ -94,7 +95,8 @@ concepts into focused modules.
     branch updates for the revisioned content provider.
   - `github-content-bundle-store.js` persists complete bundle snapshots on content/draft refs and
     advances a separate active-release record only through expected-revision compare-and-swap.
-    Its draft, publish, and rollback idempotency records survive server restarts.
+    Atomic workspace commits reuse unchanged content blobs and upload changed blobs with bounded
+    concurrency. Its draft, publish, and rollback idempotency records survive server restarts.
   - `tool-source-readers-runtime.js` owns default/local JSON source loading for tool data.
   - `tool-source-stores-runtime.js` owns source-of-truth store object creation for tool data.
   - `trivia-content-runtime.js` owns trivia prompt cloning, random selection, and action content preparation.

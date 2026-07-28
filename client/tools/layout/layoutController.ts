@@ -38,6 +38,7 @@ export interface LayoutController {
   moveElement(elementId: string, x: number, y: number): void;
   undo(): void;
   redo(): void;
+  acceptWorkspaceSave(): void;
   save(): Promise<boolean>;
 }
 
@@ -213,6 +214,12 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       layouts = next;
       emit();
       scheduleDraft();
+    },
+    acceptWorkspaceSave: () => {
+      savedSnapshot = layoutSnapshot(layouts, mode);
+      sessionDraftPublisher?.markSaved(savedSnapshot);
+      error = null;
+      emit();
     },
     save: async () => {
       if (requestLivePrototypeSave()) return true;

@@ -41,6 +41,20 @@ describe("createArtOrganizationController", () => {
     expect(controller.getState().dirty).toBe(true);
   });
 
+  it("accepts an atomic workspace save without reloading", () => {
+    const controller = createArtOrganizationController({
+      initialOrganization: emptyOrganization(),
+      compositions: comps,
+      assets: [],
+      api: fakeApi()
+    });
+    controller.createFolder("stage", "Committed");
+
+    controller.acceptWorkspaceSave();
+
+    expect(controller.getState().dirty).toBe(false);
+  });
+
   it("refreshes organizer items when compositions are added locally", () => {
     const controller = createArtOrganizationController({
       initialOrganization: emptyOrganization(),

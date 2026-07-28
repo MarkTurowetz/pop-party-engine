@@ -256,6 +256,7 @@ export interface FlowEditorController {
   // Persistence
   replaceFlow(flow: GameFlow, options?: { markSaved?: boolean }): void;
   revert(): void;
+  acceptWorkspaceSave(): void;
   save(): Promise<GameFlow | null>;
   publishDraft(): Promise<void>;
 }
@@ -753,6 +754,13 @@ export function createFlowEditorController(
     revert: () => {
       const snapshot = store.replaceFlow(JSON.parse(savedSnapshot) as GameFlow);
       commit(snapshot);
+    },
+    acceptWorkspaceSave: () => {
+      savedSnapshot = savedSnapshotOf(store.snapshot().flow);
+      lastCommittedFlowSnapshot = savedSnapshot;
+      sessionDraftPublisher.markSaved(savedSnapshot);
+      patch({ hasLocalDraft: false, error: null });
+      commit(store.snapshot());
     },
     save: async () => {
       if (requestLivePrototypeSave()) return store.snapshot().flow;

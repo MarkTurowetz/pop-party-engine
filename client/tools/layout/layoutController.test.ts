@@ -106,6 +106,16 @@ describe("createLayoutController", () => {
     expect(controller.getState().dirty).toBe(false);
   });
 
+  it("accepts an atomic workspace save without reloading", () => {
+    const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
+    controller.selectGroup("intro");
+    controller.addTextElement();
+
+    controller.acceptWorkspaceSave();
+
+    expect(controller.getState().dirty).toBe(false);
+  });
+
   it("saves controller configuration tags and clears dirty", async () => {
     const saveControllerLayouts = vi.fn(
       async (nextLayouts: StageLayoutCollection) =>

@@ -40,6 +40,24 @@ describe("createArtCompositionsController", () => {
     expect(state.selectedCompositionId).toBe("a");
   });
 
+  it("accepts edited and deleted compositions from an atomic workspace save", () => {
+    const controller = createArtCompositionsController({
+      initialCompositions: [composition("a"), composition("b")],
+      api: fakeApi(),
+      workspaceStorage: null
+    });
+    controller.updateComposition("a", { name: "Committed" });
+    controller.trashCompositions(["b"]);
+
+    controller.acceptWorkspaceSave();
+
+    expect(controller.getState().dirty).toBe(false);
+    expect(controller.getState().trashedCompositionIds.size).toBe(0);
+    expect(controller.getState().compositions.map((item) => item.id)).toEqual(["a"]);
+    controller.updateComposition("a", { name: "Changed again" });
+    expect(controller.getState().dirty).toBe(true);
+  });
+
   it("keeps reserved workspaces outside the library and persists workspace edits", () => {
     const values = new Map<string, string>();
     const workspaceStorage = {

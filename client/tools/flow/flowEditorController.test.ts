@@ -51,6 +51,18 @@ describe("createFlowEditorController", () => {
     expect(controller.getState().snapshot.flow.states).toHaveLength(3);
   });
 
+  it("accepts an atomic workspace save without reloading", () => {
+    const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
+    controller.addState();
+
+    controller.acceptWorkspaceSave();
+
+    expect(controller.getState().dirty).toBe(false);
+    expect(controller.getState().hasLocalDraft).toBe(false);
+    controller.addState();
+    expect(controller.getState().dirty).toBe(true);
+  });
+
   it("selects a valid action (validating against flow action ids)", () => {
     const controller = createFlowEditorController({ initialFlow: flowFixture(), api: fakeApi() });
 
