@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1211",
+  "version": "1.0.17.1212",
   "baseVersion": "1.0.17",
-  "buildNumber": 1211,
-  "commit": "59de692c",
-  "branch": "codex/indexeddb-async-git-save",
-  "generatedAt": "2026-07-28T20:46:55.533Z"
+  "buildNumber": 1212,
+  "commit": "1f1aa78c",
+  "branch": "codex/fix-browser-checkpoint-save",
+  "generatedAt": "2026-07-28T22:55:48.282Z"
 }

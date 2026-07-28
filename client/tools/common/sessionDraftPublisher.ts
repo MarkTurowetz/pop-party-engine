@@ -41,6 +41,31 @@ export async function republishAllSessionDraftPublishers(): Promise<void> {
   await Promise.all([...activePublishers].map(({ republish }) => republish()));
 }
 
+function isRecoveredAuthoringSession(error: unknown): boolean {
+  const errorCode = String(
+    (error as { payload?: { errorCode?: unknown } })?.payload?.errorCode || ""
+  );
+  return errorCode === "AUTHORING_SESSION_RECOVERY_REQUIRED";
+}
+
+/**
+ * Flush only edits that have not reached the live workspace before checkpointing.
+ * A full republish is reserved for the explicit server-recovery response, where
+ * the browser must reconstruct drafts lost during a server restart.
+ */
+export async function checkpointSessionDraftPublishers<T>(
+  checkpoint: () => Promise<T>
+): Promise<T> {
+  await flushAllSessionDraftPublishers();
+  try {
+    return await checkpoint();
+  } catch (error) {
+    if (!isRecoveredAuthoringSession(error)) throw error;
+    await republishAllSessionDraftPublishers();
+    return checkpoint();
+  }
+}
+
 /**
  * Debounced publisher for unsaved, in-memory tool-data drafts.
  *
