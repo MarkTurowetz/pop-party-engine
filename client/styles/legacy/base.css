@@ -106,7 +106,33 @@ button:disabled {
 
 .tool-dashboard-actions {
   display: flex;
+  align-items: flex-end;
+  flex-direction: column;
   justify-content: end;
+  gap: 4px;
+}
+
+.tool-dashboard-action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tool-dashboard-save-status {
+  max-width: min(640px, 80vw);
+  margin: 0;
+  color: #174d56;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.tool-dashboard-save-status.is-error {
+  border: 3px solid #8b1223;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #8b1223;
+  background: #fff1f3;
 }
 
 .tool-tab {
@@ -129,6 +155,12 @@ button:disabled {
 
 body.tool-dashboard-mode .art-tool {
   padding-top: 98px;
+}
+
+@media (max-width: 1500px) {
+  body.tool-dashboard-mode .art-tool {
+    padding-top: 164px;
+  }
 }
 
 body.tool-dashboard-mode .art-shell,

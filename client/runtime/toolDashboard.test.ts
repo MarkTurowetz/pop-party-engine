@@ -4,11 +4,16 @@ type Listener = (event?: Event) => unknown;
 
 interface DashboardHarness {
   button: HTMLButtonElement;
+  clickRestoreGit: () => Promise<void>;
   clickSaveAll: () => Promise<void>;
+  clickSyncNow: () => Promise<void>;
   pressSaveAllHotkey: () => Promise<{ prevented: boolean }>;
+  registerDashboardWorkspaceActions: typeof import("./toolDashboard").registerDashboardWorkspaceActions;
   registerDashboardTool: typeof import("./toolDashboard").registerDashboardTool;
+  restoreButton: HTMLButtonElement;
   setupToolDashboard: () => void;
   status: HTMLElement;
+  syncButton: HTMLButtonElement;
 }
 
 function classListStub(): DOMTokenList {
@@ -40,6 +45,16 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
     disabled: true,
     textContent: "Save All"
   } as unknown as HTMLButtonElement;
+  const syncButton = {
+    addEventListener: vi.fn((type: string, listener: Listener) => buttonListeners.set(`sync:${type}`, listener)),
+    disabled: false,
+    textContent: "Sync Now"
+  } as unknown as HTMLButtonElement;
+  const restoreButton = {
+    addEventListener: vi.fn((type: string, listener: Listener) => buttonListeners.set(`restore:${type}`, listener)),
+    disabled: false,
+    textContent: "Restore from Git"
+  } as unknown as HTMLButtonElement;
   const status = {
     classList: classListStub(),
     textContent: ""
@@ -51,10 +66,13 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
     querySelector: vi.fn(() => null)
   } as unknown as Document;
   globals.window = {
+    addEventListener: vi.fn(),
     confirm: vi.fn(() => true),
-    location: { search: "" }
+    location: { reload: vi.fn(), search: "" }
   };
   globals.globalSaveButton = button;
+  globals.globalSyncButton = syncButton;
+  globals.globalRestoreGitButton = restoreButton;
   globals.globalSaveStatus = status;
   globals.toolDashboardBar = { classList: classListStub() } as unknown as HTMLElement;
   globals.toolTabs = [];
@@ -65,9 +83,19 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
 
   return {
     button,
+    clickRestoreGit: async () => {
+      const listener = buttonListeners.get("restore:click");
+      if (listener) await listener();
+      await Promise.resolve();
+    },
     clickSaveAll: async () => {
       const listener = buttonListeners.get("click");
       if (listener) await listener();
+    },
+    clickSyncNow: async () => {
+      const listener = buttonListeners.get("sync:click");
+      if (listener) await listener();
+      await Promise.resolve();
     },
     pressSaveAllHotkey: async () => {
       let prevented = false;
@@ -85,9 +113,12 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
       }
       return { prevented };
     },
+    registerDashboardWorkspaceActions: dashboard.registerDashboardWorkspaceActions,
     registerDashboardTool: dashboard.registerDashboardTool,
+    restoreButton,
     setupToolDashboard,
-    status
+    status,
+    syncButton
   };
 }
 
@@ -97,6 +128,8 @@ afterEach(() => {
   delete globals.document;
   delete globals.window;
   delete globals.globalSaveButton;
+  delete globals.globalSyncButton;
+  delete globals.globalRestoreGitButton;
   delete globals.globalSaveStatus;
   delete globals.toolDashboardBar;
   delete globals.toolTabs;
@@ -216,5 +249,38 @@ describe("toolDashboard Save All", () => {
 
     expect(result.prevented).toBe(true);
     expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs an explicit Git sync without requiring dirty tool state", async () => {
+    const harness = await createDashboardHarness();
+    const sync = vi.fn(async () => undefined);
+    harness.registerDashboardWorkspaceActions({
+      save: vi.fn(async () => undefined),
+      sync,
+      restore: vi.fn(async () => undefined)
+    });
+    harness.setupToolDashboard();
+
+    await harness.clickSyncNow();
+
+    expect(sync).toHaveBeenCalledTimes(1);
+    expect(harness.syncButton.disabled).toBe(false);
+  });
+
+  it("confirms and reloads after Restore from Git completes", async () => {
+    const harness = await createDashboardHarness();
+    const restore = vi.fn(async () => undefined);
+    harness.registerDashboardWorkspaceActions({
+      save: vi.fn(async () => undefined),
+      sync: vi.fn(async () => undefined),
+      restore
+    });
+    harness.setupToolDashboard();
+
+    await harness.clickRestoreGit();
+
+    expect(restore).toHaveBeenCalledTimes(1);
+    expect((globalThis.window as unknown as { location: { reload: ReturnType<typeof vi.fn> } }).location.reload)
+      .toHaveBeenCalledTimes(1);
   });
 });

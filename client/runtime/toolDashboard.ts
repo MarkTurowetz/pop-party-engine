@@ -11,6 +11,16 @@ export interface DashboardToolHooks {
   setup: () => void | Promise<unknown>;
 }
 
+export interface DashboardWorkspaceActions {
+  save: () => Promise<unknown>;
+  sync: () => Promise<unknown>;
+  restore: () => Promise<unknown>;
+  subscribe?: (listener: (status: {
+    phase: "synced" | "saved-local" | "syncing" | "error";
+    message: string;
+  }) => void) => (() => void);
+}
+
 interface ToolMetadata {
   id: string;
   label: string;
@@ -22,6 +32,8 @@ declare global {
     setupToolDashboard?: () => void;
     artCompositionsPendingDeleteCount?: () => number;
     globalSaveButton?: HTMLButtonElement;
+    globalSyncButton?: HTMLButtonElement;
+    globalRestoreGitButton?: HTMLButtonElement;
     globalSaveStatus?: HTMLElement;
     unsafeChangesModal?: HTMLElement;
     unsafeCancelButton?: HTMLElement;
@@ -45,8 +57,15 @@ const TOOL_METADATA: ToolMetadata[] = [
 
 const toolHooks = new Map<string, DashboardToolHooks>();
 let savingAllTools = false;
+let syncingWorkspace = false;
+let restoringWorkspace = false;
 let dashboardEventsInstalled = false;
-let workspaceSave: (() => Promise<unknown>) | null = null;
+let workspaceActions: DashboardWorkspaceActions | null = null;
+let disposeWorkspaceStatus: (() => void) | null = null;
+let latestWorkspaceStatus: {
+  phase: "synced" | "saved-local" | "syncing" | "error";
+  message: string;
+} | null = null;
 
 /** Register a /tools tab's dirty/save/setup behaviour (called by tools.tsx). */
 export function registerDashboardTool(id: string, hooks: DashboardToolHooks): void {
@@ -54,7 +73,28 @@ export function registerDashboardTool(id: string, hooks: DashboardToolHooks): vo
 }
 
 export function registerDashboardWorkspaceSave(save: (() => Promise<unknown>) | null): void {
-  workspaceSave = save;
+  workspaceActions = save ? {
+    save,
+    sync: async () => undefined,
+    restore: async () => undefined
+  } : null;
+}
+
+export function registerDashboardWorkspaceActions(
+  actions: DashboardWorkspaceActions | null
+): void {
+  disposeWorkspaceStatus?.();
+  disposeWorkspaceStatus = null;
+  workspaceActions = actions;
+  if (actions?.subscribe) {
+    disposeWorkspaceStatus = actions.subscribe((status) => {
+      latestWorkspaceStatus = status;
+      setGlobalSaveStatus(status.message, status.phase === "error" ? "error" : "info");
+      updateWorkspaceActionButtons(status.phase);
+    });
+  } else {
+    latestWorkspaceStatus = null;
+  }
 }
 
 function metadataFor(toolId: string | null): ToolMetadata | null {
@@ -78,11 +118,25 @@ function updateGlobalSaveButton(): void {
   globalSaveButton.dataset.dashboardDirty = dirty ? "true" : "false";
 }
 
-function setGlobalSaveStatus(message = ""): void {
+function setGlobalSaveStatus(message = "", tone: "info" | "error" = "info"): void {
   const status = w().globalSaveStatus;
   if (!status) return;
   status.textContent = message;
   status.classList.toggle("hidden", !message);
+  status.classList.toggle("is-error", Boolean(message) && tone === "error");
+  status.classList.toggle("is-info", Boolean(message) && tone === "info");
+}
+
+function updateWorkspaceActionButtons(
+  phase: "synced" | "saved-local" | "syncing" | "error" = "synced"
+): void {
+  const syncButton = w().globalSyncButton;
+  if (syncButton) {
+    syncButton.disabled = syncingWorkspace || restoringWorkspace || phase === "syncing";
+    syncButton.textContent = phase === "syncing" ? "Syncing…" : "Sync Now";
+  }
+  const restoreButton = w().globalRestoreGitButton;
+  if (restoreButton) restoreButton.disabled = syncingWorkspace || restoringWorkspace;
 }
 
 async function saveAllTools(): Promise<void> {
@@ -95,7 +149,6 @@ async function saveAllTools(): Promise<void> {
   }
   const dirtyTools = TOOL_METADATA.filter((tool) => isToolDirty(tool.id));
   if (!dirtyTools.length) {
-    setGlobalSaveStatus();
     updateGlobalSaveButton();
     return;
   }
@@ -112,8 +165,8 @@ async function saveAllTools(): Promise<void> {
   setGlobalSaveStatus();
   let failed = false;
   try {
-    if (workspaceSave) {
-      await workspaceSave();
+    if (workspaceActions) {
+      await workspaceActions.save();
     } else {
       for (const tool of dirtyTools) {
         const hooks = toolHooks.get(tool.id);
@@ -133,11 +186,50 @@ async function saveAllTools(): Promise<void> {
     globalSaveButton.dataset.saveError = "true";
     globalSaveButton.textContent = "Save failed";
     globalSaveButton.title = error instanceof Error ? error.message : String(error);
-    setGlobalSaveStatus(globalSaveButton.title);
+    setGlobalSaveStatus(globalSaveButton.title, "error");
   } finally {
     savingAllTools = false;
     if (!failed) globalSaveButton.textContent = "Save All";
     updateGlobalSaveButton();
+  }
+}
+
+async function syncWorkspaceNow(): Promise<void> {
+  if (!workspaceActions || syncingWorkspace || restoringWorkspace) return;
+  syncingWorkspace = true;
+  updateWorkspaceActionButtons("syncing");
+  try {
+    await workspaceActions.sync();
+  } catch (error) {
+    setGlobalSaveStatus(
+      error instanceof Error ? error.message : String(error),
+      "error"
+    );
+  } finally {
+    syncingWorkspace = false;
+    updateWorkspaceActionButtons();
+  }
+}
+
+async function restoreWorkspaceFromGit(): Promise<void> {
+  if (!workspaceActions || restoringWorkspace || syncingWorkspace) return;
+  const confirmed = window.confirm(
+    "Restore the Tools workspace from Git? This permanently removes all browser-local and unsaved changes."
+  );
+  if (!confirmed) return;
+  restoringWorkspace = true;
+  updateWorkspaceActionButtons();
+  try {
+    setGlobalSaveStatus("Restoring from Git…");
+    await workspaceActions.restore();
+    window.location.reload();
+  } catch (error) {
+    restoringWorkspace = false;
+    updateWorkspaceActionButtons();
+    setGlobalSaveStatus(
+      error instanceof Error ? error.message : String(error),
+      "error"
+    );
   }
 }
 
@@ -182,13 +274,29 @@ function setupToolDashboard(): void {
   w().toolDashboardBar?.classList.remove("hidden");
   if (!dashboardEventsInstalled) {
     w().globalSaveButton?.addEventListener("click", saveAllTools);
+    w().globalSyncButton?.addEventListener("click", () => {
+      void syncWorkspaceNow();
+    });
+    w().globalRestoreGitButton?.addEventListener("click", () => {
+      void restoreWorkspaceFromGit();
+    });
     document.addEventListener("keydown", handleDashboardKeydown);
     window.addEventListener?.("pop-party-authoring-error", ((event: CustomEvent<{ message?: string }>) => {
-      setGlobalSaveStatus(event.detail?.message || "The working bundle is invalid.");
+      setGlobalSaveStatus(
+        event.detail?.message || "The working bundle is invalid.",
+        "error"
+      );
     }) as EventListener);
     dashboardEventsInstalled = true;
   }
   updateGlobalSaveButton();
+  if (latestWorkspaceStatus) {
+    setGlobalSaveStatus(
+      latestWorkspaceStatus.message,
+      latestWorkspaceStatus.phase === "error" ? "error" : "info"
+    );
+    updateWorkspaceActionButtons(latestWorkspaceStatus.phase);
+  }
   w().unsafeCancelButton?.addEventListener("click", resolveUnsafeChangesModal);
   w().unsafeSaveButton?.addEventListener("click", resolveUnsafeChangesModal);
   w().unsafeChangesModal?.addEventListener("click", (event) => {

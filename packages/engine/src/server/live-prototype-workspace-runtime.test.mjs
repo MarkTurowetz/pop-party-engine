@@ -116,6 +116,68 @@ describe("live prototype workspace", () => {
       .toBe("Saved prototype title");
   });
 
+  it("round-trips a complete browser checkpoint after the server workspace is discarded", async () => {
+    const { drafts, initialSnapshot, workspace } = fixture();
+    await workspace.initialize();
+    const firstSession = await workspace.begin();
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "Browser checkpoint title"
+    };
+    await workspace.applyDraft(firstSession.sessionId);
+    const localSave = await workspace.checkpoint(firstSession.sessionId);
+
+    expect(localSave.checkpoint).toMatchObject({
+      schemaVersion: 1,
+      gameId: initialSnapshot.manifest.gameId,
+      workingRevision: localSave.workingRevision,
+      gitContentRevision: initialSnapshot.revision
+    });
+    expect(Object.keys(localSave.checkpoint.files)).toEqual(initialSnapshot.paths);
+
+    await workspace.discard(firstSession.sessionId);
+    const secondSession = await workspace.begin();
+    expect(workspace.readWorkingSnapshot().readJson("constants.json").gameTitle)
+      .toBe(initialSnapshot.readJson("constants.json").gameTitle);
+
+    const restored = await workspace.restoreCheckpoint(
+      secondSession.sessionId,
+      localSave.checkpoint
+    );
+    expect(restored.localCheckpointRevision).toBe(localSave.workingRevision);
+    expect(restored.gitSynced).toBe(false);
+    expect(workspace.readWorkingSnapshot().readJson("constants.json").gameTitle)
+      .toBe("Browser checkpoint title");
+  });
+
+  it("syncs the captured local checkpoint without overwriting edits made during Git sync", async () => {
+    const { drafts, initialSnapshot, store, workspace } = fixture();
+    await workspace.initialize();
+    const session = await workspace.begin();
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "Local save one"
+    };
+    await workspace.applyDraft(session.sessionId);
+    const localSave = await workspace.checkpoint(session.sessionId);
+
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "Unsaved edit after checkpoint"
+    };
+    await workspace.applyDraft(session.sessionId);
+    const synced = await workspace.save(
+      session.sessionId,
+      "workspace-browser-sync-0001",
+      localSave.localCheckpointRevision
+    );
+
+    expect(store.loadPublishedRevision(synced.syncedRevision).readJson("constants.json").gameTitle)
+      .toBe("Local save one");
+    expect(workspace.readWorkingSnapshot().readJson("constants.json").gameTitle)
+      .toBe("Unsaved edit after checkpoint");
+  });
+
   it("keeps staged binary audio in memory until the same atomic workspace commit", async () => {
     const { store, workspace } = fixture();
     await workspace.initialize();

@@ -258,9 +258,30 @@ describe("live prototype application integration", () => {
       await post(startup.localUrl, "/api/tool-drafts", {
         constants: { ...constants, gameTitle: "Durable live title" }
       }, saveHeaders);
-      const saved = await post(startup.localUrl, "/api/authoring/workspace/save", {
-        idempotencyKey: "application-save-0001"
+      const localSave = await post(
+        startup.localUrl,
+        "/api/authoring/workspace/checkpoint",
+        {},
+        saveHeaders
+      );
+      expect(localSave.checkpoint.workingRevision).toBe(localSave.workingRevision);
+      await post(startup.localUrl, "/api/authoring/workspace/discard", {
+        sessionId: saveSession.sessionId
       }, saveHeaders);
+      expect((await lobby(startup.localUrl)).gameTitle).toBe(originalTitle);
+
+      const recoveredSession = await post(startup.localUrl, "/api/authoring/workspace/session");
+      const recoveredHeaders = {
+        "X-Pop-Party-Authoring-Session": recoveredSession.sessionId
+      };
+      await post(startup.localUrl, "/api/authoring/workspace/restore-checkpoint", {
+        checkpoint: localSave.checkpoint
+      }, recoveredHeaders);
+      expect((await lobby(startup.localUrl)).gameTitle).toBe("Durable live title");
+      const saved = await post(startup.localUrl, "/api/authoring/workspace/save", {
+        checkpointRevision: localSave.checkpoint.workingRevision,
+        idempotencyKey: "application-save-0001"
+      }, recoveredHeaders);
       expect(saved.saved).toBe(true);
       expect((await lobby(startup.localUrl)).gameTitle).toBe("Durable live title");
       const health = await (await fetch(`${startup.localUrl}/api/health`)).json();
