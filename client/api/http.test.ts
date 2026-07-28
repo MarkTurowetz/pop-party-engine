@@ -22,4 +22,23 @@ describe("tool API CSRF", () => {
     await createApiClient({ fetchImpl }).postJson("/api/join", { name: "Ava" });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
+
+  it("refreshes a cached CSRF token once after the administrator session is renewed", async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, csrfToken: "csrf-old" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ok: false,
+        error: "CSRF token is missing or invalid",
+        code: "ADMIN_CSRF_INVALID"
+      }), { status: 403 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, csrfToken: "csrf-new" }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const client = createApiClient({ fetchImpl, adminCsrf: true });
+
+    await client.postJson("/api/tool-drafts", { constants: {} });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(fetchImpl.mock.calls[1][1]?.headers).toMatchObject({ "X-CSRF-Token": "csrf-old" });
+    expect(fetchImpl.mock.calls[3][1]?.headers).toMatchObject({ "X-CSRF-Token": "csrf-new" });
+  });
 });

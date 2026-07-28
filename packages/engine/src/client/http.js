@@ -63,31 +63,54 @@ function createApiClient(options = {}) {
     };
   }
 
+  function isInvalidCsrf(error) {
+    return options.adminCsrf
+      && error instanceof ApiError
+      && error.status === 403
+      && String(error.payload?.code || error.payload?.errorCode || "") === "ADMIN_CSRF_INVALID";
+  }
+
+  async function mutate(path, init) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await fetchImpl(apiUrl(baseUrl, path), {
+        ...init,
+        headers: {
+          ...init.headers,
+          ...(await mutationHeaders())
+        }
+      });
+      try {
+        return await parseJsonResponse(response);
+      } catch (error) {
+        if (attempt > 0 || !isInvalidCsrf(error)) throw error;
+        csrfTokenPromise = null;
+      }
+    }
+    throw new Error("Mutation retry exhausted");
+  }
+
   return Object.freeze({
     async getJson(path) {
       const response = await fetchImpl(apiUrl(baseUrl, path), { headers: { Accept: "application/json" } });
       return parseJsonResponse(response);
     },
     async postJson(path, body) {
-      const response = await fetchImpl(apiUrl(baseUrl, path), {
+      return mutate(path, {
         method: "POST",
         headers: {
           Accept: "application/json",
-          "Content-Type": "application/json",
-          ...(await mutationHeaders())
+          "Content-Type": "application/json"
         },
         credentials: "same-origin",
         body: JSON.stringify(body)
       });
-      return parseJsonResponse(response);
     },
     async deleteJson(path) {
-      const response = await fetchImpl(apiUrl(baseUrl, path), {
+      return mutate(path, {
         method: "DELETE",
-        headers: { Accept: "application/json", ...(await mutationHeaders()) },
+        headers: { Accept: "application/json" },
         credentials: "same-origin"
       });
-      return parseJsonResponse(response);
     }
   });
 }
