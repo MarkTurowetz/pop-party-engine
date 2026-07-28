@@ -43,16 +43,29 @@ function checkReleaseReadiness(version = process.argv[2]) {
     "actions/setup-node@v6",
     "node-version: 24",
     "package-manager-cache: false",
-    "npm publish ./packages/engine",
-    "npm publish ./packages/create-game",
-    "--provenance",
-    "--access public"
+    "scripts/publish-public-package.js --package ./packages/engine",
+    "scripts/publish-public-package.js --package ./packages/create-game",
+    "scripts/coordinate-reference-release.js activate",
+    "scripts/trigger-render-deploy.js",
+    "scripts/verify-production-release.js",
+    "secrets.RENDER_DEPLOY_HOOK_URL"
   ]) {
     if (!workflow.includes(contract)) throw new Error(`Publish workflow is missing: ${contract}`);
+  }
+  const publisher = fs.readFileSync(path.join(root, "scripts", "publish-public-package.js"), "utf8");
+  for (const contract of ["--provenance", "--access", "public", "digestPackageDirectory"]) {
+    if (!publisher.includes(contract)) throw new Error(`Public package publisher is missing: ${contract}`);
   }
   const checkWorkflow = fs.readFileSync(path.join(root, ".github", "workflows", "check.yml"), "utf8");
   for (const contract of ["actions/checkout@v6", "actions/setup-node@v6", "node-version: 24"]) {
     if (!checkWorkflow.includes(contract)) throw new Error(`Check workflow is missing: ${contract}`);
+  }
+  if (!/push:\s*\n\s*branches:\s*\[main\]/.test(checkWorkflow)) {
+    throw new Error("Check workflow must avoid duplicate feature-branch push and pull-request runs");
+  }
+  const renderBlueprint = fs.readFileSync(path.join(root, "render.yaml"), "utf8");
+  for (const contract of ["autoDeployTrigger: off", "key: NODE_VERSION", "value: 24"]) {
+    if (!renderBlueprint.includes(contract)) throw new Error(`Render Blueprint is missing: ${contract}`);
   }
   for (const [label, source] of [["publish", workflow], ["check", checkWorkflow]]) {
     if (source.includes("game-data") || source.includes(".authored-game-data")) {

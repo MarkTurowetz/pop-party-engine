@@ -47,6 +47,13 @@ The included `render.yaml` defines the same settings as a Render Blueprint.
 `build-info.json`, so older Render services still configured to call
 `build-info` deploy the current tool UI instead of reusing stale bundles.
 
+Production auto-deploys are disabled. Public engine releases are deployed only
+by the protected `publish` workflow after npm publication and the reference
+release tuple are complete. The workflow targets the exact released commit,
+then verifies `/api/health` and the rendered application build. Configure its
+secret Render deploy hook as `RENDER_DEPLOY_HOOK_URL`; see
+`.github/RELEASE_SETUP.md`.
+
 ## Durable Authoring
 
 Production Tools write one revisioned, game-owned content bundle through a

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1194",
+  "version": "1.0.17.1195",
   "baseVersion": "1.0.17",
-  "buildNumber": 1194,
-  "commit": "08db0766",
-  "branch": "codex/recover-authoring-csrf-1.3.8",
-  "generatedAt": "2026-07-28T00:09:51.123Z"
+  "buildNumber": 1195,
+  "commit": "71c0aea9",
+  "branch": "codex/coordinate-release-deploy",
+  "generatedAt": "2026-07-28T00:59:27.859Z"
 }

@@ -3,12 +3,13 @@ services:
     name: party-game-template
     runtime: node
     plan: free
+    autoDeployTrigger: off
     buildCommand: npm run build
     startCommand: node server.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
-        value: 22
+        value: 24
       - key: PARTY_GAME_USE_VITE_ENTRIES
         value: 1
       - key: PARTY_GAME_CONTENT_STORE

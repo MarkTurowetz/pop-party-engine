@@ -42,14 +42,84 @@ jobs:
       - run: npm run split:audit-history
       - run: npm run check
 
-      - name: Publish engine with npm provenance
-        run: npm publish ./packages/engine --provenance --access public
+      - name: Publish or verify engine with npm provenance
+        run: node scripts/publish-public-package.js --package ./packages/engine
 
-      - name: Publish game generator with npm provenance
-        run: npm publish ./packages/create-game --provenance --access public
+      - name: Publish or verify game generator with npm provenance
+        run: node scripts/publish-public-package.js --package ./packages/create-game
 
-      - name: Create immutable GitHub release
+      - name: Create or verify immutable GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.release_version }}
-        run: gh release create "engine-v${RELEASE_VERSION}" --target "${GITHUB_SHA}" --generate-notes
+        run: |
+          if gh release view "engine-v${RELEASE_VERSION}" >/dev/null 2>&1; then
+            RELEASE_TARGET="$(gh release view "engine-v${RELEASE_VERSION}" --json targetCommitish --jq .targetCommitish)"
+            if [ "${RELEASE_TARGET}" != "${GITHUB_SHA}" ]; then
+              echo "GitHub release engine-v${RELEASE_VERSION} targets ${RELEASE_TARGET}, not ${GITHUB_SHA}."
+              exit 1
+            fi
+            echo "GitHub release engine-v${RELEASE_VERSION} already targets this commit."
+          else
+            gh release create "engine-v${RELEASE_VERSION}" --target "${GITHUB_SHA}" --generate-notes
+          fi
+
+  deploy-reference:
+    needs: publish
+    runs-on: ubuntu-latest
+    env:
+      REFERENCE_PRODUCTION_URL: https://pop-party.onrender.com
+      RELEASE_OPERATION_KEY: engine-${{ inputs.release_version }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - run: npm ci
+
+      - name: Resolve the exact rendered application build
+        id: build
+        run: >-
+          node -e 'const fs=require("fs");
+          const info=require("./build-version").buildInfo();
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `app_version=${info.version}\n`)'
+
+      - name: Activate matching reference release coordinates
+        id: activate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_STATE_FILE: ${{ runner.temp }}/reference-release-activation.json
+        run: >-
+          node scripts/coordinate-reference-release.js activate
+          --engine-version "${{ inputs.release_version }}"
+          --operation-key "${RELEASE_OPERATION_KEY}"
+          --state-file "${RELEASE_STATE_FILE}"
+
+      - name: Trigger Render for the exact released commit
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: node scripts/trigger-render-deploy.js
+
+      - name: Verify the coordinated production release
+        id: verify
+        run: >-
+          node scripts/verify-production-release.js
+          --base-url "${REFERENCE_PRODUCTION_URL}"
+          --engine-version "${{ inputs.release_version }}"
+          --release-revision "${{ steps.activate.outputs.release_revision }}"
+          --app-version "${{ steps.build.outputs.app_version }}"
+
+      - name: Restore prior release coordinates after a failed deployment
+        if: ${{ failure() && steps.activate.outputs.changed == 'true' && steps.verify.outcome != 'success' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_STATE_FILE: ${{ runner.temp }}/reference-release-activation.json
+        run: >-
+          node scripts/coordinate-reference-release.js rollback
+          --operation-key "${RELEASE_OPERATION_KEY}"
+          --state-file "${RELEASE_STATE_FILE}"
