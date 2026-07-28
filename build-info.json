@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1207",
+  "version": "1.0.17.1208",
   "baseVersion": "1.0.17",
-  "buildNumber": 1207,
-  "commit": "00d9c48e",
-  "branch": "codex/retry-published-package-tarballs",
-  "generatedAt": "2026-07-28T09:35:03.159Z"
+  "buildNumber": 1208,
+  "commit": "1f031a53",
+  "branch": "codex/persist-scheduled-sub-actions",
+  "generatedAt": "2026-07-28T16:53:19.678Z"
 }

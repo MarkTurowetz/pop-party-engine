@@ -530,6 +530,8 @@ let _finalizeTextInputDraftsFn = () => 0;
 const finalizeTextInputDraftsProxy = (room) => _finalizeTextInputDraftsFn(room);
 let _applyRoomActionEffectsFn;
 const applyRoomActionEffectsProxy = (room, action) => _applyRoomActionEffectsFn?.(room, action);
+let _clearScheduledSubActionsFn = () => {};
+const clearScheduledSubActionsProxy = (room) => _clearScheduledSubActionsFn(room);
 let _releasePendingFlowEventsFn;
 const releasePendingFlowEventsProxy = (room) => _releasePendingFlowEventsFn?.(room) === true;
 let _prepareLobbySessionFn = () => {};
@@ -848,6 +850,7 @@ const {
   broadcastLobby,
   clearActionTimer,
   clearAppliedActionEffects,
+  clearScheduledSubActions: clearScheduledSubActionsProxy,
   clearChoiceInput,
   clearCountdownTimer,
   clearDisplayedPlayerAnswers,
@@ -1308,9 +1311,12 @@ function readHostAudios(room = null) {
 }
 
 const {
-  applyRoomActionEffects
+  applyRoomActionEffects,
+  clearScheduledSubActions,
+  scheduleRoomSubActions
 } = createRoomActionEffectsRuntime({
   activePlayers,
+  broadcastLobby,
   clearDisplayedCorrectnessForPlayers,
   endGameMoment,
   filteredPlayerIds,
@@ -1332,6 +1338,7 @@ const {
   storeRandomTriviaPrompt
 });
 _applyRoomActionEffectsFn = applyRoomActionEffects;
+_clearScheduledSubActionsFn = clearScheduledSubActions;
 
 const {
   applyChoiceInputAction,
@@ -1369,6 +1376,7 @@ const {
   publicPlayer,
   resolveRoomActionText,
   runtimeGameFlow,
+  scheduleRoomSubActions,
   scheduleMicrophoneAccessAdvance,
   selectVip,
   serializeVotingCards,

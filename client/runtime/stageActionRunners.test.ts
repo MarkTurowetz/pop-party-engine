@@ -7,6 +7,7 @@ const runnerDefinitions = [
   ["startMoment", "startMoment"],
   ["endMoment", "endMoment"],
   ["transitionState", "immediateComplete"],
+  ["setGameObjectShown", "setGameObjectShown"],
   ["playGameObjectAnimation", "playGameObjectAnimation"],
   ["stopGameObjectAnimation", "playGameObjectAnimation"],
   ["setupGame", "serverEffect"],
@@ -45,6 +46,7 @@ function context() {
     setStageTextObjectForAction: vi.fn(() => Promise.resolve()),
     runStageWipe: vi.fn(),
     playStageAudioAction: vi.fn(),
+    setStageLayoutGameObjectShownForAction: vi.fn(() => Promise.resolve()),
     playStageLayoutGameObjectAnimationForAction: vi.fn(() => Promise.resolve()),
     revealPlayerAnswerCorrectnessForAction: vi.fn(() => Promise.resolve()),
     setPlayerAnswerBubblesShownForAction: vi.fn(() => Promise.resolve()),
@@ -140,11 +142,29 @@ describe("PartyGameStageActionRunners (ported)", () => {
     expect(c.completeFlowAction).not.toHaveBeenCalled();
   });
 
-  it("serverEffect applies the effect for a non-primary runner", () => {
+  it("runs a delayed game-object sub-action after its parent action key is stale", () => {
+    const c = context();
+    c.isCurrentActionKey = () => false;
+    const runner = PartyGameStageActionRunners.createRunner(c as never);
+    const action = {
+      id: "hide-header",
+      type: "setGameObjectShown",
+      isShown: false,
+      targetLayoutElementId: "stagetitle",
+      timing: { mode: "S+", seconds: 2 }
+    };
+
+    runner.run(action, { isPrimary: false, actionKey: "lobby:display-text" });
+
+    expect(c.setStageLayoutGameObjectShownForAction).toHaveBeenCalledWith(action);
+    expect(c.completeFlowAction).not.toHaveBeenCalled();
+  });
+
+  it("leaves non-primary room effects to the authoritative server scheduler", () => {
     const c = context();
     const runner = PartyGameStageActionRunners.createRunner(c as never);
     runner.run({ id: "a2", type: "setupGame" }, { isPrimary: false, actionKey: "k" });
-    expect(c.applyFlowActionEffect).toHaveBeenCalledWith("a2");
+    expect(c.applyFlowActionEffect).not.toHaveBeenCalled();
     expect(c.completeFlowAction).not.toHaveBeenCalled();
   });
 

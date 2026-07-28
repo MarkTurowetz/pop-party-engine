@@ -124,7 +124,8 @@ describe("route action sessions", () => {
 
 describe("game termination lifecycle", () => {
   it("wipes game-session data when returning to the lobby", () => {
-    const runtime = createRouteRuntime();
+    const clearScheduledSubActions = vi.fn();
+    const runtime = createRouteRuntime({ clearScheduledSubActions });
     const room = {
       phase: "writing-moment",
       players: new Map([["p1", { id: "p1", name: "Ava", points: 10, pendingPoints: 5 }]]),
@@ -137,6 +138,7 @@ describe("game termination lifecycle", () => {
 
     runtime.enterLobbyPhase(room);
 
+    expect(clearScheduledSubActions).toHaveBeenCalledWith(room);
     expect(room.storedPlayerAnswers).toEqual({});
     expect(room.votingCards).toEqual([]);
     expect(room.playerSessionKey).toBe("");

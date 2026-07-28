@@ -38,6 +38,7 @@ function createRoomPhaseRuntime({
   broadcastLobby,
   clearActionTimer,
   clearAppliedActionEffects,
+  clearScheduledSubActions = () => {},
   clearChoiceInput,
   clearCountdownTimer,
   clearDisplayedPlayerAnswers,
@@ -76,6 +77,7 @@ function createRoomPhaseRuntime({
 
   function startRouteActionSession(room, target, result) {
     if (!result?.routeNodeId) return false;
+    room.actionExecutionSignature = "";
     // Each arrival is a new execution, even when a route loops back to the
     // same action node. Keep duplicate callbacks idempotent while that action
     // is active, then allow its effects to run again on the next visit.
@@ -154,6 +156,7 @@ function createRoomPhaseRuntime({
   }
 
   function enterLobbyPhase(room) {
+    clearScheduledSubActions(room);
     let sessionContentError = null;
     try {
       prepareLobbySession(room);
@@ -246,6 +249,7 @@ function createRoomPhaseRuntime({
 
   function enterGamePhase(room, phase) {
     if (room.runtimeFault) return false;
+    room.actionExecutionSignature = "";
     clearCountdownTimer(room);
     clearActionTimer(room);
     const previousPhase = room.phase;

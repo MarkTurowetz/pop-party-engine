@@ -26,7 +26,7 @@ function createRoomActionEffectsRuntime({
   markDisplayedAnswersCorrectness,
   normalizePlayerFilter,
   prepareVotingCards,
-  resetGameSessionState,
+  resetGameSessionState: resetGameSessionStateImpl,
   revealAuthors,
   revealVotes,
   revealWinningAnswer,
@@ -35,8 +35,37 @@ function createRoomActionEffectsRuntime({
   setCraftingTimerShown,
   setVotingCardsShown,
   startCraftingTimer,
-  storeRandomTriviaPrompt
+  storeRandomTriviaPrompt,
+  broadcastLobby = () => {},
+  clearTimeoutImpl = clearTimeout,
+  setTimeoutImpl = setTimeout
 }) {
+  function scheduledExecutionIds(room) {
+    if (!(room.scheduledSubActionExecutionIds instanceof Set)) {
+      room.scheduledSubActionExecutionIds = new Set(room.scheduledSubActionExecutionIds || []);
+    }
+    return room.scheduledSubActionExecutionIds;
+  }
+
+  function scheduledTimerIds(room) {
+    if (!(room.scheduledSubActionTimerIds instanceof Set)) {
+      room.scheduledSubActionTimerIds = new Set();
+    }
+    return room.scheduledSubActionTimerIds;
+  }
+
+  function clearScheduledSubActions(room) {
+    for (const timerId of scheduledTimerIds(room)) clearTimeoutImpl(timerId);
+    room.scheduledSubActionTimerIds = new Set();
+    room.scheduledSubActionExecutionIds = new Set();
+    room.actionExecutionSignature = "";
+  }
+
+  function resetGameSessionState(room) {
+    clearScheduledSubActions(room);
+    resetGameSessionStateImpl(room);
+  }
+
   const actionRegistry = createFlowActionRegistry({
     activePlayers,
     clearDisplayedCorrectnessForPlayers,
@@ -66,7 +95,40 @@ function createRoomActionEffectsRuntime({
     actionRegistry.applyRoomEffect(room, action);
   }
 
-  return { applyRoomActionEffects };
+  function scheduleRoomSubActions(room, action, actionExecutionId) {
+    if (room.runtimeFault || !action || !Array.isArray(action.subActions) || action.subActions.length === 0) return;
+    const gameSessionId = Number(room.gameSessionId || 0);
+    const executionKey = `${gameSessionId}:${Number(actionExecutionId || 0)}:${String(action.id || "")}`;
+    const executions = scheduledExecutionIds(room);
+    if (executions.has(executionKey)) return;
+    executions.add(executionKey);
+
+    const applyScheduledEffect = (subAction, shouldBroadcast) => {
+      if (Number(room.gameSessionId || 0) !== gameSessionId || room.runtimeFault) return;
+      const applied = actionRegistry.applyRoomEffect(room, subAction);
+      if (applied && shouldBroadcast) broadcastLobby(room);
+    };
+
+    for (const subAction of action.subActions) {
+      const delayMs = Math.max(0, Number(subAction?.timing?.seconds || 0) * 1000);
+      if (delayMs === 0) {
+        applyScheduledEffect(subAction, false);
+        continue;
+      }
+      let timerId;
+      timerId = setTimeoutImpl(() => {
+        scheduledTimerIds(room).delete(timerId);
+        applyScheduledEffect(subAction, true);
+      }, delayMs);
+      scheduledTimerIds(room).add(timerId);
+    }
+  }
+
+  return {
+    applyRoomActionEffects,
+    clearScheduledSubActions,
+    scheduleRoomSubActions
+  };
 }
 
 module.exports = { createRoomActionEffectsRuntime };

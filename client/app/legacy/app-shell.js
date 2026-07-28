@@ -204,7 +204,6 @@ let controllerCountdownTimer = null;
 let dismissedTextInvalidKey = "";
 let countdownClockOffset = 0;
 let actionTimingTimer = null;
-let subActionTimers = [];
 let textObjectTimers = [];
 const visualAnimation = window.PartyGameVisualObject;
 let stageAudioPlayers = new Set();
@@ -511,7 +510,6 @@ Object.defineProperty(window, "controllerCountdownTimer", { configurable: true, 
 Object.defineProperty(window, "dismissedTextInvalidKey", { configurable: true, get: () => dismissedTextInvalidKey, set: (v) => { dismissedTextInvalidKey = v; } });
 Object.defineProperty(window, "countdownClockOffset", { configurable: true, get: () => countdownClockOffset, set: (v) => { countdownClockOffset = v; } });
 Object.defineProperty(window, "actionTimingTimer", { configurable: true, get: () => actionTimingTimer, set: (v) => { actionTimingTimer = v; } });
-Object.defineProperty(window, "subActionTimers", { configurable: true, get: () => subActionTimers, set: (v) => { subActionTimers = v; } });
 Object.defineProperty(window, "textObjectTimers", { configurable: true, get: () => textObjectTimers, set: (v) => { textObjectTimers = v; } });
 Object.defineProperty(window, "stageAudioPlayers", { configurable: true, get: () => stageAudioPlayers, set: (v) => { stageAudioPlayers = v; } });
 Object.defineProperty(window, "stageTextObjects", { configurable: true, get: () => stageTextObjects, set: (v) => { stageTextObjects = v; } });
