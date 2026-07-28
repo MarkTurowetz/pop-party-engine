@@ -14,10 +14,32 @@ function createLobbyPayloadRuntime({
   resolveRoomActionText,
   runtimeGameFlow,
   scheduleMicrophoneAccessAdvance,
+  scheduleRoomSubActions = () => {},
   selectVip,
   serializeVotingCards,
   textInputPayload
 }) {
+  function actionExecutionId(room, action) {
+    if (!action) {
+      room.actionExecutionSignature = "";
+      return 0;
+    }
+    const signature = [
+      Number(room.gameSessionId || 0),
+      Number(room.momentVisitId || 0),
+      room.flowStateId || room.phase || "",
+      ...(Array.isArray(room.subroutinePath) ? room.subroutinePath : []),
+      room.routeActionSession?.currentNodeId || "",
+      action.id || "",
+      action.type || ""
+    ].join(":");
+    if (room.actionExecutionSignature !== signature) {
+      room.actionExecutionSignature = signature;
+      room.actionExecutionId = Math.max(0, Number(room.actionExecutionId || 0)) + 1;
+    }
+    return Number(room.actionExecutionId || 0);
+  }
+
   function lobbyPayload(room) {
     selectVip(room);
     let runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
@@ -25,6 +47,9 @@ function createLobbyPayloadRuntime({
     runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
     if (!runtimeFault) applyRoomActionEffects(room, currentAction);
     const constants = gameConstants(room);
+    runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
+    const currentActionExecutionId = runtimeFault ? 0 : actionExecutionId(room, currentAction);
+    if (!runtimeFault) scheduleRoomSubActions(room, currentAction, currentActionExecutionId);
     const input = choiceInputPayload(room, currentAction);
     const textInput = textInputPayload(room, currentAction);
     const microphoneAccess = microphoneAccessPayload(room, currentAction);
@@ -48,6 +73,7 @@ function createLobbyPayloadRuntime({
         contentSource: String(room.releasePin.contentSource || "published-release")
       } : null,
       momentVisitId: Number(room.momentVisitId || 0),
+      actionExecutionId: currentActionExecutionId,
       runtimeFault,
       subroutinePath: Array.isArray(room.subroutinePath) ? [...room.subroutinePath] : [],
       controllerLayoutId: room.controllerLayoutId || room.phase || "lobby",

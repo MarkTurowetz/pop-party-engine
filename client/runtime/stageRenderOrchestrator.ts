@@ -24,9 +24,11 @@ function actionKeyForLobby(lobby: Dict = {}): string {
   const phase = (lobby.flowStateId as string) || (lobby.phase as string) || "lobby";
   const visitId = Number(lobby.momentVisitId);
   const visitKey = Number.isFinite(visitId) && visitId > 0 ? `@${visitId}` : "";
+  const executionId = Number(lobby.actionExecutionId);
+  const executionKey = Number.isFinite(executionId) && executionId > 0 ? `#${executionId}` : "";
   const subroutinePath = Array.isArray(lobby.subroutinePath) ? lobby.subroutinePath.map(String).filter(Boolean).join("/") : "";
   const action = (lobby.action as Dict) || {};
-  return `${phase}${visitKey}:${subroutinePath}:${action.id || action.index || ""}:${action.type || ""}`;
+  return `${phase}${visitKey}${executionKey}:${subroutinePath}:${action.id || action.index || ""}:${action.type || ""}`;
 }
 
 class StageRenderOrchestrator {

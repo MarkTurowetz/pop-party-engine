@@ -104,6 +104,7 @@ describe("room flow action exposure and event barriers", () => {
     const { enterGamePhase, room, runtime } = setup();
     room.actionIndex = 2;
     room.phase = "starting";
+    room.actionExecutionSignature = "active-header";
 
     runtime.completeCountdownTrigger(room);
     expect(runtime.currentRoomAction(room).id).toBe("header");
@@ -111,6 +112,7 @@ describe("room flow action exposure and event barriers", () => {
     expect(enterGamePhase).not.toHaveBeenCalled();
 
     runtime.advanceRoomAfterAction(room, runtime.currentRoomAction(room));
+    expect(room.actionExecutionSignature).toBe("");
     expect(runtime.currentRoomAction(room).id).toBe("countdown");
     expect(runtime.releasePendingFlowEvents(room)).toBe(true);
     expect(enterGamePhase).toHaveBeenCalledWith(room, "intro");

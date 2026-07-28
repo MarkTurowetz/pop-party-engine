@@ -7,7 +7,6 @@ type Action = Dict;
 interface Runtime {
   isPrimary?: boolean;
   actionKey?: string;
-  applyEffect: (action: Action) => void;
   complete: (action: Action) => void;
   isCurrent: () => boolean;
 }
@@ -38,7 +37,15 @@ function waitsForActionCallback(action: Action, runtime: Runtime): boolean {
 }
 
 function completeWhenActionTargetsFinish(action: Action, runtime: Runtime, result: unknown): void {
-  if (!waitsForActionCallback(action, runtime)) return;
+  if (!waitsForActionCallback(action, runtime)) {
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      void (result as Promise<unknown>).catch(() => {
+        // Scheduled sub-actions are fire-and-forget. Target diagnostics are
+        // reported by the invoked runtime without creating an unhandled rejection.
+      });
+    }
+    return;
+  }
   if (result && typeof (result as Promise<unknown>).then === "function") {
     (result as Promise<unknown>)
       .then(() => {
@@ -90,33 +97,23 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
     },
     serverEffect(action, runtime) {
       if (runtime.isPrimary) completeWhenActionTargetsFinish(action, runtime, undefined);
-      else runtime.applyEffect(action);
     },
     votingCardAction(action, runtime) {
-      if (!runtime.isPrimary) {
-        runtime.applyEffect(action);
-        return;
-      }
+      if (!runtime.isPrimary) return;
       const result = c.runVotingCardActionForAction
         ? (c.runVotingCardActionForAction as (a: Action) => Promise<void>)(action)
         : Promise.reject(new Error("Voting card action runtime unavailable"));
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     votingReveal(action, runtime) {
-      if (!runtime.isPrimary) {
-        runtime.applyEffect(action);
-        return;
-      }
+      if (!runtime.isPrimary) return;
       const result = c.runVotingCardActionForAction
         ? (c.runVotingCardActionForAction as (a: Action) => Promise<void>)(action)
         : Promise.reject(new Error("Voting card reveal runtime unavailable"));
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     showPoints(action, runtime) {
-      if (!runtime.isPrimary) {
-        runtime.applyEffect(action);
-        return;
-      }
+      if (!runtime.isPrimary) return;
       if (!c.showPointPopupsForAction) return;
       (c.showPointPopupsForAction as (a: Action) => void)(action);
       // Popup owns only its eventual cleanup callback. Show Points is deliberately
@@ -124,10 +121,7 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
       completeWhenActionTargetsFinish(action, runtime, undefined);
     },
     revealPlayerAnswerCorrectness(action, runtime) {
-      if (!runtime.isPrimary) {
-        runtime.applyEffect(action);
-        return;
-      }
+      if (!runtime.isPrimary) return;
       const result = c.revealPlayerAnswerCorrectnessForAction
         ? (c.revealPlayerAnswerCorrectnessForAction as (a: Action) => Promise<void>)(action)
         : Promise.reject(new Error("Player answer correctness runtime unavailable"));
@@ -137,10 +131,6 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
       const result = c.setPlayersShownForAction
         ? (c.setPlayersShownForAction as (a: Action) => Promise<void>)(action)
         : Promise.reject(new Error("Player roster runtime unavailable"));
-      if (!runtime.isPrimary) {
-        runtime.applyEffect(action);
-        return;
-      }
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     setPlayerAnswersShown(action, runtime) {
@@ -150,8 +140,7 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
             playerFilter: action.playerFilter || "all"
           })
         : Promise.reject(new Error("Player answer bubble runtime unavailable"));
-      if (!runtime.isPrimary) runtime.applyEffect(action);
-      if (runtime.isPrimary) completeWhenActionTargetsFinish(action, runtime, result);
+      completeWhenActionTargetsFinish(action, runtime, result);
     },
     setGameObjectShown(action, runtime) {
       const result = c.setStageLayoutGameObjectShownForAction
@@ -171,20 +160,12 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
       const result = c.setCraftingTimerShownForAction
         ? (c.setCraftingTimerShownForAction as (a: Action, o: Dict) => Promise<void>)(action, { actionKey: runtime.actionKey })
         : Promise.reject(new Error("Crafting timer runtime unavailable"));
-      if (!runtime.isPrimary) {
-        runtime.applyEffect(action);
-        return;
-      }
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     setWipeShown(action, runtime) {
       const result = c.setStageWipeShownForAction
         ? (c.setStageWipeShownForAction as (a: Action, o: Dict) => Promise<void>)(action, { actionKey: runtime.actionKey })
         : Promise.reject(new Error("Stage wipe runtime unavailable"));
-      if (!runtime.isPrimary) {
-        runtime.applyEffect(action);
-        return;
-      }
       completeWhenActionTargetsFinish(action, runtime, result);
     },
     displayText(action, runtime) {
@@ -198,7 +179,7 @@ function createBehaviorHandlers(context: runnerContext): Record<string, Behavior
             { text: action.text || "", isShown: action.isShown !== false, instant: action.instant === true }
           )
         : Promise.reject(new Error("Stage text runtime unavailable"));
-      if (runtime.isPrimary && action.type === "displayText") completeWhenActionTargetsFinish(action, runtime, result);
+      if (action.type === "displayText") completeWhenActionTargetsFinish(action, runtime, result);
     },
     transition(action, runtime) {
       if (!runtime.isPrimary) (c.runStageWipe as (covered: () => void, complete: () => void) => void)(() => {}, () => {});
@@ -227,7 +208,6 @@ function createRunner(context: runnerContext): { run: (action: Action, runtimeOp
   function run(action: Action, runtimeOptions: Dict): void {
     const runtime: Runtime = {
       ...(runtimeOptions as Partial<Runtime>),
-      applyEffect: (targetAction: Action) => (c.applyFlowActionEffect as (id: unknown) => void)(targetAction.id),
       complete: (targetAction: Action) => (c.completeFlowAction as (kind: string, id: unknown) => void)("callback", targetAction.id),
       isCurrent: () => (c.isCurrentActionKey as (k: unknown) => boolean)(runtimeOptions.actionKey)
     };

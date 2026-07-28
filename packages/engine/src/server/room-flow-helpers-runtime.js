@@ -219,6 +219,7 @@ function createRoomFlowHelpersRuntime({
 
   function advanceRoomAfterAction(room, action) {
     if (room.runtimeFault) return false;
+    room.actionExecutionSignature = "";
     if (action?.routeNodeType === "action" || room.routeActionSession?.currentNodeId === action?.id) {
       advanceRoomFromRouteAction(room, action);
       return;
@@ -250,6 +251,7 @@ function createRoomFlowHelpersRuntime({
 
   function jumpToAction(room, actionId, sourceAction = currentRoomAction(room)) {
     if (room.runtimeFault) return false;
+    room.actionExecutionSignature = "";
     if (room.routeActionSession?.currentNodeId) {
       room.presentedAction = null;
       clearActiveInputFlowEvent(room);

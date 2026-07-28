@@ -1,4 +1,5 @@
 import { StageCountdownPopupController } from "./stageCountdownPopupController";
+import { StageSubActionScheduler } from "./stageSubActionScheduler";
 
 // Typed port of the legacy client/stage-runtime.js (top-level classic script) — the
 // stage orchestrator. Defines setupStage (app-shell dispatches setupStage()),
@@ -48,7 +49,6 @@ declare global {
     stageCountdownTimer: number | null;
     lobbyPollTimer: number | null;
     actionTimingTimer: number | null;
-    subActionTimers: number[];
     textObjectTimers: number[];
     stageAudioPlayers: Set<AudioEl>;
     gameConstants: Dict;
@@ -91,6 +91,10 @@ let stageWidgetArtRendererInstance: Dict | null = null;
 let stageCountdownPopupControllerInstance: StageCountdownPopupController | null = null;
 const initializedStageWidgetEntityRenderers = new WeakMap<El, unknown>();
 let renderedStageJoinQrUrl = "";
+const stageSubActionScheduler = new StageSubActionScheduler({
+  currentGameSessionId: () => Number((w().currentStageState as Dict | null)?.gameSessionId || 0),
+  run: (action, actionKey) => runStageAction(action, false, actionKey)
+});
 
 function stageVisualControllers(): StageVisualControllersApi | null {
   return (w().PartyGameStageVisualControllers as unknown as StageVisualControllersApi) || null;
@@ -350,17 +354,14 @@ function initStageTextObjects(): void {
 }
 
 function clearStageObjectTimers(): void {
-  for (const timerId of w().subActionTimers) clearTimeout(timerId);
+  stageSubActionScheduler.clear();
   for (const timerId of w().textObjectTimers) clearTimeout(timerId);
-  w().subActionTimers = [];
   w().textObjectTimers = [];
 }
 
 function clearStageActionTimers(): void {
   if (w().actionTimingTimer !== null) clearTimeout(w().actionTimingTimer!);
   w().actionTimingTimer = null;
-  for (const timerId of w().subActionTimers) clearTimeout(timerId);
-  w().subActionTimers = [];
 }
 
 function clearStageCountdownTimer(): void {
@@ -762,6 +763,7 @@ function renderStageLobby(lobby: Dict, options: Dict = {}): void {
 }
 
 function prepareNewStageAction(lobby: Dict, actionKey: string): void {
+  stageSubActionScheduler.enterGameSession(lobby.gameSessionId);
   clearStageActionTimers();
   clearCraftingTimerVisibilityRequest(actionKey);
   clearStageWipeVisibilityRequest(actionKey);
@@ -781,18 +783,11 @@ function scheduleActionTiming(lobby: Dict, actionKey: string): void {
 }
 
 function scheduleSubActions(action: Dict, actionKey: string): void {
-  for (const subAction of (action?.subActions as Dict[]) || []) {
-    const delayMs = Math.max(0, Number((subAction.timing as Dict)?.seconds || 0) * 1000);
-    if (delayMs === 0) {
-      if (currentRenderedActionKey() === actionKey) runStageAction(subAction, false, actionKey);
-      continue;
-    }
-    const timerId = setTimeout(() => {
-      if (currentRenderedActionKey() !== actionKey) return;
-      runStageAction(subAction, false, actionKey);
-    }, delayMs) as unknown as number;
-    w().subActionTimers.push(timerId);
-  }
+  stageSubActionScheduler.schedule(
+    action,
+    actionKey,
+    Number((w().currentStageState as Dict | null)?.gameSessionId || 0)
+  );
 }
 
 function playStageAudioAction(action: Dict, isPrimary: boolean, actionKey: string): void {
@@ -827,7 +822,7 @@ let stageActionRunner: Dict | null = null;
 function getStageActionRunner(): Dict | null {
   if (!stageActionRunner && w().PartyGameStageActionRunners) {
     stageActionRunner = (w().PartyGameStageActionRunners as unknown as { createRunner: (o: Dict) => Dict }).createRunner({
-      applyFlowActionEffect, completeFlowAction, endCurrentMomentForAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, revealPlayerAnswerCorrectnessForAction, startCurrentMomentForAction,
+      completeFlowAction, endCurrentMomentForAction, isCurrentActionKey: (actionKey: string) => currentRenderedActionKey() === actionKey, playStageAudioAction, revealPlayerAnswerCorrectnessForAction, startCurrentMomentForAction,
       playStageLayoutGameObjectAnimationForAction: playStageLayoutGameObjectAnimationForStageAction, runStageWipe, runVotingCardActionForAction, setCraftingTimerShownForAction, setStageLayoutGameObjectShownForAction: setStageLayoutGameObjectShownForStageAction, setPlayerAnswerBubblesShownForAction, setPlayersShownForAction, setPresentationClickPromptForAction, setStageWipeShownForAction, setStageTextObjectForAction, showPointPopupsForAction
     });
   }
@@ -891,17 +886,6 @@ async function completeFlowAction(source = "callback", actionId: string = ((w().
       w().pausedCompletionRequest = { source, actionId };
       return;
     }
-    setStageWaitingStatus((error as Error).message, true);
-  }
-}
-
-async function applyFlowActionEffect(actionId: string): Promise<void> {
-  const stageCode = currentStageCodeForRuntimeTest();
-  if (!stageCode || !actionId) return;
-  try {
-    const result = (await w().postJson!("/api/action-effect", { stageCode, actionId })) as Dict;
-    if (result.lobby) renderStageLobby(result.lobby as Dict);
-  } catch (error) {
     setStageWaitingStatus((error as Error).message, true);
   }
 }

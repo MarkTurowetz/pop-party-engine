@@ -280,6 +280,9 @@ concepts into focused modules.
 - E+ visual actions advance from an action-scoped barrier containing only the directly invoked
   targets, then apply the separately authored E+ delay. S+ visual actions fire immediately,
   ignore all animation callbacks, and advance only from their start-relative timer (including S+0).
+- S+ sub-actions are scheduled against their parent action's start but remain valid after the
+  primary flow advances to later nodes. Stage visuals and authoritative room effects both retain
+  that schedule for the current game session; Quit/reset cancels every outstanding sub-action.
 - Child component animations may be started by a parent timeline, but they cannot delay or satisfy
   that parent's completion callback. Returned animation durations never advance game flow.
 - When a flow action explicitly invokes a labeled child component, that exact child becomes the

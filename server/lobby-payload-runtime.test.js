@@ -8,6 +8,7 @@ function runtimeFor(action) {
   const applyRoomActionEffects = vi.fn();
   const currentRoomAction = vi.fn(() => action);
   const gameConstants = vi.fn(() => ({ gameTitle: "Game", speechToTextSendInputBuffer: 0 }));
+  const scheduleRoomSubActions = vi.fn();
   const runtime = createLobbyPayloadRuntime({
     activePlayers: () => [],
     allActivePlayersHaveSubmittedInput: () => false,
@@ -22,11 +23,12 @@ function runtimeFor(action) {
     resolveRoomActionText: (currentAction) => currentAction,
     runtimeGameFlow: () => ({ states: [{ id: "lobby", name: "Lobby" }] }),
     scheduleMicrophoneAccessAdvance: vi.fn(),
+    scheduleRoomSubActions,
     selectVip: vi.fn(),
     serializeVotingCards: () => [],
     textInputPayload: () => null
   });
-  return { ...runtime, applyRoomActionEffects, currentRoomAction, gameConstants };
+  return { ...runtime, applyRoomActionEffects, currentRoomAction, gameConstants, scheduleRoomSubActions };
 }
 
 describe("lobby payload flow action exposure", () => {
@@ -77,6 +79,36 @@ describe("lobby payload flow action exposure", () => {
     };
     runtime.lobbyPayload(room);
     expect(runtime.gameConstants).toHaveBeenCalledWith(room);
+  });
+
+  it("assigns one execution id per action visit and reuses it for duplicate payloads", () => {
+    const first = { id: "first", type: "displayText", subActions: [] };
+    const second = { id: "second", type: "doNothing", subActions: [] };
+    const runtime = runtimeFor(first);
+    runtime.currentRoomAction
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(second)
+      .mockReturnValueOnce(first);
+    const room = {
+      stageCode: "TEST",
+      revision: 1,
+      phase: "lobby",
+      flowStateId: "lobby",
+      gameSessionId: 4,
+      momentVisitId: 7,
+      players: new Map()
+    };
+
+    const executionIds = [
+      runtime.lobbyPayload(room).actionExecutionId,
+      runtime.lobbyPayload(room).actionExecutionId,
+      runtime.lobbyPayload(room).actionExecutionId,
+      runtime.lobbyPayload(room).actionExecutionId
+    ];
+
+    expect(executionIds).toEqual([1, 1, 2, 3]);
+    expect(runtime.scheduleRoomSubActions.mock.calls.map((call) => call[2])).toEqual(executionIds);
   });
 
   it("exposes a runtime fault without evaluating or applying another flow action", () => {
