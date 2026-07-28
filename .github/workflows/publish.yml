@@ -86,6 +86,7 @@ jobs:
         id: build
         run: >-
           node -e 'const fs=require("fs");
+          process.argv.push("--next");
           const info=require("./build-version").buildInfo();
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `app_version=${info.version}\n`)'
 
