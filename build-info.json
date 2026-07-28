@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1196",
+  "version": "1.0.17.1197",
   "baseVersion": "1.0.17",
-  "buildNumber": 1196,
-  "commit": "8da057d4",
+  "buildNumber": 1197,
+  "commit": "d65a432d",
   "branch": "codex/fix-controller-input-runtime",
-  "generatedAt": "2026-07-28T01:45:03.382Z"
+  "generatedAt": "2026-07-28T01:48:38.878Z"
 }
