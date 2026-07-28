@@ -87,6 +87,20 @@ async function remotePackageMetadata(name, version, fetchImpl = fetch) {
   return response.json();
 }
 
+function publishedPackageSnapshotSpec(metadata, packageId) {
+  const tarball = String(metadata?.dist?.tarball || "").trim();
+  let url;
+  try {
+    url = new URL(tarball);
+  } catch {
+    throw new Error(`npm registry metadata is missing a valid tarball URL for ${packageId}`);
+  }
+  if (url.protocol !== "https:" || url.hostname !== "registry.npmjs.org" || url.username || url.password) {
+    throw new Error(`npm registry returned an untrusted tarball URL for ${packageId}`);
+  }
+  return url.href;
+}
+
 function assertMatchingContents(local, remote, packageId) {
   if (!local?.digest || !remote?.digest) throw new Error(`Package comparison is incomplete: ${packageId}`);
   if (remote.digest !== local.digest) {
@@ -120,7 +134,7 @@ async function publishPublicPackage(options) {
   if (local.id !== packageId) throw new Error(`npm pack reported ${local.id}, expected ${packageId}`);
   const remote = await remotePackageMetadata(manifest.name, manifest.version, options.fetchImpl);
   if (remote) {
-    const published = await snapshotFactory(packageId);
+    const published = await snapshotFactory(publishedPackageSnapshotSpec(remote, packageId));
     assertMatchingContents(local, published, packageId);
     return Object.freeze({ packageId, status: "already-published", digest: local.digest });
   }
@@ -130,7 +144,7 @@ async function publishPublicPackage(options) {
   });
   if (publication.error) throw publication.error;
   if (publication.status !== 0) throw new Error(`npm publish failed for ${packageId} with exit code ${publication.status}`);
-  await waitForPublishedPackage({
+  const publishedMetadata = await waitForPublishedPackage({
     name: manifest.name,
     version: manifest.version,
     fetchImpl: options.fetchImpl,
@@ -139,7 +153,7 @@ async function publishPublicPackage(options) {
     timeoutMs: options.timeoutMs,
     intervalMs: options.intervalMs
   });
-  const published = await snapshotFactory(packageId);
+  const published = await snapshotFactory(publishedPackageSnapshotSpec(publishedMetadata, packageId));
   assertMatchingContents(local, published, packageId);
   return Object.freeze({ packageId, status: "published", digest: local.digest });
 }
@@ -164,6 +178,7 @@ module.exports = {
   packageManifest,
   parseArguments,
   publishPublicPackage,
+  publishedPackageSnapshotSpec,
   remotePackageMetadata,
   waitForPublishedPackage
 };

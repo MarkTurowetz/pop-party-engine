@@ -20,7 +20,8 @@ const {
   verifyProductionRelease
 } = require("./verify-production-release");
 const {
-  publishPublicPackage
+  publishPublicPackage,
+  publishedPackageSnapshotSpec
 } = require("./publish-public-package");
 
 const temporaryRoots = [];
@@ -314,7 +315,7 @@ describe("production release verification", () => {
 });
 
 describe("idempotent public package publication", () => {
-  it("skips an already-published package only when registry integrity matches", async () => {
+  it("verifies an already-published package from the exact registry tarball metadata", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-publish-"));
     temporaryRoots.push(root);
     fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({
@@ -322,22 +323,36 @@ describe("idempotent public package publication", () => {
       version: "1.0.0"
     }));
     const spawnSync = vi.fn();
-    const result = await publishPublicPackage({
-      packagePath: root,
-      snapshotFactory: async () => ({
+    const snapshotFactory = vi.fn(async (spec) => {
+      if (spec === "@pop-party/example@1.0.0") {
+        throw new Error("package-spec lookup has not propagated");
+      }
+      return {
         id: "@pop-party/example@1.0.0",
         digest: "matching-content"
-      }),
+      };
+    });
+    const result = await publishPublicPackage({
+      packagePath: root,
+      snapshotFactory,
       fetchImpl: async () => response({
         json: {
           name: "@pop-party/example",
           version: "1.0.0",
-          dist: { integrity: "sha512-registry-archive" }
+          dist: {
+            integrity: "sha512-registry-archive",
+            tarball: "https://registry.npmjs.org/@pop-party/example/-/example-1.0.0.tgz"
+          }
         }
       }),
       spawnSync
     });
     expect(result.status).toBe("already-published");
+    expect(snapshotFactory).toHaveBeenNthCalledWith(1, path.resolve(root));
+    expect(snapshotFactory).toHaveBeenNthCalledWith(
+      2,
+      "https://registry.npmjs.org/@pop-party/example/-/example-1.0.0.tgz"
+    );
     expect(spawnSync).not.toHaveBeenCalled();
   });
 
@@ -355,8 +370,21 @@ describe("idempotent public package publication", () => {
         digest: spec === path.resolve(root) ? "local-content" : "remote-content"
       }),
       fetchImpl: async () => response({
-        json: { dist: { integrity: "sha512-remote" } }
+        json: {
+          dist: {
+            integrity: "sha512-remote",
+            tarball: "https://registry.npmjs.org/@pop-party/example/-/example-1.0.0.tgz"
+          }
+        }
       })
     })).rejects.toThrow(/does not match this commit/);
+  });
+
+  it("rejects missing or untrusted registry tarball coordinates", () => {
+    expect(() => publishedPackageSnapshotSpec({}, "@pop-party/example@1.0.0"))
+      .toThrow(/valid tarball URL/);
+    expect(() => publishedPackageSnapshotSpec({
+      dist: { tarball: "https://example.com/example-1.0.0.tgz" }
+    }, "@pop-party/example@1.0.0")).toThrow(/untrusted tarball URL/);
   });
 });
