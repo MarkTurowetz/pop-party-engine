@@ -109,6 +109,14 @@ function createRouterRuntime({
         void livePrototype.handleDiscard(req, res);
         return;
       }
+      if (req.method === "POST" && url.pathname === "/api/authoring/workspace/checkpoint") {
+        void livePrototype.handleCheckpoint(req, res);
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/api/authoring/workspace/restore-checkpoint") {
+        void livePrototype.handleRestoreCheckpoint(req, res);
+        return;
+      }
       if (req.method === "POST" && url.pathname === "/api/authoring/workspace/save") {
         void livePrototype.handleSave(req, res);
         return;

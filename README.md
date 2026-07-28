@@ -83,14 +83,17 @@ PARTY_GAME_AUTHORING_MODE=live-prototype
 In this single-author mode, unsaved Tool changes immediately update and reset
 the template stage/controllers from one valid memory-only snapshot. A second
 Tools tab is blocked from silently discarding the active workspace. If a
-service restart or heartbeat-lease expiry clears the server copy, the
-still-open editor reconnects with the same session id and republishes its dirty
-in-memory snapshots before Save. Save validates the whole JSON-and-binary
-workspace and atomically activates it, so Save means publish. The durable commit
-reuses unchanged Git blobs and uploads only changed files with bounded
-concurrency. After success, each mounted Tool accepts the committed snapshot in
-memory instead of forcing a page reload. Independent games must opt in
-separately and provide their own GitHub App, repository, OAuth, and release refs.
+service restart or heartbeat-lease expiry clears the server copy, the browser
+restores the latest explicitly saved complete JSON-and-binary workspace from
+IndexedDB before the editors mount. Save validates and checkpoints that complete
+workspace locally first, so the author can continue immediately while Git sync
+runs in the background. The dashboard distinguishes browser-local saves from
+Git-synced saves and provides explicit `Sync Now` and `Restore from Git` actions.
+Ordinary refreshes preserve the browser checkpoint; Restore from Git is the
+destructive reset. The durable Git commit reuses unchanged blobs and uploads
+only changed files with bounded concurrency. Browser-local work is scoped to one
+browser/device until Git sync succeeds. Independent games must opt in separately
+and provide their own GitHub App, repository, OAuth, and release refs.
 
 ### Template Session Preview
 

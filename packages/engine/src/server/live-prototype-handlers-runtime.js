@@ -70,7 +70,32 @@ function createLivePrototypeHandlersRuntime(options = {}) {
     }
     await run(res, () => workspace.save(
       sessionIdFrom(req, payload),
-      String(payload.idempotencyKey || "")
+      String(payload.idempotencyKey || ""),
+      String(payload.checkpointRevision || "")
+    ));
+  }
+
+  async function handleCheckpoint(req, res) {
+    let payload = {};
+    try {
+      payload = await readJson(req, 64 * 1024);
+    } catch (error) {
+      // A header-only checkpoint request is valid.
+    }
+    await run(res, () => workspace.checkpoint(sessionIdFrom(req, payload)));
+  }
+
+  async function handleRestoreCheckpoint(req, res) {
+    let payload;
+    try {
+      payload = await readJson(req, 64 * 1024 * 1024);
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: "Invalid browser checkpoint payload" });
+      return;
+    }
+    await run(res, () => workspace.restoreCheckpoint(
+      sessionIdFrom(req, payload),
+      payload.checkpoint
     ));
   }
 
@@ -80,8 +105,10 @@ function createLivePrototypeHandlersRuntime(options = {}) {
 
   return Object.freeze({
     handleBegin,
+    handleCheckpoint,
     handleDiscard,
     handleHeartbeat,
+    handleRestoreCheckpoint,
     handleSave,
     sendState,
     sessionIdFrom

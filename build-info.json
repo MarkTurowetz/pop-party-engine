@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1210",
+  "version": "1.0.17.1211",
   "baseVersion": "1.0.17",
-  "buildNumber": 1210,
-  "commit": "fbcb47cf",
-  "branch": "codex/bound-playwright-install",
-  "generatedAt": "2026-07-28T19:49:07.883Z"
+  "buildNumber": 1211,
+  "commit": "59de692c",
+  "branch": "codex/indexeddb-async-git-save",
+  "generatedAt": "2026-07-28T20:46:55.533Z"
 }

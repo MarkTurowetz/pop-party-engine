@@ -18,8 +18,12 @@
       <button class="tool-tab" type="button" data-tool-target="controller-layout">Controller Layout Tool</button>
     </div>
     <div class="tool-dashboard-actions">
-      <p class="tool-dashboard-save-status hidden" id="globalSaveStatus" role="alert" aria-live="assertive"></p>
-      <button class="primary-button" id="globalSaveButton" type="button">Save All</button>
+      <p class="tool-dashboard-save-status hidden" id="globalSaveStatus" role="status" aria-live="polite"></p>
+      <div class="tool-dashboard-action-buttons">
+        <button class="secondary-button" id="globalRestoreGitButton" type="button">Restore from Git</button>
+        <button class="secondary-button" id="globalSyncButton" type="button">Sync Now</button>
+        <button class="primary-button" id="globalSaveButton" type="button">Save All</button>
+      </div>
     </div>
   </nav>
 

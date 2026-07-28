@@ -31,9 +31,11 @@ concepts into focused modules.
   - Builds one complete memory-only working snapshot from every Tool draft and atomically installs only valid snapshots into the project's rooms.
   - Resets rooms to the lobby when the working revision changes while retaining joined-player identity.
   - Rejects destructive second-tab replacement and lets a still-open editor re-establish its session after a restart or heartbeat-lease expiry.
-  - Requires recovered clients to republish their dirty in-memory snapshots before Save so an empty restored workspace cannot overwrite unsaved browser state.
-  - Commits the complete JSON and binary bundle through one final release-ref compare-and-swap, so Save is publish and partial writes never become authoritative.
-  - Reuses unchanged Git blob ids from the active content commit, uploads only changed blobs with bounded concurrency, and lets mounted Tools accept the successful commit without a browser reload.
+  - Validates and serializes the complete JSON-and-binary working snapshot as a browser IndexedDB checkpoint before Save returns; this local checkpoint is the refresh/restart recovery boundary.
+  - Restores that checkpoint before Tool editors mount, including content-addressed art/audio blobs, and rejects automatic recovery if its Git baseline conflicts with a newer active release.
+  - Synchronizes the latest local checkpoint to Git asynchronously through one release-ref compare-and-swap. Edits made while an older checkpoint is syncing remain installed and queue the newer checkpoint next.
+  - Exposes explicit `Sync Now` and destructive `Restore from Git` actions. A normal refresh preserves local work, while Restore discards the checkpoint and reloads the Git baseline.
+  - Reuses unchanged Git blob ids from the active content commit, uploads only changed blobs with bounded concurrency, and marks mounted Tools saved after the local checkpoint instead of waiting for Git or forcing a browser reload.
 - `packages/engine/src/server/content-migration-runtime.js`
   - Resolves only explicit namespaced game-plugin migrations, requires a contiguous one-level path, and rejects downgrades.
   - Runs every step twice against the same immutable source and blocks output when the resulting revisions differ.

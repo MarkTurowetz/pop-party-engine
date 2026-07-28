@@ -19,7 +19,11 @@ import "../../runtime/stageTextRenderer";
 import "../../runtime/layoutRuntime";
 import "../../runtime/stageRuntime";
 // The /tools dashboard tab router (defines setupToolDashboard, dispatched by app-shell).
-import { registerDashboardTool, registerDashboardWorkspaceSave, showDashboardTool } from "../../runtime/toolDashboard";
+import {
+  registerDashboardTool,
+  registerDashboardWorkspaceActions,
+  showDashboardTool
+} from "../../runtime/toolDashboard";
 import "../../runtime/visualObject";
 import "../../runtime/gameObject";
 import "../../runtime/qrCode";
@@ -78,13 +82,18 @@ installToolContextAdapter(toolsContext);
 const livePrototypeWorkspace = beginLivePrototypeWorkspace(toolsContext.api.client);
 void livePrototypeWorkspace.then((workspace) => {
   if (!workspace) return;
-  registerDashboardWorkspaceSave(async () => {
-    // Re-send every dirty in-memory snapshot before the atomic save. This
-    // rebuilds server-side drafts after a service restart or expired lease.
-    await republishAllSessionDraftPublishers();
-    await workspace.save();
-    acceptMountedWorkspaceSave();
-    return true;
+  registerDashboardWorkspaceActions({
+    save: async () => {
+      // Re-send every dirty in-memory snapshot before capturing the complete
+      // browser-local bundle. This also rebuilds server drafts after a restart.
+      await republishAllSessionDraftPublishers();
+      await workspace.save();
+      acceptMountedWorkspaceSave();
+      return true;
+    },
+    sync: () => workspace.syncNow(),
+    restore: () => workspace.restoreFromGit(),
+    subscribe: (listener) => workspace.subscribe(listener)
   });
 });
 

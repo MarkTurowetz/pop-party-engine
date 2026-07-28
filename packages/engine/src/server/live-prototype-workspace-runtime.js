@@ -3,7 +3,9 @@
 const crypto = require("node:crypto");
 const { createBundleGameData } = require("./content-game-data-runtime");
 const { parseArtAssetReplacement } = require("./art-asset-replacement-runtime");
-const { replaceSnapshotFiles } = require("./content-snapshot-runtime");
+const { createContentSnapshot, replaceSnapshotFiles } = require("./content-snapshot-runtime");
+
+const CHECKPOINT_SCHEMA_VERSION = 1;
 
 function randomSessionId() {
   return crypto.randomBytes(24).toString("base64url");
@@ -11,6 +13,47 @@ function randomSessionId() {
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function serializeWorkspaceCheckpoint(snapshot, baselineRelease, baselineSnapshot) {
+  return Object.freeze({
+    schemaVersion: CHECKPOINT_SCHEMA_VERSION,
+    gameId: snapshot.manifest.gameId,
+    workingRevision: snapshot.revision,
+    gitContentRevision: baselineSnapshot.revision,
+    gitReleaseRevision: String(baselineRelease.releaseRevision || ""),
+    savedAt: new Date().toISOString(),
+    manifest: clone(snapshot.manifest),
+    files: Object.fromEntries(
+      snapshot.paths.map((logicalPath) => [
+        logicalPath,
+        snapshot.readBytes(logicalPath).toString("base64")
+      ])
+    )
+  });
+}
+
+function deserializeWorkspaceCheckpoint(checkpoint) {
+  if (!checkpoint || typeof checkpoint !== "object" || Array.isArray(checkpoint)) {
+    throw new Error("A browser workspace checkpoint is required");
+  }
+  if (Number(checkpoint.schemaVersion) !== CHECKPOINT_SCHEMA_VERSION) {
+    throw new Error("The browser workspace checkpoint uses an unsupported schema version");
+  }
+  if (!checkpoint.manifest || !checkpoint.files || typeof checkpoint.files !== "object") {
+    throw new Error("The browser workspace checkpoint is incomplete");
+  }
+  const files = Object.fromEntries(
+    Object.entries(checkpoint.files).map(([logicalPath, base64]) => [
+      logicalPath,
+      Buffer.from(String(base64 || ""), "base64")
+    ])
+  );
+  const snapshot = createContentSnapshot({ manifest: checkpoint.manifest, files });
+  if (String(checkpoint.workingRevision || "") !== snapshot.revision) {
+    throw new Error("The browser workspace checkpoint revision does not match its contents");
+  }
+  return snapshot;
 }
 
 function compositionRecord(composition) {
@@ -116,6 +159,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     : async () => {};
   let baselineRelease = null;
   let baselineSnapshot = null;
+  let localCheckpointSnapshot = null;
   let workingSnapshot = null;
   let session = null;
   let activationPromise = null;
@@ -166,6 +210,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     baselineRelease = await contentStore.getActiveRelease();
     baselineSnapshot = await contentStore.loadPublishedRevision(baselineRelease.contentRevision);
     validateSnapshot(baselineSnapshot);
+    localCheckpointSnapshot = baselineSnapshot;
     workingSnapshot = baselineSnapshot;
     await onSnapshotChanged(workingSnapshot, baselineRelease);
   }
@@ -229,7 +274,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     // invoking this hook. Preserve that first recovered payload while the
     // inactive workspace reloads its durable baseline.
     const activeSession = await ensureSession(sessionId, { preserveDrafts: true });
-    const candidate = buildSnapshot(baselineSnapshot, drafts);
+    const candidate = buildSnapshot(localCheckpointSnapshot, drafts);
     validateSnapshot(candidate);
     const previousSnapshot = workingSnapshot;
     const previousCounter = workingCounter;
@@ -264,7 +309,63 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     }
   }
 
-  async function save(sessionId, idempotencyKey) {
+  async function checkpoint(sessionId) {
+    const activeSession = await ensureSession(sessionId);
+    if (activeSession.recoveryRequired) {
+      const error = new Error(
+        "The authoring session was restored, but its browser checkpoint must be reapplied first"
+      );
+      error.code = "AUTHORING_SESSION_RECOVERY_REQUIRED";
+      error.status = 409;
+      throw error;
+    }
+    validateSnapshot(workingSnapshot);
+    localCheckpointSnapshot = workingSnapshot;
+    clearDraftObject(drafts);
+    return Object.freeze({
+      ...state(),
+      checkpoint: serializeWorkspaceCheckpoint(
+        localCheckpointSnapshot,
+        baselineRelease,
+        baselineSnapshot
+      )
+    });
+  }
+
+  async function restoreCheckpoint(sessionId, checkpointValue) {
+    const activeSession = await ensureSession(sessionId);
+    const restoredSnapshot = deserializeWorkspaceCheckpoint(checkpointValue);
+    if (restoredSnapshot.manifest.gameId !== baselineSnapshot.manifest.gameId) {
+      const error = new Error("The browser checkpoint belongs to a different game");
+      error.code = "BROWSER_CHECKPOINT_GAME_MISMATCH";
+      error.status = 409;
+      throw error;
+    }
+    const checkpointGitRevision = String(checkpointValue.gitContentRevision || "");
+    if (
+      checkpointGitRevision
+      && checkpointGitRevision !== baselineSnapshot.revision
+      && restoredSnapshot.revision !== baselineSnapshot.revision
+    ) {
+      const error = new Error(
+        "Git changed after this browser checkpoint was created. Restore from Git or recover the browser checkpoint before syncing."
+      );
+      error.code = "BROWSER_CHECKPOINT_GIT_CONFLICT";
+      error.status = 409;
+      throw error;
+    }
+    validateSnapshot(restoredSnapshot);
+    clearDraftObject(drafts);
+    localCheckpointSnapshot = restoredSnapshot;
+    workingSnapshot = restoredSnapshot;
+    workingCounter += 1;
+    activeSession.recoveryRequired = false;
+    await onSnapshotChanged(workingSnapshot, workingRelease());
+    await installEveryRoom(workingSnapshot, workingRelease());
+    return state();
+  }
+
+  async function save(sessionId, idempotencyKey, checkpointRevision = "") {
     const activeSession = await ensureSession(sessionId);
     if (activeSession.recoveryRequired) {
       const error = new Error(
@@ -274,29 +375,50 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
       error.status = 409;
       throw error;
     }
-    validateSnapshot(workingSnapshot);
+    const requestedRevision = String(checkpointRevision || "");
+    if (
+      requestedRevision
+      && (!localCheckpointSnapshot || requestedRevision !== localCheckpointSnapshot.revision)
+    ) {
+      const error = new Error(
+        "A newer browser checkpoint is available. Sync the latest local save instead."
+      );
+      error.code = "LOCAL_CHECKPOINT_REVISION_STALE";
+      error.status = 409;
+      throw error;
+    }
+    // Keep the no-revision form compatible with older authoring clients that
+    // synchronously save the current workspace.
+    const snapshotToSave = requestedRevision ? localCheckpointSnapshot : workingSnapshot;
+    if (!requestedRevision) {
+      localCheckpointSnapshot = snapshotToSave;
+      clearDraftObject(drafts);
+    }
+    const expectedActiveRevision = baselineRelease.releaseRevision;
+    validateSnapshot(snapshotToSave);
     const result = await contentStore.commitWorkspace({
-      snapshot: workingSnapshot,
-      expectedActiveRevision: baselineRelease.releaseRevision,
+      snapshot: snapshotToSave,
+      expectedActiveRevision,
       idempotencyKey,
       release: releaseCoordinates
     });
     baselineRelease = result.release;
-    baselineSnapshot = workingSnapshot;
-    clearDraftObject(drafts);
+    baselineSnapshot = snapshotToSave;
     workingCounter += 1;
-    await onSnapshotChanged(baselineSnapshot, baselineRelease);
-    await installEveryRoom(baselineSnapshot, {
-      ...baselineRelease,
-      contentSource: "live-prototype"
+    await onSnapshotChanged(workingSnapshot, workingRelease());
+    return Object.freeze({
+      ...state(),
+      saved: true,
+      syncedRevision: snapshotToSave.revision,
+      result
     });
-    return Object.freeze({ ...state(), saved: true, result });
   }
 
   async function discard(sessionId) {
     if (!session) return state();
     requireSession(sessionId);
     clearDraftObject(drafts);
+    localCheckpointSnapshot = baselineSnapshot;
     workingSnapshot = baselineSnapshot;
     const release = baselineRelease;
     session = null;
@@ -329,7 +451,13 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
       active: Boolean(session),
       sessionId: session?.id || "",
       baselineRevision: baselineSnapshot?.revision || "",
+      localCheckpointRevision: localCheckpointSnapshot?.revision || "",
       workingRevision: workingSnapshot?.revision || "",
+      gitSynced: Boolean(
+        baselineSnapshot
+        && localCheckpointSnapshot
+        && baselineSnapshot.revision === localCheckpointSnapshot.revision
+      ),
       release: workingRelease(),
       recoveryRequired: Boolean(session?.recoveryRequired),
       leaseMs
@@ -339,11 +467,13 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
   return Object.freeze({
     applyDraft,
     begin,
+    checkpoint,
     discard,
     heartbeat,
     initialize,
     pinNewRoom,
     readWorkingSnapshot: () => workingSnapshot,
+    restoreCheckpoint,
     save,
     stageBinary,
     state,
@@ -354,5 +484,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
 module.exports = Object.freeze({
   buildLivePrototypeSnapshot,
   clearDraftObject,
-  createLivePrototypeWorkspaceRuntime
+  createLivePrototypeWorkspaceRuntime,
+  deserializeWorkspaceCheckpoint,
+  serializeWorkspaceCheckpoint
 });
