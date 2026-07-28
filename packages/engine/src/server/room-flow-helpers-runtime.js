@@ -26,6 +26,7 @@ function createRoomFlowHelpersRuntime({
   flowActionTarget,
   flowActionIndexById,
   flowEventTargetForAction,
+  finalizeTextInputDrafts = () => 0,
   getFlowState,
   isNoActionTarget,
   isReturnActionTarget,
@@ -296,6 +297,7 @@ function createRoomFlowHelpersRuntime({
     if (isNoActionTarget(target) && !canUseBarrierFallback) {
       return haltInvalidFlowTarget(room, currentAction, eventType);
     }
+    if (eventType === "timerEnd") finalizeTextInputDrafts(room);
     room.activeInputFlowEventKey = eventKey;
     if (room.craftingTimerRunning) {
       pauseCraftingTimer(room);

@@ -25,6 +25,47 @@ describe("createControllerSetupBindings (ported)", () => {
     const host = globalThis as typeof globalThis & { createControllerSetupBindings?: unknown };
     expect(host.createControllerSetupBindings).toBeTypeOf("function");
   });
+
+  it("saves the current writing draft on every edit with an ordered sequence", async () => {
+    const listeners: Record<string, () => void> = {};
+    const textInput = {
+      addEventListener: (type: string, listener: () => void) => {
+        listeners[type] = listener;
+      },
+      value: ""
+    } as unknown as HTMLInputElement;
+    const saveTextDraft = vi.fn(async () => null);
+    const bindings = createControllerSetupBindings({
+      elements: {
+        invalidBanner: { classList: { add: vi.fn() } },
+        textInput
+      } as never,
+      getJoinButton: () => ({} as HTMLButtonElement),
+      getTextSubmitButton: () => ({ disabled: false } as HTMLButtonElement),
+      getControllerState: () => ({
+        lobby: { textInput: { actionId: "write", visitId: 12, type: "text" } },
+        player: {}
+      }),
+      getSessionValue: () => "",
+      joinController: vi.fn(async () => null),
+      normalizeStageCode: (v: string) => v,
+      removeSessionValue: vi.fn(),
+      saveTextDraft,
+      setDismissedInvalidKey: vi.fn(),
+      shouldAutoJoin: () => false,
+      updateJoinButton: vi.fn()
+    });
+    bindings.bindTextInputControls();
+
+    textInput.value = "A";
+    listeners.input();
+    textInput.value = "Answer";
+    listeners.input();
+    await Promise.resolve();
+
+    expect(saveTextDraft).toHaveBeenNthCalledWith(1, "write", "A", 1);
+    expect(saveTextDraft).toHaveBeenNthCalledWith(2, "write", "Answer", 2);
+  });
 });
 
 describe("createControllerActionBindings (ported)", () => {

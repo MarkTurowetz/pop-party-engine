@@ -17,6 +17,7 @@ export interface ControllerSubmitApi {
   grantMicrophoneAccess(actionId: string): Promise<ControllerSubmitJson>;
   inputEvent(actionId: string, eventType: string): Promise<ControllerSubmitJson>;
   join(stageCode: string, playerName: string, playerId: string): Promise<ControllerSubmitJson>;
+  saveTextDraft(actionId: string, text: string, draftSequence: number): Promise<ControllerSubmitJson>;
   submitChoice(actionId: string, optionIndex: number, cardId?: string): Promise<ControllerSubmitJson>;
   submitText(actionId: string, text: string): Promise<ControllerSubmitJson>;
   startOrCancelGame(options?: { isCancel?: boolean; startToken?: string }): Promise<ControllerSubmitJson>;

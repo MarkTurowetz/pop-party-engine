@@ -16,6 +16,7 @@ export interface ControllerSetupBindingsOptions {
   joinController: (stageCode: string, playerName: string) => Promise<unknown>;
   normalizeStageCode: (value: string) => string;
   removeSessionValue: (key: string) => void;
+  saveTextDraft?: (actionId: string, text: string, draftSequence: number) => Promise<unknown>;
   setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
   setShown?: (target: HTMLElement, isShown: boolean, options?: Dict) => void;
   setLocalValue?: (key: string, value: string) => void;
@@ -34,6 +35,7 @@ export function createControllerSetupBindings(options: ControllerSetupBindingsOp
     joinController,
     normalizeStageCode,
     removeSessionValue,
+    saveTextDraft,
     setButtonText,
     setShown,
     setLocalValue,
@@ -95,6 +97,8 @@ export function createControllerSetupBindings(options: ControllerSetupBindingsOp
 
   function bindTextInputControls(): void {
     const textInput = elements.textInput as HTMLInputElement;
+    let draftVisitKey = "";
+    let draftSequence = 0;
     textInput.addEventListener("input", () => {
       const state = getControllerState();
       const answer = (state?.player as Dict)?.answer as Dict | undefined;
@@ -105,6 +109,21 @@ export function createControllerSetupBindings(options: ControllerSetupBindingsOp
       else elements.invalidBanner.classList.add("hidden");
       const submitButton = getTextSubmitButton();
       if (submitButton) submitButton.disabled = textInput.value.trim().length === 0;
+      const textInputState = (state?.lobby as Dict | undefined)?.textInput as Dict | undefined;
+      const actionId = String(textInputState?.actionId || "");
+      const isVoiceInput = textInputState?.type === "voice" || textInputState?.mode === "voiceVip";
+      if (saveTextDraft && actionId && !isVoiceInput) {
+        const nextVisitKey = `${actionId}:${Number(textInputState?.visitId || 0)}`;
+        if (nextVisitKey !== draftVisitKey) {
+          draftVisitKey = nextVisitKey;
+          draftSequence = 0;
+        }
+        draftSequence += 1;
+        void saveTextDraft(actionId, textInput.value, draftSequence).catch(() => {
+          // A draft can race the authoritative timer transition. The next edit
+          // retries while this input visit is still active.
+        });
+      }
     });
     textInput.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || event.shiftKey) return;

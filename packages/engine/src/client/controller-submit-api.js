@@ -44,6 +44,19 @@ function createControllerSubmitApi(options) {
     return postJson("/api/controller-text-submit", { ...base, actionId, inputVisitId: inputVisitId(actionId), text });
   }
 
+  function saveTextDraft(actionId, text, draftSequence) {
+    const base = payloadBase();
+    if (!base) return Promise.resolve(null);
+    return postJson("/api/controller-text-submit", {
+      ...base,
+      actionId,
+      draft: true,
+      draftSequence: Math.max(0, Number(draftSequence || 0)),
+      inputVisitId: inputVisitId(actionId),
+      text
+    });
+  }
+
   function grantMicrophoneAccess(actionId) {
     const base = payloadBase();
     if (!base) return Promise.resolve(null);
@@ -73,6 +86,7 @@ function createControllerSubmitApi(options) {
     grantMicrophoneAccess,
     inputEvent,
     join,
+    saveTextDraft,
     submitChoice,
     submitText,
     startOrCancelGame,

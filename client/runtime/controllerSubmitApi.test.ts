@@ -57,6 +57,18 @@ describe("createControllerSubmitApi (ported)", () => {
       stageCode: "ABCD",
       text: "fresh answer"
     });
+
+    await api.saveTextDraft("write", "still typing", 3);
+    expect(postJson).toHaveBeenLastCalledWith("/api/controller-text-submit", {
+      actionId: "write",
+      draft: true,
+      draftSequence: 3,
+      gameSessionId: 9,
+      inputVisitId: 14,
+      playerId: "p1",
+      stageCode: "ABCD",
+      text: "still typing"
+    });
   });
 
   it("resolves null without calling postJson when there is no controller state", async () => {
