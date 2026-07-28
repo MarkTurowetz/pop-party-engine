@@ -479,7 +479,7 @@ let lastRenderedControllerStageCode = "";
 let lastRenderedControllerSessionId = -1;
 let lastRenderedControllerRevision = -1;
 
-function applyControllerLayoutForPhase(phase: string): void {
+function applyControllerLayoutForPhase(phase: string, prepare?: () => void): void {
   const lobby = w.controllerState?.lobby as Dict | undefined;
   const player = w.controllerState?.player as Dict | undefined;
   const visitKey = controllerViewVisitKey(lobby, player, phase);
@@ -494,6 +494,7 @@ function applyControllerLayoutForPhase(phase: string): void {
   getControllerGlobalActionView().prepareForLayout(phase);
   if (phase !== controllerLayoutStateIds.voiceInput) getControllerVoiceInput().stopRecognition();
   getControllerLocalButtonRuntime().prepareForLayout(phase === "starting" ? controllerLayoutStateIds.lobby : phase);
+  prepare?.();
   w.applyControllerLayoutForPhase?.(phase, visitKey);
 }
 
@@ -705,6 +706,8 @@ async function setupController(): Promise<void> {
     joinController,
     normalizeStageCode: w.normalizeStageCode!,
     removeSessionValue: w.removeSessionValue!,
+    saveTextDraft: (actionId, text, draftSequence) =>
+      getControllerSubmitApi().saveTextDraft(actionId, text, draftSequence) as Promise<unknown>,
     setButtonText: setControllerButtonText,
     setShown: setControllerTextShown,
     setLocalValue: w.setLocalValue!,

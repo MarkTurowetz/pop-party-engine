@@ -41,6 +41,11 @@ function createInputStateRuntime({ activePlayers }) {
     } else {
       room.textInputAnswers = new Map();
     }
+    if (room.textInputDrafts?.clear) {
+      room.textInputDrafts.clear();
+    } else {
+      room.textInputDrafts = new Map();
+    }
   }
 
   function clearMicrophoneAccessInput(room) {

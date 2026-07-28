@@ -526,6 +526,8 @@ let _completeCountdownTriggerFn;
 const completeCountdownTriggerProxy = (room) => _completeCountdownTriggerFn(room);
 let _emitInputFlowEventFn;
 const emitInputFlowEventProxy = (room, eventType) => _emitInputFlowEventFn(room, eventType);
+let _finalizeTextInputDraftsFn = () => 0;
+const finalizeTextInputDraftsProxy = (room) => _finalizeTextInputDraftsFn(room);
 let _applyRoomActionEffectsFn;
 const applyRoomActionEffectsProxy = (room, action) => _applyRoomActionEffectsFn?.(room, action);
 let _releasePendingFlowEventsFn;
@@ -957,6 +959,7 @@ const {
   flowActionTarget,
   flowActionIndexById,
   flowEventTargetForAction,
+  finalizeTextInputDrafts: finalizeTextInputDraftsProxy,
   getFlowState,
   getStateActions,
   isNoActionTarget,
@@ -1465,6 +1468,7 @@ const {
 });
 
 const {
+  finalizeTextInputDrafts,
   handleControllerChoice,
   handleControllerMicrophoneAccess,
   handleControllerTextSubmit
@@ -1491,6 +1495,7 @@ const {
   sendJson,
   updatePlayerAnswerGroups
 });
+_finalizeTextInputDraftsFn = finalizeTextInputDrafts;
 
 const {
   handleStageTestConfig

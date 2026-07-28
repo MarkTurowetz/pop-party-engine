@@ -177,23 +177,80 @@ async function main() {
     await textInputPage.goto(`http://${host}:${port}/controller`, { waitUntil: "domcontentloaded" });
     await textInputPage.waitForFunction(() => document.querySelector("#stageCodeField")?.classList.contains("controller-widget-art-host"));
     await textInputPage.evaluate(() => {
-      document.querySelectorAll("[data-controller-view]").forEach((view) => view.classList.add("hidden"));
-      document.querySelector("#controllerTextState")?.classList.remove("hidden");
       window.controllerState = {
         phase: "controller-text-input",
-        lobby: { controllerLayoutId: "controller-text-input" },
+        lobby: {
+          controllerLayoutId: "controller-text-input",
+          textInput: {
+            actionId: "writing-check",
+            characterLimit: 80,
+            mode: "textAll",
+            prompt: "Write an answer",
+            type: "text",
+            visitId: 1
+          }
+        },
         player: { id: "p-banner", name: "BEN", avatar: { shape: "trike", color: "#ff4fa3" } }
       };
-      window.applyControllerLayoutForPhase("controller-text-input");
+      const textView = window.createControllerTextInputView({
+        applyLayoutForPhase: (phase, prepare) => {
+          prepare?.();
+          window.applyControllerLayoutForPhase(phase);
+        },
+        dismissedInvalidKey: () => "",
+        disposeButton: () => document.querySelector("#controllerTextSubmitButton")?.remove(),
+        elements: {
+          done: window.controllerTextDone,
+          input: document.querySelector("#controllerTextInput"),
+          invalidBanner: document.querySelector("#controllerInvalidBanner"),
+          prompt: window.controllerTextPrompt,
+          voiceStatus: window.controllerVoiceStatus
+        },
+        getSubmitButton: () => {
+          let button = document.querySelector("#controllerTextSubmitButton");
+          if (!button) {
+            button = document.createElement("button");
+            button.id = "controllerTextSubmitButton";
+            button.className = "primary-button controller-submit-button controller-local-action-button";
+            button.dataset.controllerOption = "";
+            document.querySelector("#controllerTextSubmitButtonContainer").replaceChildren(button);
+          }
+          window.PartyGameLayoutText.setControllerButtonText(button, "Submit", { width: 260, height: 64, fontSize: 24 });
+          return button;
+        },
+        getVoiceInput: () => ({
+          bindButton() {},
+          isListening: () => false,
+          renderWaiting() {},
+          resetUi() {},
+          stopRecognition() {}
+        }),
+        getVoiceButton: () => document.createElement("button"),
+        hideViews: () => document.querySelectorAll("[data-controller-view]").forEach((view) => view.classList.add("hidden")),
+        setPhaseActionId() {},
+        setText: window.PartyGameLayoutText.setControllerText,
+        setTextShown: (target, shown) => {
+          if (target instanceof HTMLElement) target.classList.toggle("hidden", !shown);
+        },
+        showView: () => document.querySelector("#controllerTextState")?.classList.remove("hidden"),
+        submitText() {}
+      });
+      textView.render(window.controllerState.lobby, window.controllerState.player);
       window.PartyGameLayoutText.setControllerPlayerBannerArt(
         document.querySelector("#controllerPlayerBanner"),
         window.controllerState.player
       );
     });
-    await textInputPage.waitForFunction(() => Boolean(document.querySelector("#controllerTextInput")?.closest("[data-controller-art-selector-host-for]")));
+    await textInputPage.waitForFunction(() =>
+      Boolean(document.querySelector("#controllerTextInput")?.closest("[data-controller-art-selector-host-for]"))
+      && Boolean(document.querySelector("#controllerTextSubmitButton")?.classList.contains("has-controller-widget-art"))
+    );
     const textInputState = await textInputPage.evaluate(() => {
       const input = document.querySelector("#controllerTextInput");
       const rect = input?.getBoundingClientRect();
+      const submitButton = document.querySelector("#controllerTextSubmitButton");
+      const submitRect = submitButton?.getBoundingClientRect();
+      const submitStyle = submitButton ? getComputedStyle(submitButton) : null;
       const centerX = rect ? rect.left + rect.width / 2 : 0;
       const centerY = rect ? rect.top + rect.height / 2 : 0;
       return {
@@ -203,6 +260,13 @@ async function main() {
         width: rect?.width || 0,
         height: rect?.height || 0,
         hitTargetId: document.elementFromPoint(centerX, centerY)?.id || "",
+        submitArtRoots: submitButton?.querySelectorAll(":scope > .controller-widget-art-layer > .art-runtime-object").length || 0,
+        submitDisabled: submitButton?.disabled === true,
+        submitDisplay: submitStyle?.display || "missing",
+        submitHeight: submitRect?.height || 0,
+        submitOpacity: submitStyle?.opacity || "missing",
+        submitVisibility: submitStyle?.visibility || "missing",
+        submitWidth: submitRect?.width || 0,
         playerBannerName: Array.from(document.querySelectorAll("#controllerPlayerBanner [data-art-component-id='name-text']"))
           .map((element) => element.textContent.trim())
           .find(Boolean) || "",
@@ -219,6 +283,16 @@ async function main() {
     assert(textInputState.display !== "none", "Writing Moment textarea is not displayed");
     assert(textInputState.width > 0 && textInputState.height > 0, "Writing Moment textarea has no interactive hit box");
     assert(textInputState.hitTargetId === "controllerTextInput", `Writing Moment textarea is covered by ${textInputState.hitTargetId || "an unknown element"}`);
+    assert(textInputState.submitArtRoots === 1, `Writing Moment Submit button has ${textInputState.submitArtRoots} competing art renderers`);
+    assert(textInputState.submitDisabled, "Writing Moment Submit button should start disabled for an empty field");
+    assert(
+      textInputState.submitDisplay !== "none"
+        && textInputState.submitVisibility !== "hidden"
+        && textInputState.submitOpacity !== "0"
+        && textInputState.submitWidth > 0
+        && textInputState.submitHeight > 0,
+      `Writing Moment Submit button is not visible: ${JSON.stringify(textInputState)}`
+    );
     assert(textInputState.playerBannerName === "BEN", `Player Banner rendered ${textInputState.playerBannerName || "no player name"}`);
     assert(
       textInputState.playerBannerAvatarTints.includes("#ff4fa3"),

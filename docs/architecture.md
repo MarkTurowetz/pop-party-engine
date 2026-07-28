@@ -182,9 +182,16 @@ concepts into focused modules.
     from Start Game to Cancel; it never layers two button renderers on one host. A container positions
     the button but does not resize or clip it: the button keeps its authored composition dimensions,
     and lifecycle motion may extend beyond the container bounds. Voice recording is cancelled before
-    its local button is disposed. The
+    its local button is disposed. Input views prepare their state-owned button before selector
+    resolution so both migrated container placements and older button selectors resolve in the same
+    layout pass. The
     Global Controller Layout must not own action messages or action buttons; it is reserved for
     genuinely persistent controller art.
+  - Active writing controllers save revision-ordered text drafts as the native field changes.
+    Drafts are scoped to the current game session and input visit, are never broadcast as submitted
+    answers, and are cleared with the input lifecycle. When the authoritative crafting timer emits
+    `timerEnd`, the server promotes each active player's latest nonblank draft through the normal
+    stored-answer path before clearing the input; an empty field remains unanswered.
   - Selector-backed controller art fails closed. If its authored composition is unavailable, the
     native host stays `controller-layout-hidden` instead of exposing legacy HTML styling. A missing
     player always selects the authored Join layout, even while an older room snapshot still names a

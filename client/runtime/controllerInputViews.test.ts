@@ -220,7 +220,7 @@ describe("createControllerTextInputView (ported)", () => {
   });
 
   it("selects the voice layout for a voice input", () => {
-    const applyLayoutForPhase = vi.fn();
+    const applyLayoutForPhase = vi.fn((_phase: string, prepare?: () => void) => prepare?.());
     const getVoiceButton = vi.fn(() => ({} as HTMLButtonElement));
     const voiceInput = {
       bindButton: vi.fn(),
@@ -252,7 +252,7 @@ describe("createControllerTextInputView (ported)", () => {
     });
 
     expect(view.render({ textInput: { actionId: "voice", type: "voice" } }, { isVip: true })).toBe(true);
-    expect(applyLayoutForPhase).toHaveBeenCalledWith(controllerLayoutStateIds.voiceInput);
+    expect(applyLayoutForPhase).toHaveBeenCalledWith(controllerLayoutStateIds.voiceInput, expect.any(Function));
     expect(getVoiceButton).toHaveBeenCalledOnce();
     expect(voiceInput.bindButton).toHaveBeenCalledWith("voice");
     expect((view as { render: unknown }).render).toBeTypeOf("function");
@@ -331,7 +331,7 @@ describe("createControllerTextInputView (ported)", () => {
     const disposeButton = vi.fn();
     const getSubmitButton = vi.fn();
     const view = createControllerTextInputView({
-      applyLayoutForPhase: vi.fn(),
+      applyLayoutForPhase: vi.fn((_phase: string, prepare?: () => void) => prepare?.()),
       dismissedInvalidKey: () => "",
       disposeButton,
       elements: {
@@ -361,5 +361,42 @@ describe("createControllerTextInputView (ported)", () => {
     expect(view.render({ textInput: { actionId: "text", type: "text" } }, { answer: { done: true, text: "finished" } })).toBe(true);
     expect(disposeButton).toHaveBeenCalledOnce();
     expect(getSubmitButton).not.toHaveBeenCalled();
+  });
+
+  it("mounts the submit button before the authored writing layout resolves its selector", () => {
+    const calls: string[] = [];
+    const submitButton = { disabled: false, onclick: null } as unknown as HTMLButtonElement;
+    const view = createControllerTextInputView({
+      applyLayoutForPhase: (_phase, prepare) => {
+        prepare?.();
+        calls.push("layout");
+      },
+      dismissedInvalidKey: () => "",
+      disposeButton: vi.fn(),
+      elements: {
+        done: {} as HTMLElement,
+        input: { removeAttribute: vi.fn(), value: "" } as unknown as HTMLInputElement,
+        invalidBanner: {} as HTMLElement,
+        prompt: {} as HTMLElement,
+        voiceStatus: {} as HTMLElement
+      } as never,
+      getSubmitButton: () => {
+        calls.push("button");
+        return submitButton;
+      },
+      getVoiceInput: () => ({
+        bindButton: vi.fn(), isListening: () => false, renderWaiting: vi.fn(), resetUi: vi.fn(), stopRecognition: vi.fn()
+      }),
+      getVoiceButton: vi.fn(),
+      hideViews: vi.fn(),
+      setPhaseActionId: vi.fn(),
+      setText: vi.fn(),
+      setTextShown: vi.fn(),
+      showView: vi.fn(),
+      submitText: vi.fn()
+    });
+
+    expect(view.render({ textInput: { actionId: "write", visitId: 9, type: "text" } }, {})).toBe(true);
+    expect(calls).toEqual(["button", "layout"]);
   });
 });

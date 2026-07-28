@@ -83,6 +83,47 @@ function createControllerSubmitHandlersRuntime({
     sendJson(res, context.status || 400, { ok: false, error: context.error || "Text input is not available" });
   }
 
+  function storeTextAnswer(room, playerId, submittedText) {
+    const answeredAt = Date.now();
+    const answer = {
+      text: submittedText,
+      invalid: false,
+      done: true,
+      nonce: answeredAt
+    };
+    room.textInputAnswers.set(playerId, answer);
+    rememberDisplayedPlayerAnswer(room, playerId, answer);
+    room.playerAnswerRecords = room.playerAnswerRecords || {};
+    room.playerAnswerRecords[playerId] = {
+      playerId,
+      actionId: room.textInputActionId,
+      contentId: "",
+      optionIndex: null,
+      originalOptionIndex: null,
+      text: answer.text,
+      correct: null,
+      answeredAt
+    };
+    storePlayerAnswerRecord(room, playerId, room.playerAnswerRecords[playerId]);
+    return answer;
+  }
+
+  function finalizeTextInputDrafts(room) {
+    if (!room?.textInputActionId || room.textInputMode === "voiceVip") return 0;
+    const drafts = room.textInputDrafts instanceof Map ? room.textInputDrafts : new Map();
+    let finalizedCount = 0;
+    for (const [playerId, draft] of drafts.entries()) {
+      const player = room.players?.get?.(playerId);
+      if (!player?.active || room.textInputAnswers?.get?.(playerId)?.done === true) continue;
+      const submittedText = cleanSubmittedText(draft?.text, room.textInputCharacterLimit || 240);
+      if (!submittedText) continue;
+      storeTextAnswer(room, playerId, submittedText);
+      finalizedCount += 1;
+    }
+    if (finalizedCount > 0) updatePlayerAnswerGroups(room);
+    return finalizedCount;
+  }
+
   async function handleControllerChoice(req, res) {
     let payload;
     try {
@@ -288,6 +329,25 @@ function createControllerSubmitHandlersRuntime({
     const { room, playerId } = context;
 
     const submittedText = cleanSubmittedText(payload.text, room.textInputCharacterLimit || 240);
+    if (payload.draft === true) {
+      room.textInputDrafts = room.textInputDrafts instanceof Map ? room.textInputDrafts : new Map();
+      const requestedSequence = Number(payload.draftSequence || 0);
+      const draftSequence = Number.isFinite(requestedSequence) ? Math.max(0, requestedSequence) : 0;
+      const existingDraft = room.textInputDrafts.get(playerId);
+      if (!existingDraft || draftSequence >= Number(existingDraft.sequence || 0)) {
+        room.textInputDrafts.set(playerId, {
+          actionId: room.textInputActionId,
+          visitId: room.textInputVisitId,
+          sequence: draftSequence,
+          text: submittedText,
+          updatedAt: Date.now()
+        });
+      }
+      sendJson(res, 200, { ok: true, draft: true });
+      return;
+    }
+
+    room.textInputDrafts?.delete?.(playerId);
     const isValid = Boolean(submittedText) && !/\d/.test(submittedText);
     if (!isValid) {
       forgetDisplayedPlayerAnswer(room, playerId);
@@ -302,26 +362,7 @@ function createControllerSubmitHandlersRuntime({
       return;
     }
 
-    const answer = {
-      text: submittedText,
-      invalid: false,
-      done: true,
-      nonce: Date.now()
-    };
-    room.textInputAnswers.set(playerId, answer);
-    rememberDisplayedPlayerAnswer(room, playerId, answer);
-    room.playerAnswerRecords = room.playerAnswerRecords || {};
-    room.playerAnswerRecords[playerId] = {
-      playerId,
-      actionId: room.textInputActionId,
-      contentId: "",
-      optionIndex: null,
-      originalOptionIndex: null,
-      text: answer.text,
-      correct: null,
-      answeredAt: answer.nonce
-    };
-    storePlayerAnswerRecord(room, playerId, room.playerAnswerRecords[playerId]);
+    storeTextAnswer(room, playerId, submittedText);
     updatePlayerAnswerGroups(room);
     broadcastLobby(room);
     if (allActivePlayersHaveSubmittedInput(room)) {
@@ -331,6 +372,7 @@ function createControllerSubmitHandlersRuntime({
   }
 
   return {
+    finalizeTextInputDrafts,
     handleControllerChoice,
     handleControllerMicrophoneAccess,
     handleControllerTextSubmit

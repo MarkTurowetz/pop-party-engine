@@ -113,6 +113,7 @@ function createControllerInputPayloadRuntime({
     room.textInputPlaceholder = action.placeholder || config.placeholder;
     room.textInputCharacterLimit = normalizeCharacterLimit(action.characterLimit);
     room.textInputAnswers = new Map();
+    room.textInputDrafts = new Map();
   }
 
   function applyMicrophoneAccessAction(room, action) {

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1200",
+  "version": "1.0.17.1202",
   "baseVersion": "1.0.17",
-  "buildNumber": 1200,
-  "commit": "a9028d53",
-  "branch": "codex/persist-render-build-stamp",
-  "generatedAt": "2026-07-28T02:34:47.149Z"
+  "buildNumber": 1202,
+  "commit": "51d311a8",
+  "branch": "codex/fix-writing-submit-and-timer-drafts",
+  "generatedAt": "2026-07-28T07:34:18.968Z"
 }

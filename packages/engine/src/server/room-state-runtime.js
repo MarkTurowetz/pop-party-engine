@@ -75,6 +75,7 @@ function createDefaultRoom(stageCode) {
     textInputCharacterLimit: 0,
     textInputMode: "textAll",
     textInputAnswers: new Map(),
+    textInputDrafts: new Map(),
     microphoneAccessActionId: "",
     microphoneAccessVisitId: 0,
     microphoneAccessPrompt: "",

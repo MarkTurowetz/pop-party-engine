@@ -32,6 +32,7 @@ function resetGameSessionState(room) {
   room.textInputPlaceholder = "";
   room.textInputCharacterLimit = 0;
   room.textInputAnswers = new Map();
+  room.textInputDrafts = new Map();
   room.microphoneAccessActionId = "";
   room.microphoneAccessVisitId = 0;
   room.microphoneAccessPrompt = "";
