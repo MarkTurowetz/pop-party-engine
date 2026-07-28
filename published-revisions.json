@@ -202,6 +202,19 @@
         "previousReleaseRevision": "317033dfb75fce0a0f5055c2cb25d0e859600905a893a115cf657d896601656a",
         "releaseRevision": "c222c437de171d55dc4eedeae8584941d5e88d7b03368e6d988f6e8dae195ed5"
       }
+    },
+    "engine-1.3.8-authoring-auth-recovery-build-1194": {
+      "fingerprint": "f28355065a9c46ac2440980c4feabd566d6360a5c4b906fe4ab04f16bd5cbe08",
+      "contentRevision": "bbe63c9d33d3e99de6a285b28f885c21032b4214514e00b027d237a06c40aed3",
+      "release": {
+        "gameId": "pop-party-reference",
+        "gameBuild": "1.0.17",
+        "engineVersion": "1.3.8",
+        "pluginVersion": "1.0.17",
+        "contentRevision": "bbe63c9d33d3e99de6a285b28f885c21032b4214514e00b027d237a06c40aed3",
+        "previousReleaseRevision": "c222c437de171d55dc4eedeae8584941d5e88d7b03368e6d988f6e8dae195ed5",
+        "releaseRevision": "0990d5741d38ce36a04184649f60d91c9a09e58910e51db11e7510560f38d375"
+      }
     }
   },
   "12e15ebee30eccfcd482d90fa0c5e3a222856e98aa4789a4ea14e32b426cb4ac": {
