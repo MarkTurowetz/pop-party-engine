@@ -64,7 +64,13 @@ function checkReleaseReadiness(version = process.argv[2]) {
     throw new Error("Check workflow must avoid duplicate feature-branch push and pull-request runs");
   }
   const renderBlueprint = fs.readFileSync(path.join(root, "render.yaml"), "utf8");
-  for (const contract of ["autoDeployTrigger: off", "key: NODE_VERSION", "value: 24"]) {
+  for (const contract of [
+    "autoDeployTrigger: off",
+    "buildCommand: npm run build-info:next",
+    "startCommand: node server.js",
+    "key: NODE_VERSION",
+    "value: 24"
+  ]) {
     if (!renderBlueprint.includes(contract)) throw new Error(`Render Blueprint is missing: ${contract}`);
   }
   for (const [label, source] of [["publish", workflow], ["check", checkWorkflow]]) {

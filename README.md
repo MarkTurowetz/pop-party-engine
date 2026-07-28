@@ -38,14 +38,15 @@ http://localhost:3000/l
 
 This app is ready for Render as a Node web service.
 
-- Build command: `npm run build`
+- Build command: `npm run build-info:next`
 - Start command: `node server.js`
 - Health check path: `/api/health`
 
 The included `render.yaml` defines the same settings as a Render Blueprint.
-`npm run build-info` also rebuilds the Vite client assets before stamping
-`build-info.json`, so older Render services still configured to call
-`build-info` deploy the current tool UI instead of reusing stale bundles.
+`npm run build-info:next` rebuilds the Vite client assets before stamping
+`build-info.json` at least one build beyond the committed branch stamp. This
+keeps Render's shallow checkout identity aligned with the full-history release
+workflow instead of reusing a stale build number.
 
 Production auto-deploys are disabled. Public engine releases are deployed only
 by the protected `publish` workflow after npm publication and the reference
