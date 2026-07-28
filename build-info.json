@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1193",
+  "version": "1.0.17.1194",
   "baseVersion": "1.0.17",
-  "buildNumber": 1193,
-  "commit": "612b59bd",
-  "branch": "codex/fix-authoring-session-recovery",
-  "generatedAt": "2026-07-27T23:52:14.073Z"
+  "buildNumber": 1194,
+  "commit": "08db0766",
+  "branch": "codex/recover-authoring-csrf-1.3.8",
+  "generatedAt": "2026-07-28T00:09:51.123Z"
 }

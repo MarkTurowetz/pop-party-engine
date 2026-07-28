@@ -42,6 +42,22 @@ function isLoopback(req) {
   return address === "127.0.0.1" || address === "::1";
 }
 
+function isSameOriginAuthoringRecovery(req) {
+  const authoringSession = String(req.headers?.["x-pop-party-authoring-session"] || "");
+  const suppliedCsrf = String(req.headers?.["x-csrf-token"] || "");
+  const origin = String(req.headers?.origin || "");
+  const host = String(req.headers?.["x-forwarded-host"] || req.headers?.host || "");
+  if (!authoringSession || !suppliedCsrf || !origin || !host) return false;
+  try {
+    const originUrl = new URL(origin);
+    return String(req.headers?.["sec-fetch-site"] || "").toLowerCase() === "same-origin"
+      && ["http:", "https:"].includes(originUrl.protocol)
+      && originUrl.host.toLowerCase() === host.toLowerCase();
+  } catch (error) {
+    return false;
+  }
+}
+
 function safeReturnTo(value) {
   const candidate = String(value || "");
   try {
@@ -122,10 +138,18 @@ function createAdminAuthRuntime(options = {}) {
       const supplied = String(req.headers["x-csrf-token"] || "");
       const expected = String(session.csrfToken || "");
       const matches = supplied.length === expected.length && supplied.length > 0 && crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
-      if (!matches) {
+      const recoveredAuthoringSession = !matches && isSameOriginAuthoringRecovery(req);
+      if (!matches && !recoveredAuthoringSession) {
         audit(req, { actorId: session.actorId, operation: "admin-authorize", outcome: "denied", errorCode: "ADMIN_CSRF_INVALID" });
         sendJson(res, 403, { ok: false, error: "CSRF token is missing or invalid", code: "ADMIN_CSRF_INVALID" });
         return false;
+      }
+      if (recoveredAuthoringSession) {
+        audit(req, {
+          actorId: session.actorId,
+          operation: "admin-csrf-authoring-recovery",
+          outcome: "allowed"
+        });
       }
     }
     req.adminActor = Object.freeze({ id: session.actorId });
@@ -258,4 +282,13 @@ function createAdminAuthRuntime(options = {}) {
   return Object.freeze({ isAdminApiRequest, isToolPath, publicStatus, requireApi, requirePage, tryHandle });
 }
 
-module.exports = { ADMIN_API_PATHS, TOOL_PATHS, cookieMap, createAdminAuthRuntime, isDraftPreviewUrl, isLoopback, safeReturnTo };
+module.exports = {
+  ADMIN_API_PATHS,
+  TOOL_PATHS,
+  cookieMap,
+  createAdminAuthRuntime,
+  isDraftPreviewUrl,
+  isLoopback,
+  isSameOriginAuthoringRecovery,
+  safeReturnTo
+};
