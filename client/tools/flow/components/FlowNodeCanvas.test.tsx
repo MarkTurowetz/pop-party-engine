@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FlowNodeCanvas } from "./FlowNodeCanvas";
+import { FlowNodeCanvas, newConnectedActionPosition } from "./FlowNodeCanvas";
 import type { FlowGraphConnection, FlowGraphNode } from "../flowNodeGraph";
 
 function nodes(selectedSource = true): FlowGraphNode[] {
@@ -44,6 +44,15 @@ const jumpConnection: FlowGraphConnection = {
 };
 
 describe("FlowNodeCanvas", () => {
+  it("places a command-dragged action beside its drop target", () => {
+    const [source, target] = nodes();
+
+    expect(newConnectedActionPosition({ x: 500, y: 300 }, source, target)).toEqual({
+      x: 90,
+      y: 260
+    });
+  });
+
   it("renders selected-only jump preview wires only when the jump node is selected", () => {
     const selectedMarkup = renderToStaticMarkup(
       <FlowNodeCanvas depth="subroutine" nodes={nodes(true)} connections={[jumpConnection]} />

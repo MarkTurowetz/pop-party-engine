@@ -22,6 +22,8 @@ import {
   renameFlowRouteActionCommand,
   moveFlowStateCommand,
   moveFlowSubActionCommand,
+  pasteFlowActionsCommand,
+  pasteFlowSubActionsCommand,
   removeFlowActionsCommand,
   removeFlowRouteBranchCommand,
   removeFlowRouteNodeCommand,
@@ -56,7 +58,11 @@ import { ensureActionTiming, flowActionNameForType } from "./flowActions";
 import { ensureDecisionBranches } from "./flowDecision";
 import { actionTypeName, makeFlowId, type FlowActionTypeMeta } from "./flowSelectors";
 import { serializeGameFlowForSave } from "./flowSerialization";
-import { flowSubroutineActions } from "./flowSubroutines";
+import {
+  findFlowActionContextInList,
+  findFlowSubroutine,
+  flowSubroutineActions
+} from "./flowSubroutines";
 import { type RemoveFlowRouteBranchOptions } from "./flowMutations";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import { requestLivePrototypeSave } from "../common/livePrototypeWorkspace";
@@ -132,6 +138,16 @@ export interface FlowEditorController {
   selectRouteBranch(routeNodeId: string, branchId: string): void;
   clearActionSelection(): void;
   clearRouteSelection(): void;
+  copyActionSelection(
+    stateId: string,
+    selectedIds: Iterable<string>,
+    subroutinePath?: Iterable<string>
+  ): boolean;
+  pasteActionSelection(
+    stateId: string,
+    targetActionId: string,
+    subroutinePath?: Iterable<string>
+  ): boolean;
 
   // State edits
   addState(): void;
@@ -158,10 +174,15 @@ export interface FlowEditorController {
     stateId: string,
     source: FlowNodeExit,
     position: FlowNodePoint,
-    subroutinePath?: Iterable<string>
+    subroutinePath?: Iterable<string>,
+    continuationTargetId?: string
   ): void;
   addRootAction(position?: FlowNodePoint | null): void;
-  addConnectedRootAction(source: FlowNodeExit, position: FlowNodePoint): void;
+  addConnectedRootAction(
+    source: FlowNodeExit,
+    position: FlowNodePoint,
+    continuationTargetId?: string
+  ): void;
   connectRootAction(source: FlowNodeExit, targetId: string): void;
   addSubAction(stateId: string, parentActionId: string, selectedSubActionId?: string): void;
   renameAction(stateId: string, actionId: string, name: string): void;
@@ -256,12 +277,69 @@ function makeFlowActionId(flow: GameFlow, stateId: string): string {
   return actionId;
 }
 
+type FlowEditorClipboard =
+  | { kind: "actions"; actions: FlowAction[] }
+  | { kind: "subActions"; actions: FlowAction[] }
+  | null;
+
+function cloneActionsForClipboard(actions: FlowAction[]): FlowAction[] {
+  return JSON.parse(JSON.stringify(actions)) as FlowAction[];
+}
+
+function cloneActionsWithFreshIds(
+  actions: FlowAction[],
+  makeId: () => string
+): FlowAction[] {
+  const copies = cloneActionsForClipboard(actions);
+  const idMap = new Map<string, string>();
+
+  const replaceIds = (items: FlowAction[]) => {
+    for (const item of items) {
+      const previousId = String(item.id || "");
+      const nextId = makeId();
+      if (previousId) idMap.set(previousId, nextId);
+      item.id = nextId;
+      replaceIds(flowSubroutineActions(item));
+      replaceIds(item.subActions || []);
+    }
+  };
+  replaceIds(copies);
+
+  const replaceTargets = (items: FlowAction[]) => {
+    for (const item of items) {
+      const record = item as Record<string, unknown>;
+      for (const [key, value] of Object.entries(record)) {
+        if (
+          typeof value === "string" &&
+          (key.endsWith("TargetActionId") || key === "entryTargetActionId") &&
+          idMap.has(value)
+        ) {
+          record[key] = idMap.get(value);
+        }
+      }
+      for (const branch of item.branches || []) {
+        const branchRecord = branch as Record<string, unknown>;
+        for (const key of ["targetActionId", "targetNodeId"]) {
+          const target = String(branchRecord[key] || "");
+          if (idMap.has(target)) branchRecord[key] = idMap.get(target);
+        }
+      }
+      replaceTargets(flowSubroutineActions(item));
+      replaceTargets(item.subActions || []);
+    }
+  };
+  replaceTargets(copies);
+  return copies;
+}
+
 export function createFlowEditorController(
   options: FlowEditorControllerOptions
 ): FlowEditorController {
   const { api } = options;
   const protectedStateIds = options.protectedStateIds;
   const actionTypes = options.actionTypes || [];
+  const isInputType = (type: string): boolean =>
+    actionTypes.find((meta) => meta.id === type)?.category === "input";
   const actionTypeMeta = (type: string): Pick<FlowActionTypeMeta, "category"> =>
     actionTypes.find((meta) => meta.id === type) || { category: "standard" };
   const nameForActionType = (type: string): string => {
@@ -278,6 +356,7 @@ export function createFlowEditorController(
   });
 
   const listeners = new Set<() => void>();
+  let clipboard: FlowEditorClipboard = null;
   let savedSnapshot = savedSnapshotOf(store.snapshot().flow);
   let lastCommittedFlowSnapshot = savedSnapshot;
   const sessionDraftPublisher = createSessionDraftPublisher({
@@ -358,6 +437,117 @@ export function createFlowEditorController(
       commit(store.selectRouteBranch(routeNodeId, branchId)),
     clearActionSelection: () => commit(store.clearActionSelection()),
     clearRouteSelection: () => commit(store.clearRouteSelection()),
+    copyActionSelection: (stateId, selectedIds, subroutinePath = []) => {
+      const ref = findFlowSubroutine(store.snapshot().flow, stateId, subroutinePath);
+      if (!ref) return false;
+      const actions = flowSubroutineActions(ref.subroutine);
+      const ids = new Set([...selectedIds].filter(Boolean));
+      if (!ids.size) return false;
+      const contexts = [...ids].map((id) => findFlowActionContextInList(actions, id));
+      if (contexts.some((context) => !context.action || context.isBranch)) return false;
+
+      if (contexts.every((context) => context.isSubAction)) {
+        const parentIds = new Set(
+          contexts.map((context) => String(context.parentAction?.id || ""))
+        );
+        if (parentIds.size !== 1 || parentIds.has("")) return false;
+        const parentAction = contexts[0].parentAction;
+        const selected = (parentAction?.subActions || []).filter((action) =>
+          ids.has(action.id)
+        );
+        if (!selected.length) return false;
+        clipboard = {
+          kind: "subActions",
+          actions: cloneActionsForClipboard(selected)
+        };
+        return true;
+      }
+
+      if (
+        contexts.some((context) => context.isSubAction) ||
+        contexts.some((context) => !actions.includes(context.action as FlowAction))
+      ) {
+        return false;
+      }
+      const selected = actions.filter((action) => ids.has(action.id));
+      if (!selected.length) return false;
+      clipboard = {
+        kind: "actions",
+        actions: cloneActionsForClipboard(selected)
+      };
+      return true;
+    },
+    pasteActionSelection: (stateId, targetActionId, subroutinePath = []) => {
+      if (!clipboard || !targetActionId) return false;
+      const snapshot = store.snapshot();
+      const ref = findFlowSubroutine(snapshot.flow, stateId, subroutinePath);
+      if (!ref) return false;
+      const actions = flowSubroutineActions(ref.subroutine);
+      const targetContext = findFlowActionContextInList(actions, targetActionId);
+      if (!targetContext.action || targetContext.isBranch) return false;
+
+      const usedIds = new Set(allFlowActionIds(snapshot.flow));
+      const nextId = () => {
+        let id: string;
+        do {
+          id = makeFlowActionId(snapshot.flow, stateId);
+        } while (usedIds.has(id));
+        usedIds.add(id);
+        return id;
+      };
+      const copies = cloneActionsWithFreshIds(clipboard.actions, nextId);
+
+      if (clipboard.kind === "subActions") {
+        const parentAction = targetContext.isSubAction
+          ? targetContext.parentAction
+          : targetContext.action;
+        if (!parentAction || parentAction.type === "decision") return false;
+        const selectedSubActionId = targetContext.isSubAction
+          ? targetContext.action.id
+          : "";
+        const updated = store.execute(
+          pasteFlowSubActionsCommand(
+            stateId,
+            parentAction.id,
+            copies,
+            selectedSubActionId,
+            subroutinePath
+          )
+        );
+        commit(store.selectActions(copies.map((action) => action.id), allFlowActionIds(updated.flow)));
+        return true;
+      }
+
+      if (
+        targetContext.isSubAction ||
+        !actions.includes(targetContext.action)
+      ) {
+        return false;
+      }
+      const position = targetContext.action.nodePosition as
+        | { x?: unknown; y?: unknown }
+        | null
+        | undefined;
+      const targetX = Number(position?.x);
+      const targetY = Number(position?.y);
+      copies.forEach((action, index) => {
+        action.nodePosition = {
+          x: (Number.isFinite(targetX) ? targetX : 80) + 340,
+          y: (Number.isFinite(targetY) ? targetY : 80) + index * 190
+        };
+      });
+      const updated = store.execute(
+        pasteFlowActionsCommand(
+          stateId,
+          targetContext.action.id,
+          copies,
+          isInputType,
+          subroutinePath
+        )
+      );
+      commit(store.selectActions(copies.map((action) => action.id), allFlowActionIds(updated.flow)));
+      return true;
+    },
 
     addState: () => commit(store.execute(addFlowStateCommand())),
     addSubroutine: (stateId, subroutinePath = [], selectedPrimaryActionId = "") =>
@@ -398,10 +588,17 @@ export function createFlowEditorController(
       );
       commit(store.selectActions([actionId], allFlowActionIds(updated.flow)));
     },
-    addConnectedAction: (stateId, source, position, subroutinePath = []) => {
+    addConnectedAction: (stateId, source, position, subroutinePath = [], continuationTargetId = "") => {
       const actionId = makeFlowActionId(store.snapshot().flow, stateId);
       const updated = store.execute(
-        addConnectedFlowActionCommand(stateId, source, position, subroutinePath, actionId)
+        addConnectedFlowActionCommand(
+          stateId,
+          source,
+          position,
+          subroutinePath,
+          actionId,
+          continuationTargetId
+        )
       );
       commit(store.selectActions([actionId], allFlowActionIds(updated.flow)));
     },
@@ -410,9 +607,11 @@ export function createFlowEditorController(
       store.execute(addRootFlowActionCommand(position, nodeId));
       commit(store.selectRouteNode(nodeId));
     },
-    addConnectedRootAction: (source, position) => {
+    addConnectedRootAction: (source, position, continuationTargetId = "") => {
       const nodeId = makeRootRouteActionId();
-      store.execute(addConnectedRootFlowActionCommand(source, position, nodeId));
+      store.execute(
+        addConnectedRootFlowActionCommand(source, position, nodeId, continuationTargetId)
+      );
       commit(store.selectRouteNode(nodeId));
     },
     connectRootAction: (source, targetId) =>
@@ -450,7 +649,7 @@ export function createFlowEditorController(
             type,
             (action, nextType, isSubAction) =>
               actionDefaults.applyActionTypeDefaults(action, nextType, isSubAction),
-            { nameForType: nameForActionType }
+            { isInputType, nameForType: nameForActionType }
           )
         )
       ),

@@ -12,6 +12,8 @@ import {
   moveFlowActionCommand,
   moveFlowStateCommand,
   moveFlowSubActionCommand,
+  pasteFlowActionsCommand,
+  pasteFlowSubActionsCommand,
   removeFlowActionsCommand,
   removeFlowRouteBranchCommand,
   removeFlowRouteNodeCommand,
@@ -24,6 +26,7 @@ import {
   setFlowActionTypeCommand,
   setFlowActionTimingCommand,
   setFlowRouteActionFieldsCommand,
+  setFlowRouteActionTypeCommand,
   setFlowStateEntryTargetCommand,
   setFlowStateNextTargetCommand,
   setFlowSubroutineEntryTargetCommand,
@@ -163,6 +166,33 @@ describe("Flow action commands", () => {
     ]);
   });
 
+  it("inserts a connected action before a command-drag target", () => {
+    const flow = actionFlowFixture();
+    flow.states[0].actions[0].nextTargetActionId = "act-2";
+    const history = createFlowCommandHistory(flow);
+
+    const next = history.execute(
+      addConnectedFlowActionCommand(
+        "round-one",
+        {
+          kind: "field",
+          nodeId: "act-1",
+          field: "nextTargetActionId"
+        },
+        { x: 120, y: 240 },
+        [],
+        "inserted-action",
+        "act-2"
+      )
+    );
+
+    expect(next.states[0].actions[0].nextTargetActionId).toBe("inserted-action");
+    expect(next.states[0].actions[1]).toMatchObject({
+      id: "inserted-action",
+      stageClickTargetActionId: "act-2"
+    });
+  });
+
   it("adds a connected action from a decision branch", () => {
     const history = createFlowCommandHistory({
       states: [
@@ -232,6 +262,130 @@ describe("Flow action commands", () => {
       name: "Display Text",
       type: "displayText"
     });
+  });
+
+  it("preserves the visible continuation when an action type changes", () => {
+    const flow = actionFlowFixture();
+    flow.states[0].actions[0].nextTargetActionId = "act-2";
+    const history = createFlowCommandHistory(flow);
+
+    const next = history.execute(
+      setFlowActionTypeCommand(
+        "round-one",
+        "act-1",
+        "presentText",
+        (action, type) => {
+          action.type = type;
+          action.stageClickTargetActionId = "";
+        }
+      )
+    );
+
+    expect(next.states[0].actions[0].stageClickTargetActionId).toBe("act-2");
+  });
+
+  it("preserves a continuation across both exits of a newly selected input type", () => {
+    const flow = actionFlowFixture();
+    flow.states[0].actions[0].nextTargetActionId = "act-2";
+    const history = createFlowCommandHistory(flow);
+
+    const next = history.execute(
+      setFlowActionTypeCommand(
+        "round-one",
+        "act-1",
+        "textSubmissionInput",
+        (action, type) => {
+          action.type = type;
+          action.timerEndTargetActionId = "";
+          action.answersSubmittedTargetActionId = "";
+        },
+        { isInputType: (type) => type.endsWith("Input") }
+      )
+    );
+
+    expect(next.states[0].actions[0]).toMatchObject({
+      timerEndTargetActionId: "act-2",
+      answersSubmittedTargetActionId: "act-2"
+    });
+  });
+
+  it("preserves a connected decision branch when the fallback is unconnected", () => {
+    const flow = actionFlowFixture();
+    flow.states[0].actions[0] = {
+      id: "act-1",
+      name: "Decision",
+      type: "decision",
+      branches: [
+        { id: "hit", type: "hit", targetActionId: "act-2" },
+        { id: "fallback", type: "noMatch", targetActionId: "" }
+      ]
+    };
+    const history = createFlowCommandHistory(flow);
+
+    const next = history.execute(
+      setFlowActionTypeCommand(
+        "round-one",
+        "act-1",
+        "message",
+        (action, type) => {
+          action.type = type;
+        }
+      )
+    );
+
+    expect(next.states[0].actions[0].nextTargetActionId).toBe("act-2");
+  });
+
+  it("pastes an action chain into the selected continuation", () => {
+    const flow = actionFlowFixture();
+    flow.states[0].actions[0].nextTargetActionId = "act-2";
+    const history = createFlowCommandHistory(flow);
+
+    const next = history.execute(
+      pasteFlowActionsCommand(
+        "round-one",
+        "act-1",
+        [
+          {
+            id: "pasted-1",
+            name: "Pasted",
+            type: "message",
+            nextTargetActionId: "old-copy-target"
+          }
+        ],
+        () => false
+      )
+    );
+
+    expect(next.states[0].actions.map((action) => action.id)).toEqual([
+      "act-1",
+      "pasted-1",
+      "act-2"
+    ]);
+    expect(next.states[0].actions[0].nextTargetActionId).toBe("pasted-1");
+    expect(next.states[0].actions[1].nextTargetActionId).toBe("act-2");
+  });
+
+  it("pastes multiple sub-actions together after the selected sub-action", () => {
+    const history = createFlowCommandHistory(actionFlowFixture());
+
+    const next = history.execute(
+      pasteFlowSubActionsCommand(
+        "round-one",
+        "act-1",
+        [
+          { id: "pasted-sub-1", name: "One", type: "message" },
+          { id: "pasted-sub-2", name: "Two", type: "message" }
+        ],
+        "sub-1"
+      )
+    );
+
+    expect(next.states[0].actions[0].subActions?.map((action) => action.id)).toEqual([
+      "sub-1",
+      "pasted-sub-1",
+      "pasted-sub-2"
+    ]);
   });
 
   it("sets multiple action fields as one undoable command", () => {
@@ -456,6 +610,60 @@ describe("Flow route commands", () => {
     );
 
     expect(connected.routeNodes?.[0]?.nextTargetNodeId).toBe("round-one");
+  });
+
+  it("inserts a command-dragged root action before the drop target", () => {
+    const history = createFlowCommandHistory(flowFixture());
+
+    const next = history.execute(
+      addConnectedRootFlowActionCommand(
+        { kind: "field", nodeId: "intro", field: "nextTargetActionId" },
+        { x: 20, y: 40 },
+        "route-action-test",
+        "round-one"
+      )
+    );
+
+    expect(next.states[0].nextStateTargetId).toBe("route-action-test");
+    expect(next.routeNodes?.[0]).toMatchObject({
+      id: "route-action-test",
+      nextTargetNodeId: "round-one",
+      nextTargetActionId: "round-one"
+    });
+  });
+
+  it("preserves a root action continuation when its type changes", () => {
+    const history = createFlowCommandHistory({
+      states: [{ id: "round-one", name: "Round One", actions: [] }],
+      routeNodes: [
+        {
+          id: "route-action-test",
+          routeNodeType: "action",
+          type: "presentText",
+          nextTargetNodeId: "round-one",
+          nextTargetActionId: "round-one"
+        }
+      ]
+    } as GameFlow);
+
+    const next = history.execute(
+      setFlowRouteActionTypeCommand(
+        "route-action-test",
+        "decision",
+        (action, type) => {
+          action.type = type;
+          action.branches = [{ id: "no-match", type: "noMatch", targetActionId: "" }];
+        }
+      )
+    );
+
+    const routeNode = next.routeNodes?.[0] as {
+      branches?: { targetNodeId?: string; targetActionId?: string }[];
+    };
+    expect(routeNode.branches?.[0]).toMatchObject({
+      targetNodeId: "round-one",
+      targetActionId: "round-one"
+    });
   });
 
   it("sets multiple root action fields as one undoable command", () => {

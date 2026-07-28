@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1202",
+  "version": "1.0.17.1204",
   "baseVersion": "1.0.17",
-  "buildNumber": 1202,
-  "commit": "51d311a8",
-  "branch": "codex/fix-writing-submit-and-timer-drafts",
-  "generatedAt": "2026-07-28T07:34:18.968Z"
+  "buildNumber": 1204,
+  "commit": "85f46643",
+  "branch": "codex/flow-tool-connection-copy-paste",
+  "generatedAt": "2026-07-28T09:01:10.694Z"
 }
