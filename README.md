@@ -86,9 +86,11 @@ Tools tab is blocked from silently discarding the active workspace. If a
 service restart or heartbeat-lease expiry clears the server copy, the
 still-open editor reconnects with the same session id and republishes its dirty
 in-memory snapshots before Save. Save validates the whole JSON-and-binary
-workspace and atomically activates it, so Save means publish. Independent games
-must opt in separately and provide their own GitHub App, repository, OAuth, and
-release refs.
+workspace and atomically activates it, so Save means publish. The durable commit
+reuses unchanged Git blobs and uploads only changed files with bounded
+concurrency. After success, each mounted Tool accepts the committed snapshot in
+memory instead of forcing a page reload. Independent games must opt in
+separately and provide their own GitHub App, repository, OAuth, and release refs.
 
 ### Template Session Preview
 

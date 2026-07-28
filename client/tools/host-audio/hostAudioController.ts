@@ -41,6 +41,7 @@ export interface HostAudioController {
   undo(): void;
   redo(): void;
   revert(): void;
+  acceptWorkspaceSave(): void;
   save(): Promise<HostAudios | null>;
 }
 
@@ -202,6 +203,12 @@ export function createHostAudioController(
       current = normalizeHostAudios(JSON.parse(savedSnapshot) as HostAudios);
       emit();
       sessionDraftPublisher?.schedule(hostAudiosSnapshot(current));
+    },
+    acceptWorkspaceSave: () => {
+      savedSnapshot = hostAudiosSnapshot(current);
+      sessionDraftPublisher?.markSaved(savedSnapshot);
+      error = null;
+      emit();
     },
     save: async () => {
       if (requestLivePrototypeSave()) return current;

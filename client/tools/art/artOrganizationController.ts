@@ -50,6 +50,7 @@ export interface ArtOrganizationController {
   moveManyIntoFolder(surface: OrgSurface, draggedKeys: Iterable<string>, folderId: string): void;
   undo(): void;
   redo(): void;
+  acceptWorkspaceSave(): void;
   save(): Promise<boolean>;
 }
 
@@ -234,6 +235,12 @@ export function createArtOrganizationController(
       organization = next;
       emit();
       scheduleDraft();
+    },
+    acceptWorkspaceSave: () => {
+      savedSnapshot = organizationSnapshot(organization, items);
+      sessionDraftPublisher?.markSaved(savedSnapshot);
+      error = null;
+      emit();
     },
     save: async () => {
       if (requestLivePrototypeSave()) return true;

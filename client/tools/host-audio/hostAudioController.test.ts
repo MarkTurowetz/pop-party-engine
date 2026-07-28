@@ -69,6 +69,15 @@ describe("createHostAudioController", () => {
     expect(controller.getState().dirty).toBe(false);
   });
 
+  it("accepts an atomic workspace save without reloading", () => {
+    const controller = createHostAudioController({ initialHostAudios: initial, api: fakeApi() });
+    controller.renameSet(0, "Committed");
+
+    controller.acceptWorkspaceSave();
+
+    expect(controller.getState().dirty).toBe(false);
+  });
+
   it("reverts to the last saved snapshot", () => {
     const controller = createHostAudioController({ initialHostAudios: initial, api: fakeApi() });
     controller.addSet();

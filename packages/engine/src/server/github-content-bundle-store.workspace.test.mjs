@@ -1,4 +1,5 @@
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { describe, expect, it, vi } from "vitest";
@@ -25,7 +26,12 @@ function fakeGit() {
   return {
     refs,
     createBlob: vi.fn(async (bytes) => {
-      const sha = next("blob");
+      const buffer = Buffer.from(bytes);
+      const sha = crypto
+        .createHash("sha1")
+        .update(`blob ${buffer.length}\0`)
+        .update(buffer)
+        .digest("hex");
       blobs.set(sha, Buffer.from(bytes));
       return sha;
     }),
@@ -82,6 +88,7 @@ describe("GitHub atomic workspace commit", () => {
       "blobs/atomic.bin": Buffer.from("atomic")
     }, { allowNewFiles: true });
     const updatesBefore = git.updateRefCas.mock.calls.length;
+    git.createBlob.mockClear();
     const committed = await store.commitWorkspace({
       snapshot: working,
       expectedActiveRevision: active.releaseRevision,
@@ -91,10 +98,52 @@ describe("GitHub atomic workspace commit", () => {
     expect(git.updateRefCas.mock.calls.slice(updatesBefore)).toEqual([
       ["heads/game-releases", expect.any(String), expect.any(String)]
     ]);
+    expect(git.createBlob).toHaveBeenCalledTimes(5);
     store = createGithubContentBundleStore({ git });
     expect((await store.getActiveRelease()).contentRevision).toBe(working.revision);
     expect((await store.loadPublishedRevision(committed.contentRevision)).readBytes("blobs/atomic.bin"))
       .toEqual(Buffer.from("atomic"));
+  });
+
+  it("uploads only changed workspace blobs with bounded concurrency", async () => {
+    const git = fakeGit();
+    const store = createGithubContentBundleStore({ git, blobUploadConcurrency: 2 });
+    const initial = snapshot();
+    await store.initialize({ initialSnapshot: initial, release });
+    const active = await store.getActiveRelease();
+    const working = replaceSnapshotFiles(initial, {
+      "constants.json": { ...initial.readJson("constants.json"), gameTitle: "Concurrent workspace" },
+      "flow.json": { ...initial.readJson("flow.json"), version: "concurrent-workspace" },
+      "layouts/stage.json": { ...initial.readJson("layouts/stage.json"), version: "concurrent-workspace" },
+      "layouts/controller.json": {
+        ...initial.readJson("layouts/controller.json"),
+        version: "concurrent-workspace"
+      }
+    });
+    let activeUploads = 0;
+    let maxActiveUploads = 0;
+    const createBlob = git.createBlob.getMockImplementation();
+    git.createBlob.mockClear();
+    git.createBlob.mockImplementation(async (bytes) => {
+      activeUploads += 1;
+      maxActiveUploads = Math.max(maxActiveUploads, activeUploads);
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      try {
+        return await createBlob(bytes);
+      } finally {
+        activeUploads -= 1;
+      }
+    });
+
+    await store.commitWorkspace({
+      snapshot: working,
+      expectedActiveRevision: active.releaseRevision,
+      idempotencyKey: "workspace-concurrent-0001",
+      release
+    });
+
+    expect(maxActiveUploads).toBe(2);
+    expect(git.createBlob).toHaveBeenCalledTimes(7);
   });
 
   it("leaves the previous release authoritative when the final CAS fails", async () => {

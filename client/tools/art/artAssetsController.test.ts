@@ -51,6 +51,18 @@ describe("createArtAssetsController", () => {
     expect(controller.getState().assets[0].hasCustom).toBe(true);
   });
 
+  it("accepts atomic workspace replacements without reloading", () => {
+    const controller = createArtAssetsController({ initialAssets: [asset("a")], api: fakeApi() });
+    controller.stageReplacement("a", replacement);
+
+    controller.acceptWorkspaceSave();
+
+    expect(controller.getState().dirty).toBe(false);
+    expect(controller.getState().pending.size).toBe(0);
+    expect(controller.getState().assets[0].currentUrl).toBe(replacement.dataUrl);
+    expect(controller.getState().assets[0].hasCustom).toBe(true);
+  });
+
   it("publishes staged replacements as a session draft and clears when clean", async () => {
     vi.useFakeTimers();
     try {

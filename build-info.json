@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1208",
+  "version": "1.0.17.1209",
   "baseVersion": "1.0.17",
-  "buildNumber": 1208,
-  "commit": "1f031a53",
-  "branch": "codex/persist-scheduled-sub-actions",
-  "generatedAt": "2026-07-28T16:53:19.678Z"
+  "buildNumber": 1209,
+  "commit": "b8b1e9c7",
+  "branch": "codex/faster-atomic-tool-save",
+  "generatedAt": "2026-07-28T19:27:37.162Z"
 }

@@ -36,6 +36,7 @@ export interface ArtAssetsController {
   subscribe(listener: () => void): () => void;
   stageReplacement(assetId: string, replacement: ArtAssetReplacement): void;
   clearReplacement(assetId: string): void;
+  acceptWorkspaceSave(): void;
   save(): Promise<boolean>;
 }
 
@@ -97,6 +98,23 @@ export function createArtAssetsController(options: ArtAssetsControllerOptions): 
       pending.delete(assetId);
       emit();
       scheduleDraft();
+    },
+    acceptWorkspaceSave: () => {
+      assets = assets.map((asset) => {
+        const replacement = pending.get(asset.id);
+        if (!replacement) return asset;
+        return {
+          ...asset,
+          currentUrl: replacement.dataUrl,
+          hasCustom: true,
+          mimeType: replacement.mimeType,
+          sourceName: replacement.fileName
+        };
+      });
+      pending = new Map();
+      sessionDraftPublisher?.markSaved(pendingSnapshot(pending));
+      error = null;
+      emit();
     },
     save: async () => {
       if (requestLivePrototypeSave()) return true;

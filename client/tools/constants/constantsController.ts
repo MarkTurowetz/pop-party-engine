@@ -46,6 +46,7 @@ export interface ConstantsController {
   undo(): void;
   redo(): void;
   revert(): void;
+  acceptWorkspaceSave(): void;
   save(): Promise<GameConstants | null>;
 }
 
@@ -181,6 +182,12 @@ export function createConstantsController(options: ConstantsControllerOptions): 
       current = normalizeGameConstants(JSON.parse(savedSnapshot) as GameConstants);
       emit();
       scheduleDraft();
+    },
+    acceptWorkspaceSave: () => {
+      savedSnapshot = constantsSnapshot(current);
+      sessionDraftPublisher?.markSaved(savedSnapshot);
+      error = null;
+      emit();
     },
     save: async () => {
       if (requestLivePrototypeSave()) return current;

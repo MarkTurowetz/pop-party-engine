@@ -105,6 +105,7 @@ export interface ArtCompositionsController {
   reorderComponent(componentId: string, targetComponentId: string, placement: "before" | "after"): void;
   undo(): void;
   redo(): void;
+  acceptWorkspaceSave(): void;
   save(options?: { commitTrash?: boolean }): Promise<boolean>;
 }
 
@@ -1117,6 +1118,23 @@ export function createArtCompositionsController(
       persistTrash();
       emit();
       scheduleDraft();
+    },
+    acceptWorkspaceSave: () => {
+      if (trashedCompositionIds.size) {
+        compositions = compositions.filter(
+          (composition) => !trashedCompositionIds.has(composition.id)
+        );
+        ensureSelectedComposition();
+      }
+      savedSnapshots.clear();
+      for (const composition of compositions) {
+        savedSnapshots.set(composition.id, artCompositionSnapshot(composition));
+      }
+      trashedCompositionIds = new Set();
+      pendingMigrationSummary = null;
+      sessionDraftPublisher?.markSaved(compositionsDraftSnapshot(compositions));
+      error = null;
+      emit();
     },
     save: async (saveOptions = {}) => {
       if (requestLivePrototypeSave()) return true;
