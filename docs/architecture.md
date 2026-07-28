@@ -145,6 +145,9 @@ concepts into focused modules.
     unfinished inputs do not enter that confirmation state. The active input payload and the
     player's serialized `done` answer are the sole authority for this routing; it is not a game-flow
     action and cannot advance the flow.
+    A controller with no active input or stage-click action uses the Presentation layout with one
+    waiting message. It never falls back to an older moment-specific layout, because those retained
+    authoring states may contain multiple historical controls that are not valid simultaneous runtime UI.
     Controller layout syncing adds Join, Lobby, and the semantic controller layouts without deleting
     any previously authored layout state. Runtime selection still uses semantic controller layout ids
     (or an explicit `Set Controller Layout` target), but Tool reads and saves are lossless: an older
@@ -187,6 +190,10 @@ concepts into focused modules.
     player always selects the authored Join layout, even while an older room snapshot still names a
     different controller layout.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
+    Controller-held input actions use one shared non-completing stage runner. Multiple choice,
+    trivia, text, voice, microphone permission, and answer voting remain active until an
+    authoritative controller/server input event selects their authored exit target; the stage
+    neither advances them nor treats their intentionally idle renderer as a missing runner.
   - `client/tool-history.js` owns reusable undo/redo stack behavior for tools that
     can express state as a snapshot and restore function. Flow, layout, Constants,
     Host Audio, and editable Art compositions use this shared primitive instead of

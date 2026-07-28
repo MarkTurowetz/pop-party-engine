@@ -221,6 +221,33 @@ describe("createControllerStateRuntime (ported)", () => {
     ).id).toBe("choiceInput");
   });
 
+  it("uses the semantic Presentation layout for an in-game waiting state", () => {
+    const render = vi.fn(() => false);
+    const renderMessage = vi.fn(() => true);
+    const renderInGamePhase = vi.fn();
+    const runtime = createControllerStateRuntime(options({
+      getGlobalActionView: () => ({ render, renderMessage }),
+      getLobbyView: () => ({ renderInGamePhase, renderLobby: vi.fn(() => null) })
+    }));
+
+    const result = runtime.render(
+      { gameSessionId: 12, phase: "crafting-game-state" },
+      { id: "player-1" }
+    );
+
+    expect(result.id).toBe("inGame");
+    expect(renderMessage).toHaveBeenCalledWith(
+      expect.anything(),
+      "Waiting for the next instruction",
+      {
+        id: "inGameWaiting:12:crafting-game-state",
+        layoutPhase: controllerLayoutStateIds.presentation,
+        showButton: false
+      }
+    );
+    expect(renderInGamePhase).not.toHaveBeenCalled();
+  });
+
   it("falls through to the lobby view and surfaces its countdown timer", () => {
     const runtime = createControllerStateRuntime(options());
     const result = runtime.render({ phase: "lobby" }, {});

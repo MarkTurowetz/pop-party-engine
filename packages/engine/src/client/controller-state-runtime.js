@@ -66,8 +66,12 @@ function createControllerStateRuntime(options) {
 
   function renderInGame(context) {
     if (getGlobalActionView().render(context.lobby, context.me)) return true;
-    getLobbyView().renderInGamePhase(context.me, context.phase);
-    return true;
+    getVoiceInput().stopRecognition();
+    return getGlobalActionView().renderMessage(context.lobby, "Waiting for the next instruction", {
+      id: `inGameWaiting:${context.lobby?.gameSessionId || 0}:${context.phase}`,
+      layoutPhase: controllerLayoutStateIds.presentation,
+      showButton: false
+    });
   }
 
   const stateSpecs = [
