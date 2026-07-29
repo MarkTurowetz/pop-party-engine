@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1221",
+  "version": "1.0.17.1222",
   "baseVersion": "1.0.17",
-  "buildNumber": 1221,
-  "commit": "417cdfb9",
-  "branch": "codex/fix-preview-release-authority",
-  "generatedAt": "2026-07-29T18:08:42.371Z"
+  "buildNumber": 1222,
+  "commit": "c48e63ac",
+  "branch": "codex/fix-live-prototype-room-reset",
+  "generatedAt": "2026-07-29T19:15:54.165Z"
 }
