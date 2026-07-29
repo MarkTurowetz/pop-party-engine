@@ -290,6 +290,12 @@ concepts into focused modules.
   when the source value actually changes. An unchanged room snapshot must not overwrite text set by a
   later authored `Display Text` action; an explicit `Start Moment` may reapply the moment defaults after
   reconstructing its layout.
+- `End Moment` immediately retires every moment-owned layout entity and clears its transient visual
+  content. `Start Moment` then initializes every incoming moment-owned entity from its authored default
+  lifecycle label; selector-backed structural and text hosts without a lifecycle label use their
+  authored `hidden` value. Global layout entities are outside this boundary and retain their own
+  lifecycle. Reconciliation may perform the same silent initialization for a newly placed target, but
+  it never replaces these authored boundary actions for a repeated moment visit.
 - Every flow-driven game-object command carries `commandSource: "flow-action"`. Missing targets,
   missing authored labels, and interrupted target callbacks fail closed; they do not manufacture a
   callback or fall back to a duration estimate.

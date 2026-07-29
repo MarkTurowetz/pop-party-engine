@@ -133,13 +133,18 @@ class GameObject {
     return Array.isArray(value) ? value[0] : value;
   }
 
+  visualClasses(name: string, fallback: unknown): string[] {
+    const value = (this.visualOptions as Dict)?.[name] ?? fallback;
+    return (Array.isArray(value) ? value : [value]).map(String).filter(Boolean);
+  }
+
   hasClass(className: unknown): boolean {
     return Boolean(className && this.target?.classList.contains(className as string));
   }
 
   isVisible(): boolean {
     if (!this.target) return false;
-    const hiddenClass = this.visualClass("hiddenClasses", "stage-layout-visual-hidden");
+    const hiddenClasses = this.visualClasses("hiddenClasses", "stage-layout-visual-hidden");
     const exitingClass = this.visualClass("exitingClass", "stage-layout-visual-exiting");
     const layoutHiddenClasses = this.layoutHiddenClasses || [];
     if (isVisualLifecycleState(this.target.dataset.visualState)) {
@@ -148,7 +153,7 @@ class GameObject {
     if (this.getVisible) return this.getVisible() === true;
     return (
       this.target.dataset.visualVisible === "true" ||
-      (!this.hasClass(hiddenClass) &&
+      (!hiddenClasses.some((className) => this.hasClass(className)) &&
         !this.hasClass(exitingClass) &&
         !layoutHiddenClasses.some((className) => this.hasClass(className)))
     );
@@ -166,7 +171,7 @@ class GameObject {
 
   applyTargetVisibility(isShown: boolean): void {
     if (!this.target) return;
-    const hiddenClass = this.visualClass("hiddenClasses", "stage-layout-visual-hidden") as string;
+    const hiddenClasses = this.visualClasses("hiddenClasses", "stage-layout-visual-hidden");
     const exitingClass = this.visualClass("exitingClass", "stage-layout-visual-exiting") as string;
     this.target.dataset.visualVisible = isShown ? "true" : "false";
     this.target.dataset.visualState = isShown ? "shown" : "hidden";
@@ -174,11 +179,11 @@ class GameObject {
       for (const className of this.layoutHiddenClasses || []) {
         if (className) this.target.classList.remove(className);
       }
-      this.target.classList.remove(hiddenClass, exitingClass);
+      this.target.classList.remove(...hiddenClasses, exitingClass);
       return;
     }
     if (!this.hasClass(exitingClass)) {
-      this.target.classList.add(hiddenClass);
+      this.target.classList.add(...hiddenClasses);
     }
   }
 

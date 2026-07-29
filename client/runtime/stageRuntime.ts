@@ -28,6 +28,7 @@ declare global {
     normalizeTextTargetId?: (value: unknown) => string;
     applyStageLayoutTextProperties?: (target: El, element: Dict) => void;
     applyStageLayoutForPhase?: (phase: string) => void;
+    initializeStageMomentLayout?: () => void;
     resetStageMomentLayout?: () => void;
     stageMomentLayoutReadiness?: () => Dict;
     applyControllerLayoutForPhase?: (phase: string, visitKey?: string) => void;
@@ -438,6 +439,7 @@ async function startCurrentMomentForAction(_action: Dict, options: Dict = {}): P
   const state = w().currentStageState as Dict | null;
   if (!state) throw new Error("Current moment state unavailable");
   applyStageState(state, { initializeMomentText: true });
+  w().initializeStageMomentLayout?.();
   const readiness = w().stageMomentLayoutReadiness?.() || { ready: true, missingElementIds: [] };
   if (readiness.ready === false) {
     throw new Error(`Moment elements unavailable: ${((readiness.missingElementIds as string[]) || []).join(", ")}`);

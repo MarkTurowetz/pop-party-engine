@@ -52,6 +52,7 @@ const {
   createPlacedLayoutGameObjectTargetResolver,
   deactivateLayoutEntity,
   finishLayoutElementTargetApplication,
+  initializeLayoutEntity,
   layoutElementTargetMatchesSelector,
   layoutElementVisibilityKey,
   layoutTargetByElementId,
@@ -1005,6 +1006,18 @@ function resetStageMomentLayout(): void {
   }
 }
 
+function initializeStageMomentLayout(): void {
+  const state = stageLayoutState(w().currentStageLayoutStateId);
+  for (const element of (state?.elements as Dict[]) || []) {
+    stageLayoutGameObjectVisibilityOverrides.delete(stageLayoutGameObjectVisibilityKey(element.id as string, false));
+    const target = stageLayoutTargetElement(element);
+    if (!target) continue;
+    initializeLayoutEntity(registerStageLayoutEntity(element, target, false), {
+      fallbackVisible: element.hidden !== true
+    });
+  }
+}
+
 function stageMomentLayoutReadiness(): Dict {
   const state = stageLayoutState(w().currentStageLayoutStateId);
   const missingElementIds = ((state?.elements as Dict[]) || [])
@@ -1043,7 +1056,9 @@ function applyStageElementLayout(element: Dict, isGlobal: boolean, shouldInitial
       { initializeVisibility: false }
     );
   }
-  if (shouldInitialize) applyStageLayoutArtVisibilityOverride(entity);
+  if (shouldInitialize) {
+    initializeLayoutEntity(entity, { fallbackVisible: element.hidden !== true });
+  }
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "stage-layout-transition-suppressed");
 }
 
@@ -1324,7 +1339,7 @@ Object.assign(w(), {
   createLayoutGameObjectRegistry, dynamicStageTextElementId, getOrCreateControllerArtInstance, getOrCreateDynamicStageTextElement, getOrCreateStageArtInstance,
   globalControllerLayout, globalStageLayout, isDynamicControllerArtInstance, isDynamicStageArtInstance, isLayoutTextArtElement,
   layoutDefaultText, layoutTextArtRenderOptions, layoutTextDefault, loadControllerLayouts, loadStageLayouts, normalizeTextTargetId,
-  registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances, resetStageMomentLayout,
+  registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances, initializeStageMomentLayout, resetStageMomentLayout,
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   disposeControllerButtonArt, setControllerButtonLifecycleState,

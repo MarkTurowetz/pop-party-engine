@@ -124,4 +124,31 @@ describe("PartyGameGameObject (ported game-object)", () => {
     expect(target.dataset.visualVisible).toBe("true");
     expect(visibilityOverrides.has("moment:animated")).toBe(false);
   });
+
+  it("resets every configured host visibility gate instead of only the first class", () => {
+    const classes = new Set(["hidden", "stage-layout-visual-hidden"]);
+    const target = {
+      classList: {
+        add: (...names: string[]) => names.forEach((name) => classes.add(name)),
+        contains: (name: string) => classes.has(name),
+        remove: (...names: string[]) => names.forEach((name) => classes.delete(name))
+      },
+      dataset: {}
+    } as unknown as HTMLElement;
+    const object = PartyGameGameObject.create({
+      id: "collection-host",
+      target,
+      visualOptions: {
+        hiddenClasses: ["stage-layout-visual-hidden", "hidden"],
+        exitingClass: "stage-layout-visual-exiting"
+      }
+    });
+
+    expect(object.isVisible()).toBe(false);
+    object.applyTargetVisibility(true);
+    expect(classes).toEqual(new Set());
+
+    object.applyTargetVisibility(false);
+    expect(classes).toEqual(new Set(["stage-layout-visual-hidden", "hidden"]));
+  });
 });
