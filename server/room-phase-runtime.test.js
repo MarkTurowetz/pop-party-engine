@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 
 const require = createRequire(import.meta.url);
 const { createRoomPhaseRuntime, resolveVotingAnswerSource } = require("./room-phase-runtime");
+const { createDecisionRuntime } = require("../packages/engine/src/server/decision-runtime");
+const { applyDynamicGameStateCode } = require("../packages/engine/src/server/dynamic-game-state-runtime");
+const { createMomentRouteRuntime } = require("../packages/engine/src/server/moment-route-runtime");
 
 function createRouteRuntime(overrides = {}) {
   return createRoomPhaseRuntime({
@@ -119,6 +122,120 @@ describe("route action sessions", () => {
 
     expect(clearAppliedActionEffects).toHaveBeenCalledTimes(2);
     expect(room.routeActionSession.currentNodeId).toBe("code-node");
+  });
+
+  it("executes route code nodes authoritatively before evaluating the next decision or moment", () => {
+    const flow = {
+      states: [
+        { id: "intro", name: "Intro", actions: [] },
+        { id: "voting-moment", name: "Voting", actions: [] },
+        { id: "voice-moment", name: "Voice", actions: [] },
+        { id: "post-game-state", name: "Post Game", actions: [] }
+      ],
+      routeNodes: [
+        {
+          id: "initialize-counter",
+          routeNodeType: "action",
+          type: "codeNode",
+          code: "g.test = 0;",
+          nextTargetNodeId: "intro"
+        },
+        {
+          id: "voice-decision",
+          routeNodeType: "action",
+          type: "decision",
+          variable: "g.test",
+          valueType: "int",
+          branches: [
+            { id: "first-pass", type: "code", code: "x == 0", targetNodeId: "increment-counter" },
+            { id: "no-match", type: "noMatch", targetNodeId: "post-game-state" }
+          ]
+        },
+        {
+          id: "increment-counter",
+          routeNodeType: "action",
+          type: "codeNode",
+          code: "g.test++;",
+          nextTargetNodeId: "voice-moment"
+        }
+      ]
+    };
+    const isNoActionTarget = (target) => !target || target === "none";
+    const decisionRuntime = createDecisionRuntime({
+      activePlayers: () => [],
+      flowActionIndexById: () => -1,
+      gameConstants: () => ({}),
+      isNoActionTarget,
+      normalizeDecisionBranches: (action) => action.branches || [],
+      normalizeDecisionValueType: (value) => value || "int"
+    });
+    const momentRouteRuntime = createMomentRouteRuntime({
+      evaluateDecisionAction: decisionRuntime.evaluateDecisionAction,
+      isNoActionTarget,
+      normalizeFlowId: (value) => String(value || ""),
+      runtimeGameFlow: () => flow
+    });
+    const runtime = createRouteRuntime({
+      applyRoomActionEffects: (room, action) => applyDynamicGameStateCode(room, action.code),
+      entryActionIndexForPhase: () => 0,
+      getStateActions: (stateId) => flow.states.find((state) => state.id === stateId)?.actions || [],
+      resolveMomentRouteTarget: momentRouteRuntime.resolveMomentRouteTarget,
+      resolveMomentTargetStateId: momentRouteRuntime.resolveMomentTargetStateId,
+      runtimeGameFlow: () => flow
+    });
+    const room = {
+      phase: "lobby",
+      flowStateId: "lobby",
+      players: new Map(),
+      pendingFlowEvents: new Set(),
+      gameSessionId: 1,
+      momentVisitId: 1
+    };
+
+    runtime.advanceRoomFromRouteAction(room, { nextTargetNodeId: "initialize-counter" });
+    expect(room.G).toEqual({ test: 0 });
+    expect(room.flowStateId).toBe("intro");
+
+    room.phase = "voting-moment";
+    room.flowStateId = "voting-moment";
+    runtime.advanceRoomFromRouteAction(room, { nextTargetNodeId: "voice-decision" });
+    expect(room.G).toEqual({ test: 1 });
+    expect(room.flowStateId).toBe("voice-moment");
+    expect(room.routeActionSession).toBeNull();
+
+    room.phase = "voting-moment";
+    room.flowStateId = "voting-moment";
+    runtime.advanceRoomFromRouteAction(room, { nextTargetNodeId: "voice-decision" });
+    expect(room.flowStateId).toBe("post-game-state");
+  });
+
+  it("halts visibly when a route code node cannot update game state", () => {
+    const broadcastLobby = vi.fn();
+    const runtime = createRouteRuntime({
+      applyRoomActionEffects: (room, action) => applyDynamicGameStateCode(room, action.code),
+      broadcastLobby,
+      resolveMomentRouteTarget: () => ({
+        targetKind: "action",
+        routeNodeId: "broken-code",
+        action: {
+          id: "broken-code",
+          name: "Broken Code",
+          type: "codeNode",
+          code: "g.missing++;",
+          nextTargetNodeId: "intro"
+        },
+        trace: []
+      })
+    });
+    const room = { phase: "lobby" };
+
+    runtime.advanceRoomFromRouteAction(room, { nextTargetNodeId: "broken-code" });
+
+    expect(room.runtimeFault).toMatchObject({
+      code: "CODE_NODE_FAILED",
+      actionId: "broken-code"
+    });
+    expect(broadcastLobby).toHaveBeenCalledWith(room);
   });
 });
 
