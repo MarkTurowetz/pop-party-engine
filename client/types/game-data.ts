@@ -336,4 +336,10 @@ export interface ArtCompositionCleanupResponse extends ArtCompositionsSaveRespon
 export interface HealthResponse {
   ok: true;
   rooms: number;
+  application?: {
+    version: string;
+    commit: string;
+    branch: string;
+    channel: string;
+  };
 }

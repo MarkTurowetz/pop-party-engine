@@ -50,6 +50,14 @@ concepts into focused modules.
 - Generated game deployment
   - `render.yaml` owns exactly one manually scaled Node web service (`numInstances: 1`) with engine build/start commands and `/health` readiness.
   - `DEPLOYMENT.md` records the single-replica in-memory-room constraint and keeps provider/OAuth credentials out of source.
+- Reference application deployment
+  - The persistent Preview service is the everyday code-testing lane. A successful `main`
+    check deploys its exact commit without publishing npm packages or changing production.
+  - The Production service retains the immutable npm/GitHub/content release tuple and its
+    protected manual approval. A production release refreshes Preview after coordinating a
+    new engine version so the two services cannot remain engine-incompatible.
+  - `/api/health` exposes the non-secret application version, commit, branch, and deployment
+    channel used by exact-commit preview verification.
 - `server/`
   - Server-only helpers that do not need browser access.
   - `action-completion-runtime.js` owns action completion timing and callback/start-timer guard rules,

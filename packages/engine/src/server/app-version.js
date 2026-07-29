@@ -16,15 +16,30 @@ function readBuildNumber(rootDir) {
   }
 }
 
-function readAppVersion(rootDir) {
+function readBuildInfo(rootDir) {
   const buildInfoFile = path.join(rootDir, "build-info.json");
-  const packageFile = path.join(rootDir, "package.json");
   try {
-    const buildInfo = JSON.parse(fs.readFileSync(buildInfoFile, "utf8"));
-    if (buildInfo.version) return buildInfo.version;
+    const value = JSON.parse(fs.readFileSync(buildInfoFile, "utf8"));
+    return Object.freeze({
+      version: String(value.version || ""),
+      commit: String(value.commit || ""),
+      branch: String(value.branch || ""),
+      generatedAt: String(value.generatedAt || "")
+    });
   } catch (error) {
-    // Fall back below for older checkouts or local experiments.
+    return Object.freeze({
+      version: "",
+      commit: "",
+      branch: "",
+      generatedAt: ""
+    });
   }
+}
+
+function readAppVersion(rootDir) {
+  const packageFile = path.join(rootDir, "package.json");
+  const buildInfo = readBuildInfo(rootDir);
+  if (buildInfo.version) return buildInfo.version;
   try {
     const manifest = JSON.parse(fs.readFileSync(packageFile, "utf8"));
     const buildNumber = readBuildNumber(rootDir);
@@ -36,5 +51,6 @@ function readAppVersion(rootDir) {
 
 module.exports = {
   readAppVersion,
+  readBuildInfo,
   readBuildNumber
 };

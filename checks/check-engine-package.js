@@ -173,6 +173,7 @@ try {
     ["decision-action-normalization-runtime", "createDecisionActionNormalizationRuntime"],
     ["game-flow-merge-runtime", "createGameFlowMergeRuntime"],
     ["app-version", "readAppVersion"],
+    ["app-version", "readBuildInfo"],
     ["http-utils", "sendJson"],
     ["network-urls-runtime", "createNetworkUrlsRuntime"],
     ["web-service-runtime", "createWebServiceRuntime"],

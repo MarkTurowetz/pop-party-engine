@@ -48,7 +48,9 @@ function checkReleaseReadiness(version = process.argv[2]) {
     "scripts/coordinate-reference-release.js activate",
     "scripts/trigger-render-deploy.js",
     "scripts/verify-production-release.js",
-    "secrets.RENDER_DEPLOY_HOOK_URL"
+    "secrets.RENDER_DEPLOY_HOOK_URL",
+    "scripts/deploy-reference-preview.js",
+    "secrets.RENDER_PREVIEW_DEPLOY_HOOK_URL"
   ]) {
     if (!workflow.includes(contract)) throw new Error(`Publish workflow is missing: ${contract}`);
   }
@@ -63,13 +65,31 @@ function checkReleaseReadiness(version = process.argv[2]) {
   if (!/push:\s*\n\s*branches:\s*\[main\]/.test(checkWorkflow)) {
     throw new Error("Check workflow must avoid duplicate feature-branch push and pull-request runs");
   }
+  const previewWorkflow = fs.readFileSync(path.join(root, ".github", "workflows", "preview.yml"), "utf8");
+  for (const contract of [
+    "workflow_run:",
+    "workflows: [check]",
+    "workflow_run.conclusion == 'success'",
+    "workflow_run.event == 'push'",
+    "workflow_run.head_branch == 'main'",
+    "workflow_run.head_sha",
+    "scripts/deploy-reference-preview.js",
+    "secrets.RENDER_PREVIEW_DEPLOY_HOOK_URL"
+  ]) {
+    if (!previewWorkflow.includes(contract)) throw new Error(`Preview workflow is missing: ${contract}`);
+  }
   const renderBlueprint = fs.readFileSync(path.join(root, "render.yaml"), "utf8");
   for (const contract of [
     "autoDeployTrigger: off",
     "buildCommand: npm ci --no-audit --no-fund && npm run build-info:next",
     "startCommand: node server.js",
     "key: NODE_VERSION",
-    "value: 24"
+    "value: 24",
+    "name: pop-party",
+    "name: pop-party-preview",
+    "key: PARTY_GAME_DEPLOYMENT_CHANNEL",
+    "value: production",
+    "value: preview"
   ]) {
     if (!renderBlueprint.includes(contract)) throw new Error(`Render Blueprint is missing: ${contract}`);
   }
