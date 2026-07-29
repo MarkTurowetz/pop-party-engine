@@ -99,7 +99,8 @@ export async function beginLivePrototypeWorkspace(
   let storedCheckpoint = await checkpointStore.read();
   if (started.recoveryRequired && !storedCheckpoint) {
     await client.postJson("/api/authoring/workspace/discard", {
-      sessionId: started.sessionId
+      sessionId: started.sessionId,
+      resetRooms: false
     });
     win.sessionStorage.removeItem("pop-party-authoring-session");
     started = await client.postJson<WorkspaceResponse, Record<string, never>>(
@@ -179,7 +180,8 @@ export async function beginLivePrototypeWorkspace(
 
   const discard = () => {
     void client.postJson("/api/authoring/workspace/discard", {
-      sessionId: started.sessionId
+      sessionId: started.sessionId,
+      resetRooms: false
     }).catch(() => undefined);
   };
   win.addEventListener("pagehide", discard);
@@ -304,7 +306,8 @@ export async function beginLivePrototypeWorkspace(
     syncNow,
     async restoreFromGit() {
       await client.postJson("/api/authoring/workspace/discard", {
-        sessionId: started.sessionId
+        sessionId: started.sessionId,
+        resetRooms: true
       });
       await checkpointStore.clear();
       recoveryConflict = null;

@@ -57,7 +57,10 @@ function createLivePrototypeHandlersRuntime(options = {}) {
     } catch (error) {
       // sendBeacon can arrive with an empty JSON body.
     }
-    await run(res, () => workspace.discard(sessionIdFrom(req, payload)));
+    await run(res, () => workspace.discard(
+      sessionIdFrom(req, payload),
+      { resetRooms: payload.resetRooms !== false }
+    ));
   }
 
   async function handleSave(req, res) {

@@ -80,4 +80,56 @@ describe("live prototype room content", () => {
     expect(enterLobbyPhase).toHaveBeenCalledOnce();
     expect(broadcastLobby).toHaveBeenCalledOnce();
   });
+
+  it("does not restart an idle lobby when the installed content revision is unchanged", async () => {
+    const { broadcastLobby, enterLobbyPhase, runtime } = fixture();
+    const snapshot = { title: "Already installed preview content" };
+    const room = {
+      phase: "lobby",
+      releasePin: Object.freeze({ contentRevision: "working-revision" }),
+      contentSnapshot: snapshot,
+      gameData: { title: snapshot.title }
+    };
+
+    const result = await runtime.installRoomSnapshot(
+      room,
+      snapshot,
+      { contentRevision: "working-revision", contentSource: "live-prototype" },
+      { reset: true }
+    );
+
+    expect(result).toEqual({ deferred: false });
+    expect(room.contentSnapshot).toBe(snapshot);
+    expect(enterLobbyPhase).not.toHaveBeenCalled();
+    expect(broadcastLobby).not.toHaveBeenCalled();
+  });
+
+  it("queues lease cleanup for the next session without changing the visible Lobby", async () => {
+    const { broadcastLobby, enterLobbyPhase, runtime } = fixture();
+    const workingSnapshot = { title: "Visible authored preview" };
+    const baselineSnapshot = { title: "Git baseline" };
+    const room = {
+      phase: "lobby",
+      releasePin: Object.freeze({ contentRevision: "working-revision" }),
+      contentSnapshot: workingSnapshot,
+      gameData: { title: workingSnapshot.title }
+    };
+
+    const result = await runtime.installRoomSnapshot(
+      room,
+      baselineSnapshot,
+      { contentRevision: "baseline-revision", contentSource: "published-release" },
+      { reset: true, deferUntilNextSession: true }
+    );
+
+    expect(result).toEqual({ deferred: true });
+    expect(room.contentSnapshot).toBe(workingSnapshot);
+    expect(room.gameData.title).toBe("Visible authored preview");
+    expect(enterLobbyPhase).not.toHaveBeenCalled();
+    expect(broadcastLobby).not.toHaveBeenCalled();
+
+    expect(runtime.prepareLobbySession(room)).toBe(true);
+    expect(room.contentSnapshot).toBe(baselineSnapshot);
+    expect(room.gameData.title).toBe("Git baseline");
+  });
 });
