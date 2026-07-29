@@ -91,6 +91,9 @@ const { ENGINE_CONTENT_SCHEMA_VERSION } = require("@pop-party/engine/content/sch
 const { createGithubStorageRuntime } = require("./github-storage-runtime");
 const { createLayoutSyncRuntime } = require("./layout-sync-runtime");
 const { createLocalDraftRuntime } = require("./local-draft-runtime");
+const {
+  createLivePrototypeRoomContentRuntime
+} = require("./live-prototype-room-content-runtime");
 const { createSaveHandlersRuntime } = require("./save-handlers-runtime");
 const { createToolDataReadRuntime } = require("./tool-data-read-runtime");
 const { createToolGithubSourcesRuntime } = require("./tool-github-sources-runtime");
@@ -881,10 +884,23 @@ _enterGamePhaseFn = enterGamePhase;
 
 let livePrototypeWorkspace = null;
 let livePrototypeHandlers = null;
+let livePrototypeRoomContent = null;
 if (AUTHORING_MODE === "live-prototype") {
   if (!contentStore || typeof contentStore.commitWorkspace !== "function") {
     throw new Error("live-prototype authoring requires a durable revisioned content store");
   }
+  livePrototypeRoomContent = createLivePrototypeRoomContentRuntime({
+    broadcastLobby,
+    enterLobbyPhase,
+    materializeGameData: materializeRuntimeGameData,
+    release: {
+      gameId: runtimeGameDefinition.gameId,
+      gameBuild: runtimeGameDefinition.version,
+      engineVersion: runtimeGameDefinition.engineCompatibility,
+      pluginVersion: runtimeGameDefinition.version
+    },
+    validateRelease: roomReleaseValidator
+  });
   livePrototypeWorkspace = createLivePrototypeWorkspaceRuntime({
     acceptedArtTypes,
     contentStore,
@@ -899,36 +915,7 @@ if (AUTHORING_MODE === "live-prototype") {
     rooms,
     onSnapshotChanged: (snapshot) => installLivePrototypeToolSources(snapshot),
     validateSnapshot: (snapshot) => materializeRuntimeGameData(snapshot),
-    installRoomSnapshot: async (room, snapshot, release, { reset }) => {
-      const gameData = materializeRuntimeGameData(snapshot);
-      const validation = await roomReleaseValidator({
-        gameData,
-        release: {
-          ...release,
-          gameId: runtimeGameDefinition.gameId,
-          gameBuild: runtimeGameDefinition.version,
-          engineVersion: runtimeGameDefinition.engineCompatibility,
-          pluginVersion: runtimeGameDefinition.version
-        },
-        snapshot
-      });
-      if (validation?.ok === false) {
-        const error = new Error("The working bundle is incompatible with this game build");
-        error.code = "WORKING_BUNDLE_INCOMPATIBLE";
-        error.diagnostics = validation.diagnostics || [];
-        throw error;
-      }
-      room.releasePin = Object.freeze({
-        ...release,
-        contentSource: reset ? "live-prototype" : String(release.contentSource || "published-release")
-      });
-      room.contentSnapshot = snapshot;
-      room.gameData = gameData;
-      if (reset) {
-        enterLobbyPhase(room);
-        broadcastLobby(room);
-      }
-    }
+    installRoomSnapshot: livePrototypeRoomContent.installRoomSnapshot
   });
   livePrototypeHandlers = createLivePrototypeHandlersRuntime({
     workspace: livePrototypeWorkspace,
@@ -936,6 +923,7 @@ if (AUTHORING_MODE === "live-prototype") {
     sendJson
   });
   pinNewRoomForSession = (room) => livePrototypeWorkspace.pinNewRoom(room);
+  _prepareLobbySessionFn = (room) => livePrototypeRoomContent.prepareLobbySession(room);
 }
 
 const {
@@ -1159,7 +1147,10 @@ if (SESSION_CONTENT_MODE === "latest-saved-authoring") {
   });
   await authoringSessionContent.refresh();
   pinNewRoomForSession = (room) => authoringSessionContent.pinNewRoom(room);
-  _prepareLobbySessionFn = (room) => authoringSessionContent.prepareLobbySession(room);
+  _prepareLobbySessionFn = (room) => {
+    livePrototypeRoomContent?.prepareLobbySession(room);
+    authoringSessionContent.prepareLobbySession(room);
+  };
   _refreshBeforeSessionBoundaryFn = () => authoringSessionContent.refreshBeforeSessionBoundary();
 }
 

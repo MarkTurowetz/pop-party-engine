@@ -10,10 +10,18 @@ const { createRevisionedContentStoreRuntime } = require("./revisioned-content-st
 const {
   createLivePrototypeWorkspaceRuntime
 } = require("./live-prototype-workspace-runtime");
+const {
+  createLivePrototypeRoomContentRuntime
+} = require("./live-prototype-room-content-runtime");
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 
 function fixture(options = {}) {
+  const {
+    installRoomSnapshot: installRoomSnapshotOverride,
+    roomPhase,
+    ...workspaceOptions
+  } = options;
   const source = createLocalContentBundleProvider({
     root: path.join(projectRoot, "apps/reference/content"),
     gameBuild: "1.0.17",
@@ -38,7 +46,7 @@ function fixture(options = {}) {
     }
   });
   const drafts = { binaryFiles: {} };
-  const rooms = new Map([["ROOM", { installs: [] }]]);
+  const rooms = new Map([["ROOM", { installs: [], phase: roomPhase }]]);
   const installs = [];
   const workspace = createLivePrototypeWorkspaceRuntime({
     contentStore: store,
@@ -51,8 +59,11 @@ function fixture(options = {}) {
       pluginVersion: "1.0.17"
     },
     acceptedArtTypes: createBundleGameData(initialSnapshot).acceptedArtTypes,
-    ...options,
+    ...workspaceOptions,
     installRoomSnapshot(room, snapshot, release, options) {
+      if (installRoomSnapshotOverride) {
+        return installRoomSnapshotOverride(room, snapshot, release, options);
+      }
       room.snapshot = snapshot;
       room.release = release;
       room.gameData = createBundleGameData(snapshot);
@@ -264,6 +275,60 @@ describe("live prototype workspace", () => {
     expect(await workspace.sweep()).toBe(true);
     expect(workspace.state().active).toBe(false);
     expect(rooms.get("ROOM").gameData.defaultGameConstants.gameTitle)
+      .toBe(initialSnapshot.readJson("constants.json").gameTitle);
+  });
+
+  it("does not reset an active game when the Tools heartbeat lease expires", async () => {
+    let clock = 1_000;
+    const enterLobbyPhase = () => {
+      throw new Error("An active game must not be returned to the lobby");
+    };
+    const roomContent = createLivePrototypeRoomContentRuntime({
+      materializeGameData: createBundleGameData,
+      validateRelease: async () => ({ ok: true, diagnostics: [] }),
+      enterLobbyPhase,
+      broadcastLobby: () => {},
+      release: {
+        gameId: "pop-party-reference",
+        gameBuild: "1.0.17",
+        engineVersion: "1.3.0",
+        pluginVersion: "1.0.17"
+      }
+    });
+    const { drafts, initialSnapshot, rooms, workspace } = fixture({
+      now: () => clock,
+      leaseMs: 5_000,
+      roomPhase: "voting-moment",
+      installRoomSnapshot: roomContent.installRoomSnapshot
+    });
+    await workspace.initialize();
+    const room = rooms.get("ROOM");
+    const initialGameData = createBundleGameData(initialSnapshot);
+    room.gameData = {
+      ...initialGameData,
+      defaultGameConstants: {
+        ...initialGameData.defaultGameConstants,
+        gameTitle: "Pinned content for the active game"
+      }
+    };
+    const session = await workspace.begin();
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "Active voting game"
+    };
+    await workspace.applyDraft(session.sessionId);
+
+    expect(room.gameData.defaultGameConstants.gameTitle)
+      .toBe("Pinned content for the active game");
+    clock += 5_001;
+    expect(await workspace.sweep()).toBe(true);
+    expect(workspace.state().active).toBe(false);
+    expect(room.phase).toBe("voting-moment");
+    expect(room.gameData.defaultGameConstants.gameTitle)
+      .toBe("Pinned content for the active game");
+
+    expect(roomContent.prepareLobbySession(room)).toBe(true);
+    expect(room.gameData.defaultGameConstants.gameTitle)
       .toBe(initialSnapshot.readJson("constants.json").gameTitle);
   });
 
