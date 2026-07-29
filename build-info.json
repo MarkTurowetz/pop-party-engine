@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1215",
+  "version": "1.0.17.1216",
   "baseVersion": "1.0.17",
-  "buildNumber": 1215,
-  "commit": "aa736deb",
-  "branch": "codex/fix-render-engine-runtime",
-  "generatedAt": "2026-07-29T01:57:42.365Z"
+  "buildNumber": 1216,
+  "commit": "dedc8162",
+  "branch": "codex/fix-build-version-consistency",
+  "generatedAt": "2026-07-29T02:20:07.501Z"
 }

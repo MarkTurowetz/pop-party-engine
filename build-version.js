@@ -42,14 +42,14 @@ function readCommittedBuildInfo() {
   }
 }
 
-function resolveBuildNumber({ committedBuildNumber, existingBuildNumber, headCount, useNextCommit }) {
-  const countedBuildNumber = Number.isFinite(headCount) && headCount > 0
-    ? headCount + (useNextCommit ? 1 : 0)
-    : 0;
+function resolveBuildNumber({ committedBuildNumber, existingBuildNumber, useNextCommit }) {
+  // The committed stamp is the shared authority across build environments.
+  // Render checks out a shallow repository while release verification uses a
+  // full clone, so commit counts cannot safely participate in the version.
   const alreadyStampedNextBuild = existingBuildNumber > committedBuildNumber ? existingBuildNumber : 0;
   return useNextCommit
-    ? Math.max(countedBuildNumber, committedBuildNumber + 1, alreadyStampedNextBuild)
-    : Math.max(countedBuildNumber, committedBuildNumber, existingBuildNumber);
+    ? Math.max(committedBuildNumber + 1, alreadyStampedNextBuild)
+    : Math.max(committedBuildNumber, existingBuildNumber);
 }
 
 function buildInfo() {

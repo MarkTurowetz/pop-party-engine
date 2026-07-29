@@ -5,8 +5,25 @@ const require = createRequire(import.meta.url);
 const { resolveBuildNumber } = require("../build-version");
 
 describe("build version stamping", () => {
-  it("uses the next commit count during normal commits", () => {
+  it("increments the committed build stamp during normal commits", () => {
     expect(resolveBuildNumber({ committedBuildNumber: 1128, existingBuildNumber: 1128, headCount: 1128, useNextCommit: true })).toBe(1129);
+  });
+
+  it("does not vary between full and shallow Git clones", () => {
+    const fullClone = resolveBuildNumber({
+      committedBuildNumber: 1215,
+      existingBuildNumber: 1215,
+      headCount: 1216,
+      useNextCommit: true
+    });
+    const shallowClone = resolveBuildNumber({
+      committedBuildNumber: 1215,
+      existingBuildNumber: 1215,
+      headCount: 1,
+      useNextCommit: true
+    });
+    expect(fullClone).toBe(1216);
+    expect(shallowClone).toBe(fullClone);
   });
 
   it("stays monotonic after an amend moved the build ahead of commit count", () => {
