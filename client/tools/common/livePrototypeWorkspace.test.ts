@@ -127,6 +127,10 @@ describe("live prototype browser workspace", () => {
       "/api/authoring/workspace/discard"
     ]);
     expect(storage.has("pop-party-authoring-session")).toBe(false);
+    expect(postJson.mock.calls.at(-1)).toEqual([
+      "/api/authoring/workspace/discard",
+      { sessionId: "session-one", resetRooms: false }
+    ]);
   });
 
   it("restores a browser checkpoint before editors mount", async () => {
@@ -190,6 +194,10 @@ describe("live prototype browser workspace", () => {
       "/api/authoring/workspace/session",
       "/api/authoring/workspace/discard",
       "/api/authoring/workspace/session"
+    ]);
+    expect(postJson.mock.calls[1]).toEqual([
+      "/api/authoring/workspace/discard",
+      { sessionId: "session-1", resetRooms: false }
     ]);
     expect(storage.get("pop-party-authoring-session")).toBe("session-2");
   });
@@ -275,7 +283,10 @@ describe("live prototype browser workspace", () => {
 
     expect(persisted.current()).toBeNull();
     expect(storage.has("pop-party-authoring-session")).toBe(false);
-    expect(postJson.mock.calls.at(-1)?.[0]).toBe("/api/authoring/workspace/discard");
+    expect(postJson.mock.calls.at(-1)).toEqual([
+      "/api/authoring/workspace/discard",
+      { sessionId: "session-one", resetRooms: true }
+    ]);
   });
 
   it("preserves a conflicting browser checkpoint until Restore from Git is explicit", async () => {

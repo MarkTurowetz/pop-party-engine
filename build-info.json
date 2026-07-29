@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1224",
+  "version": "1.0.17.1225",
   "baseVersion": "1.0.17",
-  "buildNumber": 1224,
-  "commit": "5fd031da",
-  "branch": "codex/holistic-moment-visual-reset",
-  "generatedAt": "2026-07-29T21:34:49.214Z"
+  "buildNumber": 1225,
+  "commit": "abd945ca",
+  "branch": "codex/fix-tools-lease-lobby-reset",
+  "generatedAt": "2026-07-29T22:40:58.353Z"
 }

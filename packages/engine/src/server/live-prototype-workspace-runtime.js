@@ -200,9 +200,9 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     });
   }
 
-  async function installEveryRoom(snapshot, release) {
+  async function installEveryRoom(snapshot, release, installOptions = { reset: true }) {
     for (const room of rooms.values()) {
-      await installRoomSnapshot(room, snapshot, release, { reset: true });
+      await installRoomSnapshot(room, snapshot, release, installOptions);
     }
   }
 
@@ -233,7 +233,6 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
         lastSeenAt: now(),
         recoveryRequired: resumed
       };
-      await installEveryRoom(baselineSnapshot, workingRelease());
       return state();
     })();
     activationPromise = activation;
@@ -414,7 +413,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     });
   }
 
-  async function discard(sessionId) {
+  async function discard(sessionId, { resetRooms = true } = {}) {
     if (!session) return state();
     requireSession(sessionId);
     clearDraftObject(drafts);
@@ -424,7 +423,14 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     session = null;
     workingCounter = 0;
     await onSnapshotChanged(baselineSnapshot, baselineRelease);
-    await installEveryRoom(baselineSnapshot, release);
+    if (resetRooms) {
+      await installEveryRoom(baselineSnapshot, release);
+    } else {
+      await installEveryRoom(baselineSnapshot, release, {
+        reset: true,
+        deferUntilNextSession: true
+      });
+    }
     return state();
   }
 
@@ -435,7 +441,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
 
   async function sweep() {
     if (!session || now() - session.lastSeenAt <= leaseMs) return false;
-    await discard(session.id);
+    await discard(session.id, { resetRooms: false });
     return true;
   }
 

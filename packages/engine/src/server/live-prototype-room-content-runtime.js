@@ -56,8 +56,31 @@ function createLivePrototypeRoomContentRuntime(options = {}) {
     });
   }
 
-  async function installRoomSnapshot(room, snapshot, release, { reset = false } = {}) {
+  async function installRoomSnapshot(
+    room,
+    snapshot,
+    release,
+    { reset = false, deferUntilNextSession = false } = {}
+  ) {
+    const requestedRevision = String(release?.contentRevision || snapshot?.revision || "");
+    const installedRevision = String(
+      room?.releasePin?.contentRevision || room?.contentSnapshot?.revision || ""
+    );
+
+    // Re-establishing an editor session may republish the exact snapshot that
+    // an existing room already owns. Treat that as lease bookkeeping, not a
+    // gameplay command: do not restart Lobby or replay Start Moment.
+    if (requestedRevision && requestedRevision === installedRevision) {
+      pendingPins.delete(room);
+      return Object.freeze({ deferred: false });
+    }
+
     const pin = await preparePin(snapshot, release, reset);
+
+    if (deferUntilNextSession) {
+      pendingPins.set(room, pin);
+      return Object.freeze({ deferred: true });
+    }
 
     // A room owns one immutable content view for the duration of a game.
     // Authoring edits, session recovery, and an expired Tools heartbeat may

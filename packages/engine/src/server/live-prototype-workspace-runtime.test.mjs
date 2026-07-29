@@ -64,6 +64,11 @@ function fixture(options = {}) {
       if (installRoomSnapshotOverride) {
         return installRoomSnapshotOverride(room, snapshot, release, options);
       }
+      if (options.deferUntilNextSession) {
+        room.pendingSnapshot = snapshot;
+        room.pendingRelease = release;
+        return;
+      }
       room.snapshot = snapshot;
       room.release = release;
       room.gameData = createBundleGameData(snapshot);
@@ -258,7 +263,7 @@ describe("live prototype workspace", () => {
       .toBe(right.initialSnapshot.readJson("constants.json").gameTitle);
   });
 
-  it("discards an abandoned workspace when its heartbeat lease expires", async () => {
+  it("releases an abandoned workspace without changing an existing room", async () => {
     let clock = 1_000;
     const { drafts, initialSnapshot, rooms, workspace } = fixture({
       now: () => clock,
@@ -275,7 +280,82 @@ describe("live prototype workspace", () => {
     expect(await workspace.sweep()).toBe(true);
     expect(workspace.state().active).toBe(false);
     expect(rooms.get("ROOM").gameData.defaultGameConstants.gameTitle)
+      .toBe("Abandoned");
+    expect(workspace.readWorkingSnapshot().readJson("constants.json").gameTitle)
       .toBe(initialSnapshot.readJson("constants.json").gameTitle);
+
+    const nextRoom = { installs: [] };
+    await workspace.pinNewRoom(nextRoom);
+    expect(nextRoom.gameData.defaultGameConstants.gameTitle)
+      .toBe(initialSnapshot.readJson("constants.json").gameTitle);
+  });
+
+  it("does not restart Lobby when a lease expires, recovers, and republishes unchanged content", async () => {
+    let clock = 1_000;
+    let lobbyEntries = 0;
+    let broadcasts = 0;
+    const roomContent = createLivePrototypeRoomContentRuntime({
+      materializeGameData: createBundleGameData,
+      validateRelease: async () => ({ ok: true, diagnostics: [] }),
+      enterLobbyPhase(room) {
+        lobbyEntries += 1;
+        room.phase = "lobby";
+        room.momentVisitId += 1;
+        room.actionExecutionId += 1;
+      },
+      broadcastLobby() {
+        broadcasts += 1;
+      },
+      release: {
+        gameId: "pop-party-reference",
+        gameBuild: "1.0.17",
+        engineVersion: "1.3.0",
+        pluginVersion: "1.0.17"
+      }
+    });
+    const { drafts, initialSnapshot, rooms, workspace } = fixture({
+      now: () => clock,
+      leaseMs: 5_000,
+      roomPhase: "lobby",
+      installRoomSnapshot: roomContent.installRoomSnapshot
+    });
+    const room = rooms.get("ROOM");
+    room.momentVisitId = 10;
+    room.actionExecutionId = 20;
+
+    await workspace.initialize();
+    const session = await workspace.begin();
+    expect(lobbyEntries).toBe(0);
+    expect(broadcasts).toBe(0);
+
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "One authored change"
+    };
+    await workspace.applyDraft(session.sessionId);
+    expect(lobbyEntries).toBe(1);
+    expect(broadcasts).toBe(1);
+    expect(room).toMatchObject({ momentVisitId: 11, actionExecutionId: 21 });
+
+    clock += 5_001;
+    expect(await workspace.sweep()).toBe(true);
+    expect(room).toMatchObject({ momentVisitId: 11, actionExecutionId: 21 });
+    expect(lobbyEntries).toBe(1);
+    expect(broadcasts).toBe(1);
+
+    const recovered = await workspace.heartbeat(session.sessionId);
+    expect(recovered.recoveryRequired).toBe(true);
+    expect(room).toMatchObject({ momentVisitId: 11, actionExecutionId: 21 });
+
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "One authored change"
+    };
+    const reapplied = await workspace.applyDraft(session.sessionId);
+    expect(reapplied.recoveryRequired).toBe(false);
+    expect(room).toMatchObject({ momentVisitId: 11, actionExecutionId: 21 });
+    expect(lobbyEntries).toBe(1);
+    expect(broadcasts).toBe(1);
   });
 
   it("does not reset an active game when the Tools heartbeat lease expires", async () => {

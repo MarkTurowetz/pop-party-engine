@@ -90,11 +90,12 @@ PARTY_GAME_AUTHORING_MODE=live-prototype
 In this single-author mode, unsaved Tool changes immediately update and reset
 the template stage/controllers from one valid memory-only snapshot. A second
 Tools tab is blocked from silently discarding the active workspace. If a
-service restart or heartbeat-lease expiry clears the server copy, the browser
-restores the latest explicitly saved complete JSON-and-binary workspace from
-IndexedDB before the editors mount. Save validates and checkpoints that complete
-workspace locally first, so the author can continue immediately while Git sync
-runs in the background. The dashboard distinguishes browser-local saves from
+service restart or heartbeat-lease expiry clears the server copy, that lease
+cleanup never restarts an existing room or replays its moment animations. The
+browser restores the latest explicitly saved complete JSON-and-binary workspace
+from IndexedDB before the editors mount. Save validates and checkpoints that
+complete workspace locally first, so the author can continue immediately while
+Git sync runs in the background. The dashboard distinguishes browser-local saves from
 Git-synced saves and provides explicit `Sync Now` and `Restore from Git` actions.
 Ordinary refreshes preserve the browser checkpoint; Restore from Git is the
 destructive reset. The durable Git commit reuses unchanged blobs and uploads
