@@ -74,6 +74,7 @@ function checkReleaseReadiness(version = process.argv[2]) {
     "workflow_run.head_branch == 'main'",
     "workflow_run.head_sha",
     "scripts/deploy-reference-preview.js",
+    "packages/engine/package.json",
     "secrets.RENDER_PREVIEW_DEPLOY_HOOK_URL"
   ]) {
     if (!previewWorkflow.includes(contract)) throw new Error(`Preview workflow is missing: ${contract}`);
