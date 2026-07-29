@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1212",
+  "version": "1.0.17.1213",
   "baseVersion": "1.0.17",
-  "buildNumber": 1212,
-  "commit": "1f1aa78c",
-  "branch": "codex/fix-browser-checkpoint-save",
-  "generatedAt": "2026-07-28T22:55:48.282Z"
+  "buildNumber": 1213,
+  "commit": "9a7014ce",
+  "branch": "codex/fix-live-workspace-reconnect",
+  "generatedAt": "2026-07-29T01:25:54.410Z"
 }
