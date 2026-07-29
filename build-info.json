@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1220",
+  "version": "1.0.17.1221",
   "baseVersion": "1.0.17",
-  "buildNumber": 1220,
-  "commit": "61586fd8",
-  "branch": "codex/fix-decision-preview-launch",
-  "generatedAt": "2026-07-29T17:55:23.831Z"
+  "buildNumber": 1221,
+  "commit": "417cdfb9",
+  "branch": "codex/fix-preview-release-authority",
+  "generatedAt": "2026-07-29T18:08:42.371Z"
 }
