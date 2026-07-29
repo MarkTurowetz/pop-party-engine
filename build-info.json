@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1222",
+  "version": "1.0.17.1223",
   "baseVersion": "1.0.17",
-  "buildNumber": 1222,
-  "commit": "c48e63ac",
-  "branch": "codex/fix-live-prototype-room-reset",
-  "generatedAt": "2026-07-29T19:15:54.165Z"
+  "buildNumber": 1223,
+  "commit": "e4b20243",
+  "branch": "codex/fix-voting-card-layer-visibility",
+  "generatedAt": "2026-07-29T19:49:25.370Z"
 }

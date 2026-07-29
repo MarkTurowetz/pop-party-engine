@@ -38,6 +38,20 @@ describe("PartyGameVotingCardVisuals (ported voting-card-visuals)", () => {
     expect(renderer.cards.size).toBe(0);
   });
 
+  it("reopens the shared voting-card host after a previous layout visit hid it", () => {
+    const classes = new Set(["hidden", "stage-layout-visual-hidden", "stage-layout-visual-exiting"]);
+    const layer = {
+      classList: {
+        remove: (...names: string[]) => names.forEach((name) => classes.delete(name))
+      }
+    };
+    const renderer = PartyGameVotingCardVisuals.createRenderer({ layer });
+
+    renderer.showLayer();
+
+    expect(classes).toEqual(new Set());
+  });
+
   it("installs the global bridge on import", () => {
     const host = globalThis as typeof globalThis & { PartyGameVotingCardVisuals?: unknown };
     expect(host.PartyGameVotingCardVisuals).toBeTypeOf("object");
