@@ -110,8 +110,27 @@ function isToolDirty(toolId: string): boolean {
   return Boolean(toolHooks.get(toolId)?.isDirty());
 }
 
+function dashboardButton(
+  selector: "#globalSaveButton" | "#globalSyncButton" | "#globalRestoreGitButton",
+  fallback: HTMLButtonElement | undefined
+): HTMLButtonElement | undefined {
+  return (document.querySelector(selector) as HTMLButtonElement | null) || fallback;
+}
+
+function saveButton(): HTMLButtonElement | undefined {
+  return dashboardButton("#globalSaveButton", w().globalSaveButton);
+}
+
+function syncButton(): HTMLButtonElement | undefined {
+  return dashboardButton("#globalSyncButton", w().globalSyncButton);
+}
+
+function restoreButton(): HTMLButtonElement | undefined {
+  return dashboardButton("#globalRestoreGitButton", w().globalRestoreGitButton);
+}
+
 function updateGlobalSaveButton(): void {
-  const globalSaveButton = w().globalSaveButton;
+  const globalSaveButton = saveButton();
   if (!globalSaveButton) return;
   const dirty = TOOL_METADATA.some((tool) => isToolDirty(tool.id));
   globalSaveButton.disabled = savingAllTools;
@@ -130,17 +149,19 @@ function setGlobalSaveStatus(message = "", tone: "info" | "error" = "info"): voi
 function updateWorkspaceActionButtons(
   phase: "synced" | "saved-local" | "syncing" | "error" = "synced"
 ): void {
-  const syncButton = w().globalSyncButton;
-  if (syncButton) {
-    syncButton.disabled = syncingWorkspace || restoringWorkspace || phase === "syncing";
-    syncButton.textContent = phase === "syncing" ? "Syncing…" : "Sync Now";
+  const currentSyncButton = syncButton();
+  if (currentSyncButton) {
+    currentSyncButton.disabled = syncingWorkspace || restoringWorkspace || phase === "syncing";
+    currentSyncButton.textContent = phase === "syncing" ? "Syncing…" : "Sync Now";
   }
-  const restoreButton = w().globalRestoreGitButton;
-  if (restoreButton) restoreButton.disabled = syncingWorkspace || restoringWorkspace;
+  const currentRestoreButton = restoreButton();
+  if (currentRestoreButton) {
+    currentRestoreButton.disabled = syncingWorkspace || restoringWorkspace;
+  }
 }
 
 async function saveAllTools(): Promise<void> {
-  const globalSaveButton = w().globalSaveButton;
+  const globalSaveButton = saveButton();
   if (!globalSaveButton) return;
   if (savingAllTools) return;
   const activeElement = document.activeElement;
@@ -244,6 +265,19 @@ function handleDashboardKeydown(event: KeyboardEvent): void {
   void saveAllTools();
 }
 
+async function handleDashboardClick(event: MouseEvent): Promise<void> {
+  const target = event.target;
+  if (target === saveButton()) {
+    await saveAllTools();
+    return;
+  }
+  if (target === syncButton()) {
+    await syncWorkspaceNow();
+    return;
+  }
+  if (target === restoreButton()) await restoreWorkspaceFromGit();
+}
+
 function resolveUnsafeChangesModal(): void {
   w().unsafeChangesModal?.classList.add("hidden");
 }
@@ -273,13 +307,7 @@ function setupToolDashboard(): void {
   document.body.classList.add("tool-dashboard-mode");
   w().toolDashboardBar?.classList.remove("hidden");
   if (!dashboardEventsInstalled) {
-    w().globalSaveButton?.addEventListener("click", saveAllTools);
-    w().globalSyncButton?.addEventListener("click", () => {
-      void syncWorkspaceNow();
-    });
-    w().globalRestoreGitButton?.addEventListener("click", () => {
-      void restoreWorkspaceFromGit();
-    });
+    document.addEventListener("click", handleDashboardClick);
     document.addEventListener("keydown", handleDashboardKeydown);
     window.addEventListener?.("pop-party-authoring-error", ((event: CustomEvent<{ message?: string }>) => {
       setGlobalSaveStatus(

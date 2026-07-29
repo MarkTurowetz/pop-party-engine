@@ -84,17 +84,17 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
   return {
     button,
     clickRestoreGit: async () => {
-      const listener = buttonListeners.get("restore:click");
-      if (listener) await listener();
+      const listener = documentListeners.get("click");
+      if (listener) await listener({ target: restoreButton } as unknown as MouseEvent);
       await Promise.resolve();
     },
     clickSaveAll: async () => {
-      const listener = buttonListeners.get("click");
-      if (listener) await listener();
+      const listener = documentListeners.get("click");
+      if (listener) await listener({ target: button } as unknown as MouseEvent);
     },
     clickSyncNow: async () => {
-      const listener = buttonListeners.get("sync:click");
-      if (listener) await listener();
+      const listener = documentListeners.get("click");
+      if (listener) await listener({ target: syncButton } as unknown as MouseEvent);
       await Promise.resolve();
     },
     pressSaveAllHotkey: async () => {
@@ -183,6 +183,24 @@ describe("toolDashboard Save All", () => {
 
     expect(harness.button.disabled).toBe(false);
     expect(harness.button.textContent).toBe("Save All");
+  });
+
+  it("handles Save through the document so a live control cannot lose its binding", async () => {
+    const harness = await createDashboardHarness();
+    const save = vi.fn(async () => true);
+    harness.registerDashboardTool("flow", {
+      isDirty: () => true,
+      save,
+      setup: vi.fn()
+    });
+
+    harness.setupToolDashboard();
+    await harness.clickSaveAll();
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect((globalThis.document as unknown as {
+      addEventListener: ReturnType<typeof vi.fn>;
+    }).addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
   });
 
   it("keeps a rejected save visible instead of reporting a false success", async () => {

@@ -77,7 +77,10 @@ export async function beginLivePrototypeWorkspace(
     );
   } catch (error) {
     const status = Number((error as { status?: unknown })?.status || 0);
-    if (status === 404) return null;
+    if (status === 404) {
+      win.sessionStorage.removeItem("pop-party-authoring-session");
+      return null;
+    }
     const errorCode = String(
       (error as { payload?: { errorCode?: unknown } })?.payload?.errorCode || ""
     );
@@ -262,10 +265,28 @@ export async function beginLivePrototypeWorkspace(
   const workspace: LivePrototypeWorkspace = {
     async save() {
       if (recoveryConflict) throw recoveryConflict;
-      const checkpointed = await client.postJson<WorkspaceResponse, Record<string, never>>(
-        "/api/authoring/workspace/checkpoint",
-        {}
-      );
+      let checkpointed: WorkspaceResponse;
+      try {
+        checkpointed = await client.postJson<WorkspaceResponse, Record<string, never>>(
+          "/api/authoring/workspace/checkpoint",
+          {}
+        );
+      } catch (error) {
+        const errorCode = String(
+          (error as { payload?: { errorCode?: unknown } })?.payload?.errorCode || ""
+        );
+        if (errorCode !== "LIVE_PROTOTYPE_DISABLED") throw error;
+        const reconnected = await client.postJson<WorkspaceResponse, Record<string, never>>(
+          "/api/authoring/workspace/session",
+          {}
+        );
+        started = { ...started, ...reconnected };
+        win.sessionStorage.setItem("pop-party-authoring-session", started.sessionId);
+        checkpointed = await client.postJson<WorkspaceResponse, Record<string, never>>(
+          "/api/authoring/workspace/checkpoint",
+          {}
+        );
+      }
       if (!checkpointed.checkpoint) {
         throw new Error("The server did not return a browser workspace checkpoint");
       }

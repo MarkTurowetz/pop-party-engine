@@ -194,6 +194,67 @@ describe("live prototype browser workspace", () => {
     expect(storage.get("pop-party-authoring-session")).toBe("session-2");
   });
 
+  it("clears a stale browser session when live prototype authoring is unavailable", async () => {
+    const unavailable = Object.assign(new Error("Live prototype authoring is not enabled"), {
+      status: 404,
+      payload: { errorCode: "LIVE_PROTOTYPE_DISABLED" }
+    });
+    const postJson = vi.fn(async () => {
+      throw unavailable;
+    });
+    const { storage, win } = browserWindow();
+    storage.set("pop-party-authoring-session", "stale-session");
+
+    const workspace = await beginLivePrototypeWorkspace(
+      { postJson } as unknown as ApiClient,
+      win,
+      memoryCheckpointStore().store
+    );
+
+    expect(workspace).toBeNull();
+    expect(storage.has("pop-party-authoring-session")).toBe(false);
+  });
+
+  it("reconnects once when a checkpoint reaches a transient non-authoring instance", async () => {
+    let checkpoints = 0;
+    const localCheckpoint = checkpoint();
+    const unavailable = Object.assign(new Error("Live prototype authoring is not enabled"), {
+      status: 404,
+      payload: { errorCode: "LIVE_PROTOTYPE_DISABLED" }
+    });
+    const postJson = vi.fn(async (path: string) => {
+      if (path.endsWith("/session")) return sessionResponse();
+      if (path.endsWith("/checkpoint")) {
+        checkpoints += 1;
+        if (checkpoints === 1) throw unavailable;
+        return { ...sessionResponse(), checkpoint: localCheckpoint };
+      }
+      if (path.endsWith("/save")) {
+        return {
+          ...sessionResponse(),
+          syncedRevision: localCheckpoint.workingRevision
+        };
+      }
+      return { ok: true };
+    });
+    const { win } = browserWindow();
+    const workspace = await beginLivePrototypeWorkspace(
+      { postJson } as unknown as ApiClient,
+      win,
+      memoryCheckpointStore().store
+    );
+
+    await workspace?.save();
+
+    expect(postJson.mock.calls.map(([path]) => path)).toEqual([
+      "/api/authoring/workspace/session",
+      "/api/authoring/workspace/checkpoint",
+      "/api/authoring/workspace/session",
+      "/api/authoring/workspace/checkpoint",
+      "/api/authoring/workspace/save"
+    ]);
+  });
+
   it("clears the browser checkpoint when explicitly restoring Git", async () => {
     const postJson = vi.fn(async (path: string) => {
       if (path.endsWith("/session")) return sessionResponse();
