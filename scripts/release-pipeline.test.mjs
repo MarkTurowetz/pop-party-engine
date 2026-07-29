@@ -265,6 +265,10 @@ describe("production release verification", () => {
         json: {
           ok: true,
           game: { engineCompatibility: "1.3.9" },
+          engine: {
+            version: "1.3.9",
+            capabilities: { browserWorkspaceCheckpoints: true }
+          },
           release: { engineVersion: "1.3.9", releaseRevision: "release-123" }
         }
       })
@@ -279,6 +283,36 @@ describe("production release verification", () => {
     })).resolves.toMatchObject({ ok: true });
   });
 
+  it("rejects a mixed deployment whose server lacks browser checkpoints", async () => {
+    const fetchImpl = vi.fn(async (url) => url.includes("/api/health")
+      ? response({
+        json: {
+          ok: true,
+          game: { engineCompatibility: "1.3.9" },
+          engine: {
+            version: "1.3.8",
+            capabilities: { browserWorkspaceCheckpoints: false }
+          },
+          release: { engineVersion: "1.3.9", releaseRevision: "release-123" }
+        }
+      })
+      : response({ text: "<div class=\"version-badge\">v1.0.17.1200</div>" }));
+    await expect(probeProduction({
+      baseUrl: "https://example.com",
+      engineVersion: "1.3.9",
+      releaseRevision: "release-123",
+      appVersion: "1.0.17.1200",
+      fetchImpl,
+      nonce: 1
+    })).resolves.toMatchObject({
+      ok: false,
+      checks: {
+        runtimeEngine: false,
+        browserWorkspaceCheckpoints: false
+      }
+    });
+  });
+
   it("retries boundedly until the new Render instance is serving", async () => {
     let request = 0;
     const fetchImpl = vi.fn(async (url) => {
@@ -288,6 +322,10 @@ describe("production release verification", () => {
           json: {
             ok: true,
             game: { engineCompatibility: request < 2 ? "1.3.8" : "1.3.9" },
+            engine: {
+              version: request < 2 ? "1.3.8" : "1.3.9",
+              capabilities: { browserWorkspaceCheckpoints: true }
+            },
             release: {
               engineVersion: request < 2 ? "1.3.8" : "1.3.9",
               releaseRevision: request < 2 ? "old" : "release-123"

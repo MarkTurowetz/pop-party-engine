@@ -1,5 +1,7 @@
 "use strict";
 
+const { version: ENGINE_RUNTIME_VERSION } = require("../../package.json");
+
 function createRouterRuntime({
   activeRelease,
   adminAuth,
@@ -157,6 +159,13 @@ function createRouterRuntime({
           contentMode: gameDefinition?.content?.mode || ""
         },
         release: currentActiveRelease() || null,
+        engine: {
+          version: ENGINE_RUNTIME_VERSION,
+          capabilities: {
+            browserWorkspaceCheckpoints: typeof livePrototype?.handleCheckpoint === "function"
+              && typeof livePrototype?.handleRestoreCheckpoint === "function"
+          }
+        },
         adminAuth: adminAuth?.publicStatus() || { mode: "unknown", protected: false },
         runtimeCapabilities: runtimeCapabilities?.publicStatus() || { mode: "unknown", protected: false },
         contentStore: contentStatus || { mode: "disabled", remoteAuthoring: "disabled", enabled: false }

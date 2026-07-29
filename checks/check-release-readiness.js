@@ -66,7 +66,7 @@ function checkReleaseReadiness(version = process.argv[2]) {
   const renderBlueprint = fs.readFileSync(path.join(root, "render.yaml"), "utf8");
   for (const contract of [
     "autoDeployTrigger: off",
-    "buildCommand: npm run build-info:next",
+    "buildCommand: npm ci --no-audit --no-fund && npm run build-info:next",
     "startCommand: node server.js",
     "key: NODE_VERSION",
     "value: 24"

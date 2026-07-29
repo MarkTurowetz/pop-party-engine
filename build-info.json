@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1213",
+  "version": "1.0.17.1215",
   "baseVersion": "1.0.17",
-  "buildNumber": 1213,
-  "commit": "9a7014ce",
-  "branch": "codex/fix-live-workspace-reconnect",
-  "generatedAt": "2026-07-29T01:25:54.410Z"
+  "buildNumber": 1215,
+  "commit": "aa736deb",
+  "branch": "codex/fix-render-engine-runtime",
+  "generatedAt": "2026-07-29T01:57:42.365Z"
 }

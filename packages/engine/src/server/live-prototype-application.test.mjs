@@ -286,6 +286,12 @@ describe("live prototype application integration", () => {
       expect((await lobby(startup.localUrl)).gameTitle).toBe("Durable live title");
       const health = await (await fetch(`${startup.localUrl}/api/health`)).json();
       expect(health.release.contentRevision).toBe(saved.workingRevision);
+      expect(health.engine).toEqual({
+        version: require("../../package.json").version,
+        capabilities: {
+          browserWorkspaceCheckpoints: true
+        }
+      });
     } finally {
       await runtime.stop();
     }

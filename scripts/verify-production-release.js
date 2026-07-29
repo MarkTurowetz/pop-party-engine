@@ -59,6 +59,9 @@ async function probeProduction(options) {
   const checks = {
     healthy: health?.ok === true,
     gameEngine: health?.game?.engineCompatibility === options.engineVersion,
+    runtimeEngine: health?.engine?.version === options.engineVersion,
+    browserWorkspaceCheckpoints:
+      health?.engine?.capabilities?.browserWorkspaceCheckpoints === true,
     releaseEngine: health?.release?.engineVersion === options.engineVersion,
     releaseRevision: health?.release?.releaseRevision === options.releaseRevision,
     appVersion: stage.includes(`v${options.appVersion}`)
@@ -100,6 +103,7 @@ async function main() {
     console.log(JSON.stringify({
       ok: true,
       engineVersion: result.health.game.engineCompatibility,
+      runtimeEngineVersion: result.health.engine.version,
       releaseRevision: result.health.release.releaseRevision,
       contentRevision: result.health.release.contentRevision
     }, null, 2));
