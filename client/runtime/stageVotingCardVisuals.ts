@@ -592,7 +592,10 @@ class VotingCardRenderer {
   showLayer(): void {
     if (this.hideLayerTimer !== null) clearTimeout(this.hideLayerTimer);
     this.hideLayerTimer = null;
-    this.layer?.classList.remove("hidden");
+    // The layout runtime hides selector-backed hosts when their moment exits.
+    // A later voting visit reuses this same host, so opening the collection
+    // must clear both its own display gate and the layout lifecycle gates.
+    this.layer?.classList.remove("hidden", "stage-layout-visual-hidden", "stage-layout-visual-exiting");
   }
 
   scheduleLayerHide(): void {
