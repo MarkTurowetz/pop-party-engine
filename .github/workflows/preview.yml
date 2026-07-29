@@ -40,5 +40,5 @@ jobs:
           node scripts/deploy-reference-preview.js
           --base-url "${REFERENCE_PREVIEW_URL}"
           --release-authority-url "${REFERENCE_PRODUCTION_URL}"
-          --engine-version "$(node -p 'require("./apps/reference/game.config.js").engineCompatibility')"
+          --engine-version "$(node -p 'require("./packages/engine/package.json").version')"
           --commit "${PREVIEW_COMMIT}"
