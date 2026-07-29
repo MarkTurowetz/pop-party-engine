@@ -1,4 +1,5 @@
 import { StageCountdownPopupController } from "./stageCountdownPopupController";
+import { StageManagedTextSources, type StageManagedTextSource } from "./stageManagedTextSources";
 import { StageSubActionScheduler } from "./stageSubActionScheduler";
 
 // Typed port of the legacy client/stage-runtime.js (top-level classic script) — the
@@ -91,6 +92,7 @@ let stageWidgetArtRendererInstance: Dict | null = null;
 let stageCountdownPopupControllerInstance: StageCountdownPopupController | null = null;
 const initializedStageWidgetEntityRenderers = new WeakMap<El, unknown>();
 let renderedStageJoinQrUrl = "";
+const stageManagedTextSources = new StageManagedTextSources();
 const stageSubActionScheduler = new StageSubActionScheduler({
   currentGameSessionId: () => Number((w().currentStageState as Dict | null)?.gameSessionId || 0),
   run: (action, actionKey) => runStageAction(action, false, actionKey)
@@ -435,7 +437,7 @@ async function startCurrentMomentForAction(_action: Dict, options: Dict = {}): P
   if (actionKey && currentRenderedActionKey() !== actionKey) return;
   const state = w().currentStageState as Dict | null;
   if (!state) throw new Error("Current moment state unavailable");
-  applyStageState(state);
+  applyStageState(state, { initializeMomentText: true });
   const readiness = w().stageMomentLayoutReadiness?.() || { ready: true, missingElementIds: [] };
   if (readiness.ready === false) {
     throw new Error(`Moment elements unavailable: ${((readiness.missingElementIds as string[]) || []).join(", ")}`);
@@ -460,6 +462,7 @@ function hardResetStageToLobby(): void {
   // Quit bypasses the authored End Moment action, so perform the same visual
   // teardown before the lobby's Start Moment begins constructing its objects.
   w().resetStageMomentLayout?.();
+  stageManagedTextSources.reset();
   resetStageObjects({ clearActionTimers: true, clearCountdownTimer: true, resetWipe: true });
 }
 
@@ -570,6 +573,21 @@ function setStageManagedText(target: El | string | null, value: unknown): void {
     layoutText.setStageText(target, value);
   } else {
     setFallbackStageText(target, value, { width: target.clientWidth || target.offsetWidth || 800, height: target.clientHeight || target.offsetHeight || 120, fontSize: Number.parseFloat(w().getComputedStyle?.(target)?.fontSize as string) || 54, autoFitText: true }, { minSize: 8, lineHeight: 1.02 });
+  }
+}
+
+function reconcileStageManagedText(lobby: Dict, liveGameTitle: unknown, options: Dict = {}): void {
+  const sources: StageManagedTextSource[] = [
+    { target: "stageTitle", value: liveGameTitle },
+    { target: "stageIntroTitle", value: "GAME INTRO" }
+  ];
+  if (lobby.phase === "crafting-game-state") {
+    sources.push({ target: CRAFTING_TRIVIA_PROMPT_TEXT_ID, value: lobby.triviaPromptText || "" });
+  }
+  for (const source of stageManagedTextSources.reconcile(lobby, sources, {
+    force: options.initializeMomentText === true
+  })) {
+    setStageManagedText(source.target, source.value);
   }
 }
 
@@ -687,7 +705,7 @@ function setStageWaitingStatus(message: unknown, isVisible = true): void {
   void isVisible;
 }
 
-function applyStageState(lobby: Dict): void {
+function applyStageState(lobby: Dict, options: Dict = {}): void {
   const wasPaused = w().isStagePaused;
   w().currentStageState = lobby;
   const players = (lobby.players as Dict[]) || [];
@@ -701,18 +719,13 @@ function applyStageState(lobby: Dict): void {
   renderStageActionDebug(lobby);
   setStageCodeDisplays(lobby.stageCode || stageCodeValue());
   w().applyStageLayoutForPhase!(phase);
-  if (phase === "crafting-game-state") {
-    const layoutText = w().PartyGameLayoutText as { setStageText?: (target: string, value: unknown) => void } | undefined;
-    layoutText?.setStageText?.(CRAFTING_TRIVIA_PROMPT_TEXT_ID, lobby.triviaPromptText || "");
-  }
-  setStageManagedText("stageTitle", liveGameTitle);
+  reconcileStageManagedText(lobby, liveGameTitle, options);
   renderStageWidgetBinding("stageCodePanel", { stageCode: stageCodeValue(lobby.stageCode as string) });
   renderStageWidgetBinding("stageCodeWidget", { stageCode: stageCodeValue(lobby.stageCode as string) });
   renderStageJoinQr(stageCodeValue(lobby.stageCode as string), isLobbyPhase);
   w().stageMain.classList.remove("hidden");
   w().stageFooter.classList.remove("hidden");
   w().stageIntroContent.classList.remove("hidden");
-  setStageManagedText("stageIntroTitle", "GAME INTRO");
   renderStageWidgetBinding("presentationClickPrompt");
   clearStageDecisionDebug(lobby);
   renderStagePlayers(players, {

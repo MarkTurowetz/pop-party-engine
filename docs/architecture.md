@@ -278,6 +278,10 @@ concepts into focused modules.
 - Room snapshots are revision ordered. Stage reconciliation ignores duplicate or stale revisions so
   an HTTP response or SSE delivery cannot re-render and interrupt the timeline owned by the active
   flow action. Explicit asset reloads may force a same-revision reconciliation without replaying that action.
+- Server-backed stage text sources initialize their fields once per moment visit and write again only
+  when the source value actually changes. An unchanged room snapshot must not overwrite text set by a
+  later authored `Display Text` action; an explicit `Start Moment` may reapply the moment defaults after
+  reconstructing its layout.
 - Every flow-driven game-object command carries `commandSource: "flow-action"`. Missing targets,
   missing authored labels, and interrupted target callbacks fail closed; they do not manufacture a
   callback or fall back to a duration estimate.
