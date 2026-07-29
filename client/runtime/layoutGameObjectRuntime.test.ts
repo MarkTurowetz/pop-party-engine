@@ -35,6 +35,30 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     expect(playAnimation).not.toHaveBeenCalled();
   });
 
+  it("initializes lifecycle objects from their authored default without applying a structural fallback", () => {
+    const applyDefaultVisibility = vi.fn(() => true);
+    const applyTargetVisibility = vi.fn();
+
+    expect(PartyGameLayoutGameObjects.initializeLayoutEntity({
+      applyDefaultVisibility,
+      applyTargetVisibility
+    }, { fallbackVisible: true })).toBe(true);
+    expect(applyDefaultVisibility).toHaveBeenCalledOnce();
+    expect(applyTargetVisibility).not.toHaveBeenCalled();
+  });
+
+  it("initializes structural layout hosts from their authored hidden flag fallback", () => {
+    const applyDefaultVisibility = vi.fn(() => false);
+    const applyTargetVisibility = vi.fn();
+
+    expect(PartyGameLayoutGameObjects.initializeLayoutEntity({
+      applyDefaultVisibility,
+      applyTargetVisibility
+    }, { fallbackVisible: false })).toBe(true);
+    expect(applyDefaultVisibility).toHaveBeenCalledOnce();
+    expect(applyTargetVisibility).toHaveBeenCalledWith(false);
+  });
+
   it("does not restart visibility animations when a placed entity already matches the requested state", () => {
     const visualPlay = vi.fn(() => 0);
     const playVisibility = vi.fn(() => 300);
@@ -72,6 +96,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
   it("exposes the layout game-object helpers", () => {
     expect(PartyGameLayoutGameObjects.activeDynamicLayoutArtInstanceIds).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver).toBeTypeOf("function");
+    expect(PartyGameLayoutGameObjects.initializeLayoutEntity).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.playLayoutEntityAnimationForAction).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.setLayoutGameObjectShownForAction).toBeTypeOf("function");
   });

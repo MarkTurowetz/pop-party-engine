@@ -600,6 +600,17 @@ function activateLayoutEntity(entity: Dict | null, options: Dict = {}): number {
   return 0;
 }
 
+function initializeLayoutEntity(entity: Dict | null, options: Dict = {}): boolean {
+  if (!entity) return false;
+  if (
+    typeof entity.applyDefaultVisibility === "function" &&
+    (entity.applyDefaultVisibility as () => boolean).call(entity)
+  ) {
+    return true;
+  }
+  return applyLayoutEntityTargetVisibility(entity, options.fallbackVisible !== false, options);
+}
+
 function deactivateLayoutEntity(entity: Dict | null): number {
   if (!entity) return 0;
   if (typeof entity.applyTargetVisibility === "function") {
@@ -657,6 +668,7 @@ export const PartyGameLayoutGameObjects = {
   createPlacedLayoutEntityRegistrar,
   createPlacedLayoutGameObjectTargetResolver,
   finishLayoutElementTargetApplication,
+  initializeLayoutEntity,
   layoutElementTargetMatchesSelector,
   layoutElementVisibilityKey,
   layoutTargetByElementId,
