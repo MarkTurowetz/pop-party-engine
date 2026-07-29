@@ -14,6 +14,11 @@ until all of these agree:
 - the rendered build reports the requested Git commit;
 - the game, runtime, and active content release use the same engine version.
 
+The already-running preview service is also the release-coordinate authority
+for ordinary preview deploys. Both hosted lanes share the same Git-backed
+release data, so Preview validation does not need to wake the sleeping
+production service before it can trigger a deploy.
+
 Ordinary feature and bug-fix commits do not bump or publish the public npm
 packages. They merge with the current engine version and become testable on the
 preview URL without an npm release, GitHub release, production approval, or
