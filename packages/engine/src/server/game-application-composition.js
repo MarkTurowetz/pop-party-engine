@@ -853,6 +853,7 @@ const {
   quitRoomToLobby,
 } = createRoomPhaseRuntime({
   activePlayers,
+  applyRoomActionEffects: applyRoomActionEffectsProxy,
   broadcastLobby,
   clearActionTimer,
   clearAppliedActionEffects,

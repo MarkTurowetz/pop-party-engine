@@ -35,6 +35,7 @@ function resolveVotingAnswerSource(room, sourceRef, explicitSourceStateId = "") 
 
 function createRoomPhaseRuntime({
   activePlayers,
+  applyRoomActionEffects = () => {},
   broadcastLobby,
   clearActionTimer,
   clearAppliedActionEffects,
@@ -75,7 +76,7 @@ function createRoomPhaseRuntime({
     }
   }
 
-  function startRouteActionSession(room, target, result) {
+  function startRouteActionSession(room, target, result, options = {}) {
     if (!result?.routeNodeId) return false;
     room.actionExecutionSignature = "";
     // Each arrival is a new execution, even when a route loops back to the
@@ -91,15 +92,55 @@ function createRoomPhaseRuntime({
     };
     room.presentedAction = null;
     setRouteTrace(room, target, result);
-    broadcastLobby(room);
+    if (options.broadcast !== false) broadcastLobby(room);
     return true;
   }
 
-  function advanceRoomToMomentGraphTarget(room, target) {
+  function advanceRoomToMomentGraphTarget(room, target, context = {}) {
     if (room.runtimeFault) return;
     const result = resolveMomentRouteTarget(room, target);
     setRouteTrace(room, target, result);
     if (result?.targetKind === "action") {
+      const routeAction = result.action;
+      if (routeAction?.type === "codeNode") {
+        const visitedCodeNodeIds = context.visitedCodeNodeIds || new Set();
+        if (visitedCodeNodeIds.has(routeAction.id)) {
+          clearActionTimer(room);
+          createRuntimeFault(room, {
+            code: "FLOW_ROUTE_LOOP",
+            message: `The flow cannot continue because code node ${routeAction.name || routeAction.id} loops back to itself.`,
+            actionId: routeAction.id,
+            expected: "A route from the code node to another action or moment",
+            actual: "Repeated code node in the same route traversal"
+          });
+          broadcastLobby(room);
+          return;
+        }
+        const nextVisitedCodeNodeIds = new Set(visitedCodeNodeIds);
+        nextVisitedCodeNodeIds.add(routeAction.id);
+        startRouteActionSession(room, target, result, { broadcast: false });
+        applyRoomActionEffects(room, routeAction);
+        const codeErrors = room.lastCodeNodeResult?.errors || [];
+        if (codeErrors.length) {
+          clearActionTimer(room);
+          createRuntimeFault(room, {
+            code: "CODE_NODE_FAILED",
+            message: `${routeAction.name || routeAction.id} could not update game state.`,
+            actionId: routeAction.id,
+            expected: "Valid game-state code",
+            actual: codeErrors.join("; ")
+          });
+          broadcastLobby(room);
+          return;
+        }
+        room.routeActionSession = null;
+        const nextTarget = routeAction.nextTargetNodeId || routeAction.nextTargetActionId || "";
+        advanceRoomToMomentGraphTarget(room, nextTarget, {
+          ...context,
+          visitedCodeNodeIds: nextVisitedCodeNodeIds
+        });
+        return;
+      }
       startRouteActionSession(room, target, result);
       return;
     }
