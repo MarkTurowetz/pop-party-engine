@@ -16,6 +16,12 @@ const {
   triggerRenderDeploy
 } = require("./trigger-render-deploy");
 const {
+  deployReferencePreview,
+  parseArguments: parsePreviewArguments,
+  previewChecks,
+  verifyPreviewDeployment
+} = require("./deploy-reference-preview");
+const {
   probeProduction,
   verifyProductionRelease
 } = require("./verify-production-release");
@@ -255,6 +261,142 @@ describe("Render deployment trigger", () => {
       commit,
       fetchImpl
     })).resolves.toMatchObject({ accepted: true, deployId: "dep-123" });
+  });
+});
+
+describe("reference preview deployment", () => {
+  it("requires exact preview coordinates", () => {
+    expect(parsePreviewArguments([
+      "--base-url", "https://preview.example.com",
+      "--release-authority-url", "https://production.example.com",
+      "--engine-version", "1.3.19",
+      "--commit", "a".repeat(40)
+    ])).toMatchObject({
+      baseUrl: "https://preview.example.com",
+      releaseAuthorityUrl: "https://production.example.com",
+      engineVersion: "1.3.19",
+      commit: "a".repeat(40)
+    });
+    expect(() => parsePreviewArguments([
+      "--base-url", "http://preview.example.com",
+      "--release-authority-url", "https://production.example.com",
+      "--engine-version", "1.3.19",
+      "--commit", "a".repeat(40)
+    ])).toThrow(/HTTPS/);
+  });
+
+  it("requires the preview channel, exact commit, and coordinated engine", () => {
+    const commit = "a".repeat(40);
+    expect(previewChecks({
+      ok: true,
+      application: { channel: "preview", commit: commit.slice(0, 8) },
+      game: { engineCompatibility: "1.3.19" },
+      engine: { version: "1.3.19" },
+      release: { engineVersion: "1.3.19" }
+    }, { commit, engineVersion: "1.3.19" })).toEqual({
+      healthy: true,
+      channel: true,
+      commit: true,
+      gameEngine: true,
+      runtimeEngine: true,
+      releaseEngine: true
+    });
+  });
+
+  it("defers version-bump commits until production release coordinates are active", async () => {
+    const fetchImpl = vi.fn(async () => response({
+      json: {
+        ok: true,
+        release: { engineVersion: "1.3.19" }
+      }
+    }));
+    await expect(deployReferencePreview({
+      baseUrl: "https://preview.example.com",
+      releaseAuthorityUrl: "https://production.example.com",
+      engineVersion: "1.3.20",
+      commit: "b".repeat(40),
+      hookUrl: "https://api.render.com/deploy/srv-preview?key=secret",
+      timeoutMs: 100,
+      authorityTimeoutMs: 100,
+      intervalMs: 10,
+      fetchImpl
+    })).resolves.toMatchObject({
+      ok: true,
+      deployed: false,
+      reason: "release-coordinate-pending"
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("triggers and verifies the exact preview commit when coordinates match", async () => {
+    const commit = "c".repeat(40);
+    let healthReads = 0;
+    const fetchImpl = vi.fn(async (url) => {
+      if (String(url).includes("api.render.com")) {
+        return response({ json: { deploy: { id: "dep-preview" } } });
+      }
+      healthReads += 1;
+      if (healthReads === 1) {
+        return response({ json: { ok: true, release: { engineVersion: "1.3.19" } } });
+      }
+      return response({
+        json: {
+          ok: true,
+          application: { channel: "preview", commit: commit.slice(0, 8) },
+          game: { engineCompatibility: "1.3.19" },
+          engine: { version: "1.3.19" },
+          release: { engineVersion: "1.3.19" }
+        }
+      });
+    });
+    await expect(deployReferencePreview({
+      baseUrl: "https://preview.example.com",
+      releaseAuthorityUrl: "https://production.example.com",
+      engineVersion: "1.3.19",
+      commit,
+      hookUrl: "https://api.render.com/deploy/srv-preview?key=secret",
+      timeoutMs: 100,
+      authorityTimeoutMs: 100,
+      intervalMs: 10,
+      fetchImpl
+    })).resolves.toMatchObject({
+      ok: true,
+      deployed: true,
+      deployId: "dep-preview"
+    });
+  });
+
+  it("retries until the exact preview commit is live", async () => {
+    const commit = "d".repeat(40);
+    let request = 0;
+    let clock = 0;
+    const fetchImpl = vi.fn(async () => {
+      request += 1;
+      return response({
+        json: {
+          ok: true,
+          application: {
+            channel: "preview",
+            commit: (request < 2 ? "e".repeat(40) : commit).slice(0, 8)
+          },
+          game: { engineCompatibility: "1.3.19" },
+          engine: { version: "1.3.19" },
+          release: { engineVersion: "1.3.19" }
+        }
+      });
+    });
+    await expect(verifyPreviewDeployment({
+      baseUrl: "https://preview.example.com",
+      engineVersion: "1.3.19",
+      commit,
+      timeoutMs: 100,
+      intervalMs: 10,
+      fetchImpl,
+      now: () => clock,
+      wait: async (milliseconds) => {
+        clock += milliseconds;
+      }
+    })).resolves.toMatchObject({ ok: true });
   });
 });
 

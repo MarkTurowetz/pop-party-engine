@@ -5,6 +5,7 @@ const { version: ENGINE_RUNTIME_VERSION } = require("../../package.json");
 function createRouterRuntime({
   activeRelease,
   adminAuth,
+  application,
   clonePrompt,
   contentAdmin,
   contentStatus,
@@ -159,6 +160,12 @@ function createRouterRuntime({
           contentMode: gameDefinition?.content?.mode || ""
         },
         release: currentActiveRelease() || null,
+        application: application || {
+          version: "",
+          commit: "",
+          branch: "",
+          channel: "development"
+        },
         engine: {
           version: ENGINE_RUNTIME_VERSION,
           capabilities: {

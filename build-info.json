@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1217",
+  "version": "1.0.17.1218",
   "baseVersion": "1.0.17",
-  "buildNumber": 1217,
-  "commit": "eea37abe",
-  "branch": "codex/fix-stage-text-authority",
-  "generatedAt": "2026-07-29T07:40:42.255Z"
+  "buildNumber": 1218,
+  "commit": "96254ea9",
+  "branch": "codex/hosted-preview-lane",
+  "generatedAt": "2026-07-29T09:07:51.052Z"
 }

@@ -24,6 +24,13 @@ external release authorities exist. Current setup status:
    never be committed or printed.
 - [x] Set the reference service to Auto-Deploy `Off` and keep the Render
    Blueprint aligned with `autoDeployTrigger: off`.
+- [x] Clone the production reference service as the free
+   `pop-party-preview` service, set `PARTY_GAME_DEPLOYMENT_CHANNEL=preview`,
+   and keep Auto-Deploy `Off`.
+- [x] Create a separate GitHub OAuth application for Preview with callback
+   `https://pop-party-preview.onrender.com/auth/github/callback`.
+- [x] Add the Preview service's private Render hook as the repository Actions
+   secret `RENDER_PREVIEW_DEPLOY_HOOK_URL`.
 
 Both CI workflows are self-contained on the checked-out engine repository.
 They must not fetch a game-specific `game-data` branch; the reference app owns
@@ -55,3 +62,8 @@ The workflow uses GitHub OIDC and npm provenance; no long-lived npm token
 belongs in repository or environment secrets. Render no longer reacts directly
 to merges because a merged engine commit is not deployable until npm and the
 release tuple are ready.
+
+Ordinary non-release merges are deployed to
+`https://pop-party-preview.onrender.com` by the `preview` workflow after the
+`check` workflow succeeds. They keep the current package version and do not run
+the npm/GitHub/production release sequence. See `docs/deployment-lanes.md`.

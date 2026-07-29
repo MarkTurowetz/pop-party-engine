@@ -1,0 +1,44 @@
+name: preview
+
+on:
+  workflow_run:
+    workflows: [check]
+    types: [completed]
+
+concurrency:
+  group: pop-party-reference-preview
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-preview:
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    env:
+      REFERENCE_PREVIEW_URL: https://pop-party-preview.onrender.com
+      REFERENCE_PRODUCTION_URL: https://pop-party.onrender.com
+      PREVIEW_COMMIT: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Deploy the tested commit to the reference preview
+        env:
+          RENDER_PREVIEW_DEPLOY_HOOK_URL: ${{ secrets.RENDER_PREVIEW_DEPLOY_HOOK_URL }}
+        run: >-
+          node scripts/deploy-reference-preview.js
+          --base-url "${REFERENCE_PREVIEW_URL}"
+          --release-authority-url "${REFERENCE_PRODUCTION_URL}"
+          --engine-version "$(node -p 'require("./apps/reference/game.config.js").engineCompatibility')"
+          --commit "${PREVIEW_COMMIT}"

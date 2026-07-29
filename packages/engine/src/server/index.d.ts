@@ -49,6 +49,12 @@ export function createDecisionRuntime(options: Record<string, unknown>): Readonl
 export function createDecisionActionNormalizationRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGameFlowMergeRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function readAppVersion(rootDir: string): string;
+export function readBuildInfo(rootDir: string): Readonly<{
+  version: string;
+  commit: string;
+  branch: string;
+  generatedAt: string;
+}>;
 export function readBuildNumber(rootDir: string): string;
 export function contentTypeForFile(filePath: string): string;
 export function readJson(request: Record<string, unknown>, maxBytes?: number): Promise<unknown>;

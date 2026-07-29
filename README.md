@@ -36,24 +36,31 @@ http://localhost:3000/l
 
 ## Deploy
 
-This app is ready for Render as a Node web service.
+The reference app has two Render delivery lanes:
 
-- Build command: `npm run build-info:next`
+- Preview: `https://pop-party-preview.onrender.com`
+- Production: `https://pop-party.onrender.com`
+
+Both use:
+
+- Build command: `npm ci --no-audit --no-fund && npm run build-info:next`
 - Start command: `node server.js`
 - Health check path: `/api/health`
 
-The included `render.yaml` defines the same settings as a Render Blueprint.
+The included `render.yaml` defines both services as a Render Blueprint.
 `npm run build-info:next` rebuilds the Vite client assets before stamping
 `build-info.json` at least one build beyond the committed branch stamp. This
 keeps Render's shallow checkout identity aligned with the full-history release
 workflow instead of reusing a stale build number.
 
-Production auto-deploys are disabled. Public engine releases are deployed only
-by the protected `publish` workflow after npm publication and the reference
-release tuple are complete. The workflow targets the exact released commit,
-then verifies `/api/health` and the rendered application build. Configure its
-secret Render deploy hook as `RENDER_DEPLOY_HOOK_URL`; see
-`.github/RELEASE_SETUP.md`.
+Every successful `main` check deploys its exact commit to Preview without
+publishing npm packages. Production remains disabled from automatic deployment;
+public engine releases move there only through the protected `publish`
+workflow. The health endpoint reports the application channel and exact commit
+so both workflows verify what Render is actually serving. Configure the private
+hooks as `RENDER_PREVIEW_DEPLOY_HOOK_URL` and `RENDER_DEPLOY_HOOK_URL`; see
+[docs/deployment-lanes.md](docs/deployment-lanes.md) and
+[.github/RELEASE_SETUP.md](.github/RELEASE_SETUP.md).
 
 ## Durable Authoring
 

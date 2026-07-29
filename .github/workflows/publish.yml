@@ -120,6 +120,17 @@ jobs:
           --release-revision "${{ steps.activate.outputs.release_revision }}"
           --app-version "${{ steps.build.outputs.app_version }}"
 
+      - name: Refresh the reference preview after release coordination
+        continue-on-error: true
+        env:
+          RENDER_PREVIEW_DEPLOY_HOOK_URL: ${{ secrets.RENDER_PREVIEW_DEPLOY_HOOK_URL }}
+        run: >-
+          node scripts/deploy-reference-preview.js
+          --base-url "https://pop-party-preview.onrender.com"
+          --release-authority-url "${REFERENCE_PRODUCTION_URL}"
+          --engine-version "${{ inputs.release_version }}"
+          --commit "${GITHUB_SHA}"
+
       - name: Restore prior release coordinates after a failed deployment
         if: ${{ failure() && steps.activate.outputs.changed == 'true' && steps.verify.outcome != 'success' }}
         env:

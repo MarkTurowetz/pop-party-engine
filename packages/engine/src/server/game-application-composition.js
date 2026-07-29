@@ -77,6 +77,7 @@ const {
   normalizeStageCode,
   normalizeVotingCardFilter,
   readAppVersion,
+  readBuildInfo,
   readJson,
   readJsonFile,
   resetGameSessionState,
@@ -200,7 +201,12 @@ function writeAuthoringJsonFile(filePath, value) {
   return result;
 }
 
+const BUILD_INFO = readBuildInfo(ROOT);
 const APP_VERSION = readAppVersion(ROOT);
+const DEPLOYMENT_CHANNEL = String(
+  process.env.PARTY_GAME_DEPLOYMENT_CHANNEL
+    || (process.env.RENDER ? "production" : "development")
+).trim().toLowerCase() || "development";
 const adminAudit = createAdminAuditRuntime();
 const adminAuth = createAdminAuthRuntime({
   mode: ADMIN_AUTH_MODE,
@@ -1537,6 +1543,12 @@ const {
 } = createRouterRuntime({
   activeRelease: () => livePrototypeWorkspace?.state().release || activeRuntime.release,
   adminAuth,
+  application: Object.freeze({
+    version: APP_VERSION,
+    commit: BUILD_INFO.commit,
+    branch: BUILD_INFO.branch,
+    channel: DEPLOYMENT_CHANNEL
+  }),
   clonePrompt,
   contentAdmin,
   contentStatus: {
