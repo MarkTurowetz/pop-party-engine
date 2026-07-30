@@ -52,7 +52,7 @@ function fixturePlugin() {
           ]
         },
         recipients(context) {
-          return [context.state.currentPlayerId];
+          return [context.local.currentPlayerId || context.state.currentPlayerId];
         },
         view(context) {
           return { prompt: `Turn for ${context.viewer.name}`, options: [{ id: "hit", label: "Hit" }, { id: "stay", label: "Stay" }] };
@@ -233,6 +233,10 @@ describe("game plugin ABI", () => {
     room.flowVariables = {};
     executor.execute(room, action, { deferBroadcast: true });
     expect(room.gamePluginState.fixture.randomSample).toBe(randomSample);
+
+    room.localVariables = {};
+    executor.execute(room, { ...action, resultVariable: "l.cardsDrawn" }, { deferBroadcast: true });
+    expect(room.localVariables.cardsDrawn).toBe(4);
   });
 
   it("publishes renderer manifests and JSON-safe live view models without exposing mutable room state", () => {
@@ -261,7 +265,7 @@ describe("game plugin ABI", () => {
     });
   });
 
-  it("runs authenticated current-player and private per-player input barriers", () => {
+  it("runs authenticated current-player and private per-player input barriers", async () => {
     const registrations = createGamePluginRegistry().install(fixturePlugin()).inputs;
     expect(pluginFlowActionTypes(registrations)[0]).toMatchObject({ category: "input", primaryOnly: true });
     const definitions = createPluginInputActionDefinitions(registrations);
@@ -284,6 +288,7 @@ describe("game plugin ABI", () => {
         ["p2", { id: "p2", name: "Two", active: true, points: 0 }]
       ]),
       flowVariables: {},
+      localVariables: { currentPlayerId: "p1" },
       gamePluginState: { fixture: { currentPlayerId: "p1", offers: { p1: 12, p2: 29 } } }
     };
     let action = {
@@ -301,6 +306,13 @@ describe("game plugin ABI", () => {
       broadcastLobby
     });
     expect(runtime.ensure(room, action)).toBe(true);
+    expect(broadcastLobby).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(broadcastLobby).toHaveBeenCalledOnce();
+    broadcastLobby.mockClear();
+    expect(runtime.ensure(room, action)).toBe(true);
+    await Promise.resolve();
+    expect(broadcastLobby).not.toHaveBeenCalled();
     expect(runtime.payloadForViewer(room, action, "p1")).toMatchObject({
       type: "fixture.turnChoice",
       viewModel: { prompt: "Turn for One" }

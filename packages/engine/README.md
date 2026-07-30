@@ -57,10 +57,12 @@ registry.actions("my-game.increment", {
 
 `context.state` is isolated to the registering namespace and resets with the
 game session. The context also exposes read-only public player/actor snapshots,
-VIP capability, deterministic `random` helpers, Flow `outputs`, and an explicit
+the current subroutine's read-only `local` values, VIP capability,
+deterministic `random` helpers, Flow `outputs`, and an explicit
 `broadcast.request()`. It never exposes the generic room object or lifecycle
-internals. Output variable fields are authored in Flow and can be read by a
-Decision as `flowVariables.<name>`.
+internals. A bare authored output variable such as `counter` remains available
+to a Decision as `flowVariables.counter`; `g.counter` writes the global Flow
+scope and `l.counter` writes the current subroutine's local scope.
 
 Game-owned controller barriers use `registry.inputs`. The engine authenticates
 the submitting controller, selects recipients on the server, derives a private
@@ -109,7 +111,45 @@ Inputs declare `completion` (`allRecipients`, `anyRecipient`, or `manual`),
 authored timeout field. Every submission carries the room session, action, and
 input visit identity. Stale visits are rejected and each recipient is applied
 at most once. `context.actor` is always the authenticated submitting player,
-not an authored id.
+not an authored id. Entering a new game-owned input visit also emits a distinct
+lobby revision after recipient state is installed, so each eligible
+controller's next heartbeat can render its private `gamePlugin.input` without
+being mistaken for a duplicate lobby payload.
+
+## Typed subroutine interfaces
+
+Nested Flow subroutines may declare typed inputs and outputs in the Flow Tool.
+Each input copies a caller expression such as `g.currentPlayerId` or
+`l.roundBonus` into a fresh child-local property. Child Code Nodes, Decisions,
+plugin contexts, and plugin output fields can read or write that isolated
+`l` object. When the child returns, only its declared outputs are type-checked
+and copied to explicit `l.*` parent targets or `g.*` global targets.
+
+```json
+{
+  "type": "subroutine",
+  "inputs": [
+    {
+      "name": "playerId",
+      "valueType": "string",
+      "source": "g.currentPlayerId"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "choice",
+      "valueType": "string",
+      "source": "l.choice",
+      "target": "l.turnChoice"
+    }
+  ]
+}
+```
+
+Supported interface types are `string`, `integer`, `number`, `boolean`, and
+JSON-safe `json`. A nested call never inherits its parent's entire local
+object. Invalid input coercion or output assignment fails closed with a
+structured runtime fault instead of leaking partial values across scopes.
 
 Stage and Controller renderers are declarative view-model bindings to existing
 Tools-authored Layout elements and Art components:

@@ -5,6 +5,10 @@ const {
   isFlowEventBarrierAction
 } = require("../shared/flow-action-registry");
 const { createRuntimeFault } = require("./runtime-fault-runtime");
+const {
+  applySubroutineOutputs,
+  createSubroutineLocalScope
+} = require("./subroutine-interface-runtime");
 
 function createRoomFlowHelpersRuntime({
   activePlayers,
@@ -83,7 +87,7 @@ function createRoomFlowHelpersRuntime({
       }
       const action = actions[room.actionIndex];
       if (action?.type === "subroutine") {
-        enterNestedSubroutine(room, action);
+        if (!enterNestedSubroutine(room, action)) return null;
         guard += 1;
         continue;
       }
@@ -170,13 +174,30 @@ function createRoomFlowHelpersRuntime({
   function enterNestedSubroutine(room, action) {
     ensureSubroutineStack(room);
     const parentPath = [...room.subroutinePath];
+    let localVariables;
+    try {
+      localVariables = createSubroutineLocalScope(room, action);
+    } catch (error) {
+      createRuntimeFault(room, {
+        code: "SUBROUTINE_INPUT_INVALID",
+        message: `${action.name || action.id || "Subroutine"} could not initialize its local inputs.`,
+        actionId: action.id,
+        expected: "Declared inputs that resolve to their authored value types",
+        actual: String(error?.message || error)
+      });
+      return false;
+    }
     room.subroutineStack.push({
       phase: room.phase,
       subroutinePath: parentPath,
       actionIndex: room.actionIndex,
-      actionId: action.id
+      actionId: action.id,
+      localVariables: room.localVariables && typeof room.localVariables === "object"
+        ? room.localVariables
+        : {}
     });
     room.subroutinePath = [...parentPath, action.id];
+    room.localVariables = localVariables;
     const entryIndex = entryIndexForSubroutine(room, action);
     if (entryIndex === -2) {
       returnFromNestedSubroutine(room, action);
@@ -191,6 +212,9 @@ function createRoomFlowHelpersRuntime({
     room.phase = frame.phase || room.phase;
     room.subroutinePath = Array.isArray(frame.subroutinePath) ? [...frame.subroutinePath] : [];
     room.actionIndex = Math.max(0, Number(frame.actionIndex || 0));
+    room.localVariables = frame.localVariables && typeof frame.localVariables === "object"
+      ? frame.localVariables
+      : {};
   }
 
   function parentSubroutineActionForFrame(room, frame) {
@@ -207,10 +231,25 @@ function createRoomFlowHelpersRuntime({
       advanceRoomFromMomentReturn(room);
       return true;
     }
+    const calleeLocals = room.localVariables && typeof room.localVariables === "object"
+      ? room.localVariables
+      : {};
     restoreSubroutineFrame(room, frame);
     const parentAction = parentSubroutineActionForFrame(room, frame);
     if (!parentAction) {
       markNoAction(room, sourceAction, "Missing Parent Subroutine");
+      return false;
+    }
+    try {
+      applySubroutineOutputs(room, parentAction, calleeLocals, room.localVariables);
+    } catch (error) {
+      createRuntimeFault(room, {
+        code: "SUBROUTINE_OUTPUT_INVALID",
+        message: `${parentAction.name || parentAction.id || "Subroutine"} could not return its declared outputs.`,
+        actionId: parentAction.id,
+        expected: "Declared outputs that resolve and assign to compatible g.* or parent l.* targets",
+        actual: String(error?.message || error)
+      });
       return false;
     }
     advanceRoomAfterAction(room, parentAction);

@@ -332,6 +332,8 @@
                 timing: { mode: "E+", seconds: 0 },
                 entryTargetActionId: context.flowActionTarget(action?.entryTargetActionId),
                 nextTargetActionId: context.flowActionTarget(action?.nextTargetActionId),
+                inputs: Array.isArray(action?.inputs) ? action.inputs : [],
+                outputs: Array.isArray(action?.outputs) ? action.outputs : [],
                 subActions: []
             }),
             toPublic: (action, base, context) => ({
@@ -340,6 +342,8 @@
                 timing: { mode: "E+", seconds: 0 },
                 entryTargetActionId: context.flowActionTarget(action.entryTargetActionId),
                 nextTargetActionId: context.flowActionTarget(action.nextTargetActionId),
+                inputs: Array.isArray(action.inputs) ? action.inputs : [],
+                outputs: Array.isArray(action.outputs) ? action.outputs : [],
                 subActions: []
             })
         },

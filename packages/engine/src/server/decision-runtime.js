@@ -94,7 +94,9 @@ function createDecisionRuntime({
       playerAnswerGroups: room.playerAnswerGroups,
       flowVariables: room.flowVariables,
       G: room.G || {},
-      g: room.G || {}
+      g: room.G || {},
+      L: room.localVariables || {},
+      l: room.localVariables || {}
     };
     const pathParts = key.split(".").filter(Boolean);
     const first = pathParts.shift();

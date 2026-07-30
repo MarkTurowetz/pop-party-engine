@@ -77,6 +77,7 @@ function createLocalDraftRuntime({
         room.actionIndex = 0;
         room.subroutinePath = [];
         room.subroutineStack = [];
+        room.localVariables = {};
         room.presentedAction = null;
         room.lastDecisionTrace = null;
         clearAppliedActionEffects(room);

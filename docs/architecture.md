@@ -249,6 +249,13 @@ concepts into focused modules.
     parent transition as its Back to Subroutines button. Nested subroutines
     remove only the final path segment, game-state subroutines return to Root
     Flow, node double-clicks retain drill-in behavior, and Root Flow is a no-op.
+  - Nested subroutine actions define typed call interfaces. Caller expressions
+    read from the room-global `g` object or the caller's `l` object, then
+    initialize a fresh child-local `l` object. Return restores the caller frame
+    before type-checking and assigning declared child outputs to explicit
+    parent `l.*` or global `g.*` targets. Code Nodes, Decisions, and namespaced
+    plugin contexts consume the same current local scope; undeclared child
+    locals never escape.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order

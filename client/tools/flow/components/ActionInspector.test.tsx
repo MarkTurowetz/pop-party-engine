@@ -231,6 +231,42 @@ describe("ActionInspector", () => {
     expect(markup).not.toContain("Target");
   });
 
+  it("renders typed input and output interfaces for nested subroutines", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{
+          id: "take-turn",
+          name: "Take Turn",
+          type: "subroutine",
+          inputs: [
+            { name: "playerId", valueType: "string", source: "g.currentPlayerId" }
+          ],
+          outputs: [
+            {
+              name: "choice",
+              valueType: "string",
+              source: "l.choice",
+              target: "l.turnChoice"
+            }
+          ]
+        }}
+        edit={{
+          onSetActionField: () => undefined,
+          onAddSubAction: () => undefined
+        }}
+        state={{ id: "play", name: "Play", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain('data-flow-react-component="subroutine-interface"');
+    expect(markup).toContain("Add Input");
+    expect(markup).toContain("Add Output");
+    expect(markup).toContain("g.currentPlayerId");
+    expect(markup).toContain("l.turnChoice");
+    expect(markup).not.toContain("Add S+ Sub-action");
+    expect(markup).not.toContain("Timing Mode");
+  });
+
   it("hides timing controls on structural jump and label nodes", () => {
     const baseProps = {
       edit: {
