@@ -244,9 +244,7 @@ describe("ActionInspector", () => {
           outputs: [
             {
               name: "choice",
-              valueType: "string",
-              source: "l.choice",
-              target: "l.turnChoice"
+              valueType: "string"
             }
           ]
         }}
@@ -262,7 +260,9 @@ describe("ActionInspector", () => {
     expect(markup).toContain("Add Input");
     expect(markup).toContain("Add Output");
     expect(markup).toContain("g.currentPlayerId");
-    expect(markup).toContain("l.turnChoice");
+    expect(markup).toContain("same");
+    expect(markup).not.toContain("Child value");
+    expect(markup).not.toContain("Caller target");
     expect(markup).not.toContain("Add S+ Sub-action");
     expect(markup).not.toContain("Timing Mode");
   });

@@ -59,7 +59,7 @@ export function createSubroutineOutput(
     "output",
     existing.map((item) => item.name)
   );
-  return { name, valueType: "string", source: `l.${name}`, target: `l.${name}` };
+  return { name, valueType: "string" };
 }
 
 export function renameSubroutineInterfaceItem<
@@ -74,7 +74,7 @@ export function renameSubroutineInterfaceItem<
         ...value,
         name: uniqueVariableName(
           name,
-          `${"target" in value ? "output" : "input"}${index + 1}`,
+          `${"source" in value ? "input" : "output"}${index + 1}`,
           values.filter((_, otherIndex) => otherIndex !== index).map((item) => item.name)
         )
       }

@@ -6,6 +6,7 @@ const { applyDynamicGameStateCode } = require("./dynamic-game-state-runtime");
 const { createFlowNavigationRuntime } = require("./flow-navigation-runtime");
 const { createRoomFlowHelpersRuntime } = require("./room-flow-helpers-runtime");
 const {
+  applySubroutineOutputs,
   coerceSubroutineValue,
   evaluateSubroutineValue,
   normalizeSubroutineInputs,
@@ -27,14 +28,14 @@ function createNestedRuntime() {
           name: "Resolve Turn Input",
           type: "subroutine",
           entryTargetActionId: "choose",
-          nextTargetActionId: "after",
+          nextTargetActionId: "map-results",
           inputs: [
             { name: "playerId", valueType: "string", source: "g.currentPlayerId" },
             { name: "bonus", valueType: "integer", source: "l.parentBonus" }
           ],
           outputs: [
-            { name: "choice", valueType: "string", source: "l.choice", target: "l.turnChoice" },
-            { name: "total", valueType: "integer", source: "l.total", target: "g.lastTotal" }
+            { name: "choice", valueType: "string" },
+            { name: "total", valueType: "integer" }
           ],
           actions: [{
             id: "choose",
@@ -43,6 +44,13 @@ function createNestedRuntime() {
             code: "l.choice = 'hit'; l.total = l.bonus + 2",
             nextTargetActionId: "return"
           }]
+        },
+        {
+          id: "map-results",
+          name: "Map Results",
+          type: "codeNode",
+          code: "l.turnChoice = l.choice; g.lastTotal = l.total",
+          nextTargetActionId: "after"
         },
         {
           id: "after",
@@ -117,9 +125,14 @@ describe("subroutine interface runtime", () => {
       { name: "CurrentPlayer2", valueType: "string", source: "l.player" }
     ]);
     expect(normalizeSubroutineOutputs([
-      { name: "score", valueType: "integer" }
+      {
+        name: "score",
+        valueType: "integer",
+        source: "l.legacyScore",
+        target: "g.legacyScore"
+      }
     ])).toEqual([
-      { name: "score", valueType: "integer", source: "l.score", target: "" }
+      { name: "score", valueType: "integer" }
     ]);
   });
 
@@ -130,7 +143,7 @@ describe("subroutine interface runtime", () => {
     expect(() => coerceSubroutineValue("7.5", "integer", "Count")).toThrow(/Count must be an integer/);
   });
 
-  it("isolates child locals and returns declared outputs to parent l and g scopes", () => {
+  it("isolates child locals and returns same-name declared outputs to the parent l scope", () => {
     const { room, runtime } = createNestedRuntime();
     const action = runtime.currentRoomAction(room);
     expect(action.id).toBe("choose");
@@ -141,8 +154,34 @@ describe("subroutine interface runtime", () => {
     runtime.advanceRoomAfterAction(room, action);
 
     expect(room.subroutinePath).toEqual([]);
-    expect(room.localVariables).toEqual({ parentBonus: 4, turnChoice: "hit" });
+    expect(room.localVariables).toEqual({
+      parentBonus: 4,
+      choice: "hit",
+      total: 6
+    });
+    expect(room.G).toEqual({ currentPlayerId: "p1" });
+    expect(runtime.currentRoomAction(room).id).toBe("map-results");
+
+    const mapAction = runtime.currentRoomAction(room);
+    expect(applyDynamicGameStateCode(room, mapAction.code)).toMatchObject({ applied: 2, errors: [] });
+    runtime.advanceRoomAfterAction(room, mapAction);
+
+    expect(room.localVariables).toEqual({
+      parentBonus: 4,
+      choice: "hit",
+      total: 6,
+      turnChoice: "hit"
+    });
     expect(room.G).toEqual({ currentPlayerId: "p1", lastTotal: 6 });
     expect(runtime.currentRoomAction(room).id).toBe("after");
+  });
+
+  it("faults when a declared child output was never assigned", () => {
+    expect(() => applySubroutineOutputs(
+      { G: {} },
+      { outputs: [{ name: "choice", valueType: "string" }] },
+      {},
+      {}
+    )).toThrow('Output "choice" was not assigned');
   });
 });

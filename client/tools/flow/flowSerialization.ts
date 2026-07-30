@@ -14,6 +14,12 @@ export function serializeFlowActionForSave(action: FlowAction): FlowAction {
   } else {
     delete serialized.actions;
   }
+  if (action.type === "subroutine") {
+    serialized.outputs = (action.outputs || []).map((output) => ({
+      name: output.name,
+      valueType: output.valueType
+    }));
+  }
   return serialized;
 }
 

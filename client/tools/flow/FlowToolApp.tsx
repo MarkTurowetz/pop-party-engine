@@ -1,4 +1,11 @@
-import type { ReactNode } from "react";
+import {
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode
+} from "react";
 import type { FlowAction, GameFlow } from "../../types/game-data";
 import { ToolSaveError } from "../common/ToolSaveError";
 import { ToolWorkspace } from "../common/ToolWorkspace";
@@ -7,6 +14,12 @@ import { createFlowPreviewModel } from "./flowPreviewModel";
 import { ActionInspector, type ActionInspectorEditHandlers } from "./components/ActionInspector";
 import { FlowStateList } from "./components/FlowStateList";
 import { FlowToolbar } from "./components/FlowToolbar";
+import {
+  clampFlowInspectorWidth,
+  flowInspectorResizeStep,
+  readStoredFlowInspectorWidth,
+  storeFlowInspectorWidth
+} from "./flowInspectorResize";
 import type { FlowSubroutine } from "./flowSubroutines";
 
 export interface FlowToolReactShellHandlers {
@@ -87,6 +100,10 @@ export function FlowToolApp({
   saving = false,
   visible = false
 }: FlowToolAppProps) {
+  const workspaceContentRef = useRef<HTMLDivElement>(null);
+  const [inspectorWidth, setInspectorWidth] = useState(() => readStoredFlowInspectorWidth(
+    typeof window === "undefined" ? null : window.localStorage
+  ));
   const model = createFlowPreviewModel(flow, {
     selectedActionId,
     selectedRouteBranchId,
@@ -94,6 +111,58 @@ export function FlowToolApp({
     selectedStateId
   });
   const activeSubroutine = inspectorSubroutine || model.selectedState;
+
+  function setAndStoreInspectorWidth(width: number) {
+    const nextWidth = clampFlowInspectorWidth(
+      width,
+      workspaceContentRef.current?.clientWidth
+    );
+    setInspectorWidth(nextWidth);
+    storeFlowInspectorWidth(
+      nextWidth,
+      typeof window === "undefined" ? null : window.localStorage
+    );
+  }
+
+  function beginInspectorResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = inspectorWidth;
+    const workspaceWidth = workspaceContentRef.current?.clientWidth;
+    document.body.classList.add("is-resizing-flow");
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      setInspectorWidth(clampFlowInspectorWidth(
+        startWidth + startX - moveEvent.clientX,
+        workspaceWidth
+      ));
+    };
+    const finish = (finishEvent: PointerEvent) => {
+      const nextWidth = clampFlowInspectorWidth(
+        startWidth + startX - finishEvent.clientX,
+        workspaceWidth
+      );
+      setInspectorWidth(nextWidth);
+      storeFlowInspectorWidth(nextWidth, window.localStorage);
+      document.body.classList.remove("is-resizing-flow");
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  }
+
+  function resizeInspectorWithKeyboard(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    setAndStoreInspectorWidth(
+      inspectorWidth + (event.key === "ArrowLeft" ? flowInspectorResizeStep : -flowInspectorResizeStep)
+    );
+  }
 
   const toolbar = (
     <FlowToolbar
@@ -188,8 +257,20 @@ export function FlowToolApp({
         onRedo: handlers.redo
       }}
     >
-      <div className="flow-node-workspace-content">
+      <div
+        ref={workspaceContentRef}
+        className="flow-node-workspace-content"
+        style={{ "--flow-inspector-width": `${inspectorWidth}px` } as CSSProperties}
+      >
         {nodeCanvas}
+        <button
+          type="button"
+          className="tool-panel-resizer flow-inspector-resizer"
+          data-flow-react-component="inspector-resizer"
+          aria-label="Resize action inspector"
+          onKeyDown={resizeInspectorWithKeyboard}
+          onPointerDown={beginInspectorResize}
+        />
         {inspector}
       </div>
     </ToolWorkspace>

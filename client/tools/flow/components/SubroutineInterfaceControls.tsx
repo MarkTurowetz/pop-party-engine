@@ -123,7 +123,10 @@ export function SubroutineInterfaceControls({
       <header>
         <div>
           <h3>Outputs</h3>
-          <p>Child values return into an explicit <code>l.*</code> or <code>g.*</code> caller target.</p>
+          <p>
+            Each declared child <code>l.name</code> is type-checked and returned to the
+            parent as the same <code>l.name</code>.
+          </p>
         </div>
         <button
           type="button"
@@ -153,32 +156,6 @@ export function SubroutineInterfaceControls({
               <ValueTypeSelect
                 value={output.valueType}
                 onChange={(value) => setOutputs(replaceAt(outputs, index, { valueType: value }))}
-              />
-            </label>
-            <label className="flow-subroutine-interface-expression">
-              <span>Child value</span>
-              <input
-                type="text"
-                defaultValue={output.source}
-                placeholder={`l.${output.name}`}
-                aria-label={`Output ${index + 1} child value`}
-                onBlur={(event) => setOutputs(replaceAt(outputs, index, { source: event.target.value }))}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-                }}
-              />
-            </label>
-            <label className="flow-subroutine-interface-expression">
-              <span>Caller target</span>
-              <input
-                type="text"
-                defaultValue={output.target}
-                placeholder={`l.${output.name} or g.${output.name}`}
-                aria-label={`Output ${index + 1} caller target`}
-                onBlur={(event) => setOutputs(replaceAt(outputs, index, { target: event.target.value }))}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-                }}
               />
             </label>
             <button
