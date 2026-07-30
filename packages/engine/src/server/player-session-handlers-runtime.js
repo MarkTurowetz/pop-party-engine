@@ -11,6 +11,7 @@ function createPlayerSessionHandlersRuntime({
   normalizeAvatarShape,
   normalizePlayerId,
   normalizeStageCode,
+  onPlayerDisconnected = () => {},
   publicPlayer,
   randomArrayItem,
   readJson,
@@ -90,7 +91,7 @@ function createPlayerSessionHandlersRuntime({
     if (!playerCapability) playerCapability = runtimeCapabilities.issuePlayerCapability(room, playerId);
     selectVip(room);
     broadcastLobby(room);
-    sendJson(res, 200, { ok: true, playerCapability, player: publicPlayer(player, room), lobby: lobbyPayload(room) });
+    sendJson(res, 200, { ok: true, playerCapability, player: publicPlayer(player, room), lobby: lobbyPayload(room, playerId) });
   }
 
   async function handleHeartbeat(req, res) {
@@ -125,7 +126,7 @@ function createPlayerSessionHandlersRuntime({
     player.gameSessionId = Number(room.gameSessionId || 0);
     selectVip(room);
     if (wasInactive) broadcastLobby(room);
-    sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room) });
+    sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room, playerId) });
   }
 
   async function handleSelectAvatar(req, res) {
@@ -167,7 +168,7 @@ function createPlayerSessionHandlersRuntime({
     player.lastSeen = Date.now();
     player.gameSessionId = Number(room.gameSessionId || 0);
     broadcastLobby(room);
-    sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room) });
+    sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room, playerId) });
   }
 
   async function handleLeave(req, res) {
@@ -192,6 +193,7 @@ function createPlayerSessionHandlersRuntime({
       player.active = false;
       player.lastSeen = Date.now();
       selectVip(room);
+      onPlayerDisconnected(room, playerId);
       broadcastLobby(room);
     }
     sendJson(res, 200, { ok: true });

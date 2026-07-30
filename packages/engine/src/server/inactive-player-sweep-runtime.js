@@ -3,6 +3,7 @@
 function createInactivePlayerSweepRuntime({
   broadcastLobby,
   controllerTimeoutMs,
+  onPlayerDisconnected = () => {},
   rooms,
   selectVip
 }) {
@@ -13,6 +14,7 @@ function createInactivePlayerSweepRuntime({
       for (const player of room.players.values()) {
         if (player.active && now - player.lastSeen > controllerTimeoutMs) {
           player.active = false;
+          onPlayerDisconnected(room, player.id);
           changed = true;
         }
       }

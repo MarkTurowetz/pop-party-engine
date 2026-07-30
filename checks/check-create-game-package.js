@@ -104,6 +104,67 @@ module.exports = Object.freeze([{
   }
 }]);
 `);
+  fs.writeFileSync(path.join(targetRoot, "src", "inputs", "index.js"), `"use strict";
+module.exports = Object.freeze([
+  {
+    id: "generated-fixture.turnChoice",
+    value: {
+      name: "Turn Choice",
+      fields: [
+        { key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" },
+        { key: "resultVariable", label: "Result Variable", control: "text", default: "inputResult" }
+      ],
+      outputs: [{ id: "choice", name: "Choice", variableField: "resultVariable" }],
+      submission: [{ id: "choice", type: "choice", optionsSource: "options" }],
+      controller: {
+        layoutStateId: "controller-multiple-choice",
+        bindings: [
+          { id: "hit", kind: "choice", layoutElementId: "controllerChoiceGrid", field: "choice", optionIndex: 0, autoSubmit: true },
+          { id: "stay", kind: "choice", layoutElementId: "controllerChoiceGrid", field: "choice", optionIndex: 1, autoSubmit: true }
+        ]
+      },
+      recipients(context) { return context.players.slice(0, 1).map((player) => player.id); },
+      view(context) {
+        return { viewer: context.viewer.id, options: [{ id: "hit", label: "Hit" }, { id: "stay", label: "Stay" }] };
+      },
+      submit(context, payload) {
+        context.state.turnChoice = { playerId: context.actor.id, choice: payload.choice };
+        context.outputs.set("choice", payload.choice);
+      }
+    }
+  },
+  {
+    id: "generated-fixture.privateWager",
+    value: {
+      name: "Private Wager",
+      fields: [{ key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" }],
+      submission: [
+        { id: "side", type: "choice", optionsSource: "options" },
+        { id: "amount", type: "integer", min: 1, max: 50 }
+      ],
+      controller: {
+        layoutStateId: "controller-text-input",
+        bindings: [
+          { id: "left", kind: "choice", layoutElementId: "controllerTextPrompt", field: "side", optionIndex: 0 },
+          { id: "right", kind: "choice", layoutElementId: "controllerInvalidBanner", field: "side", optionIndex: 1 },
+          { id: "amount", kind: "integer", layoutElementId: "controllerTextInput", field: "amount" },
+          { id: "submit", kind: "submit", layoutElementId: "controllerTextSubmitButtonContainer" }
+        ]
+      },
+      disconnect: "completeRemaining",
+      recipients(context) { return context.players.map((player) => player.id); },
+      view(context) {
+        const target = context.viewer.name === "One" ? 10 : 20;
+        return { target, options: [{ id: "over", label: "Over " + target }, { id: "under", label: "Under " + target }] };
+      },
+      submit(context, payload) {
+        context.state.wagers ||= {};
+        context.state.wagers[context.actor.id] = payload;
+      }
+    }
+  }
+]);
+`);
   const generatedRenderer = (id, layoutElementId, targetComponentId) => `"use strict";
 module.exports = Object.freeze([{
   id: ${JSON.stringify(id)},
@@ -134,6 +195,7 @@ module.exports = Object.freeze([{
       const flowResponse = await fetch(first.startup.localUrl + "/api/game-flow");
       const flowPayload = await flowResponse.json();
       const pluginActionMeta = flowPayload.availableActionTypes.find((item) => item.id === "generated-fixture.increment");
+      const pluginInputMeta = flowPayload.availableActionTypes.find((item) => item.id === "generated-fixture.turnChoice");
       const fixtureLobby = {
           id: "lobby",
           name: "Lobby",
@@ -211,6 +273,125 @@ module.exports = Object.freeze([{
         body: JSON.stringify({ stageCode: "PLUG", actionId: "fixture-increment", source: "callback" })
       });
       const completedLobby = (await completeResponse.json()).lobby;
+      const joinPlayer = async (name) => {
+        const response = await fetch(first.startup.localUrl + "/api/join", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ stageCode: "PLUG", playerName: name })
+        });
+        return response.json();
+      };
+      const one = await joinPlayer("One");
+      const two = await joinPlayer("Two");
+      const playerHeaders = (joined) => ({
+        "content-type": "application/json",
+        "x-player-capability": joined.playerCapability,
+        "x-player-id": joined.player.id,
+        "x-stage-code": "PLUG"
+      });
+      const inputLobby = {
+        ...fixtureLobby,
+        entryTargetActionId: "fixture-turn-choice",
+        actions: [
+          {
+            id: "fixture-turn-choice",
+            name: "Turn Choice",
+            type: "generated-fixture.turnChoice",
+            answersSubmittedTargetActionId: "fixture-input-decision",
+            resultVariable: "inputResult",
+            timing: { mode: "E+", seconds: 0 },
+            subActions: []
+          },
+          {
+            id: "fixture-input-decision",
+            name: "Branch On Input",
+            type: "decision",
+            variable: "flowVariables.inputResult",
+            valueType: "string",
+            subActions: [],
+            branches: [
+              { id: "input-hit", type: "code", code: "x == 'hit'", targetActionId: "fixture-input-hit" },
+              { id: "input-miss", type: "noMatch", targetActionId: "fixture-input-miss" }
+            ]
+          },
+          { id: "fixture-input-hit", name: "Input Hit", type: "presentText", text: "Input branch hit", timing: { mode: "E+", seconds: 0 }, subActions: [], nextTargetActionId: "none" },
+          { id: "fixture-input-miss", name: "Input Miss", type: "presentText", text: "Input branch missed", timing: { mode: "E+", seconds: 0 }, subActions: [], nextTargetActionId: "none" },
+          ...fixtureLobby.actions
+        ]
+      };
+      const inputFlow = {
+        ...flowPayload.flow,
+        states: flowPayload.flow.states.map((state) => state.id === "lobby" ? inputLobby : state)
+      };
+      const inputConfigResponse = await fetch(first.startup.localUrl + "/api/stage/PLUG/test-config", {
+        method: "POST",
+        headers: stageHeaders,
+        body: JSON.stringify({ flow: inputFlow })
+      });
+      const inputStageLobby = (await inputConfigResponse.json()).lobby;
+      const heartbeat = async (joined) => (await (await fetch(first.startup.localUrl + "/api/heartbeat", {
+        method: "POST",
+        headers: playerHeaders(joined),
+        body: JSON.stringify({ stageCode: "PLUG", playerId: joined.player.id })
+      })).json()).lobby;
+      const oneInputLobby = await heartbeat(one);
+      const twoInputLobby = await heartbeat(two);
+      const turnInput = oneInputLobby.gamePlugin?.input;
+      const turnSubmit = await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
+        method: "POST",
+        headers: playerHeaders(one),
+        body: JSON.stringify({
+          stageCode: "PLUG",
+          playerId: one.player.id,
+          gameSessionId: oneInputLobby.gameSessionId,
+          actionId: turnInput.actionId,
+          visitId: turnInput.visitId,
+          submissionId: "turn-one",
+          payload: { choice: "hit" }
+        })
+      })).json();
+      const wagerLobby = {
+        ...fixtureLobby,
+        entryTargetActionId: "fixture-private-wager",
+        actions: [
+          {
+            id: "fixture-private-wager",
+            name: "Private Wager",
+            type: "generated-fixture.privateWager",
+            answersSubmittedTargetActionId: "fixture-input-hit",
+            timing: { mode: "E+", seconds: 0 },
+            subActions: []
+          },
+          { id: "fixture-input-hit", name: "Wagers Done", type: "presentText", text: "Done", timing: { mode: "E+", seconds: 0 }, subActions: [], nextTargetActionId: "none" }
+        ]
+      };
+      const wagerFlow = {
+        ...flowPayload.flow,
+        states: flowPayload.flow.states.map((state) => state.id === "lobby" ? wagerLobby : state)
+      };
+      await fetch(first.startup.localUrl + "/api/stage/PLUG/test-config", {
+        method: "POST",
+        headers: stageHeaders,
+        body: JSON.stringify({ flow: wagerFlow })
+      });
+      const oneWagerLobby = await heartbeat(one);
+      const twoWagerLobby = await heartbeat(two);
+      const submitPluginInput = async (joined, lobby, payload, id) => (await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
+        method: "POST",
+        headers: playerHeaders(joined),
+        body: JSON.stringify({
+          stageCode: "PLUG",
+          playerId: joined.player.id,
+          gameSessionId: lobby.gameSessionId,
+          actionId: lobby.gamePlugin.input.actionId,
+          visitId: lobby.gamePlugin.input.visitId,
+          submissionId: id,
+          payload
+        })
+      })).json());
+      const firstWagerSubmit = await submitPluginInput(one, oneWagerLobby, { side: "over", amount: 11 }, "wager-one");
+      const duplicateWagerSubmit = await submitPluginInput(one, oneWagerLobby, { side: "over", amount: 11 }, "wager-one");
+      const secondWagerSubmit = await submitPluginInput(two, twoWagerLobby, { side: "under", amount: 22 }, "wager-two");
       const constantsResponse = await fetch(first.startup.localUrl + "/api/game-constants");
       const constantsPayload = await constantsResponse.json();
       constantsPayload.constants.gameTitle = "Generated Fixture Edited";
@@ -222,7 +403,7 @@ module.exports = Object.freeze([{
       const flowSaveResponse = await fetch(first.startup.localUrl + "/api/game-flow", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ flow: fixtureFlow })
+        body: JSON.stringify({ flow: inputFlow })
       });
       const flowSavePayload = await flowSaveResponse.json();
       const savedRevision = JSON.parse(fs.readFileSync(".pop-party/content/content-bundle.json", "utf8")).rootHash;
@@ -238,6 +419,7 @@ module.exports = Object.freeze([{
         secondRevision: second.development.revision,
         secondGameTitle: secondConstants.constants.gameTitle,
         pluginActionVisible: Boolean(pluginActionMeta && pluginActionMeta.fields.some((field) => field.key === "amount")),
+        pluginInputVisible: Boolean(pluginInputMeta && pluginInputMeta.fields.some((field) => field.key === "resultVariable")),
         flowSaveStatus: flowSaveResponse.status,
         flowSaveError: flowSavePayload.error,
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
@@ -247,6 +429,18 @@ module.exports = Object.freeze([{
         configuredFault: configuredLobby.runtimeFault,
         branchSelected: completedLobby.lastDecisionTrace?.selectedBranch,
         branchedAction: completedLobby.action?.id,
+        privateInputHiddenFromStage: inputStageLobby.gamePlugin?.input == null,
+        currentPlayerInputVisible: turnInput?.viewModel?.viewer === one.player.id,
+        waitingPlayerInputHidden: twoInputLobby.gamePlugin?.input == null,
+        inputBranchSelected: turnSubmit.lobby?.lastDecisionTrace?.selectedBranch,
+        inputBranchedAction: turnSubmit.lobby?.action?.id,
+        privateWagerTargets: [
+          oneWagerLobby.gamePlugin?.input?.viewModel?.target,
+          twoWagerLobby.gamePlugin?.input?.viewModel?.target
+        ],
+        firstWagerWaited: firstWagerSubmit.lobby?.action?.id === "fixture-private-wager",
+        duplicateWagerIgnored: duplicateWagerSubmit.duplicate === true,
+        wagerCompletionAction: secondWagerSubmit.lobby?.action?.id,
         secondFlowActionType: secondFlow.flow.states
           .find((state) => state.id === "lobby")?.actions
           .find((action) => action.id === "fixture-increment")?.type,
@@ -265,11 +459,21 @@ module.exports = Object.freeze([{
     || development.secondRevision !== development.savedRevision
     || development.secondGameTitle !== "Generated Fixture Edited"
     || !development.pluginActionVisible
+    || !development.pluginInputVisible
     || development.flowSaveStatus !== 200
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"
     || development.branchSelected !== "branch-hit"
     || development.branchedAction !== "fixture-hit"
+    || !development.privateInputHiddenFromStage
+    || !development.currentPlayerInputVisible
+    || !development.waitingPlayerInputHidden
+    || development.inputBranchSelected !== "input-hit"
+    || development.inputBranchedAction !== "fixture-input-hit"
+    || JSON.stringify(development.privateWagerTargets) !== JSON.stringify([10, 20])
+    || !development.firstWagerWaited
+    || !development.duplicateWagerIgnored
+    || development.wagerCompletionAction !== "fixture-input-hit"
     || development.secondFlowActionType !== "generated-fixture.increment") {
     throw new Error("Generated game tools did not persist an independently valid local content revision");
   }

@@ -9,6 +9,7 @@ function createActionCompletionRuntime({
   broadcastLobby,
   clearChoiceInput,
   clearMicrophoneAccessInput,
+  clearPluginInput = () => {},
   clearTextInput,
   currentRoomAction,
   enterGamePhase,
@@ -20,6 +21,7 @@ function createActionCompletionRuntime({
     if (cleanup === "choice") clearChoiceInput(room);
     if (cleanup === "microphone") clearMicrophoneAccessInput(room);
     if (cleanup === "text") clearTextInput(room);
+    if (cleanup === "pluginInput") clearPluginInput(room);
   }
 
   function clearActionTimer(room) {

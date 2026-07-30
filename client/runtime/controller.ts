@@ -5,6 +5,7 @@
 
 import { createControllerModuleCache } from "./controllerModuleCache";
 import { renderGamePluginSurface } from "./gamePluginRendererRuntime";
+import { createGamePluginInputView } from "./gamePluginInputRuntime";
 import { createControllerViewState } from "./controllerViewState";
 import { createControllerAvatarView } from "./controllerAvatarView";
 import { createControllerVoiceInput, shouldDeferVoiceHeartbeat } from "./controllerVoiceInput";
@@ -355,10 +356,24 @@ function getControllerStateRuntime() {
       closeAvatarPicker,
       getChoiceInputView: getControllerChoiceInputView,
       getGlobalActionView: getControllerGlobalActionView,
+      getGamePluginInputView,
       getLobbyView: getControllerLobbyView,
       getMicrophoneAccessView: getControllerMicrophoneAccessView,
       getTextInputView: getControllerTextInputView,
       getVoiceInput: getControllerVoiceInput
+    })
+  );
+}
+
+function getGamePluginInputView() {
+  return controllerModules.get("gamePluginInputView", () =>
+    createGamePluginInputView({
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      hideViews: hideControllerViews,
+      renderState: renderControllerState,
+      showView: (viewId) => getControllerViewState().show(viewId),
+      submit: (actionId, visitId, payload, id) =>
+        getControllerSubmitApi().submitGamePluginInput(actionId, visitId, payload, id) as Promise<unknown>
     })
   );
 }
@@ -490,6 +505,7 @@ function applyControllerLayoutForPhase(phase: string, prepare?: () => void): voi
     getControllerLocalButtonRuntime().dispose();
     getControllerChoiceInputView().reset();
     getControllerTextInputView().reset();
+    getGamePluginInputView().reset();
   }
   if (visitKey) currentControllerViewVisitKey = visitKey;
   getControllerGlobalActionView().prepareForLayout(phase);

@@ -29,6 +29,7 @@ const {
   createFlowTargetRuntime,
   createGameFlowMergeRuntime,
   createGameFlowNormalizationRuntime,
+  createGamePluginInputHandlersRuntime,
   createGameConstantsRuntime,
   createHostAudioRuntime,
   createHostAudioAssetsRuntime,
@@ -102,8 +103,11 @@ const { createToolSourceReadersRuntime } = require("./tool-source-readers-runtim
 const { createToolSourceStoresRuntime } = require("./tool-source-stores-runtime");
 const {
   createGameActionExecutor,
+  createGameInputRuntime,
   createGameRendererRuntime,
+  createPluginInputActionDefinitions,
   createPluginFlowActionDefinitions,
+  inputManifest,
   pluginFlowActionTypes
 } = require("./game-plugin-abi-runtime");
 const { createFlowActionRegistry } = require("../shared/flow-action-registry");
@@ -291,10 +295,19 @@ const {
   multipleChoicePrompts
 } = activeRuntime.gameData;
 const pluginActionRegistrations = runtimeGameDefinition.registrations.actions || [];
-const pluginActionDefinitions = createPluginFlowActionDefinitions(pluginActionRegistrations);
+const pluginInputRegistrations = runtimeGameDefinition.registrations.inputs || [];
+const pluginInputManifests = pluginInputRegistrations.map(inputManifest);
+const pluginActionDefinitions = [
+  ...createPluginFlowActionDefinitions(pluginActionRegistrations),
+  ...createPluginInputActionDefinitions(pluginInputRegistrations)
+];
+const pluginRegistrationIds = new Set([
+  ...pluginActionRegistrations.map((registration) => registration.id),
+  ...pluginInputRegistrations.map((registration) => registration.id)
+]);
 const runtimeAvailableFlowActionTypes = [
-  ...availableFlowActionTypes.filter((item) => !pluginActionRegistrations.some((registration) => registration.id === item.id)),
-  ...pluginFlowActionTypes(pluginActionRegistrations)
+  ...availableFlowActionTypes.filter((item) => !pluginRegistrationIds.has(item.id)),
+  ...pluginFlowActionTypes([...pluginActionRegistrations, ...pluginInputRegistrations])
 ];
 const pluginAwareFlowRegistry = createFlowActionRegistry({}, pluginActionDefinitions);
 const contentAdmin = contentEnvironment.remoteAuthoring === "enabled"
@@ -562,6 +575,8 @@ let _applyRoomActionEffectsFn;
 const applyRoomActionEffectsProxy = (room, action) => _applyRoomActionEffectsFn?.(room, action);
 let _clearScheduledSubActionsFn = () => {};
 const clearScheduledSubActionsProxy = (room) => _clearScheduledSubActionsFn(room);
+let _clearGamePluginInputFn = () => {};
+const clearGamePluginInputProxy = (room) => _clearGamePluginInputFn(room);
 let _releasePendingFlowEventsFn;
 const releasePendingFlowEventsProxy = (room) => _releasePendingFlowEventsFn?.(room) === true;
 let _prepareLobbySessionFn = () => {};
@@ -580,6 +595,7 @@ const {
   broadcastLobby,
   clearChoiceInput,
   clearMicrophoneAccessInput,
+  clearPluginInput: clearGamePluginInputProxy,
   clearTextInput,
   currentRoomAction: currentRoomActionProxy,
   enterGamePhase: enterGamePhaseProxy,
@@ -780,6 +796,7 @@ const {
   contentTypeForFile,
   gameDefinition: runtimeGameDefinition,
   gamePluginRenderers: gameRendererRuntime.manifests,
+  gamePluginInputs: pluginInputManifests,
   indexFile: INDEX_FILE,
   root: ROOT,
   sendJson,
@@ -1383,6 +1400,15 @@ const {
   triviaContentForAction
 });
 
+const gameInputRuntime = createGameInputRuntime({
+  inputRegistrations: pluginInputRegistrations,
+  activePlayers,
+  currentRoomAction,
+  jumpToAction,
+  broadcastLobby
+});
+_clearGamePluginInputFn = gameInputRuntime.clear;
+
 const {
   publicPlayer
 } = createPlayerPublicRuntime({ choiceInputPayload });
@@ -1404,6 +1430,8 @@ const {
   resolveRoomActionText,
   runtimeGameFlow,
   gamePluginViewModels: gameRendererRuntime.viewModels,
+  gamePluginInputPayload: gameInputRuntime.payloadForViewer,
+  ensureGamePluginInput: gameInputRuntime.ensure,
   scheduleRoomSubActions,
   scheduleMicrophoneAccessAdvance,
   selectVip,
@@ -1424,6 +1452,18 @@ const {
 });
 
 const {
+  handleGamePluginInput
+} = createGamePluginInputHandlersRuntime({
+  gameInputRuntime,
+  getExistingRoom,
+  lobbyPayload,
+  normalizePlayerId,
+  normalizeStageCode,
+  readJson,
+  sendJson
+});
+
+const {
   handleHeartbeat,
   handleJoin,
   handleLeave,
@@ -1439,6 +1479,7 @@ const {
   normalizeAvatarShape,
   normalizePlayerId,
   normalizeStageCode,
+  onPlayerDisconnected: gameInputRuntime.playerDisconnected,
   publicPlayer,
   randomArrayItem,
   readJson,
@@ -1588,6 +1629,7 @@ const {
   handleControllerChoice,
   handleControllerMicrophoneAccess,
   handleControllerTextSubmit,
+  handleGamePluginInput,
   handleHeartbeat,
   handleInputEvent,
   handleJoin,
@@ -1643,6 +1685,7 @@ const {
 } = createInactivePlayerSweepRuntime({
   broadcastLobby,
   controllerTimeoutMs: CONTROLLER_TIMEOUT_MS,
+  onPlayerDisconnected: gameInputRuntime.playerDisconnected,
   rooms,
   selectVip
 });

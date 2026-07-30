@@ -17,6 +17,7 @@ export interface ControllerStateRuntimeOptions {
     render: (lobby: ControllerStateRuntimeDictionary, me: ControllerStateRuntimeDictionary) => boolean;
     renderMessage: (lobby: ControllerStateRuntimeDictionary, message: string, options: ControllerStateRuntimeDictionary) => boolean | number | null;
   };
+  getGamePluginInputView?: () => ControllerStateViewWithRender;
   getLobbyView: () => {
     renderInGamePhase: (me: ControllerStateRuntimeDictionary, phase: string) => void;
     renderLobby: (lobby: ControllerStateRuntimeDictionary, me: ControllerStateRuntimeDictionary, phase: string) => number | null;

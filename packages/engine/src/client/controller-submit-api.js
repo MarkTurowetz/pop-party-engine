@@ -44,6 +44,18 @@ function createControllerSubmitApi(options) {
     return postJson("/api/controller-text-submit", { ...base, actionId, inputVisitId: inputVisitId(actionId), text });
   }
 
+  function submitGamePluginInput(actionId, visitId, payload, submissionId) {
+    const base = payloadBase();
+    if (!base) return Promise.resolve(null);
+    return postJson("/api/game-plugin-input", {
+      ...base,
+      actionId,
+      visitId: Math.max(0, Number(visitId || 0)),
+      payload,
+      submissionId: String(submissionId || "")
+    });
+  }
+
   function saveTextDraft(actionId, text, draftSequence) {
     const base = payloadBase();
     if (!base) return Promise.resolve(null);
@@ -88,6 +100,7 @@ function createControllerSubmitApi(options) {
     join,
     saveTextDraft,
     submitChoice,
+    submitGamePluginInput,
     submitText,
     startOrCancelGame,
     updateAvatar

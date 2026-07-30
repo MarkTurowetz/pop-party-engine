@@ -177,7 +177,7 @@ function createControllerSubmitHandlersRuntime({
         return;
       }
       if (existingAnswer?.done) {
-        sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+        sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
         return;
       }
       const answer = {
@@ -197,16 +197,16 @@ function createControllerSubmitHandlersRuntime({
       if (allActivePlayersHaveSubmittedInput(room)) {
         scheduleAnswersSubmittedAdvance(room);
       }
-      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
       return;
     }
     if (room.choiceInputMode === "submitOnce" && existingAnswer?.done) {
-      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
       return;
     }
     if (room.choiceInputMode === "singleSelect" && existingAnswer?.optionIndex === optionIndex) {
       if (room.choiceInputLocked) {
-        sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+        sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
         return;
       }
       room.choiceInputAnswers.delete(playerId);
@@ -214,7 +214,7 @@ function createControllerSubmitHandlersRuntime({
       deletePlayerAnswerRecord(room, playerId);
       forgetDisplayedPlayerAnswer(room, playerId);
       broadcastLobby(room);
-      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
       return;
     }
 
@@ -252,7 +252,7 @@ function createControllerSubmitHandlersRuntime({
     if (allActivePlayersHaveSubmittedInput(room)) {
       scheduleAnswersSubmittedAdvance(room);
     }
-    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
   }
 
   async function handleControllerMicrophoneAccess(req, res) {
@@ -309,7 +309,7 @@ function createControllerSubmitHandlersRuntime({
     } else {
       broadcastLobby(room);
     }
-    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
   }
 
   async function handleControllerTextSubmit(req, res) {
@@ -358,7 +358,7 @@ function createControllerSubmitHandlersRuntime({
         nonce: Date.now()
       });
       broadcastLobby(room);
-      sendJson(res, 200, { ok: true, valid: false, lobby: lobbyPayload(room) });
+      sendJson(res, 200, { ok: true, valid: false, lobby: lobbyPayload(room, playerId) });
       return;
     }
 
@@ -368,7 +368,7 @@ function createControllerSubmitHandlersRuntime({
     if (allActivePlayersHaveSubmittedInput(room)) {
       scheduleAnswersSubmittedAdvance(room);
     }
-    sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room) });
+    sendJson(res, 200, { ok: true, valid: true, lobby: lobbyPayload(room, playerId) });
   }
 
   return {

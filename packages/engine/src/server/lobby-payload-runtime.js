@@ -8,6 +8,8 @@ function createLobbyPayloadRuntime({
   craftingTimerPayload,
   currentRoomAction,
   gamePluginViewModels = () => ({}),
+  gamePluginInputPayload = () => null,
+  ensureGamePluginInput = () => false,
   gameConstants,
   microphoneAccessPayload,
   normalizePlayerFilter,
@@ -41,7 +43,7 @@ function createLobbyPayloadRuntime({
     return Number(room.actionExecutionId || 0);
   }
 
-  function lobbyPayload(room) {
+  function lobbyPayload(room, viewerPlayerId = "") {
     selectVip(room);
     let runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
     const currentAction = runtimeFault ? null : resolveRoomActionText(currentRoomAction(room), room);
@@ -54,6 +56,8 @@ function createLobbyPayloadRuntime({
     const input = choiceInputPayload(room, currentAction);
     const textInput = textInputPayload(room, currentAction);
     const microphoneAccess = microphoneAccessPayload(room, currentAction);
+    if (!runtimeFault) ensureGamePluginInput(room, currentAction);
+    const gamePluginInput = runtimeFault ? null : gamePluginInputPayload(room, currentAction, viewerPlayerId);
     if (!runtimeFault && microphoneAccess && allActivePlayersHaveSubmittedInput(room)) {
       scheduleMicrophoneAccessAdvance(room);
     }
@@ -92,7 +96,8 @@ function createLobbyPayloadRuntime({
       triviaPromptText: String(room.triviaPromptText || ""),
       gameTitle: constants.gameTitle,
       gamePlugin: {
-        viewModels: gamePluginViewModels(room)
+        viewModels: gamePluginViewModels(room, viewerPlayerId),
+        input: gamePluginInput
       },
       speechToTextSendInputBuffer: constants.speechToTextSendInputBuffer,
       numSequentialGames: room.numSequentialGames || 0,

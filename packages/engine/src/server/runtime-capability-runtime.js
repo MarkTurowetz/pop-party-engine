@@ -5,7 +5,8 @@ const { publicReleaseTuple } = require("./room-content-pin-runtime");
 
 const PLAYER_ENDPOINTS = new Set([
   "/api/heartbeat", "/api/avatar", "/api/leave", "/api/start", "/api/cancel-start",
-  "/api/controller-choice", "/api/controller-microphone-access", "/api/controller-text-submit"
+  "/api/controller-choice", "/api/controller-microphone-access", "/api/controller-text-submit",
+  "/api/game-plugin-input"
 ]);
 const STAGE_ENDPOINTS = new Set([
   "/api/advance-presentation", "/api/complete-action", "/api/pause", "/api/action-effect", "/api/quit-to-lobby"

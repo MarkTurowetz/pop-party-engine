@@ -76,9 +76,70 @@ export interface GameRendererSelectionContext<TState extends Record<string, unkn
   readonly namespace: string;
   readonly state: Readonly<TState>;
   readonly players: readonly GameActionPlayer[];
+  readonly viewer: GameActionPlayer | null;
+  readonly capability: Readonly<{ hasViewer: boolean; isVip: boolean }>;
   readonly flow: Readonly<Record<string, unknown>>;
   readonly phase: string;
   readonly flowStateId: string;
+}
+
+export interface GameInputReadContext<TState extends Record<string, unknown> = Record<string, unknown>> {
+  readonly namespace: string;
+  readonly state: Readonly<TState>;
+  readonly players: readonly GameActionPlayer[];
+  readonly flow: Readonly<Record<string, unknown>>;
+  readonly phase: string;
+  readonly flowStateId: string;
+}
+
+export interface GameInputViewContext<TState extends Record<string, unknown> = Record<string, unknown>>
+  extends GameInputReadContext<TState> {
+  readonly viewer: GameActionPlayer;
+  readonly capability: Readonly<{ isRecipient: boolean; isVip: boolean }>;
+}
+
+export interface GameInputSubmitContext<TState extends Record<string, unknown> = Record<string, unknown>> {
+  readonly namespace: string;
+  readonly state: TState;
+  readonly actor: GameActionPlayer;
+  readonly players: readonly GameActionPlayer[];
+  readonly capability: Readonly<{ authenticated: true; isRecipient: true; isVip: boolean }>;
+  readonly flow: Readonly<Record<string, unknown>>;
+  readonly random: GameActionExecutionContext<TState>["random"];
+  readonly outputs: GameActionExecutionContext<TState>["outputs"];
+  readonly completion: Readonly<{ request(): void }>;
+  readonly broadcast: GameActionExecutionContext<TState>["broadcast"];
+}
+
+export type GameInputSubmissionField =
+  | { id: string; type: "choice"; optionsSource: string }
+  | { id: string; type: "integer"; min: number; max: number };
+
+export type GameInputControllerBinding =
+  | { id: string; kind: "text"; layoutElementId: string; source: string; targetComponentId: string }
+  | { id: string; kind: "choice"; layoutElementId: string; field: string; optionIndex: number; labelSource?: string; autoSubmit?: boolean }
+  | { id: string; kind: "integer"; layoutElementId: string; field: string }
+  | { id: string; kind: "submit"; layoutElementId: string; labelSource?: string };
+
+export interface GameInputRegistration<TState extends Record<string, unknown> = Record<string, unknown>> {
+  name: string;
+  deprecated?: boolean;
+  primaryOnly?: boolean;
+  fields?: GameActionField[];
+  outputs?: GameActionOutput[];
+  completionTargetField?: string;
+  submission: GameInputSubmissionField[];
+  controller: {
+    layoutStateId?: string;
+    layoutStateIdField?: string;
+    bindings: GameInputControllerBinding[];
+  };
+  completion?: "allRecipients" | "anyRecipient" | "manual";
+  disconnect?: "wait" | "completeRemaining" | "fault";
+  timeout?: { secondsField: string; policy?: "wait" | "complete" | "fault" };
+  recipients(context: GameInputReadContext<TState>, action: Readonly<Record<string, unknown>>): readonly string[];
+  view(context: GameInputViewContext<TState>, action: Readonly<Record<string, unknown>>): unknown;
+  submit(context: GameInputSubmitContext<TState>, payload: Readonly<Record<string, string | number>>, action: Readonly<Record<string, unknown>>): void;
 }
 
 export interface GameRendererRegistration<TState extends Record<string, unknown> = Record<string, unknown>> {
@@ -90,6 +151,7 @@ export interface GameRendererRegistration<TState extends Record<string, unknown>
 
 export interface GamePluginRegistryApi {
   actions(id: string, value: GameActionRegistration): void;
+  inputs(id: string, value: GameInputRegistration): void;
   stageRenderers(id: string, value: GameRendererRegistration): void;
   controllerRenderers(id: string, value: GameRendererRegistration): void;
   stateSchemas(id: string, value: unknown): void;

@@ -15,7 +15,7 @@ describe("static runtime configuration", () => {
     expect(JSON.parse(json)).toEqual({
       game: { id: "fixture-game", version: "0.1.0" },
       semanticRoles: { "engine.stage.votingCard": { compositionId: "fixture-voting-card" } },
-      gamePlugin: { actionRunners: [], renderers: [] }
+      gamePlugin: { actionRunners: [], inputs: [], renderers: [] }
     });
   });
 

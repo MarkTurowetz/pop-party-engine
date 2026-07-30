@@ -388,7 +388,7 @@ try {
     'import { createAdminAuditRuntime } from "@pop-party/engine/security/audit";',
     'import { createRuntimeCapabilityRuntime } from "@pop-party/engine/security/runtime-capabilities";',
     'import { assertSafeSvg } from "@pop-party/engine/security/svg";',
-    'const plugin = defineGamePlugin({ namespace: "typed", register(registry) { registry.actions("typed.action", { name: "Typed Action", execute() {} }); } });',
+    'const plugin = defineGamePlugin({ namespace: "typed", register(registry) { registry.actions("typed.action", { name: "Typed Action", execute() {} }); registry.inputs("typed.choice", { name: "Typed Choice", fields: [{ key: "answersSubmittedTargetActionId", label: "After", control: "actionTarget" }], submission: [{ id: "choice", type: "choice", optionsSource: "options" }], controller: { layoutStateId: "typed-choice", bindings: [{ id: "left", kind: "choice", layoutElementId: "left", field: "choice", optionIndex: 0, autoSubmit: true }] }, recipients(context) { return context.players.map((player) => player.id); }, view(context) { return { viewer: context.viewer.id, options: [{ id: "left" }] }; }, submit(context, payload) { context.state.choice = payload.choice; } }); } });',
     'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, plugin });',
     'const timeline: TimelineDocument | null = normalizeTimeline({ fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] });',
     'const organization = normalizeArtOrganization();',

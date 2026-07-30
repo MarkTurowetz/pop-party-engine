@@ -21,7 +21,7 @@ function cloneJson(value, fallback = null) {
   }
 }
 
-function normalizePluginField(field, value) {
+function normalizePluginField(field, value, context = {}) {
   const fallback = cloneJson(field.default, field.control === "boolean" ? false : field.control === "number" || field.control === "integer" ? 0 : "");
   if (field.control === "boolean") return value === undefined ? fallback === true : value === true;
   if (field.control === "number" || field.control === "integer") {
@@ -38,6 +38,9 @@ function normalizePluginField(field, value) {
     const candidate = String(value ?? fallback ?? "");
     return optionIds.includes(candidate) ? candidate : optionIds[0];
   }
+  if (field.control === "actionTarget" && typeof context.flowActionTarget === "function") {
+    return context.flowActionTarget(value ?? fallback);
+  }
   return String(value ?? fallback ?? "").slice(0, 10000);
 }
 
@@ -46,9 +49,9 @@ function publicActionRegistration(registration) {
   return Object.freeze({
     id: registration.id,
     name: String(value.name),
-    category: String(value.category || "standard"),
+    category: registration.kind === "inputs" ? "input" : String(value.category || "standard"),
     deprecated: value.deprecated === true,
-    primaryOnly: value.primaryOnly === true,
+    primaryOnly: registration.kind === "inputs" || value.primaryOnly === true,
     fields: Object.freeze((value.fields || []).map((field) => Object.freeze(cloneJson(field)))),
     outputs: Object.freeze((value.outputs || []).map((output) => Object.freeze(cloneJson(output))))
   });
@@ -67,22 +70,54 @@ function createPluginFlowActionDefinitions(actionRegistrations = []) {
       stageActionType: registration.id,
       stageRunner: "serverEffect",
       pluginRegistration: registration,
-      normalize(action, base) {
+      normalize(action, base, context) {
         const fields = Object.fromEntries((config.fields || []).map((field) => [
           field.key,
-          normalizePluginField(field, action?.[field.key])
+          normalizePluginField(field, action?.[field.key], context)
         ]));
         return { ...base, ...fields };
       },
-      toPublic(action, base) {
+      toPublic(action, base, context) {
         const fields = Object.fromEntries((config.fields || []).map((field) => [
           field.key,
-          normalizePluginField(field, action?.[field.key])
+          normalizePluginField(field, action?.[field.key], context)
         ]));
         return { ...base, type: registration.id, ...fields };
       },
       applyRoomEffect(room, action, context) {
         context.executeGameAction(room, action);
+      }
+    };
+  });
+}
+
+function createPluginInputActionDefinitions(inputRegistrations = []) {
+  return inputRegistrations.map((registration) => {
+    const config = registration.value;
+    return {
+      id: registration.id,
+      name: String(config.name),
+      category: "input",
+      deprecated: config.deprecated === true,
+      primaryOnly: true,
+      canCompleteFromStage: true,
+      stageActionType: registration.id,
+      stageRunner: "controllerInputBarrier",
+      completionCleanup: "pluginInput",
+      pluginRegistration: registration,
+      normalize(action, base, context) {
+        const fields = Object.fromEntries((config.fields || []).map((field) => [
+          field.key,
+          normalizePluginField(field, action?.[field.key], context)
+        ]));
+        return { ...base, ...fields };
+      },
+      toPublic(action, base, context) {
+        const fields = Object.fromEntries((config.fields || []).map((field) => [
+          field.key,
+          normalizePluginField(field, action?.[field.key], context)
+        ]));
+        return { ...base, type: registration.id, ...fields };
       }
     };
   });
@@ -242,14 +277,23 @@ function createGameRendererRuntime({ stageRenderers = [], controllerRenderers = 
   ];
   const manifests = registrations.map((registration) => rendererManifest(registration, registration.surface));
 
-  function viewModels(room) {
+  function viewModels(room, viewerPlayerId = "") {
     const players = (activePlayers ? activePlayers(room) : Array.from(room.players?.values?.() || [])).map((player) => publicPlayerSnapshot(player, room));
     const result = {};
     for (const registration of registrations) {
+      if (registration.surface === "controller" && !viewerPlayerId) continue;
+      const viewer = registration.surface === "controller"
+        ? players.find((player) => player.id === String(viewerPlayerId || "")) || null
+        : null;
       const context = Object.freeze({
         namespace: registration.ownerNamespace,
         state: cloneJson(pluginStateFor(room, registration.ownerNamespace), {}),
         players: Object.freeze(players),
+        viewer,
+        capability: Object.freeze({
+          hasViewer: Boolean(viewer),
+          isVip: viewer?.isVip === true
+        }),
         flow: Object.freeze(cloneJson(room.flowVariables, {})),
         phase: String(room.phase || ""),
         flowStateId: String(room.flowStateId || room.phase || "")
@@ -272,6 +316,320 @@ function createGameRendererRuntime({ stageRenderers = [], controllerRenderers = 
   return Object.freeze({ manifests: Object.freeze(manifests), viewModels });
 }
 
+function inputManifest(registration) {
+  const config = registration.value;
+  return Object.freeze({
+    id: registration.id,
+    name: String(config.name),
+    submission: Object.freeze(config.submission.map((field) => Object.freeze(cloneJson(field)))),
+    controller: Object.freeze({
+      layoutStateId: String(config.controller.layoutStateId || ""),
+      layoutStateIdField: String(config.controller.layoutStateIdField || ""),
+      bindings: Object.freeze(config.controller.bindings.map((binding) => Object.freeze(cloneJson(binding))))
+    })
+  });
+}
+
+function createOutputWriter(room, action, config) {
+  const outputDefinitions = new Map((config.outputs || []).map((output) => [output.id, output]));
+  return Object.freeze({
+    set(outputId, value) {
+      const output = outputDefinitions.get(String(outputId || ""));
+      if (!output) throw new Error(`Unknown output "${String(outputId || "")}"`);
+      const variableName = String(action?.[output.variableField] || output.defaultVariable || "").trim();
+      if (!/^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/.test(variableName)) {
+        throw new Error(`Output "${output.id}" requires a valid authored Flow variable`);
+      }
+      room.flowVariables = room.flowVariables && typeof room.flowVariables === "object" ? room.flowVariables : {};
+      room.flowVariables[variableName] = cloneJson(value, null);
+    }
+  });
+}
+
+function inputRandom(room, action, registration, actorId, submissionId) {
+  const random = deterministicRandom([
+    room.stageCode,
+    room.gameSessionId,
+    room.momentVisitId,
+    room.gamePluginInputVisitId,
+    action.id,
+    registration.id,
+    actorId,
+    submissionId
+  ].join(":"));
+  return Object.freeze({
+    float: () => random(),
+    integer: (min, max) => {
+      const lower = Math.ceil(Math.min(Number(min), Number(max)));
+      const upper = Math.floor(Math.max(Number(min), Number(max)));
+      return lower + Math.floor(random() * Math.max(1, upper - lower + 1));
+    },
+    pick: (values) => Array.isArray(values) && values.length ? values[Math.floor(random() * values.length)] : undefined
+  });
+}
+
+function propertyPathValue(root, path) {
+  let current = root;
+  for (const segment of String(path || "").split(".").filter(Boolean)) {
+    if (!current || typeof current !== "object") return undefined;
+    current = current[segment];
+  }
+  return current;
+}
+
+function validateInputPayload(config, viewModel, rawPayload) {
+  const payload = rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload) ? rawPayload : {};
+  const result = {};
+  for (const field of config.submission) {
+    const value = payload[field.id];
+    if (field.type === "choice") {
+      const options = propertyPathValue(viewModel, field.optionsSource);
+      if (!Array.isArray(options) || !options.length) throw new Error(`Choice field "${field.id}" has no eligible options`);
+      const optionId = String(value ?? "");
+      const eligibleIds = options.map((option, index) => String(option && typeof option === "object" ? option.id ?? index : option));
+      if (!eligibleIds.includes(optionId)) throw new Error(`Choice field "${field.id}" is invalid`);
+      result[field.id] = optionId;
+      continue;
+    }
+    const number = Number(value);
+    if (!Number.isInteger(number) || number < Number(field.min) || number > Number(field.max)) {
+      throw new Error(`Integer field "${field.id}" must be between ${field.min} and ${field.max}`);
+    }
+    result[field.id] = number;
+  }
+  return Object.freeze(result);
+}
+
+function createGameInputRuntime({
+  inputRegistrations = [],
+  activePlayers = (room) => Array.from(room.players?.values?.() || []).filter((player) => player.active !== false),
+  currentRoomAction,
+  jumpToAction,
+  broadcastLobby = () => {}
+} = {}) {
+  const registrationById = new Map(inputRegistrations.map((registration) => [registration.id, registration]));
+  const manifests = Object.freeze(inputRegistrations.map(inputManifest));
+
+  function clear(room) {
+    if (room.gamePluginInputTimeoutId) clearTimeout(room.gamePluginInputTimeoutId);
+    room.gamePluginInputTimeoutId = null;
+    room.gamePluginInputActionId = "";
+    room.gamePluginInputType = "";
+    room.gamePluginInputVisitId = 0;
+    room.gamePluginInputGameSessionId = 0;
+    room.gamePluginInputRecipientIds = new Set();
+    room.gamePluginInputSubmissions = new Map();
+  }
+
+  function scopedReadContext(room, registration) {
+    const players = activePlayers(room).map((player) => publicPlayerSnapshot(player, room));
+    return Object.freeze({
+      namespace: registration.ownerNamespace,
+      state: Object.freeze(cloneJson(pluginStateFor(room, registration.ownerNamespace), {})),
+      players: Object.freeze(players),
+      flow: Object.freeze(cloneJson(room.flowVariables, {})),
+      phase: String(room.phase || ""),
+      flowStateId: String(room.flowStateId || room.phase || "")
+    });
+  }
+
+  function fail(room, action, code, message, actual = "") {
+    createRuntimeFault(room, {
+      code,
+      message,
+      actionId: action?.id,
+      expected: "A valid namespaced controller input limited to its scoped game context",
+      actual
+    });
+    clear(room);
+    queueMicrotask(() => broadcastLobby(room));
+  }
+
+  function completionTarget(config, action) {
+    return String(action?.[config.completionTargetField || "answersSubmittedTargetActionId"] || "");
+  }
+
+  function complete(room, action, registration) {
+    const target = completionTarget(registration.value, action);
+    clear(room);
+    if (!target) {
+      fail(room, action, "GAME_PLUGIN_INPUT_TARGET_INVALID", `Game input "${registration.id}" has no completion target`);
+      return false;
+    }
+    jumpToAction(room, target, action);
+    broadcastLobby(room);
+    return true;
+  }
+
+  function maybeComplete(room, action, registration) {
+    const config = registration.value;
+    if (config.completion === "manual") return false;
+    const submitted = room.gamePluginInputSubmissions || new Map();
+    if (config.completion === "anyRecipient") return submitted.size > 0 && complete(room, action, registration);
+    const recipients = Array.from(room.gamePluginInputRecipientIds || []);
+    const required = config.disconnect === "completeRemaining"
+      ? recipients.filter((id) => room.players?.get(id)?.active !== false)
+      : recipients;
+    return (required.length === 0 || required.every((id) => submitted.has(id))) && complete(room, action, registration);
+  }
+
+  function ensure(room, action) {
+    const registration = registrationById.get(action?.type);
+    if (!registration) {
+      if (room.gamePluginInputActionId) clear(room);
+      return false;
+    }
+    if (
+      room.gamePluginInputActionId === action.id
+      && room.gamePluginInputType === action.type
+      && room.gamePluginInputGameSessionId === Number(room.gameSessionId || 0)
+    ) return true;
+    clear(room);
+    try {
+      const selected = registration.value.recipients(scopedReadContext(room, registration), Object.freeze(cloneJson(action, {})));
+      if (!Array.isArray(selected)) throw new Error("recipients must return an array of player IDs");
+      const activeIds = new Set(activePlayers(room).map((player) => String(player.id || "")));
+      const recipientIds = [...new Set(selected.map((id) => String(id || "")).filter((id) => activeIds.has(id)))];
+      if (!recipientIds.length) throw new Error("recipients returned no active players");
+      room.controllerInputVisitCounter = Math.max(0, Number(room.controllerInputVisitCounter || 0)) + 1;
+      room.gamePluginInputActionId = String(action.id || "");
+      room.gamePluginInputType = String(action.type || "");
+      room.gamePluginInputVisitId = room.controllerInputVisitCounter;
+      room.gamePluginInputGameSessionId = Number(room.gameSessionId || 0);
+      room.gamePluginInputRecipientIds = new Set(recipientIds);
+      room.gamePluginInputSubmissions = new Map();
+      const timeout = registration.value.timeout;
+      const seconds = timeout ? Math.max(0, Number(action?.[timeout.secondsField] || 0)) : 0;
+      if (seconds > 0 && timeout.policy !== "wait") {
+        const expectedVisitId = room.gamePluginInputVisitId;
+        room.gamePluginInputTimeoutId = setTimeout(() => {
+          if (room.gamePluginInputVisitId !== expectedVisitId || currentRoomAction(room)?.id !== action.id) return;
+          if (timeout.policy === "complete") complete(room, action, registration);
+          else fail(room, action, "GAME_PLUGIN_INPUT_TIMEOUT", `Game input "${registration.id}" timed out`);
+        }, seconds * 1000);
+      }
+      return true;
+    } catch (error) {
+      fail(room, action, "GAME_PLUGIN_INPUT_RECIPIENTS_FAILED", `Game input "${registration.id}" could not select recipients`, String(error?.message || error));
+      return false;
+    }
+  }
+
+  function privateView(room, action, registration, playerId) {
+    const player = room.players?.get(playerId);
+    if (!player) return null;
+    const base = scopedReadContext(room, registration);
+    const context = Object.freeze({
+      ...base,
+      viewer: publicPlayerSnapshot(player, room),
+      capability: Object.freeze({
+        isRecipient: room.gamePluginInputRecipientIds?.has(playerId) === true,
+        isVip: String(room.vipPlayerId || "") === playerId
+      })
+    });
+    const model = registration.value.view(context, Object.freeze(cloneJson(action, {})));
+    return cloneJson(model, null);
+  }
+
+  function payloadForViewer(room, action, viewerPlayerId) {
+    const registration = registrationById.get(action?.type);
+    const playerId = String(viewerPlayerId || "");
+    if (!registration || !playerId || !ensure(room, action) || !room.gamePluginInputRecipientIds.has(playerId)) return null;
+    try {
+      const config = registration.value;
+      return {
+        actionId: String(action.id || ""),
+        type: registration.id,
+        visitId: Number(room.gamePluginInputVisitId || 0),
+        gameSessionId: Number(room.gameSessionId || 0),
+        submitted: room.gamePluginInputSubmissions?.has(playerId) === true,
+        layoutStateId: String(config.controller.layoutStateIdField
+          ? action?.[config.controller.layoutStateIdField] || ""
+          : config.controller.layoutStateId || ""),
+        viewModel: privateView(room, action, registration, playerId)
+      };
+    } catch (error) {
+      fail(room, action, "GAME_PLUGIN_INPUT_VIEW_FAILED", `Game input "${registration.id}" could not build its private view`, String(error?.message || error));
+      return null;
+    }
+  }
+
+  function submit(room, playerId, request) {
+    const action = currentRoomAction(room);
+    const registration = registrationById.get(action?.type);
+    if (!registration || !ensure(room, action)) return { status: 409, error: "No game-owned input is active", errorCode: "GAME_PLUGIN_INPUT_INACTIVE" };
+    if (
+      String(request.actionId || "") !== String(action.id || "")
+      || Number(request.visitId || 0) !== Number(room.gamePluginInputVisitId || 0)
+      || Number(request.gameSessionId || 0) !== Number(room.gameSessionId || 0)
+    ) return { status: 409, error: "This input visit is stale", errorCode: "GAME_PLUGIN_INPUT_STALE" };
+    const actorId = String(playerId || "");
+    if (!room.gamePluginInputRecipientIds.has(actorId)) {
+      return { status: 403, error: "This player is not eligible for the active input", errorCode: "GAME_PLUGIN_INPUT_INELIGIBLE" };
+    }
+    if (room.gamePluginInputSubmissions.has(actorId)) {
+      return { status: 200, duplicate: true };
+    }
+    let payload;
+    try {
+      const viewModel = privateView(room, action, registration, actorId);
+      payload = validateInputPayload(registration.value, viewModel, request.payload);
+    } catch (error) {
+      return { status: 422, error: String(error?.message || error), errorCode: "GAME_PLUGIN_INPUT_INVALID" };
+    }
+    try {
+      const actor = publicPlayerSnapshot(room.players.get(actorId), room);
+      let broadcastRequested = false;
+      let completionRequested = false;
+      const context = Object.freeze({
+        namespace: registration.ownerNamespace,
+        state: pluginStateFor(room, registration.ownerNamespace),
+        actor,
+        players: Object.freeze(activePlayers(room).map((player) => publicPlayerSnapshot(player, room))),
+        capability: Object.freeze({ authenticated: true, isRecipient: true, isVip: actor?.isVip === true }),
+        flow: Object.freeze(cloneJson(room.flowVariables, {})),
+        random: inputRandom(room, action, registration, actorId, String(request.submissionId || "")),
+        outputs: createOutputWriter(room, action, registration.value),
+        completion: Object.freeze({ request() { completionRequested = true; } }),
+        broadcast: Object.freeze({ request() { broadcastRequested = true; } })
+      });
+      const result = registration.value.submit(context, payload, Object.freeze(cloneJson(action, {})));
+      if (result && typeof result.then === "function") throw new Error("Game input submit functions must be synchronous");
+      room.gamePluginInputSubmissions.set(actorId, {
+        submissionId: String(request.submissionId || ""),
+        submittedAt: Date.now()
+      });
+      if (completionRequested) complete(room, action, registration);
+      else if (!maybeComplete(room, action, registration) && broadcastRequested) broadcastLobby(room);
+      return { status: 200, duplicate: false };
+    } catch (error) {
+      fail(room, action, "GAME_PLUGIN_INPUT_SUBMIT_FAILED", `Game input "${registration.id}" submission failed`, String(error?.message || error));
+      return { status: 500, error: String(error?.message || error), errorCode: "GAME_PLUGIN_INPUT_FAILED" };
+    }
+  }
+
+  function playerDisconnected(room) {
+    const action = currentRoomAction(room);
+    const registration = registrationById.get(action?.type);
+    if (!registration || !room.gamePluginInputActionId) return false;
+    if (registration.value.disconnect === "fault") {
+      fail(room, action, "GAME_PLUGIN_INPUT_PLAYER_DISCONNECTED", `A required player disconnected during "${registration.id}"`);
+      return true;
+    }
+    return maybeComplete(room, action, registration);
+  }
+
+  return Object.freeze({
+    clear,
+    ensure,
+    has: (type) => registrationById.has(type),
+    manifests,
+    payloadForViewer,
+    playerDisconnected,
+    submit
+  });
+}
+
 function pluginFlowActionTypes(actionRegistrations = []) {
   return actionRegistrations.map(publicActionRegistration);
 }
@@ -279,7 +637,10 @@ function pluginFlowActionTypes(actionRegistrations = []) {
 module.exports = {
   SAFE_COMPONENT_PROPERTIES,
   createGameActionExecutor,
+  createGameInputRuntime,
   createGameRendererRuntime,
+  createPluginInputActionDefinitions,
   createPluginFlowActionDefinitions,
+  inputManifest,
   pluginFlowActionTypes
 };

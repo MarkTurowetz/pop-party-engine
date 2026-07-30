@@ -1,6 +1,7 @@
 "use strict";
 
 function resetGameSessionState(room) {
+  if (room.gamePluginInputTimeoutId) clearTimeout(room.gamePluginInputTimeoutId);
   room.gameSessionId = Math.max(0, Number(room.gameSessionId || 0)) + 1;
   room.runtimeFault = null;
   room.sessionOutputs = { sessionId: room.gameSessionId, byVisit: {}, latestByState: {} };
@@ -8,6 +9,13 @@ function resetGameSessionState(room) {
   room.pendingFlowEvents = new Set();
   room.flowVariables = {};
   room.gamePluginState = {};
+  room.gamePluginInputActionId = "";
+  room.gamePluginInputType = "";
+  room.gamePluginInputVisitId = 0;
+  room.gamePluginInputGameSessionId = 0;
+  room.gamePluginInputRecipientIds = new Set();
+  room.gamePluginInputSubmissions = new Map();
+  room.gamePluginInputTimeoutId = null;
   room.triviaPromptText = "";
   room.G = {};
   room.currentRound = 1;

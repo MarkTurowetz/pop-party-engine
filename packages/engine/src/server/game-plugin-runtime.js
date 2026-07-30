@@ -18,6 +18,11 @@ const ACTION_FIELD_CONTROLS = new Set([
   "textTarget"
 ]);
 const ACTION_CATEGORIES = new Set(["input", "logic", "standard"]);
+const INPUT_FIELD_TYPES = new Set(["choice", "integer"]);
+const INPUT_BINDING_KINDS = new Set(["choice", "integer", "submit", "text"]);
+const INPUT_COMPLETION_POLICIES = new Set(["allRecipients", "anyRecipient", "manual"]);
+const INPUT_DISCONNECT_POLICIES = new Set(["wait", "completeRemaining", "fault"]);
+const INPUT_TIMEOUT_POLICIES = new Set(["wait", "complete", "fault"]);
 const RENDERER_BINDING_KINDS = new Set(["component", "text"]);
 const RENDERER_COMPONENT_PROPERTIES = new Set([
   "defaultText",
@@ -30,6 +35,7 @@ const RENDERER_COMPONENT_PROPERTIES = new Set([
 ]);
 const REGISTRATION_KINDS = Object.freeze([
   "actions",
+  "inputs",
   "stageRenderers",
   "controllerRenderers",
   "stateSchemas",
@@ -134,6 +140,129 @@ function validateActionRegistration(id, value) {
   }
 }
 
+function validateInputRegistration(id, value) {
+  assertPlainObject(value, `Input registration "${id}"`);
+  if (!String(value.name || "").trim()) throw new Error(`Input "${id}" requires a name`);
+  if (typeof value.recipients !== "function") throw new Error(`Input "${id}" requires a recipients function`);
+  if (typeof value.view !== "function") throw new Error(`Input "${id}" requires a view function`);
+  if (typeof value.submit !== "function") throw new Error(`Input "${id}" requires a submit function`);
+  const fields = value.fields === undefined ? [] : value.fields;
+  if (!Array.isArray(fields)) throw new Error(`Input "${id}" fields must be an array`);
+  const fieldKeys = new Set();
+  fields.forEach((field) => validateActionField(field, id, fieldKeys));
+  const completionTargetField = String(value.completionTargetField || "answersSubmittedTargetActionId");
+  const completionTargetDefinition = fields.find((field) => field.key === completionTargetField);
+  if (!completionTargetDefinition || completionTargetDefinition.control !== "actionTarget") {
+    throw new Error(`Input "${id}" completion target "${completionTargetField}" must be a declared actionTarget field`);
+  }
+  const outputs = value.outputs === undefined ? [] : value.outputs;
+  if (!Array.isArray(outputs)) throw new Error(`Input "${id}" outputs must be an array`);
+  const outputIds = new Set();
+  for (const output of outputs) {
+    assertPlainObject(output, `Input "${id}" output`);
+    const outputId = String(output.id || "").trim();
+    if (!ACTION_OUTPUT_ID_PATTERN.test(outputId) || outputIds.has(outputId)) {
+      throw new Error(`Input "${id}" has an invalid or duplicate output id: ${outputId || "(missing)"}`);
+    }
+    outputIds.add(outputId);
+    if (!String(output.name || "").trim()) throw new Error(`Input "${id}" output "${outputId}" requires a name`);
+    if (!fieldKeys.has(String(output.variableField || ""))) {
+      throw new Error(`Input "${id}" output "${outputId}" must reference a declared variableField`);
+    }
+  }
+  if (!Array.isArray(value.submission) || value.submission.length === 0) {
+    throw new Error(`Input "${id}" requires at least one submission field`);
+  }
+  const submissionIds = new Set();
+  for (const field of value.submission) {
+    assertPlainObject(field, `Input "${id}" submission field`);
+    const fieldId = String(field.id || "").trim();
+    if (!ACTION_FIELD_KEY_PATTERN.test(fieldId) || submissionIds.has(fieldId)) {
+      throw new Error(`Input "${id}" has an invalid or duplicate submission field: ${fieldId || "(missing)"}`);
+    }
+    submissionIds.add(fieldId);
+    if (!INPUT_FIELD_TYPES.has(field.type)) {
+      throw new Error(`Input "${id}" submission field "${fieldId}" has unsupported type "${String(field.type || "")}"`);
+    }
+    if (field.type === "choice" && !String(field.optionsSource || "").trim()) {
+      throw new Error(`Input "${id}" choice field "${fieldId}" requires optionsSource`);
+    }
+    if (field.type === "integer") {
+      if (!Number.isInteger(Number(field.min)) || !Number.isInteger(Number(field.max)) || Number(field.min) > Number(field.max)) {
+        throw new Error(`Input "${id}" integer field "${fieldId}" requires valid min and max bounds`);
+      }
+    }
+  }
+  assertPlainObject(value.controller, `Input "${id}" controller`);
+  if (!String(value.controller.layoutStateIdField || "").trim() && !String(value.controller.layoutStateId || "").trim()) {
+    throw new Error(`Input "${id}" controller requires layoutStateId or layoutStateIdField`);
+  }
+  if (value.controller.layoutStateIdField && !fieldKeys.has(String(value.controller.layoutStateIdField))) {
+    throw new Error(`Input "${id}" controller layoutStateIdField must reference a declared field`);
+  }
+  if (!Array.isArray(value.controller.bindings) || value.controller.bindings.length === 0) {
+    throw new Error(`Input "${id}" controller requires bindings`);
+  }
+  const submissionById = new Map(value.submission.map((field) => [String(field.id), field]));
+  const bindingIds = new Set();
+  let hasSubmissionTrigger = false;
+  for (const binding of value.controller.bindings) {
+    assertPlainObject(binding, `Input "${id}" controller binding`);
+    const bindingId = String(binding.id || "").trim();
+    if (!ACTION_OUTPUT_ID_PATTERN.test(bindingId) || bindingIds.has(bindingId)) {
+      throw new Error(`Input "${id}" has an invalid or duplicate controller binding id: ${bindingId || "(missing)"}`);
+    }
+    bindingIds.add(bindingId);
+    if (!INPUT_BINDING_KINDS.has(binding.kind)) {
+      throw new Error(`Input "${id}" binding "${bindingId}" has unsupported kind "${String(binding.kind || "")}"`);
+    }
+    if (!String(binding.layoutElementId || "").trim()) {
+      throw new Error(`Input "${id}" binding "${bindingId}" requires layoutElementId`);
+    }
+    if (binding.kind === "text" && (!String(binding.source || "").trim() || !String(binding.targetComponentId || "").trim())) {
+      throw new Error(`Input "${id}" text binding "${bindingId}" requires source and targetComponentId`);
+    }
+    if (binding.kind === "choice") {
+      const submissionField = submissionById.get(String(binding.field || ""));
+      if (submissionField?.type !== "choice") {
+        throw new Error(`Input "${id}" choice binding "${bindingId}" must reference a choice submission field`);
+      }
+      if (!Number.isInteger(Number(binding.optionIndex)) || Number(binding.optionIndex) < 0) {
+        throw new Error(`Input "${id}" choice binding "${bindingId}" requires a non-negative optionIndex`);
+      }
+      if (binding.autoSubmit === true) hasSubmissionTrigger = true;
+    }
+    if (binding.kind === "integer") {
+      const submissionField = submissionById.get(String(binding.field || ""));
+      if (submissionField?.type !== "integer") {
+        throw new Error(`Input "${id}" integer binding "${bindingId}" must reference an integer submission field`);
+      }
+    }
+    if (binding.kind === "submit") hasSubmissionTrigger = true;
+  }
+  if (!hasSubmissionTrigger) {
+    throw new Error(`Input "${id}" controller requires a submit binding or an auto-submit choice binding`);
+  }
+  const completion = String(value.completion || "allRecipients");
+  if (!INPUT_COMPLETION_POLICIES.has(completion)) {
+    throw new Error(`Input "${id}" has unsupported completion policy "${completion}"`);
+  }
+  const disconnect = String(value.disconnect || "wait");
+  if (!INPUT_DISCONNECT_POLICIES.has(disconnect)) {
+    throw new Error(`Input "${id}" has unsupported disconnect policy "${disconnect}"`);
+  }
+  if (value.timeout !== undefined) {
+    assertPlainObject(value.timeout, `Input "${id}" timeout`);
+    if (!String(value.timeout.secondsField || "").trim() || !fieldKeys.has(String(value.timeout.secondsField))) {
+      throw new Error(`Input "${id}" timeout secondsField must reference a declared field`);
+    }
+    const timeoutPolicy = String(value.timeout.policy || "wait");
+    if (!INPUT_TIMEOUT_POLICIES.has(timeoutPolicy)) {
+      throw new Error(`Input "${id}" has unsupported timeout policy "${timeoutPolicy}"`);
+    }
+  }
+}
+
 function validateRendererRegistration(kind, id, value) {
   assertPlainObject(value, `${kind} registration "${id}"`);
   if (!String(value.name || "").trim()) throw new Error(`Renderer "${id}" requires a name`);
@@ -170,6 +299,7 @@ function validateRendererRegistration(kind, id, value) {
 
 function validateRegistration(kind, id, value) {
   if (kind === "actions") validateActionRegistration(id, value);
+  if (kind === "inputs") validateInputRegistration(id, value);
   if (kind === "stageRenderers" || kind === "controllerRenderers") {
     validateRendererRegistration(kind, id, value);
   }
@@ -195,7 +325,7 @@ function createGamePluginRegistry() {
       throw new Error(`Duplicate ${kind} registration: ${normalizedId}`);
     }
     validateRegistration(kind, normalizedId, value);
-    bucket.set(normalizedId, Object.freeze({ id: normalizedId, ownerNamespace, value }));
+    bucket.set(normalizedId, Object.freeze({ id: normalizedId, kind, ownerNamespace, value }));
   }
 
   function install(plugin) {
@@ -226,5 +356,6 @@ module.exports = {
   createGamePluginRegistry,
   defineGamePlugin,
   validateActionRegistration,
+  validateInputRegistration,
   validateRendererRegistration
 };
