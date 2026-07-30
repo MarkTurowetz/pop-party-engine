@@ -6,6 +6,7 @@ import {
   type RefObject
 } from "react";
 import type { FlowGraphConnection, FlowGraphNode, FlowNodeExit } from "../flowNodeGraph";
+import { shouldNavigateUpFromCanvasDoubleClick } from "../flowNodeNavigation";
 
 const MINIMAP_W = 300;
 const MINIMAP_H = 260;
@@ -899,7 +900,7 @@ export function FlowNodeCanvas({
         <span data-node-canvas-help>
           {depth === "subroutines"
             ? "Double-click a subroutine to edit its actions."
-            : `Inside ${stateTitle || "subroutine"} — click nodes to edit; double-click nested subroutines to drill in.`}
+            : `Inside ${stateTitle || "subroutine"} — double-click nested subroutines to drill in or the background to go up one level.`}
         </span>
       </header>
       <div className="flow-node-stage-wrap">
@@ -911,6 +912,13 @@ export function FlowNodeCanvas({
           onPointerDown={beginViewportPan}
           onAuxClick={(event) => {
             if (event.button === 1) event.preventDefault();
+          }}
+          onDoubleClick={(event) => {
+            const target = event.target as HTMLElement;
+            const targetInsideNode = Boolean(target.closest?.("[data-node-id]"));
+            if (!shouldNavigateUpFromCanvasDoubleClick(depth, targetInsideNode)) return;
+            event.preventDefault();
+            onBackToSubroutines?.();
           }}
         >
           <div
