@@ -1,6 +1,7 @@
 "use strict";
 
 const { createRuntimeFault } = require("./runtime-fault-runtime");
+const { writeScopePath } = require("./subroutine-interface-runtime");
 
 const SAFE_COMPONENT_PROPERTIES = new Set([
   "defaultText",
@@ -165,6 +166,21 @@ function pluginStateFor(room, namespace) {
   return room.gamePluginState[namespace];
 }
 
+function writePluginOutput(room, variableName, value) {
+  if (/^[gGlL]\.[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/.test(variableName)) {
+    room.G = room.G && typeof room.G === "object" && !Array.isArray(room.G) ? room.G : {};
+    room.localVariables = room.localVariables
+      && typeof room.localVariables === "object"
+      && !Array.isArray(room.localVariables)
+      ? room.localVariables
+      : {};
+    writeScopePath(room.G, room.localVariables, variableName, value);
+    return;
+  }
+  room.flowVariables = room.flowVariables && typeof room.flowVariables === "object" ? room.flowVariables : {};
+  room.flowVariables[variableName] = cloneJson(value, null);
+}
+
 function createGameActionExecutor({
   actionRegistrations = [],
   activePlayers = (room) => Array.from(room.players?.values?.() || []).filter((player) => player.active !== false),
@@ -194,6 +210,7 @@ function createGameActionExecutor({
     const context = Object.freeze({
       namespace,
       state: pluginStateFor(room, namespace),
+      local: Object.freeze(cloneJson(room.localVariables, {})),
       actor,
       players: Object.freeze(players.map((player) => publicPlayerSnapshot(player, room))),
       capability: Object.freeze({
@@ -217,8 +234,7 @@ function createGameActionExecutor({
           if (!/^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/.test(variableName)) {
             throw new Error(`Output "${output.id}" requires a valid authored Flow variable`);
           }
-          room.flowVariables = room.flowVariables && typeof room.flowVariables === "object" ? room.flowVariables : {};
-          room.flowVariables[variableName] = cloneJson(value, null);
+          writePluginOutput(room, variableName, value);
         }
       }),
       broadcast: Object.freeze({
@@ -295,6 +311,7 @@ function createGameRendererRuntime({ stageRenderers = [], controllerRenderers = 
           isVip: viewer?.isVip === true
         }),
         flow: Object.freeze(cloneJson(room.flowVariables, {})),
+        local: Object.freeze(cloneJson(room.localVariables, {})),
         phase: String(room.phase || ""),
         flowStateId: String(room.flowStateId || room.phase || "")
       });
@@ -340,8 +357,7 @@ function createOutputWriter(room, action, config) {
       if (!/^[A-Za-z_$][A-Za-z0-9_$.-]{0,127}$/.test(variableName)) {
         throw new Error(`Output "${output.id}" requires a valid authored Flow variable`);
       }
-      room.flowVariables = room.flowVariables && typeof room.flowVariables === "object" ? room.flowVariables : {};
-      room.flowVariables[variableName] = cloneJson(value, null);
+      writePluginOutput(room, variableName, value);
     }
   });
 }
@@ -428,6 +444,7 @@ function createGameInputRuntime({
       state: Object.freeze(cloneJson(pluginStateFor(room, registration.ownerNamespace), {})),
       players: Object.freeze(players),
       flow: Object.freeze(cloneJson(room.flowVariables, {})),
+      local: Object.freeze(cloneJson(room.localVariables, {})),
       phase: String(room.phase || ""),
       flowStateId: String(room.flowStateId || room.phase || "")
     });
@@ -508,6 +525,18 @@ function createGameInputRuntime({
           else fail(room, action, "GAME_PLUGIN_INPUT_TIMEOUT", `Game input "${registration.id}" timed out`);
         }, seconds * 1000);
       }
+      // Plugin input state is initialized while the current lobby payload is
+      // being serialized. That payload's revision was already incremented by
+      // broadcastLobby, so controllers would otherwise receive their private
+      // input on the next heartbeat with the same revision and correctly
+      // discard it as stale. Emit one follow-up lobby revision after the input
+      // visit is fully installed. The next ensure() observes this visit and
+      // cannot queue another broadcast.
+      const installedVisitId = room.gamePluginInputVisitId;
+      queueMicrotask(() => {
+        if (room.gamePluginInputActionId !== action.id || room.gamePluginInputVisitId !== installedVisitId) return;
+        broadcastLobby(room);
+      });
       return true;
     } catch (error) {
       fail(room, action, "GAME_PLUGIN_INPUT_RECIPIENTS_FAILED", `Game input "${registration.id}" could not select recipients`, String(error?.message || error));
@@ -588,6 +617,7 @@ function createGameInputRuntime({
         players: Object.freeze(activePlayers(room).map((player) => publicPlayerSnapshot(player, room))),
         capability: Object.freeze({ authenticated: true, isRecipient: true, isVip: actor?.isVip === true }),
         flow: Object.freeze(cloneJson(room.flowVariables, {})),
+        local: Object.freeze(cloneJson(room.localVariables, {})),
         random: inputRandom(room, action, registration, actorId, String(request.submissionId || "")),
         outputs: createOutputWriter(room, action, registration.value),
         completion: Object.freeze({ request() { completionRequested = true; } }),

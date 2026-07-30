@@ -217,6 +217,7 @@ function createRoomPhaseRuntime({
     room.countdownRemainingMs = 0;
     room.subroutinePath = [];
     room.subroutineStack = [];
+    room.localVariables = {};
     const entryActionIndex = entryActionIndexForPhase(room, "lobby");
     room.actionIndex = entryActionIndex === -1
       ? getStateActions("lobby", room).length
@@ -315,6 +316,7 @@ function createRoomPhaseRuntime({
     room.momentVisitId = Number(room.momentVisitId || 0) + 1;
     room.subroutinePath = [];
     room.subroutineStack = [];
+    room.localVariables = {};
     room.controllerLayoutId = phase;
     room.isPaused = false;
     room.pausedAt = 0;

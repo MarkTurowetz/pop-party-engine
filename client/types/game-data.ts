@@ -20,6 +20,21 @@ export interface FlowTiming {
   seconds?: number | string;
 }
 
+export type FlowSubroutineValueType = "string" | "integer" | "number" | "boolean" | "json";
+
+export interface FlowSubroutineInput extends JsonObject {
+  name: string;
+  valueType: FlowSubroutineValueType;
+  source: string;
+}
+
+export interface FlowSubroutineOutput extends JsonObject {
+  name: string;
+  valueType: FlowSubroutineValueType;
+  source: string;
+  target: string;
+}
+
 export interface FlowAction extends JsonObject {
   id: string;
   name?: string;
@@ -28,6 +43,8 @@ export interface FlowAction extends JsonObject {
   actions?: FlowAction[];
   subActions?: FlowAction[];
   branches?: FlowAction[];
+  inputs?: FlowSubroutineInput[];
+  outputs?: FlowSubroutineOutput[];
 }
 
 export interface FlowState extends JsonObject {

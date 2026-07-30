@@ -6,6 +6,7 @@ import type { DecisionBranchHandlers } from "./DecisionBranchControls";
 import { DecisionBranchInspector } from "./DecisionBranchInspector";
 import { ActionOptionsControls, type ActionOptionsHandlers } from "./ActionOptionsControls";
 import { ActionTypeSelect } from "./ActionTypeSelect";
+import { SubroutineInterfaceControls } from "./SubroutineInterfaceControls";
 
 export interface InspectorTargetOption {
   id: string;
@@ -295,7 +296,14 @@ export function ActionInspector({
           </button>
         </div>
       ) : null}
-      {edit?.onAddSubAction && !isBranch && !isSubAction && action.type !== "decision" ? (
+      {action.type === "subroutine" && edit?.onSetActionField ? (
+        <SubroutineInterfaceControls action={action} onSetField={edit.onSetActionField} />
+      ) : null}
+      {edit?.onAddSubAction
+      && !isBranch
+      && !isSubAction
+      && action.type !== "decision"
+      && action.type !== "subroutine" ? (
         <div
           className="flow-react-sub-action-summary"
           data-flow-react-component="sub-action-summary"

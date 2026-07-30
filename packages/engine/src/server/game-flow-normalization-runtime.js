@@ -3,6 +3,10 @@
 "use strict";
 
 const { createFlowActionRegistry } = require("../shared/flow-action-registry");
+const {
+  normalizeSubroutineInputs,
+  normalizeSubroutineOutputs
+} = require("./subroutine-interface-runtime");
 
 function createGameFlowNormalizationRuntime({
   availableFlowActionTypes,
@@ -148,6 +152,8 @@ function createGameFlowNormalizationRuntime({
       entryTargetActionId: flowActionTarget(action?.entryTargetActionId),
       startNodePosition: normalizeNodePosition(action?.startNodePosition, 0),
       returnNodePosition: normalizeNodePosition(action?.returnNodePosition, 0),
+      inputs: normalizeSubroutineInputs(action?.inputs),
+      outputs: normalizeSubroutineOutputs(action?.outputs),
       actions: normalizeSubroutineActions(action?.actions, normalized.id)
     };
   }

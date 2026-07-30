@@ -18,6 +18,7 @@ function resetGameSessionState(room) {
   room.gamePluginInputTimeoutId = null;
   room.triviaPromptText = "";
   room.G = {};
+  room.localVariables = {};
   room.currentRound = 1;
   room.hasEnteredRoundIntro = false;
   room.pendingPointPopups = [];

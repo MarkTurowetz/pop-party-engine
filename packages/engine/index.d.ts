@@ -40,6 +40,7 @@ export interface GameActionPlayer {
 export interface GameActionExecutionContext<TState extends Record<string, unknown> = Record<string, unknown>> {
   readonly namespace: string;
   readonly state: TState;
+  readonly local: Readonly<Record<string, unknown>>;
   readonly actor: GameActionPlayer | null;
   readonly players: readonly GameActionPlayer[];
   readonly capability: Readonly<{ hasActor: boolean; isVip: boolean }>;
@@ -79,6 +80,7 @@ export interface GameRendererSelectionContext<TState extends Record<string, unkn
   readonly viewer: GameActionPlayer | null;
   readonly capability: Readonly<{ hasViewer: boolean; isVip: boolean }>;
   readonly flow: Readonly<Record<string, unknown>>;
+  readonly local: Readonly<Record<string, unknown>>;
   readonly phase: string;
   readonly flowStateId: string;
 }
@@ -88,6 +90,7 @@ export interface GameInputReadContext<TState extends Record<string, unknown> = R
   readonly state: Readonly<TState>;
   readonly players: readonly GameActionPlayer[];
   readonly flow: Readonly<Record<string, unknown>>;
+  readonly local: Readonly<Record<string, unknown>>;
   readonly phase: string;
   readonly flowStateId: string;
 }
@@ -105,6 +108,7 @@ export interface GameInputSubmitContext<TState extends Record<string, unknown> =
   readonly players: readonly GameActionPlayer[];
   readonly capability: Readonly<{ authenticated: true; isRecipient: true; isVip: boolean }>;
   readonly flow: Readonly<Record<string, unknown>>;
+  readonly local: Readonly<Record<string, unknown>>;
   readonly random: GameActionExecutionContext<TState>["random"];
   readonly outputs: GameActionExecutionContext<TState>["outputs"];
   readonly completion: Readonly<{ request(): void }>;

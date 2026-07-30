@@ -5425,3 +5425,92 @@ body.is-resizing-art-timeline {
 .host-audio-line-fields .flow-textarea {
   min-height: 72px;
 }
+
+.flow-subroutine-interface {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 3px solid var(--ink);
+}
+
+.flow-subroutine-interface > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.flow-subroutine-interface h3,
+.flow-subroutine-interface p {
+  margin: 0;
+}
+
+.flow-subroutine-interface p {
+  margin-top: 3px;
+  color: #5e5475;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.flow-subroutine-interface-list {
+  display: grid;
+  gap: 8px;
+}
+
+.flow-subroutine-interface-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.75fr) minmax(82px, 0.55fr) minmax(150px, 1.4fr) auto;
+  align-items: end;
+  gap: 7px;
+  padding: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: #fffdf5;
+}
+
+.flow-subroutine-interface-row.is-output {
+  grid-template-columns: minmax(92px, 0.7fr) minmax(82px, 0.5fr) minmax(125px, 1fr) minmax(125px, 1fr) auto;
+}
+
+.flow-subroutine-interface-row label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.flow-subroutine-interface-row label > span {
+  font-size: 9px;
+  font-weight: 1000;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.flow-subroutine-interface-row input,
+.flow-subroutine-interface-row select {
+  width: 100%;
+  min-width: 0;
+}
+
+.flow-subroutine-interface-remove {
+  min-height: 34px;
+}
+
+.flow-subroutine-interface-empty {
+  padding: 8px;
+  border: 2px dashed #8b80a1;
+  border-radius: 8px;
+}
+
+@media (max-width: 1180px) {
+  .flow-subroutine-interface-row,
+  .flow-subroutine-interface-row.is-output {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .flow-subroutine-interface-expression,
+  .flow-subroutine-interface-remove {
+    grid-column: 1 / -1;
+  }
+}

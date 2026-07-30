@@ -59,30 +59,31 @@ const unsafePathParts = new Set(["__proto__", "prototype", "constructor"]);
 
 function gameStatePathParts(rawPath) {
   const path = String(rawPath || "").trim();
-  if (!/^[gG](?:\.[A-Za-z_$][\w$]*)*$/.test(path)) throw new Error(`Invalid G path: ${path}`);
+  if (!/^[gGlL](?:\.[A-Za-z_$][\w$]*)*$/.test(path)) throw new Error(`Invalid flow scope path: ${path}`);
   const parts = path.split(".").slice(1);
-  if (parts.some((part) => unsafePathParts.has(part))) throw new Error(`Unsafe G path: ${path}`);
-  return parts;
+  if (parts.some((part) => unsafePathParts.has(part))) throw new Error(`Unsafe flow scope path: ${path}`);
+  return { scope: path[0].toLowerCase(), parts };
 }
 
-function gameStatePathValue(root, rawPath) {
-  let value = root;
-  for (const part of gameStatePathParts(rawPath)) {
+function gameStatePathValue(root, rawPath, localRoot = {}) {
+  const path = gameStatePathParts(rawPath);
+  let value = path.scope === "l" ? localRoot : root;
+  for (const part of path.parts) {
     if (value == null || !Object.prototype.hasOwnProperty.call(Object(value), part)) return undefined;
     value = value[part];
   }
   return value;
 }
 
-function setGameStatePathValue(root, rawPath, value) {
-  const parts = gameStatePathParts(rawPath);
-  if (!parts.length) throw new Error("Assign the G root with a plain object");
-  let target = root;
-  for (const part of parts.slice(0, -1)) {
+function setGameStatePathValue(root, rawPath, value, localRoot = {}) {
+  const path = gameStatePathParts(rawPath);
+  if (!path.parts.length) throw new Error("Assign the G or L root with a plain object");
+  let target = path.scope === "l" ? localRoot : root;
+  for (const part of path.parts.slice(0, -1)) {
     if (!isPlainObject(target[part])) target[part] = {};
     target = target[part];
   }
-  target[parts[parts.length - 1]] = value;
+  target[path.parts[path.parts.length - 1]] = value;
 }
 
 function tokenizeCodeExpression(expression) {
@@ -132,7 +133,7 @@ function tokenizeCodeExpression(expression) {
       if (/^true$/i.test(identifier)) tokens.push({ type: "value", value: true });
       else if (/^false$/i.test(identifier)) tokens.push({ type: "value", value: false });
       else if (/^null$/i.test(identifier)) tokens.push({ type: "value", value: null });
-      else if (/^[gG](?:\.|$)/.test(identifier)) tokens.push({ type: "path", value: identifier });
+      else if (/^[gGlL](?:\.|$)/.test(identifier)) tokens.push({ type: "path", value: identifier });
       else throw new Error(`Unsupported expression token: ${identifier}`);
       index += identifier.length;
       continue;
@@ -166,7 +167,7 @@ function applyArithmeticOperator(left, right, operator) {
   throw new Error(`Unsupported arithmetic operator: ${operator}`);
 }
 
-function evaluateCodeExpression(root, expression) {
+function evaluateCodeExpression(root, expression, localRoot = {}) {
   const tokens = tokenizeCodeExpression(expression);
   let index = 0;
   const peek = () => tokens[index] || null;
@@ -177,8 +178,8 @@ function evaluateCodeExpression(root, expression) {
     if (!token) throw new Error("Expected a value");
     if (token.type === "value") return token.value;
     if (token.type === "path") {
-      const value = gameStatePathValue(root, token.value);
-      if (value === undefined) throw new Error(`Unknown G variable: ${token.value}`);
+      const value = gameStatePathValue(root, token.value, localRoot);
+      if (value === undefined) throw new Error(`Unknown flow variable: ${token.value}`);
       return value;
     }
     if (token.type === "paren" && token.value === "(") {
@@ -233,14 +234,14 @@ function evaluateCodeExpression(root, expression) {
   return value;
 }
 
-function parseCodeValue(root, rawValue) {
+function parseCodeValue(root, rawValue, localRoot = {}) {
   const text = String(rawValue || "").trim();
   if (!text) return "";
   if ((text.startsWith("{") && text.endsWith("}")) || (text.startsWith("[") && text.endsWith("]"))) {
     return parseCodeLiteral(text);
   }
-  const looksLikeExpression = /^[gG](?:\.|$)/.test(text) || /[+\-*/%()]/.test(text) || /^(?:true|false|null|-?\d)/i.test(text) || text.startsWith("\"") || text.startsWith("'");
-  return looksLikeExpression ? evaluateCodeExpression(root, text) : parseCodeLiteral(text);
+  const looksLikeExpression = /^[gGlL](?:\.|$)/.test(text) || /[+\-*/%()]/.test(text) || /^(?:true|false|null|-?\d)/i.test(text) || text.startsWith("\"") || text.startsWith("'");
+  return looksLikeExpression ? evaluateCodeExpression(root, text, localRoot) : parseCodeLiteral(text);
 }
 
 function applyDynamicGameStateCode(room, code) {
@@ -248,17 +249,18 @@ function applyDynamicGameStateCode(room, code) {
   const statements = splitStatements(code);
   const errors = [];
   room.G = isPlainObject(room.G) ? room.G : {};
+  room.localVariables = isPlainObject(room.localVariables) ? room.localVariables : {};
   let applied = 0;
 
   for (const statement of statements) {
-    const update = statement.match(/^(?:([gG](?:\.[A-Za-z_$][\w$]*)*)\s*(\+\+|--)|(\+\+|--)\s*([gG](?:\.[A-Za-z_$][\w$]*)*))$/);
+    const update = statement.match(/^(?:([gGlL](?:\.[A-Za-z_$][\w$]*)*)\s*(\+\+|--)|(\+\+|--)\s*([gGlL](?:\.[A-Za-z_$][\w$]*)*))$/);
     if (update) {
       const rawPath = update[1] || update[4];
       const operator = update[2] || update[3];
       try {
-        const current = gameStatePathValue(room.G, rawPath);
-        if (current === undefined) throw new Error(`Unknown G variable: ${rawPath}`);
-        setGameStatePathValue(room.G, rawPath, applyArithmeticOperator(current, 1, operator[0]));
+        const current = gameStatePathValue(room.G, rawPath, room.localVariables);
+        if (current === undefined) throw new Error(`Unknown flow variable: ${rawPath}`);
+        setGameStatePathValue(room.G, rawPath, applyArithmeticOperator(current, 1, operator[0]), room.localVariables);
         applied += 1;
       } catch (error) {
         errors.push(`Could not apply ${statement}: ${error.message}`);
@@ -266,14 +268,14 @@ function applyDynamicGameStateCode(room, code) {
       continue;
     }
 
-    const compoundAssignment = statement.match(/^([gG](?:\.[A-Za-z_$][\w$]*)*)\s*(\+=|-=|\*=|\/=|%=)\s*(.+)$/);
+    const compoundAssignment = statement.match(/^([gGlL](?:\.[A-Za-z_$][\w$]*)*)\s*(\+=|-=|\*=|\/=|%=)\s*(.+)$/);
     if (compoundAssignment) {
       const [, rawPath, operator, rawValue] = compoundAssignment;
       try {
-        const current = gameStatePathValue(room.G, rawPath);
-        if (current === undefined) throw new Error(`Unknown G variable: ${rawPath}`);
-        const right = parseCodeValue(room.G, rawValue);
-        setGameStatePathValue(room.G, rawPath, applyArithmeticOperator(current, right, operator[0]));
+        const current = gameStatePathValue(room.G, rawPath, room.localVariables);
+        if (current === undefined) throw new Error(`Unknown flow variable: ${rawPath}`);
+        const right = parseCodeValue(room.G, rawValue, room.localVariables);
+        setGameStatePathValue(room.G, rawPath, applyArithmeticOperator(current, right, operator[0]), room.localVariables);
         applied += 1;
       } catch (error) {
         errors.push(`Could not apply ${statement}: ${error.message}`);
@@ -281,17 +283,18 @@ function applyDynamicGameStateCode(room, code) {
       continue;
     }
 
-    const assignment = statement.match(/^([gG](?:\.[A-Za-z_$][\w$]*)*)\s*=\s*(.+)$/);
+    const assignment = statement.match(/^([gGlL](?:\.[A-Za-z_$][\w$]*)*)\s*=\s*(.+)$/);
     if (!assignment) {
       errors.push(`Unsupported statement: ${statement}`);
       continue;
     }
 
     const [, rawPath, rawValue] = assignment;
-    if (/^[gG]$/.test(rawPath)) {
+    if (/^[gGlL]$/.test(rawPath)) {
       try {
-        const value = parseCodeValue(room.G, rawValue);
-        room.G = isPlainObject(value) ? value : {};
+        const value = parseCodeValue(room.G, rawValue, room.localVariables);
+        if (/^[lL]$/.test(rawPath)) room.localVariables = isPlainObject(value) ? value : {};
+        else room.G = isPlainObject(value) ? value : {};
         applied += 1;
       } catch (error) {
         errors.push(`Could not parse value for ${rawPath}: ${error.message}`);
@@ -306,7 +309,12 @@ function applyDynamicGameStateCode(room, code) {
     }
 
     try {
-      setGameStatePathValue(room.G, rawPath, parseCodeValue(room.G, rawValue));
+      setGameStatePathValue(
+        room.G,
+        rawPath,
+        parseCodeValue(room.G, rawValue, room.localVariables),
+        room.localVariables
+      );
       applied += 1;
     } catch (error) {
       errors.push(`Could not apply ${rawPath}: ${error.message}`);

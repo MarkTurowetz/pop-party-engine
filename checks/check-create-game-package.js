@@ -11,6 +11,7 @@ const root = path.resolve(__dirname, "..");
 const packageRoot = path.join(root, "packages", "create-game");
 const enginePackageRoot = path.join(root, "packages", "engine");
 const engineVersion = JSON.parse(fs.readFileSync(path.join(enginePackageRoot, "package.json"), "utf8")).version;
+const playwrightModulePath = require.resolve("playwright");
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pop-party-create-game-"));
 
 try {
@@ -189,8 +190,10 @@ module.exports = Object.freeze([{
   const developmentSmoke = execFileSync(process.execPath, ["-e", `
     const fs = require("node:fs");
     const { startDevelopmentApplication } = require("@pop-party/engine/tooling");
+    const { chromium } = require(${JSON.stringify(playwrightModulePath)});
     (async () => {
       const first = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
+      const browser = await chromium.launch({ headless: true });
       const firstHealth = await (await fetch(first.startup.localUrl + "/health")).json();
       const flowResponse = await fetch(first.startup.localUrl + "/api/game-flow");
       const flowPayload = await flowResponse.json();
@@ -281,7 +284,13 @@ module.exports = Object.freeze([{
         });
         return response.json();
       };
-      const one = await joinPlayer("One");
+      const controllerPage = await browser.newPage();
+      await controllerPage.goto(first.startup.localUrl + "/controller?stage=PLUG&name=One&join=1", { waitUntil: "load" });
+      await controllerPage.waitForFunction(() => Boolean(window.controllerState?.player?.id), null, { timeout: 15_000 });
+      const one = await controllerPage.evaluate(() => ({
+        player: window.controllerState.player,
+        playerCapability: sessionStorage.getItem("partyTemplatePlayerCapability")
+      }));
       const two = await joinPlayer("Two");
       const playerHeaders = (joined) => ({
         "content-type": "application/json",
@@ -337,6 +346,36 @@ module.exports = Object.freeze([{
       const oneInputLobby = await heartbeat(one);
       const twoInputLobby = await heartbeat(two);
       const turnInput = oneInputLobby.gamePlugin?.input;
+      try {
+        await controllerPage.waitForFunction(() => {
+          const input = window.controllerState?.lobby?.gamePlugin?.input;
+          const layoutElement = window.controllerLayoutElementForId?.("controllerChoiceGrid");
+          const layoutHost = layoutElement && window.controllerLayoutTargetElement?.(layoutElement);
+          const control = document.querySelector('[data-game-plugin-input-binding="hit"]');
+          return input?.actionId === "fixture-turn-choice"
+            && Boolean(layoutHost && control && layoutHost.contains(control));
+        }, null, { timeout: 15_000 });
+      } catch (error) {
+        const diagnostic = await controllerPage.evaluate(() => ({
+          revision: window.controllerState?.lobby?.revision,
+          viewStateId: window.controllerState?.controllerViewStateId,
+          input: window.controllerState?.lobby?.gamePlugin?.input,
+          runtimeConfig: document.getElementById("pop-party-runtime-config")?.textContent,
+          choiceHost: document.querySelector('[data-controller-layout-element-id="controllerChoiceGrid"]')?.outerHTML,
+          controls: document.querySelectorAll("[data-game-plugin-input-binding]").length
+        }));
+        throw new Error("Generated controller input did not activate: " + JSON.stringify(diagnostic), { cause: error });
+      }
+      const controllerInputState = await controllerPage.evaluate(() => ({
+        viewStateId: window.controllerState?.controllerViewStateId,
+        actionId: window.controllerState?.lobby?.gamePlugin?.input?.actionId,
+        layoutHostActive: (() => {
+          const layoutElement = window.controllerLayoutElementForId?.("controllerChoiceGrid");
+          const layoutHost = layoutElement && window.controllerLayoutTargetElement?.(layoutElement);
+          const control = document.querySelector('[data-game-plugin-input-binding="hit"]');
+          return Boolean(layoutHost && control && layoutHost.contains(control));
+        })()
+      }));
       const turnSubmit = await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
         method: "POST",
         headers: playerHeaders(one),
@@ -408,6 +447,7 @@ module.exports = Object.freeze([{
       const flowSavePayload = await flowSaveResponse.json();
       const savedRevision = JSON.parse(fs.readFileSync(".pop-party/content/content-bundle.json", "utf8")).rootHash;
       await first.runtime.stop().catch(() => {});
+      await browser.close();
       const second = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
       const secondConstants = await (await fetch(second.startup.localUrl + "/api/game-constants")).json();
       const secondFlow = await (await fetch(second.startup.localUrl + "/api/game-flow")).json();
@@ -430,7 +470,12 @@ module.exports = Object.freeze([{
         branchSelected: completedLobby.lastDecisionTrace?.selectedBranch,
         branchedAction: completedLobby.action?.id,
         privateInputHiddenFromStage: inputStageLobby.gamePlugin?.input == null,
+        inputDeliveryRevisionAdvanced: Number(oneInputLobby.revision) > Number(inputStageLobby.revision),
         currentPlayerInputVisible: turnInput?.viewModel?.viewer === one.player.id,
+        currentPlayerInputLayout: turnInput?.layoutStateId,
+        controllerInputViewState: controllerInputState.viewStateId,
+        controllerInputAction: controllerInputState.actionId,
+        controllerLayoutControlBound: controllerInputState.layoutHostActive,
         waitingPlayerInputHidden: twoInputLobby.gamePlugin?.input == null,
         inputBranchSelected: turnSubmit.lobby?.lastDecisionTrace?.selectedBranch,
         inputBranchedAction: turnSubmit.lobby?.action?.id,
@@ -466,7 +511,12 @@ module.exports = Object.freeze([{
     || development.branchSelected !== "branch-hit"
     || development.branchedAction !== "fixture-hit"
     || !development.privateInputHiddenFromStage
+    || !development.inputDeliveryRevisionAdvanced
     || !development.currentPlayerInputVisible
+    || development.currentPlayerInputLayout !== "controller-multiple-choice"
+    || development.controllerInputViewState !== "gamePluginInput"
+    || development.controllerInputAction !== "fixture-turn-choice"
+    || !development.controllerLayoutControlBound
     || !development.waitingPlayerInputHidden
     || development.inputBranchSelected !== "input-hit"
     || development.inputBranchedAction !== "fixture-input-hit"

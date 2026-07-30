@@ -37,6 +37,7 @@ function createStageTestConfigHandlerRuntime({
       room.presentedAction = null;
       room.subroutinePath = [];
       room.subroutineStack = [];
+      room.localVariables = {};
       room.actionIndex = -1;
       broadcastLobby(room);
       sendJson(res, 200, { ok: true, lobby: lobbyPayload(room), hasTestFlow: Boolean(room.runtimeFlowOverride) });

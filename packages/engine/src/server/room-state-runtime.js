@@ -36,6 +36,7 @@ function createDefaultRoom(stageCode) {
     actionIndex: -1,
     subroutinePath: [],
     subroutineStack: [],
+    localVariables: {},
     presentedAction: null,
     routeActionSession: null,
     playersShown: true,

@@ -161,6 +161,8 @@ export function createActionDefaults(context: FlowActionDefaultsContext = {}): F
     if (value === "subroutine") {
       action.entryTargetActionId = text(action.entryTargetActionId);
       action.nextTargetActionId = text(action.nextTargetActionId);
+      action.inputs = Array.isArray(action.inputs) ? action.inputs : [];
+      action.outputs = Array.isArray(action.outputs) ? action.outputs : [];
       action.actions = Array.isArray(action.actions) ? action.actions : [];
       action.subActions = [];
       action.timing = { mode: "E+", seconds: 0 };

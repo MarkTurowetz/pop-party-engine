@@ -248,6 +248,26 @@ describe("createFlowEditorController", () => {
     ).toBeUndefined();
   });
 
+  it("keeps subroutine interface edits in undo and redo history", () => {
+    const controller = createFlowEditorController({
+      initialFlow: flowFixture(),
+      api: fakeApi(),
+      actionTypes: [{ id: "subroutine", name: "Subroutine", category: "standard" }]
+    });
+    controller.setActionType("round-one", "act-1", "subroutine");
+    controller.setActionField("round-one", "act-1", "inputs", [
+      { name: "playerId", valueType: "string", source: "g.currentPlayerId" }
+    ]);
+
+    expect(controller.getState().snapshot.flow.states[1].actions[0].inputs).toEqual([
+      { name: "playerId", valueType: "string", source: "g.currentPlayerId" }
+    ]);
+    controller.undo();
+    expect(controller.getState().snapshot.flow.states[1].actions[0].inputs).toEqual([]);
+    controller.redo();
+    expect(controller.getState().snapshot.flow.states[1].actions[0].inputs).toHaveLength(1);
+  });
+
   it("adds, edits, and removes decision branches", () => {
     const controller = createFlowEditorController({
       initialFlow: flowFixture(),

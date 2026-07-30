@@ -69,6 +69,8 @@ export function createDefaultFlowSubroutineAction(
     timing: { mode: "E+", seconds: 0 },
     entryTargetActionId: "",
     nextTargetActionId: "",
+    inputs: [],
+    outputs: [],
     actions: [],
     subActions: []
   };
