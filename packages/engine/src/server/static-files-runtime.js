@@ -161,13 +161,21 @@ function renderViteBody(html, role) {
   return `${html.slice(0, bodyOpenEnd)}\n${blocks}\n\n${html.slice(scriptIndex)}`;
 }
 
-function runtimeConfigScript(gameDefinition) {
+function runtimeConfigScript(gameDefinition, gamePluginRenderers = []) {
   const serialized = JSON.stringify({
     game: {
       id: String(gameDefinition?.gameId || ""),
       version: String(gameDefinition?.version || "")
     },
-    semanticRoles: gameDefinition?.semanticRoles || {}
+    semanticRoles: gameDefinition?.semanticRoles || {},
+    gamePlugin: {
+      actionRunners: (gameDefinition?.registrations?.actions || []).map((registration) => ({
+        actionId: registration.id,
+        type: registration.id,
+        runner: "serverEffect"
+      })),
+      renderers: gamePluginRenderers
+    }
   }).replace(/[<>&\u2028\u2029]/g, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`);
   return `  <script id="pop-party-runtime-config" type="application/json">${serialized}</script>`;
 }
@@ -178,6 +186,7 @@ function createStaticFilesRuntime({
   clientRoot,
   contentTypeForFile,
   gameDefinition,
+  gamePluginRenderers = [],
   indexFile,
   root,
   sendJson,
@@ -194,7 +203,7 @@ function createStaticFilesRuntime({
       const stylesheetLinks = renderStylesheetLinks(stylesForRole(role));
       const viteEntryScript = viteEntryScriptForRole(viteManifestRoot, role);
       const html = renderViteBody(String(data), role)
-        .replace(BODY_OPEN, `${BODY_OPEN}\n${runtimeConfigScript(gameDefinition)}`)
+        .replace(BODY_OPEN, `${BODY_OPEN}\n${runtimeConfigScript(gameDefinition, gamePluginRenderers)}`)
         .replace(LEGACY_STYLESHEET_PATTERN, stylesheetLinks)
         .replace(LEGACY_SCRIPT_BLOCK_PATTERN, viteEntryScript)
         .replaceAll("__APP_VERSION__", appVersion);

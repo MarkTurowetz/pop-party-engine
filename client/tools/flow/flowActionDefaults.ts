@@ -1,6 +1,10 @@
 import type { FlowAction } from "../../types/game-data";
 
 export interface FlowActionDefaultsContext {
+  actionTypeMeta?: (type: string) => {
+    fields?: Array<{ key: string; control: string; default?: unknown }>;
+    outputs?: Array<{ variableField: string; defaultVariable?: string }>;
+  };
   defaultControllerLayoutId?: () => string;
   ensureActionTiming?: (action: FlowAction, isSubAction?: boolean) => void;
   ensureDecisionBranches?: (action: FlowAction) => FlowAction[];
@@ -31,6 +35,20 @@ export function createActionDefaults(context: FlowActionDefaultsContext = {}): F
 
   function applyActionTypeDefaults(action: FlowAction, value: string, isSubAction = false): void {
     action.type = value;
+    const pluginMeta = context.actionTypeMeta?.(value);
+    for (const field of pluginMeta?.fields || []) {
+      if (field.key in action) continue;
+      action[field.key] = field.default !== undefined
+        ? JSON.parse(JSON.stringify(field.default))
+        : field.control === "boolean"
+          ? false
+          : field.control === "number" || field.control === "integer"
+            ? 0
+            : "";
+    }
+    for (const output of pluginMeta?.outputs || []) {
+      if (!(output.variableField in action)) action[output.variableField] = output.defaultVariable || "";
+    }
     const globals = globalThis as typeof globalThis & {
       PartyChoiceInputActions?: { choiceInputActionConfig?: (type: string) => Record<string, unknown> | null | undefined };
       PartyMicrophoneAccessActions?: {

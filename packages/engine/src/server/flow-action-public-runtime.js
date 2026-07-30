@@ -17,7 +17,8 @@ function createFlowActionPublicRuntime({
   normalizePlayerFilter,
   readHostAudios = () => ({ hostAudios: [] }),
   resolveHostAudioAction = (room, action) => action,
-  normalizeVotingCardFilter
+  normalizeVotingCardFilter,
+  pluginActionDefinitions = []
 }) {
   const actionRegistry = createFlowActionRegistry({
     availableFlowTransitions,
@@ -36,7 +37,7 @@ function createFlowActionPublicRuntime({
     normalizeLineIndex,
     normalizePlayerFilter,
     normalizeVotingCardFilter
-  });
+  }, pluginActionDefinitions);
 
   function publicFlowAction(action, index) {
     if (!action) return null;

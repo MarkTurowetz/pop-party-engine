@@ -85,6 +85,7 @@ function inspectorShouldShowTiming(action: FlowAction): boolean {
 
 export function ActionInspector({
   action,
+  actionTypes = [],
   edit,
   isBranch = false,
   isSubAction = false,
@@ -271,6 +272,7 @@ export function ActionInspector({
       {edit?.onSetActionField ? (
         <ActionFieldControls
           action={action}
+          fields={actionTypes.find((type) => type.id === action.type)?.fields}
           actionTargetOptions={edit.actionTargetOptions || []}
           animationLabelOptions={edit.animationLabelOptions || []}
           componentTargetOptions={edit.componentTargetOptions || []}

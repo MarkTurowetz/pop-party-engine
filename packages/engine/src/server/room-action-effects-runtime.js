@@ -36,6 +36,8 @@ function createRoomActionEffectsRuntime({
   setVotingCardsShown,
   startCraftingTimer,
   storeRandomTriviaPrompt,
+  pluginActionDefinitions = [],
+  executeGameAction = () => false,
   broadcastLobby = () => {},
   clearTimeoutImpl = clearTimeout,
   setTimeoutImpl = setTimeout
@@ -86,8 +88,9 @@ function createRoomActionEffectsRuntime({
     setVotingCardsShown,
     startCraftingTimer,
     storeRandomTriviaPrompt,
-    applyDynamicGameStateCode
-  });
+    applyDynamicGameStateCode,
+    executeGameAction
+  }, pluginActionDefinitions);
 
   function applyRoomActionEffects(room, action) {
     if (room.runtimeFault || !action || hasAppliedActionEffect(room, action.id)) return;

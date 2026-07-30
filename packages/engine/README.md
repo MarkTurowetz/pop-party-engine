@@ -29,6 +29,60 @@ never borrow reference-app content or require game-owned bootstrap renderers.
 Optional plugin renderers and tool panels are additive to the engine-owned
 application rather than replacements for its core routes.
 
+## Game plugin actions and renderers
+
+Plugin contribution ids are namespaced (`my-game.actionName`) and are validated
+when the game definition loads. Invalid fields, outputs, renderer bindings,
+reserved ids, and duplicates stop application boot.
+
+An action contribution declares its Flow inspector fields and optional named
+outputs, then executes synchronously on the server:
+
+```js
+registry.actions("my-game.increment", {
+  name: "Increment Counter",
+  fields: [
+    { key: "amount", label: "Amount", control: "integer", min: 1, default: 1 },
+    { key: "resultVariable", label: "Result Variable", control: "text", default: "counter" }
+  ],
+  outputs: [
+    { id: "count", name: "Count", variableField: "resultVariable", defaultVariable: "counter" }
+  ],
+  execute(context, action) {
+    context.state.count = Number(context.state.count || 0) + Number(action.amount);
+    context.outputs.set("count", context.state.count);
+  }
+});
+```
+
+`context.state` is isolated to the registering namespace and resets with the
+game session. The context also exposes read-only public player/actor snapshots,
+VIP capability, deterministic `random` helpers, Flow `outputs`, and an explicit
+`broadcast.request()`. It never exposes the generic room object or lifecycle
+internals. Output variable fields are authored in Flow and can be read by a
+Decision as `flowVariables.<name>`.
+
+Stage and Controller renderers are declarative view-model bindings to existing
+Tools-authored Layout elements and Art components:
+
+```js
+registry.stageRenderers("my-game.counter", {
+  name: "Counter Widget",
+  target: { layoutElementId: "counter-widget", layoutScope: "moment" },
+  bindings: [
+    { id: "label", kind: "text", source: "label", targetComponentId: "counter-text" }
+  ],
+  select(context) {
+    return { label: String(context.state.count || 0) };
+  }
+});
+```
+
+The selector runs on the server against a read-only snapshot. The browser
+receives only JSON-safe values and applies them through the engine Art renderer.
+Plugins cannot bind position, dimensions, layout scale, or arbitrary CSS; those
+remain owned by Stage/Controller Layout and Art Manager content.
+
 `pop-party migrate` loads the active immutable snapshot and follows only the
 game plugin's explicit, one-level-at-a-time migration registrations. The default
 operation is a read-only preview. `--output <new-directory>` writes an isolated

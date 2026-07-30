@@ -4,6 +4,7 @@
 // Installs window.setupController so app-shell.js's role dispatch can call it.
 
 import { createControllerModuleCache } from "./controllerModuleCache";
+import { renderGamePluginSurface } from "./gamePluginRendererRuntime";
 import { createControllerViewState } from "./controllerViewState";
 import { createControllerAvatarView } from "./controllerAvatarView";
 import { createControllerVoiceInput, shouldDeferVoiceHeartbeat } from "./controllerVoiceInput";
@@ -630,6 +631,7 @@ function renderControllerState(lobbyInput: unknown): void {
   // must be injected after that lifecycle boundary so its default "PLAYER"
   // text can never replace the current identity on refresh or a later visit.
   setControllerPlayerBanner(me);
+  renderGamePluginSurface("controller", lobby);
   w.controllerState.controllerViewStateId = renderedState.id;
   w.controllerCountdownTimer = renderedState.countdownTimer;
 }

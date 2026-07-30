@@ -100,6 +100,13 @@ const { createToolGithubSourcesRuntime } = require("./tool-github-sources-runtim
 const { createToolPersistenceRuntime } = require("./tool-persistence-runtime");
 const { createToolSourceReadersRuntime } = require("./tool-source-readers-runtime");
 const { createToolSourceStoresRuntime } = require("./tool-source-stores-runtime");
+const {
+  createGameActionExecutor,
+  createGameRendererRuntime,
+  createPluginFlowActionDefinitions,
+  pluginFlowActionTypes
+} = require("./game-plugin-abi-runtime");
+const { createFlowActionRegistry } = require("../shared/flow-action-registry");
 const { createContentAdminHandlersRuntime } = require("@pop-party/engine/content/admin");
 const { createContentStoreEnvironmentRuntime } = require("@pop-party/engine/content/environment");
 const { createLocalContentBundleProvider } = require("@pop-party/engine/content/local");
@@ -283,6 +290,13 @@ const {
   defaultStageLayouts,
   multipleChoicePrompts
 } = activeRuntime.gameData;
+const pluginActionRegistrations = runtimeGameDefinition.registrations.actions || [];
+const pluginActionDefinitions = createPluginFlowActionDefinitions(pluginActionRegistrations);
+const runtimeAvailableFlowActionTypes = [
+  ...availableFlowActionTypes.filter((item) => !pluginActionRegistrations.some((registration) => registration.id === item.id)),
+  ...pluginFlowActionTypes(pluginActionRegistrations)
+];
+const pluginAwareFlowRegistry = createFlowActionRegistry({}, pluginActionDefinitions);
 const contentAdmin = contentEnvironment.remoteAuthoring === "enabled"
   ? createContentAdminHandlersRuntime({
       contentStore,
@@ -400,6 +414,11 @@ const {
   normalizeColor,
   randomToken
 });
+const gameRendererRuntime = createGameRendererRuntime({
+  activePlayers,
+  stageRenderers: runtimeGameDefinition.registrations.stageRenderers,
+  controllerRenderers: runtimeGameDefinition.registrations.controllerRenderers
+});
 
 const {
   clonePrompt,
@@ -439,7 +458,7 @@ const {
   flowActionTypeMeta,
   normalizeGameFlow
 } = createGameFlowNormalizationRuntime({
-  availableFlowActionTypes,
+  availableFlowActionTypes: runtimeAvailableFlowActionTypes,
   availableFlowTransitions,
   cleanChoiceOptions,
   cleanFlowText,
@@ -455,7 +474,8 @@ const {
   normalizeHostAudioPlayMode,
   normalizeLineIndex,
   normalizePlayerFilter,
-  normalizeVotingCardFilter
+  normalizeVotingCardFilter,
+  pluginActionDefinitions
 });
 
 const {
@@ -476,7 +496,8 @@ const {
   normalizePlayerFilter,
   readHostAudios,
   resolveHostAudioAction,
-  normalizeVotingCardFilter
+  normalizeVotingCardFilter,
+  pluginActionDefinitions
 });
 
 const {
@@ -562,7 +583,8 @@ const {
   clearTextInput,
   currentRoomAction: currentRoomActionProxy,
   enterGamePhase: enterGamePhaseProxy,
-  releasePendingFlowEvents: releasePendingFlowEventsProxy
+  releasePendingFlowEvents: releasePendingFlowEventsProxy,
+  stageCompletionCleanupForActionType: pluginAwareFlowRegistry.stageCompletionCleanupForActionType
 });
 
 const {
@@ -757,6 +779,7 @@ const {
   clientRoot: CLIENT_ROOT,
   contentTypeForFile,
   gameDefinition: runtimeGameDefinition,
+  gamePluginRenderers: gameRendererRuntime.manifests,
   indexFile: INDEX_FILE,
   root: ROOT,
   sendJson,
@@ -1240,7 +1263,7 @@ const {
   sendHostAudios,
   sendStageLayouts
 } = createToolDataReadRuntime({
-  availableFlowActionTypes,
+  availableFlowActionTypes: runtimeAvailableFlowActionTypes,
   availableFlowTransitions,
   controllerLayoutsPath: CONTROLLER_LAYOUTS_GITHUB_PATH,
   controllerLayoutsStore,
@@ -1333,7 +1356,13 @@ const {
   setCraftingTimerShown,
   setVotingCardsShown,
   startCraftingTimer,
-  storeRandomTriviaPrompt
+  storeRandomTriviaPrompt,
+  pluginActionDefinitions,
+  executeGameAction: createGameActionExecutor({
+    actionRegistrations: pluginActionRegistrations,
+    activePlayers,
+    broadcastLobby
+  }).execute
 });
 _applyRoomActionEffectsFn = applyRoomActionEffects;
 _clearScheduledSubActionsFn = clearScheduledSubActions;
@@ -1374,6 +1403,7 @@ const {
   publicPlayer,
   resolveRoomActionText,
   runtimeGameFlow,
+  gamePluginViewModels: gameRendererRuntime.viewModels,
   scheduleRoomSubActions,
   scheduleMicrophoneAccessAdvance,
   selectVip,
@@ -1470,7 +1500,8 @@ const {
   readJson,
   resolveRoomActionText,
   roomIsPaused,
-  sendJson
+  sendJson,
+  isCompletableStageActionType: pluginAwareFlowRegistry.isCompletableStageActionType
 });
 
 const {

@@ -7,6 +7,7 @@ function resetGameSessionState(room) {
   room.activeInputFlowEventKey = "";
   room.pendingFlowEvents = new Set();
   room.flowVariables = {};
+  room.gamePluginState = {};
   room.triviaPromptText = "";
   room.G = {};
   room.currentRound = 1;

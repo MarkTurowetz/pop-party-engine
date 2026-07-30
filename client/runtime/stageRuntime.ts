@@ -1,6 +1,7 @@
 import { StageCountdownPopupController } from "./stageCountdownPopupController";
 import { StageManagedTextSources, type StageManagedTextSource } from "./stageManagedTextSources";
 import { StageSubActionScheduler } from "./stageSubActionScheduler";
+import { renderGamePluginSurface } from "./gamePluginRendererRuntime";
 
 // Typed port of the legacy client/stage-runtime.js (top-level classic script) — the
 // stage orchestrator. Defines setupStage (app-shell dispatches setupStage()),
@@ -783,6 +784,7 @@ function applyStageState(lobby: Dict, options: Dict = {}): void {
   } else {
     stageCountdownPopupController().afterPhase(phase);
   }
+  renderGamePluginSurface("stage", lobby);
 }
 
 function renderStageLobby(lobby: Dict, options: Dict = {}): void {
