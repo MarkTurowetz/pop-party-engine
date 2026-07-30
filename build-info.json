@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1225",
+  "version": "1.0.17.1226",
   "baseVersion": "1.0.17",
-  "buildNumber": 1225,
-  "commit": "abd945ca",
-  "branch": "codex/fix-tools-lease-lobby-reset",
-  "generatedAt": "2026-07-29T22:40:58.353Z"
+  "buildNumber": 1226,
+  "commit": "bc2f4a31",
+  "branch": "codex/fix-present-text-cursor-lifecycle",
+  "generatedAt": "2026-07-30T01:01:38.441Z"
 }

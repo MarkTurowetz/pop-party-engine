@@ -182,7 +182,17 @@ function stageWipeController(): Dict | null {
 function stageRenderOrchestrator(): Dict | null {
   if (!stageRenderOrchestratorInstance && w().PartyGameStageRenderOrchestrator) {
     stageRenderOrchestratorInstance = (w().PartyGameStageRenderOrchestrator as unknown as { createOrchestrator: (o: Dict) => Dict }).createOrchestrator({
-      applyStageState, cancelStageWipe, clearStageAudioPlayers, completeFlowAction, prepareNewStageAction, runStageAction, runStageWipe, scheduleSubActions, showRuntimeFault, showStageDecisionHalt
+      applyStageState,
+      cancelStageWipe,
+      clearPresentationClickPrompt: () => setPresentationClickPromptForAction(false, { instant: true }),
+      clearStageAudioPlayers,
+      completeFlowAction,
+      prepareNewStageAction,
+      runStageAction,
+      runStageWipe,
+      scheduleSubActions,
+      showRuntimeFault,
+      showStageDecisionHalt
     });
   }
   return stageRenderOrchestratorInstance;
@@ -449,6 +459,7 @@ async function startCurrentMomentForAction(_action: Dict, options: Dict = {}): P
 async function endCurrentMomentForAction(_action: Dict, options: Dict = {}): Promise<void> {
   const actionKey = String(options.actionKey || "");
   if (actionKey && currentRenderedActionKey() !== actionKey) return;
+  setPresentationClickPromptForAction(false, { instant: true });
   clearStageAudioPlayers();
   (craftingTimerController() as { reset?: () => void } | null)?.reset?.();
   (playerRosterRenderer() as { resetAnswerBubbles?: () => void; clearPointPopups?: () => void } | null)?.resetAnswerBubbles?.();
@@ -461,6 +472,7 @@ async function endCurrentMomentForAction(_action: Dict, options: Dict = {}): Pro
 function hardResetStageToLobby(): void {
   w().pausedCompletionRequest = null;
   w().presentationAdvancePending = false;
+  setPresentationClickPromptForAction(false, { instant: true });
   // Quit bypasses the authored End Moment action, so perform the same visual
   // teardown before the lobby's Start Moment begins constructing its objects.
   w().resetStageMomentLayout?.();
