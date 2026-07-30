@@ -156,21 +156,52 @@ function distributeCentersAround(center: number, count: number, gap: number): nu
   return Array.from({ length: count }, (_, index) => center + (index - (count - 1) / 2) * gap);
 }
 
-function uniqueBranchTargets(
+interface DecisionBranchPath {
+  nodeIds: string[];
+  joinNodeId: string;
+}
+
+function decisionBranchPaths(
   action: FlowGraphNode,
   nodes: FlowGraphNode[],
-  outgoing: Map<string, FlowGraphConnection[]>
-): string[] {
-  const targets: string[] = [];
-  const seen = new Set<string>();
+  outgoing: Map<string, FlowGraphConnection[]>,
+  incoming: Map<string, FlowGraphConnection[]>
+): DecisionBranchPath[] {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const paths: DecisionBranchPath[] = [];
+  const seenTargets = new Set<string>();
+
   for (const branch of layoutDecisionBranchNodes(nodes, action.id)) {
     for (const connection of outgoing.get(branch.id) || []) {
-      if (seen.has(connection.to)) continue;
-      seen.add(connection.to);
-      targets.push(connection.to);
+      if (seenTargets.has(connection.to)) continue;
+      seenTargets.add(connection.to);
+
+      const nodeIds: string[] = [];
+      const visited = new Set<string>();
+      let currentId = connection.to;
+      let joinNodeId = "";
+      while (currentId && byId.has(currentId) && !visited.has(currentId)) {
+        if ((incoming.get(currentId) || []).length > 1) {
+          joinNodeId = currentId;
+          break;
+        }
+        const current = byId.get(currentId);
+        if (!current || isVisualChildNode(current)) break;
+        visited.add(currentId);
+        nodeIds.push(currentId);
+        if (current.className.includes("is-decision")) break;
+
+        const nextConnections = (outgoing.get(currentId) || []).filter((candidate) => {
+          const target = byId.get(candidate.to);
+          return target && !isVisualChildNode(target);
+        });
+        if (nextConnections.length !== 1) break;
+        currentId = nextConnections[0].to;
+      }
+      paths.push({ nodeIds, joinNodeId });
     }
   }
-  return targets;
+  return paths;
 }
 
 function nodeCenterX(
@@ -194,6 +225,7 @@ function optimizedHorizontalCenters(
   const outgoing = layoutOutgoing(forwardConnections);
   const incoming = layoutIncoming(forwardConnections);
   const branchGap = Math.max(360, Math.max(...nodes.map((node) => node.width), 260) + 100);
+  const decisionJoinCenters = new Map<string, number>();
 
   for (const node of nodes) {
     if (isVisualChildNode(node) && node.parentNodeId) {
@@ -203,20 +235,30 @@ function optimizedHorizontalCenters(
 
   for (const node of nodes) {
     if (node.className.includes("is-decision")) {
-      const targets = uniqueBranchTargets(node, nodes, outgoing)
-        .filter((targetId) => byId.has(targetId))
-        .filter((targetId) => (incoming.get(targetId) || []).length < 2);
-      const targetCenters = distributeCentersAround(
-        centers.get(node.id) ?? centerX,
-        targets.length,
-        branchGap
-      );
-      targets.forEach((targetId, index) => centers.set(targetId, targetCenters[index] ?? centerX));
+      const branchPaths = decisionBranchPaths(node, nodes, outgoing, incoming);
+      const visiblePaths = branchPaths.filter((path) => path.nodeIds.length);
+      const decisionCenter = centers.get(node.id) ?? centerX;
+      const pathCenters =
+        visiblePaths.length === 1 && branchPaths.length > 1
+          ? [decisionCenter - branchGap]
+          : distributeCentersAround(decisionCenter, visiblePaths.length, branchGap);
+      visiblePaths.forEach((path, index) => {
+        const pathCenter = pathCenters[index] ?? decisionCenter;
+        path.nodeIds.forEach((nodeId) => centers.set(nodeId, pathCenter));
+      });
+      branchPaths.forEach((path) => {
+        if (path.joinNodeId) decisionJoinCenters.set(path.joinNodeId, decisionCenter);
+      });
     }
   }
 
   for (const node of nodes) {
     if (node.kind === "branch") continue;
+    const decisionJoinCenter = decisionJoinCenters.get(node.id);
+    if (decisionJoinCenter !== undefined) {
+      centers.set(node.id, decisionJoinCenter);
+      continue;
+    }
     const sources = (incoming.get(node.id) || [])
       .map((connection) => byId.get(connection.from))
       .filter((source): source is FlowGraphNode => Boolean(source));

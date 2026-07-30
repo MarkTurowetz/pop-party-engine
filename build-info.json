@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1227",
+  "version": "1.0.17.1228",
   "baseVersion": "1.0.17",
-  "buildNumber": 1227,
-  "commit": "c8e50652",
-  "branch": "codex/flow-background-double-click-up",
-  "generatedAt": "2026-07-30T01:16:17.436Z"
+  "buildNumber": 1228,
+  "commit": "9b239667",
+  "branch": "codex/flow-optimize-decision-paths",
+  "generatedAt": "2026-07-30T05:05:09.862Z"
 }
