@@ -548,6 +548,74 @@ describe("flowNodeGraph", () => {
     );
   });
 
+  it("keeps a detour branch separated when another branch jumps directly to its later join", () => {
+    const flow: GameFlow = {
+      states: [
+        {
+          id: "crafting",
+          name: "Crafting",
+          entryTargetActionId: "decision",
+          actions: [
+            {
+              id: "decision",
+              name: "Decision",
+              type: "decision",
+              branches: [
+                { id: "code", type: "code", code: "x == 0", targetActionId: "join" },
+                { id: "no-match", type: "noMatch", targetActionId: "reveal" }
+              ]
+            },
+            {
+              id: "reveal",
+              name: "Set Player Answers Shown",
+              type: "setPlayerAnswersShown",
+              nextTargetActionId: "correctness"
+            },
+            {
+              id: "correctness",
+              name: "Reveal Player Answer Correctness",
+              type: "revealPlayerAnswerCorrectness",
+              nextTargetActionId: "points"
+            },
+            {
+              id: "points",
+              name: "Show Points",
+              type: "showPoints",
+              nextTargetActionId: "join"
+            },
+            {
+              id: "join",
+              name: "Set Wipe Shown",
+              type: "setWipeShown",
+              nextTargetActionId: "return"
+            }
+          ]
+        } as never
+      ],
+      routeNodes: []
+    };
+    const nodes = subroutineGraphNodes(flow.states[0]);
+    const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    const positions = new Map(
+      optimizedVerticalNodePositions(
+        nodes,
+        subroutineGraphConnections(flow.states[0]),
+        "subroutine"
+      ).map((position) => [position.nodeId, position])
+    );
+    const center = (nodeId: string) => {
+      const node = nodeById.get(nodeId);
+      const position = positions.get(nodeId);
+      return Number(position?.x || 0) + Number(node?.width || 0) / 2;
+    };
+
+    expect(center("reveal")).toBeLessThan(center("decision") - 100);
+    expect(center("correctness")).toBe(center("reveal"));
+    expect(center("points")).toBe(center("reveal"));
+    expect(Math.abs(center("join") - center("decision"))).toBeLessThan(40);
+    expect(Number(positions.get("join")?.y)).toBeGreaterThan(Number(positions.get("points")?.y));
+  });
+
   it("optimizes vertical spacing around the full parent and child-row block", () => {
     const flow: GameFlow = {
       states: [
