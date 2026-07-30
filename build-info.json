@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1230",
+  "version": "1.0.17.1231",
   "baseVersion": "1.0.17",
-  "buildNumber": 1230,
-  "commit": "9256fd5b",
-  "branch": "codex/game-plugin-abi-1.3.21",
-  "generatedAt": "2026-07-30T09:54:25.723Z"
+  "buildNumber": 1231,
+  "commit": "4a8a52f5",
+  "branch": "codex/game-plugin-controller-input-abi",
+  "generatedAt": "2026-07-30T10:40:39.861Z"
 }

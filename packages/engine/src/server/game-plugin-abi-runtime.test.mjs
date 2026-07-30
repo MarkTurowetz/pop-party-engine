@@ -5,7 +5,9 @@ const require = createRequire(import.meta.url);
 const { createGamePluginRegistry, defineGamePlugin } = require("./game-plugin-runtime");
 const {
   createGameActionExecutor,
+  createGameInputRuntime,
   createGameRendererRuntime,
+  createPluginInputActionDefinitions,
   createPluginFlowActionDefinitions,
   pluginFlowActionTypes
 } = require("./game-plugin-abi-runtime");
@@ -32,6 +34,67 @@ function fixturePlugin() {
           context.state.actorWasVip = context.capability.isVip;
           context.outputs.set("drawCount", context.state.draws);
           context.broadcast.request();
+        }
+      });
+      registry.inputs("fixture.turnChoice", {
+        name: "Turn Choice",
+        fields: [
+          { key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" },
+          { key: "resultVariable", label: "Result Variable", control: "text", default: "turnChoice" }
+        ],
+        outputs: [{ id: "choice", name: "Choice", variableField: "resultVariable" }],
+        submission: [{ id: "choice", type: "choice", optionsSource: "options" }],
+        controller: {
+          layoutStateId: "fixture-turn-choice",
+          bindings: [
+            { id: "hit", kind: "choice", layoutElementId: "hit-button", field: "choice", optionIndex: 0, autoSubmit: true },
+            { id: "stay", kind: "choice", layoutElementId: "stay-button", field: "choice", optionIndex: 1, autoSubmit: true }
+          ]
+        },
+        recipients(context) {
+          return [context.state.currentPlayerId];
+        },
+        view(context) {
+          return { prompt: `Turn for ${context.viewer.name}`, options: [{ id: "hit", label: "Hit" }, { id: "stay", label: "Stay" }] };
+        },
+        submit(context, payload) {
+          context.state.lastChoice = { playerId: context.actor.id, choice: payload.choice };
+          context.outputs.set("choice", payload.choice);
+          context.broadcast.request();
+        }
+      });
+      registry.inputs("fixture.privateWager", {
+        name: "Private Wager",
+        fields: [
+          { key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" },
+          { key: "timeoutSeconds", label: "Timeout", control: "number", min: 0, default: 0 }
+        ],
+        submission: [
+          { id: "side", type: "choice", optionsSource: "options" },
+          { id: "amount", type: "integer", min: 1, max: 50 }
+        ],
+        controller: {
+          layoutStateId: "fixture-private-wager",
+          bindings: [
+            { id: "left", kind: "choice", layoutElementId: "left", field: "side", optionIndex: 0 },
+            { id: "right", kind: "choice", layoutElementId: "right", field: "side", optionIndex: 1 },
+            { id: "amount", kind: "integer", layoutElementId: "amount", field: "amount" },
+            { id: "submit", kind: "submit", layoutElementId: "submit" }
+          ]
+        },
+        completion: "allRecipients",
+        disconnect: "completeRemaining",
+        timeout: { secondsField: "timeoutSeconds", policy: "complete" },
+        recipients(context) {
+          return context.players.map((player) => player.id);
+        },
+        view(context) {
+          const target = context.state.offers[context.viewer.id];
+          return { target, options: [{ id: "over", label: `Over ${target}` }, { id: "under", label: `Under ${target}` }] };
+        },
+        submit(context, payload) {
+          context.state.wagers ||= {};
+          context.state.wagers[context.actor.id] = payload;
         }
       });
       const renderer = {
@@ -70,6 +133,39 @@ describe("game plugin ABI", () => {
         });
       }
     }))).toThrow(/unsupported component property/);
+
+    expect(() => createGamePluginRegistry().install(defineGamePlugin({
+      namespace: "broken",
+      register(registry) {
+        registry.inputs("broken.input", {
+          name: "Broken Input",
+          fields: [],
+          submission: [{ id: "choice", type: "choice", optionsSource: "options" }],
+          controller: { layoutStateId: "broken", bindings: [] },
+          recipients: () => [],
+          view: () => ({}),
+          submit() {}
+        });
+      }
+    }))).toThrow(/completion target/);
+
+    expect(() => createGamePluginRegistry().install(defineGamePlugin({
+      namespace: "broken",
+      register(registry) {
+        registry.inputs("broken.input", {
+          name: "Broken Input",
+          fields: [{ key: "answersSubmittedTargetActionId", label: "After", control: "actionTarget" }],
+          submission: [{ id: "choice", type: "choice", optionsSource: "options" }],
+          controller: {
+            layoutStateId: "broken",
+            bindings: [{ id: "amount", kind: "integer", layoutElementId: "amount", field: "choice" }]
+          },
+          recipients: () => [],
+          view: () => ({}),
+          submit() {}
+        });
+      }
+    }))).toThrow(/integer submission field/);
   });
 
   it("adds namespaced action metadata, normalization, public serialization, and stage completion", () => {
@@ -157,9 +253,130 @@ describe("game plugin ABI", () => {
       expect.objectContaining({ id: "fixture.stageCounter", surface: "stage" }),
       expect.objectContaining({ id: "fixture.controllerCounter", surface: "controller" })
     ]));
-    expect(runtime.viewModels(room)).toMatchObject({
+    expect(runtime.viewModels(room)).toEqual({ "fixture.stageCounter": { label: "3" } });
+    room.players.set("p1", { id: "p1", name: "Player", active: true });
+    expect(runtime.viewModels(room, "p1")).toMatchObject({
       "fixture.stageCounter": { label: "3" },
       "fixture.controllerCounter": { label: "3" }
     });
+  });
+
+  it("runs authenticated current-player and private per-player input barriers", () => {
+    const registrations = createGamePluginRegistry().install(fixturePlugin()).inputs;
+    expect(pluginFlowActionTypes(registrations)[0]).toMatchObject({ category: "input", primaryOnly: true });
+    const definitions = createPluginInputActionDefinitions(registrations);
+    const registry = createFlowActionRegistry({}, definitions);
+    expect(registry.stageActionRunnerDefinitions).toContainEqual({
+      actionId: "fixture.turnChoice",
+      type: "fixture.turnChoice",
+      runner: "controllerInputBarrier"
+    });
+    const room = {
+      stageCode: "TEST",
+      phase: "play",
+      flowStateId: "play",
+      gameSessionId: 2,
+      momentVisitId: 3,
+      controllerInputVisitCounter: 0,
+      vipPlayerId: "p1",
+      players: new Map([
+        ["p1", { id: "p1", name: "One", active: true, points: 0 }],
+        ["p2", { id: "p2", name: "Two", active: true, points: 0 }]
+      ]),
+      flowVariables: {},
+      gamePluginState: { fixture: { currentPlayerId: "p1", offers: { p1: 12, p2: 29 } } }
+    };
+    let action = {
+      id: "turn",
+      type: "fixture.turnChoice",
+      answersSubmittedTargetActionId: "after-turn",
+      resultVariable: "turnResult"
+    };
+    const jumpToAction = vi.fn();
+    const broadcastLobby = vi.fn();
+    const runtime = createGameInputRuntime({
+      inputRegistrations: registrations,
+      currentRoomAction: () => action,
+      jumpToAction,
+      broadcastLobby
+    });
+    expect(runtime.ensure(room, action)).toBe(true);
+    expect(runtime.payloadForViewer(room, action, "p1")).toMatchObject({
+      type: "fixture.turnChoice",
+      viewModel: { prompt: "Turn for One" }
+    });
+    expect(runtime.payloadForViewer(room, action, "p2")).toBeNull();
+    const visitId = room.gamePluginInputVisitId;
+    expect(runtime.submit(room, "p2", {
+      actionId: "turn", visitId, gameSessionId: 2, submissionId: "bad", payload: { choice: "hit" }
+    })).toMatchObject({ status: 403 });
+    expect(runtime.submit(room, "p1", {
+      actionId: "turn", visitId: visitId - 1, gameSessionId: 2, submissionId: "stale", payload: { choice: "hit" }
+    })).toMatchObject({ status: 409 });
+    expect(runtime.submit(room, "p1", {
+      actionId: "turn", visitId, gameSessionId: 2, submissionId: "one", payload: { choice: "hit" }
+    })).toMatchObject({ status: 200, duplicate: false });
+    expect(room.gamePluginState.fixture.lastChoice).toEqual({ playerId: "p1", choice: "hit" });
+    expect(room.flowVariables.turnResult).toBe("hit");
+    expect(jumpToAction).toHaveBeenCalledWith(room, "after-turn", action);
+
+    action = { id: "wager", type: "fixture.privateWager", answersSubmittedTargetActionId: "after-wagers" };
+    runtime.ensure(room, action);
+    const wagerVisit = room.gamePluginInputVisitId;
+    expect(runtime.payloadForViewer(room, action, "p1").viewModel.target).toBe(12);
+    expect(runtime.payloadForViewer(room, action, "p2").viewModel.target).toBe(29);
+    expect(runtime.submit(room, "p1", {
+      actionId: "wager", visitId: wagerVisit, gameSessionId: 2, submissionId: "w1",
+      payload: { side: "over", amount: 50 }
+    })).toMatchObject({ status: 200 });
+    expect(runtime.submit(room, "p1", {
+      actionId: "wager", visitId: wagerVisit, gameSessionId: 2, submissionId: "w1",
+      payload: { side: "over", amount: 50 }
+    })).toMatchObject({ status: 200, duplicate: true });
+    expect(runtime.submit(room, "p2", {
+      actionId: "wager", visitId: wagerVisit, gameSessionId: 2, submissionId: "w2",
+      payload: { side: "under", amount: 51 }
+    })).toMatchObject({ status: 422 });
+    room.players.get("p2").active = false;
+    expect(runtime.playerDisconnected(room)).toBe(true);
+    expect(jumpToAction).toHaveBeenLastCalledWith(room, "after-wagers", action);
+  });
+
+  it("completes an input barrier according to its authored timeout policy", () => {
+    vi.useFakeTimers();
+    try {
+      const registrations = createGamePluginRegistry().install(fixturePlugin()).inputs;
+      const room = {
+        stageCode: "TEST",
+        phase: "play",
+        flowStateId: "play",
+        gameSessionId: 2,
+        momentVisitId: 3,
+        controllerInputVisitCounter: 0,
+        players: new Map([
+          ["p1", { id: "p1", name: "One", active: true, points: 0 }]
+        ]),
+        flowVariables: {},
+        gamePluginState: { fixture: { offers: { p1: 12 } } }
+      };
+      const action = {
+        id: "wager",
+        type: "fixture.privateWager",
+        answersSubmittedTargetActionId: "after-timeout",
+        timeoutSeconds: 1
+      };
+      const jumpToAction = vi.fn();
+      const runtime = createGameInputRuntime({
+        inputRegistrations: registrations,
+        currentRoomAction: () => action,
+        jumpToAction
+      });
+
+      expect(runtime.ensure(room, action)).toBe(true);
+      vi.advanceTimersByTime(1000);
+      expect(jumpToAction).toHaveBeenCalledWith(room, "after-timeout", action);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

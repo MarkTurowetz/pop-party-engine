@@ -57,6 +57,31 @@
   transform-origin: center !important;
 }
 
+.game-plugin-input-control {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.game-plugin-action-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+}
+
+.game-plugin-integer-input {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+
 .controller-layout-target.controller-layout-visual-hidden,
 .controller-layout-target.controller-layout-visual-exiting {
   visibility: hidden;

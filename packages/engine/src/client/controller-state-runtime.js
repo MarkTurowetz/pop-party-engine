@@ -8,6 +8,7 @@ function createControllerStateRuntime(options) {
     closeAvatarPicker,
     getChoiceInputView,
     getGlobalActionView,
+    getGamePluginInputView = () => ({ render: () => false }),
     getLobbyView,
     getMicrophoneAccessView,
     getTextInputView,
@@ -94,6 +95,11 @@ function createControllerStateRuntime(options) {
       id: "submissionConfirmation",
       matches: (context) => Boolean(resolveControllerSubmissionConfirmation(context.lobby, context.me)),
       render: renderSubmissionConfirmation
+    },
+    {
+      id: "gamePluginInput",
+      matches: (context) => Boolean(context.lobby?.gamePlugin?.input?.actionId),
+      render: (context) => getGamePluginInputView().render(context.lobby, context.me)
     },
     {
       id: "choiceInput",

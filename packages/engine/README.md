@@ -62,6 +62,55 @@ VIP capability, deterministic `random` helpers, Flow `outputs`, and an explicit
 internals. Output variable fields are authored in Flow and can be read by a
 Decision as `flowVariables.<name>`.
 
+Game-owned controller barriers use `registry.inputs`. The engine authenticates
+the submitting controller, selects recipients on the server, derives a private
+JSON-safe view model separately for each recipient, validates the declared
+payload, and invokes the synchronous game callback with only its namespaced
+state:
+
+```js
+registry.inputs("my-game.turnChoice", {
+  name: "Turn Choice",
+  fields: [
+    { key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" },
+    { key: "resultVariable", label: "Result Variable", control: "text", default: "turnChoice" }
+  ],
+  outputs: [{ id: "choice", name: "Choice", variableField: "resultVariable" }],
+  submission: [{ id: "choice", type: "choice", optionsSource: "options" }],
+  controller: {
+    layoutStateId: "my-game-turn-choice",
+    bindings: [
+      { id: "left", kind: "choice", layoutElementId: "left-choice", field: "choice", optionIndex: 0, autoSubmit: true },
+      { id: "right", kind: "choice", layoutElementId: "right-choice", field: "choice", optionIndex: 1, autoSubmit: true }
+    ]
+  },
+  recipients(context) {
+    return [context.state.currentPlayerId];
+  },
+  view(context) {
+    return {
+      prompt: `Choose for ${context.viewer.name}`,
+      options: [{ id: "hit", label: "Hit" }, { id: "stay", label: "Stay" }]
+    };
+  },
+  submit(context, payload) {
+    context.state.lastChoice = { playerId: context.actor.id, choice: payload.choice };
+    context.outputs.set("choice", payload.choice);
+  }
+});
+```
+
+Submission fields support private-view-model choices and bounded integers.
+Controller bindings support Art/Layout-backed text, choice hotspots, bounded
+integer fields, and submit hotspots. They refer only to authored Controller
+Layout element and Art component ids; plugins cannot inject JavaScript or CSS.
+Inputs declare `completion` (`allRecipients`, `anyRecipient`, or `manual`),
+`disconnect` (`wait`, `completeRemaining`, or `fault`), and an optional
+authored timeout field. Every submission carries the room session, action, and
+input visit identity. Stale visits are rejected and each recipient is applied
+at most once. `context.actor` is always the authenticated submitting player,
+not an authored id.
+
 Stage and Controller renderers are declarative view-model bindings to existing
 Tools-authored Layout elements and Art components:
 
@@ -80,6 +129,9 @@ registry.stageRenderers("my-game.counter", {
 
 The selector runs on the server against a read-only snapshot. The browser
 receives only JSON-safe values and applies them through the engine Art renderer.
+Controller selectors additionally receive the authenticated `viewer` snapshot;
+their view model is produced only in that controller's private response and is
+never included in Stage broadcasts.
 Plugins cannot bind position, dimensions, layout scale, or arbitrary CSS; those
 remain owned by Stage/Controller Layout and Art Manager content.
 
