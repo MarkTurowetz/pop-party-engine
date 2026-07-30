@@ -951,21 +951,42 @@
         type: definition.stageActionType || definition.id,
         runner: definition.stageRunner
     }));
-    function createFlowActionRegistry(context) {
+    function createFlowActionRegistry(context, additionalDefinitions = []) {
+        const definitions = [...flowActionDefinitions, ...(Array.isArray(additionalDefinitions) ? additionalDefinitions : [])];
+        validateFlowActionDefinitions(definitions);
+        const instanceAvailableFlowActionTypes = definitions.map(({ id, name, category, deprecated, primaryOnly }) => ({
+            id,
+            name,
+            category,
+            deprecated: deprecated === true,
+            primaryOnly: primaryOnly === true
+        }));
+        const instanceDefinitionById = new Map(definitions.map((definition) => [definition.id, definition]));
+        const instanceDefinitionByStageActionType = new Map(definitions.map((definition) => [definition.stageActionType || definition.id, definition]));
+        const instanceCompletableStageActionTypes = new Set(definitions
+            .filter((definition) => definition.canCompleteFromStage)
+            .map((definition) => definition.stageActionType || definition.id));
+        const instanceStageActionRunnerDefinitions = definitions
+            .filter((definition) => definition.stageRunner)
+            .map((definition) => ({
+            actionId: definition.id,
+            type: definition.stageActionType || definition.id,
+            runner: definition.stageRunner
+        }));
         function hasActionType(type) {
-            return definitionById.has(type);
+            return instanceDefinitionById.has(type);
         }
         function actionTypeMeta(type) {
-            return availableFlowActionTypes.find((item) => item.id === type) || availableFlowActionTypes[0];
+            return instanceAvailableFlowActionTypes.find((item) => item.id === type) || instanceAvailableFlowActionTypes[0];
         }
         function normalizeAction(type, action, base) {
-            const definition = definitionById.get(type);
+            const definition = instanceDefinitionById.get(type);
             if (!definition)
                 return { ...base, type: String(type || action?.type || base?.type || "unknown") };
             return definition.normalize(action, base, context);
         }
         function publicAction(action, base) {
-            const definition = definitionById.get(action?.type);
+            const definition = instanceDefinitionById.get(action?.type);
             if (!definition) {
                 return { ...base, type: String(action?.type || base?.actionType || "unknown") };
             }
@@ -977,7 +998,7 @@
             return publicPayload;
         }
         function applyRoomEffect(room, action) {
-            const definition = definitionById.get(action?.type);
+            const definition = instanceDefinitionById.get(action?.type);
             if (!definition?.applyRoomEffect)
                 return false;
             definition.applyRoomEffect(room, action, context);
@@ -986,9 +1007,13 @@
         return {
             applyRoomEffect,
             actionTypeMeta,
+            availableFlowActionTypes: instanceAvailableFlowActionTypes,
             hasActionType,
+            isCompletableStageActionType: (type) => instanceCompletableStageActionTypes.has(type),
             normalizeAction,
-            publicAction
+            publicAction,
+            stageActionRunnerDefinitions: instanceStageActionRunnerDefinitions,
+            stageCompletionCleanupForActionType: (type) => instanceDefinitionByStageActionType.get(type)?.completionCleanup || ""
         };
     }
     function isCompletableStageActionType(type) {

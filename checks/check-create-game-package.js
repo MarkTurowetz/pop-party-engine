@@ -84,12 +84,133 @@ try {
     stdio: "pipe",
     env: { ...process.env, npm_config_cache: path.join(fixtureRoot, ".npm-cache") }
   });
+  execFileSync("npm", ["test"], { cwd: targetRoot, stdio: "inherit" });
+  fs.writeFileSync(path.join(targetRoot, "src", "actions", "index.js"), `"use strict";
+module.exports = Object.freeze([{
+  id: "generated-fixture.increment",
+  value: {
+    name: "Increment Fixture Counter",
+    fields: [
+      { key: "amount", label: "Amount", control: "integer", min: 1, max: 10, default: 1 },
+      { key: "resultVariable", label: "Result Variable", control: "text", default: "fixtureCount" }
+    ],
+    outputs: [
+      { id: "count", name: "Count", variableField: "resultVariable", defaultVariable: "fixtureCount" }
+    ],
+    execute(context, action) {
+      context.state.count = Number(context.state.count || 0) + Number(action.amount || 0);
+      context.outputs.set("count", context.state.count);
+    }
+  }
+}]);
+`);
+  const generatedRenderer = (id, layoutElementId, targetComponentId) => `"use strict";
+module.exports = Object.freeze([{
+  id: ${JSON.stringify(id)},
+  value: {
+    name: "Fixture Counter",
+    target: { layoutElementId: ${JSON.stringify(layoutElementId)}, layoutScope: "global" },
+    bindings: [
+      { id: "count", kind: "text", source: "label", targetComponentId: ${JSON.stringify(targetComponentId)}, fallback: "0" }
+    ],
+    select(context) { return { label: String(context.state.count || 0) }; }
+  }
+}]);
+`;
+  fs.writeFileSync(
+    path.join(targetRoot, "src", "stage", "index.js"),
+    generatedRenderer("generated-fixture.stageCounter", "stagecodebadge", "badge-code")
+  );
+  fs.writeFileSync(
+    path.join(targetRoot, "src", "controller", "index.js"),
+    generatedRenderer("generated-fixture.controllerCounter", "controllerglobalactionmessage", "layout-text-field-text/layout-text")
+  );
   const developmentSmoke = execFileSync(process.execPath, ["-e", `
     const fs = require("node:fs");
     const { startDevelopmentApplication } = require("@pop-party/engine/tooling");
     (async () => {
       const first = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
       const firstHealth = await (await fetch(first.startup.localUrl + "/health")).json();
+      const flowResponse = await fetch(first.startup.localUrl + "/api/game-flow");
+      const flowPayload = await flowResponse.json();
+      const pluginActionMeta = flowPayload.availableActionTypes.find((item) => item.id === "generated-fixture.increment");
+      const fixtureLobby = {
+          id: "lobby",
+          name: "Lobby",
+          entryTargetActionId: "fixture-increment",
+          actions: [
+            {
+              id: "fixture-increment",
+              name: "Increment Fixture Counter",
+              type: "generated-fixture.increment",
+              amount: 2,
+              resultVariable: "fixtureCount",
+              timing: { mode: "E+", seconds: 0 },
+              subActions: [],
+              nextTargetActionId: "fixture-decision"
+            },
+            {
+              id: "fixture-decision",
+              name: "Branch On Fixture Counter",
+              type: "decision",
+              variable: "flowVariables.fixtureCount",
+              valueType: "int",
+              subActions: [],
+              branches: [
+                { id: "branch-hit", type: "code", code: "x == 2", targetActionId: "fixture-hit" },
+                { id: "branch-miss", type: "noMatch", targetActionId: "fixture-miss" }
+              ]
+            },
+            {
+              id: "fixture-hit",
+              name: "Fixture Hit",
+              type: "presentText",
+              text: "Plugin branch hit",
+              timing: { mode: "E+", seconds: 0 },
+              subActions: [],
+              nextTargetActionId: "none"
+            },
+            {
+              id: "fixture-miss",
+              name: "Fixture Miss",
+              type: "presentText",
+              text: "Plugin branch missed",
+              timing: { mode: "E+", seconds: 0 },
+              subActions: [],
+              nextTargetActionId: "none"
+            }
+          ]
+      };
+      const fixtureFlow = {
+        ...flowPayload.flow,
+        states: flowPayload.flow.states.map((state) => state.id === "lobby" ? fixtureLobby : state)
+      };
+      const stageHtml = await (await fetch(first.startup.localUrl + "/stage")).text();
+      const controllerHtml = await (await fetch(first.startup.localUrl + "/controller")).text();
+      const roomResponse = await fetch(first.startup.localUrl + "/api/stage/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ stageCode: "PLUG" })
+      });
+      const room = await roomResponse.json();
+      const initialLobbyResponse = await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby");
+      await initialLobbyResponse.json();
+      const stageHeaders = {
+        "content-type": "application/json",
+        "x-stage-capability": room.stageCapability
+      };
+      const testConfigResponse = await fetch(first.startup.localUrl + "/api/stage/PLUG/test-config", {
+        method: "POST",
+        headers: stageHeaders,
+        body: JSON.stringify({ flow: fixtureFlow })
+      });
+      const configuredLobby = (await testConfigResponse.json()).lobby;
+      const completeResponse = await fetch(first.startup.localUrl + "/api/complete-action", {
+        method: "POST",
+        headers: stageHeaders,
+        body: JSON.stringify({ stageCode: "PLUG", actionId: "fixture-increment", source: "callback" })
+      });
+      const completedLobby = (await completeResponse.json()).lobby;
       const constantsResponse = await fetch(first.startup.localUrl + "/api/game-constants");
       const constantsPayload = await constantsResponse.json();
       constantsPayload.constants.gameTitle = "Generated Fixture Edited";
@@ -98,10 +219,17 @@ try {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ constants: constantsPayload.constants })
       });
+      const flowSaveResponse = await fetch(first.startup.localUrl + "/api/game-flow", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ flow: fixtureFlow })
+      });
+      const flowSavePayload = await flowSaveResponse.json();
       const savedRevision = JSON.parse(fs.readFileSync(".pop-party/content/content-bundle.json", "utf8")).rootHash;
-      await first.runtime.stop();
+      await first.runtime.stop().catch(() => {});
       const second = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
       const secondConstants = await (await fetch(second.startup.localUrl + "/api/game-constants")).json();
+      const secondFlow = await (await fetch(second.startup.localUrl + "/api/game-flow")).json();
       const result = {
         firstRevision: first.development.revision,
         healthRevision: firstHealth.release.contentRevision,
@@ -109,12 +237,25 @@ try {
         savedRevision,
         secondRevision: second.development.revision,
         secondGameTitle: secondConstants.constants.gameTitle,
+        pluginActionVisible: Boolean(pluginActionMeta && pluginActionMeta.fields.some((field) => field.key === "amount")),
+        flowSaveStatus: flowSaveResponse.status,
+        flowSaveError: flowSavePayload.error,
+        rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
+          && controllerHtml.includes("generated-fixture.controllerCounter"),
+        pluginViewModel: configuredLobby.gamePlugin?.viewModels?.["generated-fixture.stageCounter"]?.label,
+        configuredAction: configuredLobby.action?.id,
+        configuredFault: configuredLobby.runtimeFault,
+        branchSelected: completedLobby.lastDecisionTrace?.selectedBranch,
+        branchedAction: completedLobby.action?.id,
+        secondFlowActionType: secondFlow.flow.states
+          .find((state) => state.id === "lobby")?.actions
+          .find((action) => action.id === "fixture-increment")?.type,
         seededFirst: first.development.seeded,
         seededSecond: second.development.seeded
       };
       await second.runtime.stop();
       process.stdout.write(JSON.stringify(result));
-    })().catch((error) => { console.error(error); process.exitCode = 1; });
+    })().catch((error) => { console.error(error); process.exit(1); });
   `], { cwd: targetRoot, encoding: "utf8" });
   const development = JSON.parse(developmentSmoke.trim().split(/\r?\n/).at(-1));
   if (!development.seededFirst || development.seededSecond
@@ -122,13 +263,19 @@ try {
     || development.saveStatus !== 200
     || development.savedRevision === development.firstRevision
     || development.secondRevision !== development.savedRevision
-    || development.secondGameTitle !== "Generated Fixture Edited") {
+    || development.secondGameTitle !== "Generated Fixture Edited"
+    || !development.pluginActionVisible
+    || development.flowSaveStatus !== 200
+    || !development.rendererManifestVisible
+    || development.pluginViewModel !== "2"
+    || development.branchSelected !== "branch-hit"
+    || development.branchedAction !== "fixture-hit"
+    || development.secondFlowActionType !== "generated-fixture.increment") {
     throw new Error("Generated game tools did not persist an independently valid local content revision");
   }
   if (!fs.existsSync(path.join(targetRoot, ".pop-party", "content", "content-bundle.json"))) {
     throw new Error("Generated game development workspace was not created inside the game");
   }
-  execFileSync("npm", ["test"], { cwd: targetRoot, stdio: "pipe" });
   const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });
   if (!migrationPreview.includes("Migration preview valid: level 0 -> 0") || !migrationPreview.includes("Changed paths: (none)")) {
     throw new Error("Generated game migration preview contract failed");

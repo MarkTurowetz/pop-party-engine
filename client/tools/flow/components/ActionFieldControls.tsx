@@ -6,6 +6,7 @@ import { FlowFreeformFuzzyInput } from "./FlowFreeformFuzzyInput";
 
 export interface ActionFieldControlsProps {
   action: FlowAction;
+  fields?: FlowActionFieldDescriptor[];
   actionTargetOptions: InspectorTargetOption[];
   animationLabelOptions?: InspectorTargetOption[];
   componentTargetOptions?: InspectorTargetOption[];
@@ -221,6 +222,7 @@ function FieldControl({
  */
 export function ActionFieldControls({
   action,
+  fields: suppliedFields,
   actionTargetOptions,
   animationLabelOptions = [],
   componentTargetOptions = [],
@@ -230,7 +232,7 @@ export function ActionFieldControls({
   onSetField,
   onSetFields
 }: ActionFieldControlsProps) {
-  const fields = actionFieldsForType(action.type);
+  const fields = suppliedFields || actionFieldsForType(action.type);
   if (!fields.length) return null;
   return (
     <div className="flow-react-action-fields" data-flow-react-component="action-fields">

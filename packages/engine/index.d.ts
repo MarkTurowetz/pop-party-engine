@@ -1,7 +1,97 @@
+export type GameActionFieldControl =
+  | "actionTarget"
+  | "boolean"
+  | "componentTarget"
+  | "gameObjectTarget"
+  | "integer"
+  | "number"
+  | "select"
+  | "stateTarget"
+  | "text"
+  | "textarea"
+  | "textTarget";
+
+export interface GameActionField {
+  key: string;
+  label: string;
+  control: GameActionFieldControl;
+  default?: unknown;
+  min?: number;
+  max?: number;
+  options?: Array<{ id: string; name: string }>;
+}
+
+export interface GameActionOutput {
+  id: string;
+  name: string;
+  variableField: string;
+  defaultVariable?: string;
+}
+
+export interface GameActionPlayer {
+  readonly id: string;
+  readonly name: string;
+  readonly active: boolean;
+  readonly isVip: boolean;
+  readonly points: number;
+  readonly avatar: Readonly<Record<string, unknown>>;
+}
+
+export interface GameActionExecutionContext<TState extends Record<string, unknown> = Record<string, unknown>> {
+  readonly namespace: string;
+  readonly state: TState;
+  readonly actor: GameActionPlayer | null;
+  readonly players: readonly GameActionPlayer[];
+  readonly capability: Readonly<{ hasActor: boolean; isVip: boolean }>;
+  readonly random: Readonly<{
+    float(): number;
+    integer(min: number, max: number): number;
+    pick<T>(values: readonly T[]): T | undefined;
+  }>;
+  readonly outputs: Readonly<{ set(outputId: string, value: unknown): void }>;
+  readonly broadcast: Readonly<{ request(): void }>;
+}
+
+export interface GameActionRegistration<TState extends Record<string, unknown> = Record<string, unknown>> {
+  name: string;
+  category?: "input" | "logic" | "standard";
+  deprecated?: boolean;
+  primaryOnly?: boolean;
+  fields?: GameActionField[];
+  outputs?: GameActionOutput[];
+  actorPlayerIdField?: string;
+  execute(context: GameActionExecutionContext<TState>, action: Readonly<Record<string, unknown>>): void;
+}
+
+export interface GameRendererBinding {
+  id: string;
+  kind: "text" | "component";
+  source: string;
+  targetComponentId: string;
+  property?: "defaultText" | "fill" | "imageTint" | "isShown" | "opacity" | "rotation" | "scale";
+  fallback?: unknown;
+}
+
+export interface GameRendererSelectionContext<TState extends Record<string, unknown> = Record<string, unknown>> {
+  readonly namespace: string;
+  readonly state: Readonly<TState>;
+  readonly players: readonly GameActionPlayer[];
+  readonly flow: Readonly<Record<string, unknown>>;
+  readonly phase: string;
+  readonly flowStateId: string;
+}
+
+export interface GameRendererRegistration<TState extends Record<string, unknown> = Record<string, unknown>> {
+  name: string;
+  target: { layoutElementId: string; layoutScope?: "moment" | "global" };
+  bindings: GameRendererBinding[];
+  select(context: GameRendererSelectionContext<TState>): unknown;
+}
+
 export interface GamePluginRegistryApi {
-  actions(id: string, value: unknown): void;
-  stageRenderers(id: string, value: unknown): void;
-  controllerRenderers(id: string, value: unknown): void;
+  actions(id: string, value: GameActionRegistration): void;
+  stageRenderers(id: string, value: GameRendererRegistration): void;
+  controllerRenderers(id: string, value: GameRendererRegistration): void;
   stateSchemas(id: string, value: unknown): void;
   validators(id: string, value: unknown): void;
   migrations(id: string, value: unknown): void;

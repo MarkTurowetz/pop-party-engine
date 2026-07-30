@@ -7,6 +7,7 @@ function createLobbyPayloadRuntime({
   choiceInputPayload,
   craftingTimerPayload,
   currentRoomAction,
+  gamePluginViewModels = () => ({}),
   gameConstants,
   microphoneAccessPayload,
   normalizePlayerFilter,
@@ -45,10 +46,10 @@ function createLobbyPayloadRuntime({
     let runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
     const currentAction = runtimeFault ? null : resolveRoomActionText(currentRoomAction(room), room);
     runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
+    const currentActionExecutionId = runtimeFault ? 0 : actionExecutionId(room, currentAction);
     if (!runtimeFault) applyRoomActionEffects(room, currentAction);
     const constants = gameConstants(room);
     runtimeFault = room.runtimeFault ? { ...room.runtimeFault } : null;
-    const currentActionExecutionId = runtimeFault ? 0 : actionExecutionId(room, currentAction);
     if (!runtimeFault) scheduleRoomSubActions(room, currentAction, currentActionExecutionId);
     const input = choiceInputPayload(room, currentAction);
     const textInput = textInputPayload(room, currentAction);
@@ -90,6 +91,9 @@ function createLobbyPayloadRuntime({
       currentRound: room.currentRound || 1,
       triviaPromptText: String(room.triviaPromptText || ""),
       gameTitle: constants.gameTitle,
+      gamePlugin: {
+        viewModels: gamePluginViewModels(room)
+      },
       speechToTextSendInputBuffer: constants.speechToTextSendInputBuffer,
       numSequentialGames: room.numSequentialGames || 0,
       serverNow: Date.now(),

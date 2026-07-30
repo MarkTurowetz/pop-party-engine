@@ -94,6 +94,10 @@ export function controllerInputStaleError(payload: Record<string, unknown>, room
 export function createControllerSubmitHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createActionCompletionRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createRoomActionEffectsRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createGameActionExecutor(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createGameRendererRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createPluginFlowActionDefinitions(registrations?: readonly unknown[]): readonly Record<string, unknown>[];
+export function pluginFlowActionTypes(registrations?: readonly unknown[]): readonly Record<string, unknown>[];
 export function createStageActionHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createFlowActionPublicRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGameFlowNormalizationRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

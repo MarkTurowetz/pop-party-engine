@@ -14,7 +14,8 @@ describe("static runtime configuration", () => {
     const json = script.match(/>(.*)<\/script>/)?.[1] || "";
     expect(JSON.parse(json)).toEqual({
       game: { id: "fixture-game", version: "0.1.0" },
-      semanticRoles: { "engine.stage.votingCard": { compositionId: "fixture-voting-card" } }
+      semanticRoles: { "engine.stage.votingCard": { compositionId: "fixture-voting-card" } },
+      gamePlugin: { actionRunners: [], renderers: [] }
     });
   });
 

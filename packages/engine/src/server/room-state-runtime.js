@@ -46,6 +46,7 @@ function createDefaultRoom(stageCode) {
     hiddenPlayerAnswerIds: new Set(),
     currentRound: 1,
     flowVariables: {},
+    gamePluginState: {},
     triviaPromptText: "",
     G: {},
     playerAnswerRecords: {},

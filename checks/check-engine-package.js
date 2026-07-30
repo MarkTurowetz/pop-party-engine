@@ -345,7 +345,7 @@ try {
     "@pop-party/engine/art/architecture",
     "@pop-party/engine/art/components"
   ]) fixtureRequire(specifier);
-  const plugin = engine.defineGamePlugin({ namespace: "fixture", register(registry) { registry.actions("fixture.action", {}); } });
+  const plugin = engine.defineGamePlugin({ namespace: "fixture", register(registry) { registry.actions("fixture.action", { name: "Fixture Action", execute() {} }); } });
   const game = engine.defineGame({
     gameId: "packed-fixture",
     displayName: "Packed Fixture",
@@ -388,7 +388,7 @@ try {
     'import { createAdminAuditRuntime } from "@pop-party/engine/security/audit";',
     'import { createRuntimeCapabilityRuntime } from "@pop-party/engine/security/runtime-capabilities";',
     'import { assertSafeSvg } from "@pop-party/engine/security/svg";',
-    'const plugin = defineGamePlugin({ namespace: "typed", register(registry) { registry.actions("typed.action", {}); } });',
+    'const plugin = defineGamePlugin({ namespace: "typed", register(registry) { registry.actions("typed.action", { name: "Typed Action", execute() {} }); } });',
     'defineGame({ gameId: "typed-fixture", displayName: "Typed Fixture", version: "1.0.0", engineCompatibility: "1.0.0", content: { mode: "bundle", schemaVersion: 1 }, plugin });',
     'const timeline: TimelineDocument | null = normalizeTimeline({ fps: 30, frameCount: 1, labels: [], commands: [], tracks: [] });',
     'const organization = normalizeArtOrganization();',

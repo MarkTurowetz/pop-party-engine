@@ -348,6 +348,7 @@ export function createFlowEditorController(
     return registryName !== type ? registryName : flowActionNameForType(type);
   };
   const actionDefaults = createActionDefaults({
+    actionTypeMeta: (type) => actionTypes.find((meta) => meta.id === type) || {},
     ensureActionTiming: (action, isSubAction) =>
       ensureActionTiming(action, isSubAction, { actionTypeMeta }),
     ensureDecisionBranches: (action) => ensureDecisionBranches(action)

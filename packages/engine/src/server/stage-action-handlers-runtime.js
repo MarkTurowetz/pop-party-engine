@@ -1,7 +1,5 @@
 "use strict";
 
-const { isCompletableStageActionType } = require("../shared/flow-action-registry");
-
 function createStageActionHandlersRuntime({
   applyRoomActionEffects,
   broadcastLobby,
@@ -14,7 +12,8 @@ function createStageActionHandlersRuntime({
   readJson,
   resolveRoomActionText,
   roomIsPaused = () => false,
-  sendJson
+  sendJson,
+  isCompletableStageActionType = () => false
 }) {
   function rejectIfPaused(room, res) {
     if (!roomIsPaused(room)) return false;

@@ -13,7 +13,7 @@ function createStageTestConfigHandlerRuntime({
   async function handleStageTestConfig(req, res, stageCode) {
     let payload;
     try {
-      payload = await readJson(req);
+      payload = await readJson(req, 2_000_000);
     } catch (error) {
       sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
       return;
@@ -31,16 +31,21 @@ function createStageTestConfigHandlerRuntime({
       }
     }
 
-    room.actionCompletionPendingId = "";
-    clearAppliedActionEffects(room);
-    room.presentedAction = null;
-    room.subroutinePath = [];
-    room.subroutineStack = [];
-    if (room.actionIndex >= getStateActions(room.phase, room).length) {
-      room.actionIndex = 0;
+    try {
+      room.actionCompletionPendingId = "";
+      clearAppliedActionEffects(room);
+      room.presentedAction = null;
+      room.subroutinePath = [];
+      room.subroutineStack = [];
+      room.actionIndex = -1;
+      broadcastLobby(room);
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room), hasTestFlow: Boolean(room.runtimeFlowOverride) });
+    } catch (error) {
+      sendJson(res, 500, {
+        ok: false,
+        error: `Test flow could not be activated: ${String(error?.message || error)}`
+      });
     }
-    broadcastLobby(room);
-    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room), hasTestFlow: Boolean(room.runtimeFlowOverride) });
   }
 
   return { handleStageTestConfig };

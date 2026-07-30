@@ -1,5 +1,6 @@
 // Typed port of the legacy client/stage/action-runners.js IIFE. Installs
 // window.PartyGameStageActionRunners for the legacy stage runtime.
+import { gamePluginActionRunnerDefinitions } from "./gamePluginRendererRuntime";
 
 type Dict = Record<string, unknown>;
 type Action = Dict;
@@ -67,7 +68,7 @@ function runnerDefinitions(): RunnerDefinition[] {
       "Stage action registry is unavailable. Refusing to execute flow actions with a duplicated legacy runner list."
     );
   }
-  return sharedDefinitions;
+  return [...sharedDefinitions, ...gamePluginActionRunnerDefinitions()];
 }
 
 function createBehaviorHandlers(context: runnerContext): Record<string, BehaviorHandler> {

@@ -34,7 +34,7 @@ describe("stage test-flow configuration", () => {
 
     expect(room.runtimeFlowOverride).toBe(normalizedFlow);
     expect(room.actionCompletionPendingId).toBe("");
-    expect(room.actionIndex).toBe(0);
+    expect(room.actionIndex).toBe(-1);
     expect(room.presentedAction).toBeNull();
     expect(room.subroutinePath).toEqual([]);
     expect(room.subroutineStack).toEqual([]);

@@ -21,7 +21,8 @@ function createGameFlowNormalizationRuntime({
   normalizeHostAudioPlayMode = (value) => (value === "sequence" || value === "index" ? value : "random"),
   normalizeLineIndex = (value) => Math.max(0, Math.floor(Number(value || 0) || 0)),
   normalizePlayerFilter,
-  normalizeVotingCardFilter
+  normalizeVotingCardFilter,
+  pluginActionDefinitions = []
 }) {
   const actionRegistry = createFlowActionRegistry({
     availableFlowTransitions,
@@ -40,7 +41,7 @@ function createGameFlowNormalizationRuntime({
     normalizePlayerFilter,
     normalizeTextTarget,
     normalizeVotingCardFilter
-  });
+  }, pluginActionDefinitions);
 
   function normalizeGameFlow(flow) {
     const incomingStates = Array.isArray(flow?.states) ? flow.states : defaultGameFlow.states;

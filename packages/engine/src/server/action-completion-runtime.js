@@ -1,9 +1,6 @@
 "use strict";
 
-const {
-  isFlowEventBarrierAction,
-  stageCompletionCleanupForActionType
-} = require("../shared/flow-action-registry");
+const { isFlowEventBarrierAction } = require("../shared/flow-action-registry");
 const { createRuntimeFault } = require("./runtime-fault-runtime");
 
 function createActionCompletionRuntime({
@@ -15,7 +12,8 @@ function createActionCompletionRuntime({
   clearTextInput,
   currentRoomAction,
   enterGamePhase,
-  releasePendingFlowEvents = () => false
+  releasePendingFlowEvents = () => false,
+  stageCompletionCleanupForActionType = () => ""
 }) {
   function clearCompletionInput(room, action) {
     const cleanup = stageCompletionCleanupForActionType(action?.type);

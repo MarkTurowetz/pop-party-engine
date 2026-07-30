@@ -20,6 +20,13 @@ export interface FlowActionTypeMeta extends JsonObject {
   id: string;
   name: string;
   category?: string;
+  fields?: import("./flowActionFieldSchema").FlowActionFieldDescriptor[];
+  outputs?: Array<{
+    id: string;
+    name: string;
+    variableField: string;
+    defaultVariable?: string;
+  }>;
 }
 
 export interface FlowOption {

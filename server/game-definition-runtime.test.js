@@ -39,7 +39,7 @@ describe("defineGame", () => {
     const plugin = defineGamePlugin({
       namespace: "example",
       register(registry) {
-        registry.actions("example.roll", { execute: () => 7 });
+        registry.actions("example.roll", { name: "Roll", execute: () => 7 });
       }
     });
     const game = defineGame(validDefinition({ plugin }));
