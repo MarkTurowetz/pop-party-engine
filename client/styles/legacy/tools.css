@@ -557,7 +557,14 @@
   transform-origin: center;
   border: calc(2px * var(--art-composition-editor-scale, 1)) dashed rgba(23, 19, 31, 0.45);
   color: var(--component-text-color, var(--ink));
-  font-family: var(--component-font-family, ui-rounded, "Avenir Next", "Trebuchet MS", system-ui, sans-serif);
+  font-family: var(
+    --component-font-family,
+    ui-rounded,
+    "Avenir Next",
+    "Trebuchet MS",
+    system-ui,
+    sans-serif
+  );
   font-size: var(--component-font-size, 18px);
   font-weight: 1000;
   line-height: 1;
@@ -1304,7 +1311,10 @@ body.tool-dashboard-mode .layout-react-shell {
     linear-gradient(90deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
     linear-gradient(0deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
     linear-gradient(135deg, #22d3ee 0%, #60d394 58%, #ffe156 100%);
-  background-size: 54px 54px, 54px 54px, auto;
+  background-size:
+    54px 54px,
+    54px 54px,
+    auto;
 }
 
 .art-canvas-viewport {
@@ -1407,7 +1417,9 @@ body.tool-dashboard-mode .layout-react-shell {
   background:
     linear-gradient(var(--tool-color-value), var(--tool-color-value)),
     conic-gradient(#d7d3c7 25%, #fff 0 50%, #d7d3c7 0 75%, #fff 0);
-  background-size: auto, 10px 10px;
+  background-size:
+    auto,
+    10px 10px;
   box-shadow: 2px 2px 0 rgba(23, 19, 31, 0.24);
 }
 
@@ -1448,8 +1460,7 @@ body.tool-dashboard-mode .layout-react-shell {
   border: 3px solid var(--ink);
   border-radius: 8px;
   background:
-    linear-gradient(to top, #000, transparent),
-    linear-gradient(to right, #fff, transparent),
+    linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent),
     var(--tool-color-hue);
   cursor: crosshair;
   touch-action: none;
@@ -1498,7 +1509,9 @@ body.tool-dashboard-mode .layout-react-shell {
   background:
     linear-gradient(90deg, transparent, var(--tool-color-opaque)),
     conic-gradient(#d7d3c7 25%, #fff 0 50%, #d7d3c7 0 75%, #fff 0);
-  background-size: auto, 10px 10px;
+  background-size:
+    auto,
+    10px 10px;
 }
 
 .tool-color-picker-range input[type="range"]::-webkit-slider-thumb {
@@ -1648,7 +1661,10 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .art-timeline-settings {
   display: grid;
-  grid-template-columns: minmax(160px, 180px) minmax(210px, 240px) minmax(300px, 1fr) minmax(400px, 0.85fr);
+  grid-template-columns: minmax(160px, 180px) minmax(210px, 240px) minmax(300px, 1fr) minmax(
+      400px,
+      0.85fr
+    );
   gap: 8px;
   min-width: 0;
 }
@@ -2146,10 +2162,10 @@ body.tool-dashboard-mode .layout-react-shell {
 }
 
 .art-timeline-lane-frame[data-art-timeline-tweened="true"][data-art-timeline-has-keyframe="true"] {
-  background:
-    linear-gradient(90deg, rgba(255, 225, 86, 0.94), rgba(255, 111, 178, 0.72)),
-    #ffe156;
-  box-shadow: inset 0 -4px 0 #ff4fa3, inset 0 0 0 2px rgba(23, 19, 31, 0.25);
+  background: linear-gradient(90deg, rgba(255, 225, 86, 0.94), rgba(255, 111, 178, 0.72)), #ffe156;
+  box-shadow:
+    inset 0 -4px 0 #ff4fa3,
+    inset 0 0 0 2px rgba(23, 19, 31, 0.25);
 }
 
 .art-timeline-lane-frame[data-art-timeline-has-label="true"] {
@@ -2181,11 +2197,16 @@ body.tool-dashboard-mode .layout-react-shell {
   border-color: var(--ink);
   background: #ff4fa3;
   color: var(--ink);
-  box-shadow: inset 0 0 0 2px #ffe156, 0 0 0 1px var(--ink), 0 0 10px rgba(255, 79, 163, 0.75);
+  box-shadow:
+    inset 0 0 0 2px #ffe156,
+    0 0 0 1px var(--ink),
+    0 0 10px rgba(255, 79, 163, 0.75);
 }
 
 .art-timeline-lane-frame[data-art-timeline-drop-target="true"] {
-  box-shadow: inset 0 0 0 3px var(--ink), 0 0 0 2px var(--cyan);
+  box-shadow:
+    inset 0 0 0 3px var(--ink),
+    0 0 0 2px var(--cyan);
 }
 
 .art-timeline-lane-frame[draggable="true"] {
@@ -2591,7 +2612,10 @@ body.tool-dashboard-mode .layout-react-shell {
     linear-gradient(90deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
     linear-gradient(0deg, rgba(23, 19, 31, 0.06) 1px, transparent 1px),
     linear-gradient(135deg, #22d3ee 0%, #60d394 58%, #ffe156 100%);
-  background-size: 54px 54px, 54px 54px, auto;
+  background-size:
+    54px 54px,
+    54px 54px,
+    auto;
 }
 
 .layout-preview-panel .layout-canvas {
@@ -2902,6 +2926,120 @@ body.tool-dashboard-mode .layout-react-shell {
   color: #5e5475;
   font-size: 12px;
   font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.layout-group-create {
+  display: grid;
+  gap: 7px;
+}
+
+.layout-group-create > button {
+  width: 100%;
+}
+
+.layout-group-create form {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: var(--cream);
+}
+
+.layout-group-create form label {
+  display: grid;
+  gap: 3px;
+}
+
+.layout-group-create form label > span,
+.layout-group-create form > small {
+  color: #5e5475;
+  font-size: 9px;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.layout-group-create form input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.layout-group-create form > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.layout-game-object-picker {
+  width: min(620px, calc(100vw - 36px));
+  max-height: min(720px, calc(100vh - 36px));
+}
+
+.layout-game-object-picker > header {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.layout-game-object-picker > header h3,
+.layout-game-object-picker > header p {
+  margin: 0;
+}
+
+.layout-game-object-picker > header p {
+  margin-top: 4px;
+  color: #5e5475;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.layout-game-object-picker > input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.layout-game-object-picker > ol {
+  display: grid;
+  gap: 7px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.layout-game-object-picker li > button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: var(--cream);
+}
+
+.layout-game-object-picker li strong,
+.layout-game-object-picker li small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-game-object-picker li small,
+.layout-game-object-picker > p {
+  color: #5e5475;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.layout-game-object-picker > p {
+  margin: 0;
+  padding: 18px;
+  border: 3px dashed rgba(23, 19, 31, 0.35);
+  border-radius: 10px;
+  text-align: center;
   text-transform: uppercase;
 }
 

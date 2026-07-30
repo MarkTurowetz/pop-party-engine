@@ -10,13 +10,23 @@ import {
 import type { ArtAsset, ArtComposition, LayoutElement } from "../../types/game-data";
 import { gameTextHtml } from "../../runtime/gameTextMarkup";
 import { gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
-import { ArtPreviewRenderer, assetUrlMap, compositionMap, type ArtTextOverride } from "../art/ArtPreviewRenderer";
+import {
+  ArtPreviewRenderer,
+  assetUrlMap,
+  compositionMap,
+  type ArtTextOverride
+} from "../art/ArtPreviewRenderer";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
 import { ToolSaveError } from "../common/ToolSaveError";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { LayoutController } from "./layoutController";
 import { ControllerConfigurationPicker, LayoutElementTagEditor } from "./LayoutTagControls";
-import { controllerInitialAnimationState, layoutGroups } from "./layoutModel";
+import {
+  controllerInitialAnimationState,
+  layoutGameObjectCompositions,
+  layoutGroups,
+  normalizeLayoutAuthoringId
+} from "./layoutModel";
 import {
   canonicalLayoutTag,
   layoutElementHasTag,
@@ -106,7 +116,9 @@ function layoutTextOverride(element: LayoutElement): ArtTextOverride {
   };
 }
 
-function artCompositionDefaultDimensions(composition: ArtComposition | null | undefined): { width: number; height: number } | null {
+function artCompositionDefaultDimensions(
+  composition: ArtComposition | null | undefined
+): { width: number; height: number } | null {
   const width = Number(composition?.canvas?.width || 0);
   const height = Number(composition?.canvas?.height || 0);
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
@@ -123,7 +135,15 @@ export function LayoutEditor({
   surface = "layout"
 }: LayoutEditorProps) {
   const [mode, setMode] = useState<"stage" | "controller">(initialMode);
-  const [controllerPreviewTagsByGroup, setControllerPreviewTagsByGroup] = useState<Record<string, string>>({});
+  const [controllerPreviewTagsByGroup, setControllerPreviewTagsByGroup] = useState<
+    Record<string, string>
+  >({});
+  const [gameObjectPickerOpen, setGameObjectPickerOpen] = useState(false);
+  const [gameObjectSearch, setGameObjectSearch] = useState("");
+  const [groupCreatorOpen, setGroupCreatorOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("New Controller Layout");
+  const [newGroupId, setNewGroupId] = useState("new-controller-layout");
+  const [groupIdEdited, setGroupIdEdited] = useState(false);
   const controller = mode === "stage" ? stageController : controllerController;
   const state = useLayoutEditor(controller);
   const { layouts, selectedGroupId, selectedElementIds, dirty, saving, canUndo, canRedo } = state;
@@ -133,6 +153,17 @@ export function LayoutEditor({
   const [previewPanelRef, previewPanelSize] = useElementSize<HTMLElement>();
   const assetUrlById = useMemo(() => assetUrlMap(artAssets), [artAssets]);
   const compositionById = useMemo(() => compositionMap(artCompositions), [artCompositions]);
+  const availableGameObjects = useMemo(
+    () => layoutGameObjectCompositions(artCompositions, mode),
+    [artCompositions, mode]
+  );
+  const visibleGameObjects = useMemo(() => {
+    const query = gameObjectSearch.trim().toLowerCase();
+    if (!query) return availableGameObjects;
+    return availableGameObjects.filter((composition) =>
+      `${composition.name || ""} ${composition.id}`.toLowerCase().includes(query)
+    );
+  }, [availableGameObjects, gameObjectSearch]);
 
   const groups = layoutGroups(layouts);
   const group = groups.find((item) => item.id === selectedGroupId) || layouts.global || null;
@@ -141,11 +172,18 @@ export function LayoutEditor({
   const fallbackPreviewWidth = mode === "controller" ? 420 : 960;
   const fallbackPreviewHeight = mode === "controller" ? 680 : 540;
   const availablePreviewWidth = Math.max(1, (previewPanelSize.width || fallbackPreviewWidth) - 32);
-  const availablePreviewHeight = Math.max(1, (previewPanelSize.height || fallbackPreviewHeight) - 32);
+  const availablePreviewHeight = Math.max(
+    1,
+    (previewPanelSize.height || fallbackPreviewHeight) - 32
+  );
   const maxPreviewScale = mode === "controller" ? 1.2 : 1;
   const scaleToFit = Math.max(
     0.05,
-    Math.min(maxPreviewScale, availablePreviewWidth / canvasWidth, availablePreviewHeight / canvasHeight)
+    Math.min(
+      maxPreviewScale,
+      availablePreviewWidth / canvasWidth,
+      availablePreviewHeight / canvasHeight
+    )
   );
   const groupElements = group?.elements || [];
   const controllerViewTags = mode === "controller" ? layoutViewTags(groupElements) : [];
@@ -161,8 +199,12 @@ export function LayoutEditor({
     group && selectedElementIds.size === 1
       ? groupElements.find((element) => element.id === [...selectedElementIds][0])
       : undefined;
-  const selectedArtCompositionId = selectedElement ? layoutElementArtCompositionId(selectedElement) : "";
-  const selectedArtComposition = selectedArtCompositionId ? compositionById.get(selectedArtCompositionId) || null : null;
+  const selectedArtCompositionId = selectedElement
+    ? layoutElementArtCompositionId(selectedElement)
+    : "";
+  const selectedArtComposition = selectedArtCompositionId
+    ? compositionById.get(selectedArtCompositionId) || null
+    : null;
 
   const openArtCompositionForElement = (element: LayoutElement) => {
     if (!onOpenArtComposition) return;
@@ -188,7 +230,15 @@ export function LayoutEditor({
       const dy = (e.clientY - startY) / scaleToFit;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
       const next = applyDragModifiers(
-        { originX, originY, deltaX: dx, deltaY: dy, shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey },
+        {
+          originX,
+          originY,
+          deltaX: dx,
+          deltaY: dy,
+          shiftKey: e.shiftKey,
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey
+        },
         modifierState
       );
       nextX = next.x;
@@ -202,7 +252,15 @@ export function LayoutEditor({
       const dx = (e.clientX - startX) / scaleToFit;
       const dy = (e.clientY - startY) / scaleToFit;
       const next = applyDragModifiers(
-        { originX, originY, deltaX: dx, deltaY: dy, shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey },
+        {
+          originX,
+          originY,
+          deltaX: dx,
+          deltaY: dy,
+          shiftKey: e.shiftKey,
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey
+        },
         modifierState
       );
       nextX = next.x;
@@ -274,7 +332,10 @@ export function LayoutEditor({
             ? undefined
             : (event) => {
                 event.stopPropagation();
-                controller.selectElement(element.id, event.metaKey || event.ctrlKey || event.shiftKey);
+                controller.selectElement(
+                  element.id,
+                  event.metaKey || event.ctrlKey || event.shiftKey
+                );
               }
         }
       >
@@ -335,7 +396,10 @@ export function LayoutEditor({
     event.dataTransfer.setData("text/plain", id);
   };
 
-  const updateElementLayerDropTarget = (targetId: string, event: ReactDragEvent<HTMLDivElement>) => {
+  const updateElementLayerDropTarget = (
+    targetId: string,
+    event: ReactDragEvent<HTMLDivElement>
+  ) => {
     const draggingId = elementDragId || event.dataTransfer.getData("text/plain");
     if (!draggingId || draggingId === targetId) return;
     event.preventDefault();
@@ -362,6 +426,16 @@ export function LayoutEditor({
     <>
       <button type="button" data-layout-add-text onClick={() => controller.addTextElement()}>
         Add Text
+      </button>
+      <button
+        type="button"
+        data-layout-add-game-object
+        onClick={() => {
+          setGameObjectSearch("");
+          setGameObjectPickerOpen(true);
+        }}
+      >
+        Add Game Object
       </button>
       <button type="button" disabled={!canUndo} onClick={() => controller.undo()}>
         Undo
@@ -394,9 +468,76 @@ export function LayoutEditor({
           <button type="button" aria-pressed={mode === "stage"} onClick={() => setMode("stage")}>
             Stage
           </button>
-          <button type="button" aria-pressed={mode === "controller"} onClick={() => setMode("controller")}>
+          <button
+            type="button"
+            aria-pressed={mode === "controller"}
+            onClick={() => setMode("controller")}
+          >
             Controller
           </button>
+        </div>
+      ) : null}
+      {mode === "controller" ? (
+        <div className="layout-group-create">
+          <button
+            type="button"
+            data-layout-add-group
+            aria-expanded={groupCreatorOpen}
+            onClick={() => setGroupCreatorOpen((current) => !current)}
+          >
+            Add Game Layout
+          </button>
+          {groupCreatorOpen ? (
+            <form
+              data-layout-group-create-form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const createdId = controller.addLayoutGroup({ id: newGroupId, name: newGroupName });
+                if (!createdId) return;
+                setGroupCreatorOpen(false);
+                setNewGroupName("New Controller Layout");
+                setNewGroupId("new-controller-layout");
+                setGroupIdEdited(false);
+              }}
+            >
+              <label>
+                <span>Name</span>
+                <input
+                  type="text"
+                  value={newGroupName}
+                  data-layout-group-name
+                  onChange={(event) => {
+                    const name = event.target.value;
+                    setNewGroupName(name);
+                    if (!groupIdEdited) {
+                      setNewGroupId(normalizeLayoutAuthoringId(name, "controller-layout"));
+                    }
+                  }}
+                />
+              </label>
+              <label>
+                <span>Layout ID</span>
+                <input
+                  type="text"
+                  value={newGroupId}
+                  data-layout-group-id
+                  onChange={(event) => {
+                    setGroupIdEdited(true);
+                    setNewGroupId(normalizeLayoutAuthoringId(event.target.value));
+                  }}
+                />
+              </label>
+              <small>Use this ID in a game-owned controller input registration.</small>
+              <div>
+                <button type="submit" disabled={!newGroupId}>
+                  Create
+                </button>
+                <button type="button" onClick={() => setGroupCreatorOpen(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : null}
         </div>
       ) : null}
       <ol className="tool-sidebar-list" data-layout-react-component="state-list">
@@ -426,15 +567,22 @@ export function LayoutEditor({
               const selected = selectedElementIds.has(element.id);
               const compositionId = layoutElementArtCompositionId(element);
               const linkedComposition = compositionId ? compositionById.get(compositionId) : null;
-              const initialState = mode === "controller" ? controllerInitialAnimationState(get(element, "defaultAnimationState")) : "";
+              const initialState =
+                mode === "controller"
+                  ? controllerInitialAnimationState(get(element, "defaultAnimationState"))
+                  : "";
               const tags = mode === "controller" ? layoutElementTags(element) : [];
               return (
                 <li
                   data-layout-object-id={element.id}
-                  data-layout-object-art-composition={linkedComposition ? linkedComposition.id : undefined}
+                  data-layout-object-art-composition={
+                    linkedComposition ? linkedComposition.id : undefined
+                  }
                   data-layout-object-initial-state={initialState || undefined}
                   data-layout-object-tags={tags.join("|") || undefined}
-                  data-layout-layer-drop-placement={elementDropTarget?.id === element.id ? elementDropTarget.placement : undefined}
+                  data-layout-layer-drop-placement={
+                    elementDropTarget?.id === element.id ? elementDropTarget.placement : undefined
+                  }
                   key={element.id}
                 >
                   <div
@@ -452,7 +600,12 @@ export function LayoutEditor({
                       className="layout-object-select"
                       aria-current={selected ? "true" : undefined}
                       data-layout-object-select={element.id}
-                      onClick={(event) => controller.selectElement(element.id, event.metaKey || event.ctrlKey || event.shiftKey)}
+                      onClick={(event) =>
+                        controller.selectElement(
+                          element.id,
+                          event.metaKey || event.ctrlKey || event.shiftKey
+                        )
+                      }
                       onDoubleClick={
                         linkedComposition
                           ? (event) => {
@@ -472,27 +625,42 @@ export function LayoutEditor({
                     <button
                       type="button"
                       className="layout-object-toggle layout-object-visible-toggle"
-                      aria-label={hidden ? `Show ${element.name || element.id}` : `Hide ${element.name || element.id}`}
+                      aria-label={
+                        hidden
+                          ? `Show ${element.name || element.id}`
+                          : `Hide ${element.name || element.id}`
+                      }
                       aria-pressed={!hidden}
                       title={hidden ? "Show in layout" : "Hide in layout"}
                       data-layout-object-visible={element.id}
                       onClick={(event) => {
                         event.stopPropagation();
-                        controller.updateElement(element.id, { hidden: !hidden } as Partial<LayoutElement>);
+                        controller.updateElement(element.id, {
+                          hidden: !hidden
+                        } as Partial<LayoutElement>);
                       }}
                     >
-                      <span className="layout-object-eye-icon" data-layout-object-eye-icon={hidden ? "hidden" : "visible"} />
+                      <span
+                        className="layout-object-eye-icon"
+                        data-layout-object-eye-icon={hidden ? "hidden" : "visible"}
+                      />
                     </button>
                     <button
                       type="button"
                       className="layout-object-toggle layout-object-lock-toggle"
-                      aria-label={locked ? `Unlock ${element.name || element.id}` : `Lock ${element.name || element.id}`}
+                      aria-label={
+                        locked
+                          ? `Unlock ${element.name || element.id}`
+                          : `Lock ${element.name || element.id}`
+                      }
                       aria-pressed={locked}
                       title={locked ? "Unlock preview selection" : "Lock preview selection"}
                       data-layout-object-lock={element.id}
                       onClick={(event) => {
                         event.stopPropagation();
-                        controller.updateElement(element.id, { locked: !locked } as Partial<LayoutElement>);
+                        controller.updateElement(element.id, {
+                          locked: !locked
+                        } as Partial<LayoutElement>);
                       }}
                     >
                       <span
@@ -516,7 +684,7 @@ export function LayoutEditor({
   return (
     <ToolWorkspace
       className="layout-react-shell"
-      dataAttributes={{ "layout-react-shell": "react", "surface": surface, "layout-mode": mode }}
+      dataAttributes={{ "layout-react-shell": "react", surface: surface, "layout-mode": mode }}
       header={<h2>{group?.name || group?.id || "Layouts"}</h2>}
       sidebar={sidebar}
       sidebarLabel="Layout groups"
@@ -536,6 +704,75 @@ export function LayoutEditor({
         error={state.error}
         source={mode === "stage" ? "layout" : "controller-layout"}
       />
+      {gameObjectPickerOpen ? (
+        <div
+          className="art-prefab-dialog-backdrop layout-game-object-picker-backdrop"
+          role="presentation"
+          onMouseDown={() => setGameObjectPickerOpen(false)}
+        >
+          <section
+            className="flow-react-panel art-prefab-dialog layout-game-object-picker"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Add ${mode} Game Object`}
+            data-layout-game-object-picker={mode}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <h3>Add Game Object</h3>
+                <p>
+                  Choose an existing {mode === "controller" ? "Controller" : "Stage"} Game Object
+                  from Art Manager.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close Game Object picker"
+                onClick={() => setGameObjectPickerOpen(false)}
+              >
+                Close
+              </button>
+            </header>
+            <input
+              type="search"
+              autoFocus
+              placeholder="Search Game Objects"
+              value={gameObjectSearch}
+              data-layout-game-object-search
+              onChange={(event) => setGameObjectSearch(event.target.value)}
+            />
+            {visibleGameObjects.length ? (
+              <ol>
+                {visibleGameObjects.map((composition) => (
+                  <li key={composition.id}>
+                    <button
+                      type="button"
+                      data-layout-game-object-option={composition.id}
+                      onClick={() => {
+                        if (!controller.addGameObject(composition)) return;
+                        setGameObjectPickerOpen(false);
+                      }}
+                    >
+                      <strong>{composition.name || composition.id}</strong>
+                      <small>
+                        {composition.id} · {Number(composition.canvas?.width || 0)} ×{" "}
+                        {Number(composition.canvas?.height || 0)}
+                      </small>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p data-layout-game-object-empty>
+                {availableGameObjects.length
+                  ? "No Game Objects match that search."
+                  : `No ${mode} Game Objects are available in Art Manager.`}
+              </p>
+            )}
+          </section>
+        </div>
+      ) : null}
       <div className="tool-main-columns layout-workspace-content">
         <section
           ref={previewPanelRef}
@@ -554,8 +791,19 @@ export function LayoutEditor({
             }}
             onClick={() => controller.clearElementSelection()}
           >
-            <div style={{ position: "absolute", inset: 0, transform: `scale(${scaleToFit})`, transformOrigin: "0 0", width: canvasWidth, height: canvasHeight }}>
-              {previewElements.map((element, index) => renderElement(element, index, previewElements.length || 1))}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                transform: `scale(${scaleToFit})`,
+                transformOrigin: "0 0",
+                width: canvasWidth,
+                height: canvasHeight
+              }}
+            >
+              {previewElements.map((element, index) =>
+                renderElement(element, index, previewElements.length || 1)
+              )}
             </div>
           </div>
         </section>
@@ -598,7 +846,8 @@ function LayoutElementInspector({
     );
   }
   const commit = (patch: Partial<LayoutElement>) => controller.updateElement(element.id, patch);
-  const isText = element.kind === "text" || get(element, "artCompositionId") === "layout-text-field";
+  const isText =
+    element.kind === "text" || get(element, "artCompositionId") === "layout-text-field";
   const defaultDimensions = artCompositionDefaultDimensions(artComposition);
   return (
     <section
@@ -607,6 +856,21 @@ function LayoutElementInspector({
       data-layout-element-id={element.id}
     >
       <h3>{element.name || element.kind}</h3>
+      <label className="flow-react-field" data-layout-field="id">
+        <span>Element ID</span>
+        <input type="text" readOnly value={element.id} data-layout-element-id-value />
+      </label>
+      {element.artCompositionId ? (
+        <label className="flow-react-field" data-layout-field="artCompositionId">
+          <span>Game Object</span>
+          <input
+            type="text"
+            readOnly
+            value={String(element.artCompositionId)}
+            data-layout-element-composition-id
+          />
+        </label>
+      ) : null}
       <label className="flow-react-field" data-layout-field="name">
         <span>Name</span>
         <input
@@ -641,7 +905,9 @@ function LayoutElementInspector({
           <select
             value={get(element, "layoutLayer") === "background" ? "background" : "content"}
             data-layout-element-field="layoutLayer"
-            onChange={(event) => commit({ layoutLayer: event.target.value } as Partial<LayoutElement>)}
+            onChange={(event) =>
+              commit({ layoutLayer: event.target.value } as Partial<LayoutElement>)
+            }
           >
             <option value="content">Content</option>
             <option value="background">Background</option>
@@ -655,7 +921,9 @@ function LayoutElementInspector({
             <select
               value={controllerInitialAnimationState(get(element, "defaultAnimationState"))}
               data-layout-element-field="defaultAnimationState"
-              onChange={(event) => commit({ defaultAnimationState: event.target.value } as Partial<LayoutElement>)}
+              onChange={(event) =>
+                commit({ defaultAnimationState: event.target.value } as Partial<LayoutElement>)
+              }
             >
               <option value="On">On</option>
               <option value="Off">Off</option>
@@ -677,7 +945,9 @@ function LayoutElementInspector({
             key={`${element.id}-${field.key}-${String(get(element, field.key) ?? "")}`}
             defaultValue={String(get(element, field.key) ?? 0)}
             data-layout-element-field={field.key}
-            onBlur={(event) => commit({ [field.key]: Number(event.target.value) } as Partial<LayoutElement>)}
+            onBlur={(event) =>
+              commit({ [field.key]: Number(event.target.value) } as Partial<LayoutElement>)
+            }
           />
         </label>
       ))}
@@ -693,7 +963,12 @@ function LayoutElementInspector({
             type="button"
             data-layout-reset-art-dimensions
             title={`Reset width and height to ${defaultDimensions.width} x ${defaultDimensions.height}`}
-            onClick={() => commit({ width: defaultDimensions.width, height: defaultDimensions.height } as Partial<LayoutElement>)}
+            onClick={() =>
+              commit({
+                width: defaultDimensions.width,
+                height: defaultDimensions.height
+              } as Partial<LayoutElement>)
+            }
           >
             Refresh Width/Height
           </button>
@@ -708,7 +983,9 @@ function LayoutElementInspector({
               key={`${element.id}-text`}
               defaultValue={String(get(element, "defaultText") || "")}
               data-layout-element-field="defaultText"
-              onBlur={(event) => commit({ defaultText: event.target.value } as Partial<LayoutElement>)}
+              onBlur={(event) =>
+                commit({ defaultText: event.target.value } as Partial<LayoutElement>)
+              }
             />
           </label>
           <label className="flow-react-field" data-layout-field="fontSize">
@@ -718,7 +995,9 @@ function LayoutElementInspector({
               key={`${element.id}-fontSize`}
               defaultValue={String(get(element, "fontSize") ?? 58)}
               data-layout-element-field="fontSize"
-              onBlur={(event) => commit({ fontSize: Number(event.target.value) } as Partial<LayoutElement>)}
+              onBlur={(event) =>
+                commit({ fontSize: Number(event.target.value) } as Partial<LayoutElement>)
+              }
             />
           </label>
           <label className="flow-react-field" data-layout-field="fontFamily">
@@ -726,7 +1005,9 @@ function LayoutElementInspector({
             <select
               value={normalizeGameTextFontFamily(get(element, "fontFamily"))}
               data-layout-element-field="fontFamily"
-              onChange={(event) => commit({ fontFamily: event.target.value } as Partial<LayoutElement>)}
+              onChange={(event) =>
+                commit({ fontFamily: event.target.value } as Partial<LayoutElement>)
+              }
             >
               {gameTextFontOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -741,7 +1022,9 @@ function LayoutElementInspector({
               type="checkbox"
               checked={get(element, "autoFitText") === true}
               data-layout-element-field="autoFitText"
-              onChange={(event) => commit({ autoFitText: event.target.checked } as Partial<LayoutElement>)}
+              onChange={(event) =>
+                commit({ autoFitText: event.target.checked } as Partial<LayoutElement>)
+              }
             />
           </label>
         </>

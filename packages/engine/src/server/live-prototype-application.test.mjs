@@ -185,9 +185,41 @@ describe("live prototype application integration", () => {
       const controllerStateIds = currentControllerLayouts.layouts.states.map((state) => state.id);
       expect(controllerStateIds).toContain("writing-moment");
       expect(controllerStateIds).toContain("controller-text-input");
+      const gameOwnedControllerLayout = {
+        id: "fixture-private-input",
+        name: "Fixture Private Input",
+        hiddenGlobals: [],
+        elements: [{
+          id: "fixture-private-input-widget",
+          name: "Fixture Private Input Widget",
+          kind: "art",
+          artCompositionId: "controller-player-banner",
+          defaultAnimationState: "On",
+          x: 195,
+          y: 422,
+          width: 338,
+          height: 78,
+          scale: 1,
+          rotation: 0
+        }]
+      };
       await post(startup.localUrl, "/api/tool-drafts", {
-        controllerLayouts: currentControllerLayouts.layouts
+        controllerLayouts: {
+          ...currentControllerLayouts.layouts,
+          states: [...currentControllerLayouts.layouts.states, gameOwnedControllerLayout]
+        }
       }, headers);
+      const draftControllerLayouts = (await readTool(startup.localUrl, "/api/controller-layouts")).layouts;
+      expect(draftControllerLayouts.states)
+        .toContainEqual(expect.objectContaining({
+          id: "fixture-private-input",
+          elements: [
+            expect.objectContaining({
+              id: "fixture-private-input-widget",
+              artCompositionId: "controller-player-banner"
+            })
+          ]
+        }));
 
       const saved = await post(startup.localUrl, "/api/authoring/workspace/save", {
         idempotencyKey: "preserve-durable-flow-0001"
@@ -206,6 +238,16 @@ describe("live prototype application integration", () => {
       const controllerLayouts = await readTool(startup.localUrl, "/api/controller-layouts");
       expect(controllerLayouts.layouts.states.map((state) => state.id))
         .toContain("writing-moment");
+      expect(controllerLayouts.layouts.states)
+        .toContainEqual(expect.objectContaining({
+          id: "fixture-private-input",
+          elements: [
+            expect.objectContaining({
+              id: "fixture-private-input-widget",
+              artCompositionId: "controller-player-banner"
+            })
+          ]
+        }));
     } finally {
       await runtime.stop();
     }
