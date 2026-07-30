@@ -1,9 +1,21 @@
 import type { LayoutApi } from "../../api/layoutApi";
 import { gameTextDefaultFontFamily } from "../../textFonts";
-import type { JsonObject, LayoutElement, LayoutState, StageLayoutCollection } from "../../types/game-data";
+import type {
+  ArtComposition,
+  JsonObject,
+  LayoutElement,
+  LayoutState,
+  StageLayoutCollection
+} from "../../types/game-data";
 import { createSessionDraftPublisher } from "../common/sessionDraftPublisher";
 import { requestLivePrototypeSave } from "../common/livePrototypeWorkspace";
-import { layoutGroups, layoutSnapshot, type LayoutMode } from "./layoutModel";
+import {
+  layoutGroups,
+  layoutSnapshot,
+  normalizeLayoutAuthoringId,
+  uniqueLayoutAuthoringId,
+  type LayoutMode
+} from "./layoutModel";
 
 export interface LayoutEditorState {
   layouts: StageLayoutCollection;
@@ -32,8 +44,14 @@ export interface LayoutController {
   selectElement(elementId: string, additive?: boolean): void;
   clearElementSelection(): void;
   addTextElement(): void;
+  addGameObject(composition: ArtComposition): string | null;
+  addLayoutGroup(input: { id?: string; name: string }): string | null;
   removeSelectedElements(): void;
-  reorderElement(sourceElementId: string, targetElementId: string, placement: "before" | "after"): void;
+  reorderElement(
+    sourceElementId: string,
+    targetElementId: string,
+    placement: "before" | "after"
+  ): void;
   updateElement(elementId: string, patch: Partial<LayoutElement>): void;
   moveElement(elementId: string, x: number, y: number): void;
   undo(): void;
@@ -43,12 +61,6 @@ export interface LayoutController {
 }
 
 const HISTORY_LIMIT = 50;
-
-function makeId(prefix: string): string {
-  const cryptoObj = typeof crypto !== "undefined" ? crypto : undefined;
-  const token = cryptoObj?.randomUUID ? cryptoObj.randomUUID().replace(/-/g, "").slice(0, 10) : Math.random().toString(36).slice(2, 12);
-  return `${prefix}-${token}`;
-}
 
 export function createLayoutController(options: LayoutControllerOptions): LayoutController {
   const { api, mode } = options;
@@ -106,15 +118,30 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
     return JSON.parse(JSON.stringify(layouts)) as StageLayoutCollection;
   }
 
-  function mutateGroup(apply: (group: LayoutState) => void): void {
-    const target = group();
-    if (!target) return;
+  function recordMutation(apply: () => void): void {
     undoStack.push(snapshot());
     if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
     redoStack.length = 0;
-    apply(target);
+    apply();
     emit();
     scheduleDraft();
+  }
+
+  function mutateGroup(apply: (group: LayoutState) => void): void {
+    const target = group();
+    if (!target) return;
+    recordMutation(() => apply(target));
+  }
+
+  function reconcileSelection(): void {
+    const selectedGroup = group();
+    if (!selectedGroup) {
+      selectedGroupId = layouts.global?.id || "global";
+      selectedElementIds = new Set();
+      return;
+    }
+    const elementIds = new Set((selectedGroup.elements || []).map((element) => element.id));
+    selectedElementIds = new Set([...selectedElementIds].filter((id) => elementIds.has(id)));
   }
 
   return {
@@ -147,8 +174,13 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
 
     addTextElement: () =>
       mutateGroup((target) => {
+        const usedIds = (target.elements || []).map((element) => element.id);
         const element = {
-          id: makeId("text"),
+          id: uniqueLayoutAuthoringId(
+            "layout-text-field-instance",
+            usedIds,
+            "layout-text-field-instance"
+          ),
           name: "Text",
           kind: "text",
           artCompositionId: "layout-text-field",
@@ -167,9 +199,97 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
         target.elements = [...(target.elements || []), element];
         selectedElementIds = new Set([element.id]);
       }),
+    addGameObject: (composition) => {
+      const target = group();
+      const compositionId = normalizeLayoutAuthoringId(composition?.id);
+      const compositionSurface = String(composition?.surface || "")
+        .trim()
+        .toLowerCase();
+      const compositionKind = String(composition?.compositionKind || "gameObject")
+        .trim()
+        .toLowerCase();
+      const width = Number(composition?.canvas?.width || 0);
+      const height = Number(composition?.canvas?.height || 0);
+      if (
+        !target ||
+        !compositionId ||
+        compositionSurface !== mode ||
+        compositionKind !== "gameobject" ||
+        !Number.isFinite(width) ||
+        !Number.isFinite(height) ||
+        width <= 0 ||
+        height <= 0
+      ) {
+        error = "Choose a valid Art Manager Game Object for this layout surface.";
+        emit();
+        return null;
+      }
+      const elementId = uniqueLayoutAuthoringId(
+        `${compositionId}-instance`,
+        (target.elements || []).map((element) => element.id),
+        "game-object-instance"
+      );
+      recordMutation(() => {
+        const element = {
+          id: elementId,
+          name: String(composition.name || composition.id || "Game Object"),
+          selector: "",
+          kind: "art",
+          artCompositionId: compositionId,
+          layoutLayer: "content",
+          hidden: false,
+          locked: false,
+          x: Number(layouts.canvas?.width || (mode === "controller" ? 390 : 1920)) / 2,
+          y: Number(layouts.canvas?.height || (mode === "controller" ? 844 : 1080)) / 2,
+          width,
+          height,
+          scale: 1,
+          rotation: 0,
+          tags: [],
+          defaultAnimationState: mode === "controller" ? "On" : ""
+        } as LayoutElement;
+        target.elements = [...(target.elements || []), element];
+        selectedElementIds = new Set([element.id]);
+        error = null;
+      });
+      return elementId;
+    },
+    addLayoutGroup: (input) => {
+      if (mode !== "controller") {
+        error = "Stage layout groups are created by the Flow Tool.";
+        emit();
+        return null;
+      }
+      const name =
+        String(input?.name || "")
+          .trim()
+          .replace(/\s+/g, " ")
+          .slice(0, 240) || "New Controller Layout";
+      const groupId = uniqueLayoutAuthoringId(
+        input?.id || name,
+        layoutGroups(layouts).map((item) => item.id),
+        "controller-layout"
+      );
+      recordMutation(() => {
+        const nextGroup = {
+          id: groupId,
+          name,
+          hiddenInStates: false,
+          hiddenGlobals: [],
+          elements: []
+        } as LayoutState;
+        layouts.states = [...(layouts.states || []), nextGroup];
+        selectedGroupId = groupId;
+        selectedElementIds = new Set();
+        error = null;
+      });
+      return groupId;
+    },
     removeSelectedElements: () =>
       mutateGroup((target) => {
-        target.elements = (target.elements || []).filter((element) => !selectedElementIds.has(element.id));
+        target.elements = (target.elements || []).filter(
+          (element) => !selectedElementIds.has(element.id)
+        );
         selectedElementIds = new Set();
       }),
     reorderElement: (sourceElementId, targetElementId, placement) =>
@@ -204,6 +324,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       if (!previous) return;
       redoStack.push(snapshot());
       layouts = previous;
+      reconcileSelection();
       emit();
       scheduleDraft();
     },
@@ -212,6 +333,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       if (!next) return;
       undoStack.push(snapshot());
       layouts = next;
+      reconcileSelection();
       emit();
       scheduleDraft();
     },
@@ -228,7 +350,9 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       emit();
       try {
         const response =
-          mode === "stage" ? await api.saveStageLayouts(layouts) : await api.saveControllerLayouts(layouts);
+          mode === "stage"
+            ? await api.saveStageLayouts(layouts)
+            : await api.saveControllerLayouts(layouts);
         layouts = (response.layouts || layouts) as StageLayoutCollection;
         savedSnapshot = layoutSnapshot(layouts, mode);
         sessionDraftPublisher?.markSaved(savedSnapshot);

@@ -2,7 +2,11 @@ import { createRoot, type Root } from "react-dom/client";
 import type { ArtApi } from "../../api/artApi";
 import type { LayoutApi } from "../../api/layoutApi";
 import type { ToolDraftApi } from "../../api/toolDraftApi";
-import { installSessionDraftLifecycle, type SessionDraftLifecycle } from "../common/sessionDraftLifecycle";
+import type { ArtAsset, ArtComposition } from "../../types/game-data";
+import {
+  installSessionDraftLifecycle,
+  type SessionDraftLifecycle
+} from "../common/sessionDraftLifecycle";
 import { createLayoutController, type LayoutController } from "./layoutController";
 import { LayoutEditor } from "./LayoutEditor";
 import type { LayoutMode } from "./layoutModel";
@@ -24,10 +28,13 @@ export interface MountedLayoutEditor {
   controllerController: LayoutController;
   root: Root;
   setMode: (mode: LayoutMode) => void;
+  setArtCatalog: (assets: ArtAsset[], compositions: ArtComposition[]) => void;
   unmount: () => void;
 }
 
-export async function mountLayoutEditor(options: MountLayoutEditorOptions): Promise<MountedLayoutEditor> {
+export async function mountLayoutEditor(
+  options: MountLayoutEditorOptions
+): Promise<MountedLayoutEditor> {
   const doc = options.document || document;
   const draftLifecycles: SessionDraftLifecycle[] = [];
   if (options.draftApi) {
@@ -44,12 +51,17 @@ export async function mountLayoutEditor(options: MountLayoutEditorOptions): Prom
       })
     );
   }
-  const [stage, controller, art] = await Promise.all([
+  const [stage, controller, loadedArt] = await Promise.all([
     options.api.loadStageLayouts(),
     options.api.loadControllerLayouts(),
-    options.artApi ? options.artApi.loadArtAssets() : Promise.resolve({ assets: [], compositions: [] })
+    options.artApi
+      ? options.artApi.loadArtAssets()
+      : Promise.resolve({ assets: [], compositions: [] })
   ]);
-  const postDraft = options.draftApi ? (message: Parameters<ToolDraftApi["saveToolDraft"]>[0]) => options.draftApi!.saveToolDraft(message) : undefined;
+  const postDraft = options.draftApi
+    ? (message: Parameters<ToolDraftApi["saveToolDraft"]>[0]) =>
+        options.draftApi!.saveToolDraft(message)
+    : undefined;
   const stageController = createLayoutController({
     initialLayouts: stage.layouts,
     mode: "stage",
@@ -80,12 +92,14 @@ export async function mountLayoutEditor(options: MountLayoutEditorOptions): Prom
   const root = createRoot(host);
   let requestedMode = options.initialMode || "stage";
   let renderVersion = 0;
+  let artAssets = loadedArt.assets || [];
+  let artCompositions = loadedArt.compositions || [];
   const render = () => {
     root.render(
       <LayoutEditor
         key={`${requestedMode}-${renderVersion}`}
-        artAssets={art.assets}
-        artCompositions={art.compositions}
+        artAssets={artAssets}
+        artCompositions={artCompositions}
         onOpenArtComposition={options.onOpenArtComposition}
         stageController={stageController}
         controllerController={controllerController}
@@ -102,6 +116,12 @@ export async function mountLayoutEditor(options: MountLayoutEditorOptions): Prom
     root,
     setMode: (mode) => {
       requestedMode = mode;
+      renderVersion += 1;
+      render();
+    },
+    setArtCatalog: (assets, compositions) => {
+      artAssets = [...assets];
+      artCompositions = [...compositions];
       renderVersion += 1;
       render();
     },

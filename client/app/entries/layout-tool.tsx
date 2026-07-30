@@ -8,6 +8,9 @@ void mountLayoutEditor({
   api: layoutToolContext.api.layout,
   artApi: layoutToolContext.api.art,
   draftApi: layoutToolContext.api.drafts,
+  initialMode: window.location.pathname.toLowerCase().startsWith("/controller-layout")
+    ? "controller"
+    : "stage",
   onOpenArtComposition: (compositionId) => {
     const url = new URL("/art", window.location.origin);
     url.searchParams.set("composition", compositionId);

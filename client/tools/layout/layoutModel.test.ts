@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { StageLayoutCollection } from "../../types/game-data";
-import { controllerInitialAnimationState, serializeLayoutsForSave } from "./layoutModel";
+import type { ArtComposition, StageLayoutCollection } from "../../types/game-data";
+import {
+  controllerInitialAnimationState,
+  layoutGameObjectCompositions,
+  normalizeLayoutAuthoringId,
+  serializeLayoutsForSave,
+  uniqueLayoutAuthoringId
+} from "./layoutModel";
 
 function layouts(defaultAnimationState?: string): StageLayoutCollection {
   return {
@@ -34,13 +40,56 @@ function stageLayouts(layoutLayer?: string): StageLayoutCollection {
     global: {
       id: "global",
       name: "Global",
-      elements: [{ id: "background", name: "Background", kind: "art", layoutLayer, x: 960, y: 540, width: 1920, height: 1080 }]
+      elements: [
+        {
+          id: "background",
+          name: "Background",
+          kind: "art",
+          layoutLayer,
+          x: 960,
+          y: 540,
+          width: 1920,
+          height: 1080
+        }
+      ]
     },
     states: []
   } as StageLayoutCollection;
 }
 
 describe("controller layout initial state", () => {
+  it("normalizes and uniquifies generated authoring ids using server-compatible rules", () => {
+    expect(normalizeLayoutAuthoringId(" Flip 7 / Wager ")).toBe("flip-7-wager");
+    expect(uniqueLayoutAuthoringId("Score Card", ["score-card", "score-card-2"], "object")).toBe(
+      "score-card-3"
+    );
+    const longId = "a".repeat(48);
+    expect(uniqueLayoutAuthoringId(longId, [longId], "object")).toBe(`${"a".repeat(46)}-2`);
+  });
+
+  it("offers only same-surface Art Manager Game Objects to a layout", () => {
+    const composition = (id: string, surface: string, compositionKind: string): ArtComposition => ({
+      id,
+      name: id,
+      surface,
+      compositionKind,
+      canvas: { width: 100, height: 50 },
+      components: []
+    });
+    const compositions = [
+      composition("stage-object", "stage", "gameObject"),
+      composition("stage-prefab", "stage", "prefab"),
+      composition("controller-object", "controller", "gameObject")
+    ];
+
+    expect(layoutGameObjectCompositions(compositions, "stage").map((item) => item.id)).toEqual([
+      "stage-object"
+    ]);
+    expect(layoutGameObjectCompositions(compositions, "controller").map((item) => item.id)).toEqual(
+      ["controller-object"]
+    );
+  });
+
   it("defaults controller elements to On and preserves explicit Off", () => {
     expect(controllerInitialAnimationState(undefined)).toBe("On");
     expect(controllerInitialAnimationState("On")).toBe("On");
@@ -49,8 +98,13 @@ describe("controller layout initial state", () => {
   });
 
   it("serializes controller initial state as the On/Off contract", () => {
-    expect(serializeLayoutsForSave(layouts(), "controller").states[0].elements[0].defaultAnimationState).toBe("On");
-    expect(serializeLayoutsForSave(layouts("Disappear"), "controller").states[0].elements[0].defaultAnimationState).toBe("Off");
+    expect(
+      serializeLayoutsForSave(layouts(), "controller").states[0].elements[0].defaultAnimationState
+    ).toBe("On");
+    expect(
+      serializeLayoutsForSave(layouts("Disappear"), "controller").states[0].elements[0]
+        .defaultAnimationState
+    ).toBe("Off");
   });
 
   it("serializes normalized controller configuration tags", () => {
@@ -61,7 +115,11 @@ describe("controller layout initial state", () => {
   });
 
   it("serializes the stage background layer separately from normal content", () => {
-    expect(serializeLayoutsForSave(stageLayouts("BACKGROUND"), "stage").global.elements[0].layoutLayer).toBe("background");
-    expect(serializeLayoutsForSave(stageLayouts(), "stage").global.elements[0].layoutLayer).toBe("content");
+    expect(
+      serializeLayoutsForSave(stageLayouts("BACKGROUND"), "stage").global.elements[0].layoutLayer
+    ).toBe("background");
+    expect(serializeLayoutsForSave(stageLayouts(), "stage").global.elements[0].layoutLayer).toBe(
+      "content"
+    );
   });
 });

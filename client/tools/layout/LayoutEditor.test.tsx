@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { LayoutApi } from "../../api/layoutApi";
-import type { ArtComposition, LayoutSaveResponse, StageLayoutCollection } from "../../types/game-data";
+import type {
+  ArtComposition,
+  LayoutSaveResponse,
+  StageLayoutCollection
+} from "../../types/game-data";
 import { createLayoutController } from "./layoutController";
 import { LayoutEditor } from "./LayoutEditor";
 
@@ -11,7 +15,17 @@ function layouts(): StageLayoutCollection {
     global: {
       id: "global",
       name: "Global",
-      elements: [{ id: "title", name: "Title", kind: "text", x: 960, y: 220, width: 500, height: 120 } as never]
+      elements: [
+        {
+          id: "title",
+          name: "Title",
+          kind: "text",
+          x: 960,
+          y: 220,
+          width: 500,
+          height: 120
+        } as never
+      ]
     },
     states: [{ id: "intro", name: "Intro", elements: [] }]
   };
@@ -22,7 +36,11 @@ function fakeApi(): LayoutApi {
     loadStageLayouts: vi.fn(),
     saveStageLayouts: vi.fn(
       async (nextLayouts: StageLayoutCollection) =>
-        ({ ok: true, layouts: nextLayouts, storage: {} }) as unknown as LayoutSaveResponse<StageLayoutCollection>
+        ({
+          ok: true,
+          layouts: nextLayouts,
+          storage: {}
+        }) as unknown as LayoutSaveResponse<StageLayoutCollection>
     ),
     loadControllerLayouts: vi.fn(),
     saveControllerLayouts: vi.fn()
@@ -32,7 +50,11 @@ function fakeApi(): LayoutApi {
 describe("LayoutEditor", () => {
   it("uses a dominant preview panel with a right-side inspector", () => {
     const api = fakeApi();
-    const stageController = createLayoutController({ initialLayouts: layouts(), mode: "stage", api });
+    const stageController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api
+    });
     const controllerController = createLayoutController({
       initialLayouts: layouts(),
       mode: "controller",
@@ -48,8 +70,37 @@ describe("LayoutEditor", () => {
 
     expect(markup).toContain('class="tool-main-columns layout-workspace-content"');
     expect(markup).toContain('class="flow-react-panel layout-preview-panel"');
-    expect(markup).toContain('class="flow-react-panel flow-react-inspector layout-element-inspector"');
+    expect(markup).toContain(
+      'class="flow-react-panel flow-react-inspector layout-element-inspector"'
+    );
     expect(markup).toContain('data-layout-react-component="object-list"');
+    expect(markup).toContain('data-layout-add-game-object="true"');
+    expect(markup).not.toContain("data-layout-add-group");
+  });
+
+  it("offers game-owned layout-group creation only in the Controller Layout Tool", () => {
+    const api = fakeApi();
+    const stageController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api
+    });
+    const controllerController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "controller",
+      api
+    });
+    const markup = renderToStaticMarkup(
+      <LayoutEditor
+        stageController={stageController}
+        controllerController={controllerController}
+        initialMode="controller"
+      />
+    );
+
+    expect(markup).toContain('data-layout-add-game-object="true"');
+    expect(markup).toContain('data-layout-add-group="true"');
+    expect(markup).toContain("Add Game Layout");
   });
 
   it("renders layout art from the referenced Art Manager composition", () => {
@@ -96,7 +147,11 @@ describe("LayoutEditor", () => {
         ]
       }
     ];
-    const stageController = createLayoutController({ initialLayouts: stageLayouts, mode: "stage", api });
+    const stageController = createLayoutController({
+      initialLayouts: stageLayouts,
+      mode: "stage",
+      api
+    });
     stageController.selectElement("player");
     const controllerController = createLayoutController({
       initialLayouts: layouts(),
@@ -137,8 +192,16 @@ describe("LayoutEditor", () => {
         height: 80
       } as never
     ];
-    const stageController = createLayoutController({ initialLayouts: layouts(), mode: "stage", api });
-    const controllerController = createLayoutController({ initialLayouts: controllerLayouts, mode: "controller", api });
+    const stageController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api
+    });
+    const controllerController = createLayoutController({
+      initialLayouts: controllerLayouts,
+      mode: "controller",
+      api
+    });
     controllerController.selectElement("warning");
 
     const markup = renderToStaticMarkup(

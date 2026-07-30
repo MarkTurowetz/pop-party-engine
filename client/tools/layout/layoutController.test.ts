@@ -1,35 +1,72 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLayoutController } from "./layoutController";
 import type { LayoutApi } from "../../api/layoutApi";
-import type { LayoutSaveResponse, StageLayoutCollection } from "../../types/game-data";
+import type {
+  ArtComposition,
+  LayoutSaveResponse,
+  StageLayoutCollection
+} from "../../types/game-data";
 
 function layouts(): StageLayoutCollection {
   return {
     canvas: { width: 1920, height: 1080 },
     global: { id: "global", name: "Global", elements: [] },
-    states: [{ id: "intro", name: "Intro", elements: [{ id: "e1", name: "E1", kind: "text", x: 0, y: 0 } as never] }]
+    states: [
+      {
+        id: "intro",
+        name: "Intro",
+        elements: [{ id: "e1", name: "E1", kind: "text", x: 0, y: 0 } as never]
+      }
+    ]
   };
 }
 
 function fakeApi(overrides: Partial<LayoutApi> = {}): LayoutApi {
   return {
     loadStageLayouts: vi.fn(),
-    saveStageLayouts: vi.fn(async (l: StageLayoutCollection) => ({ ok: true, layouts: l, storage: {} }) as unknown as LayoutSaveResponse<StageLayoutCollection>),
+    saveStageLayouts: vi.fn(
+      async (l: StageLayoutCollection) =>
+        ({
+          ok: true,
+          layouts: l,
+          storage: {}
+        }) as unknown as LayoutSaveResponse<StageLayoutCollection>
+    ),
     loadControllerLayouts: vi.fn(),
     saveControllerLayouts: vi.fn(),
     ...overrides
   } as LayoutApi;
 }
 
+function gameObject(overrides: Partial<ArtComposition> = {}): ArtComposition {
+  return {
+    id: "score-card",
+    name: "Score Card",
+    surface: "stage",
+    compositionKind: "gameObject",
+    canvas: { width: 320, height: 180 },
+    components: [],
+    ...overrides
+  };
+}
+
 describe("createLayoutController", () => {
   it("starts clean with the global group selected", () => {
-    const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api: fakeApi()
+    });
     expect(controller.getState().dirty).toBe(false);
     expect(controller.getState().selectedGroupId).toBe("global");
   });
 
   it("adds a text element to the selected group, dirty + undo", () => {
-    const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api: fakeApi()
+    });
     controller.selectGroup("intro");
     controller.addTextElement();
     const intro = controller.getState().layouts.states[0];
@@ -39,8 +76,105 @@ describe("createLayoutController", () => {
     expect(controller.getState().layouts.states[0].elements).toHaveLength(1);
   });
 
+  it("adds an Art Manager Game Object with a unique stable id and authored bounds", () => {
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api: fakeApi()
+    });
+    controller.selectGroup("intro");
+
+    expect(controller.addGameObject(gameObject())).toBe("score-card-instance");
+    expect(controller.addGameObject(gameObject())).toBe("score-card-instance-2");
+
+    const elements = controller.getState().layouts.states[0].elements as Array<
+      Record<string, unknown>
+    >;
+    expect(elements.slice(1)).toEqual([
+      expect.objectContaining({
+        id: "score-card-instance",
+        name: "Score Card",
+        kind: "art",
+        artCompositionId: "score-card",
+        x: 960,
+        y: 540,
+        width: 320,
+        height: 180
+      }),
+      expect.objectContaining({
+        id: "score-card-instance-2",
+        artCompositionId: "score-card"
+      })
+    ]);
+    expect(controller.getState().selectedElementIds).toEqual(new Set(["score-card-instance-2"]));
+
+    controller.undo();
+    expect(controller.getState().layouts.states[0].elements).toHaveLength(2);
+    controller.redo();
+    expect(controller.getState().layouts.states[0].elements).toHaveLength(3);
+  });
+
+  it("rejects prefabs and Game Objects from the other layout surface", () => {
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api: fakeApi()
+    });
+
+    expect(controller.addGameObject(gameObject({ compositionKind: "prefab" }))).toBeNull();
+    expect(controller.addGameObject(gameObject({ surface: "controller" }))).toBeNull();
+    expect(controller.getState().layouts.global.elements).toHaveLength(0);
+    expect(controller.getState().error).toMatch(/valid Art Manager Game Object/);
+  });
+
+  it("creates game-owned controller layout groups with normalized unique ids and undo/redo", () => {
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "controller",
+      api: fakeApi()
+    });
+
+    expect(controller.addLayoutGroup({ id: "flip7 wager", name: "Flip 7 Wager" })).toBe(
+      "flip7-wager"
+    );
+    expect(controller.addLayoutGroup({ id: "flip7-wager", name: "Another Wager" })).toBe(
+      "flip7-wager-2"
+    );
+    expect(controller.getState().selectedGroupId).toBe("flip7-wager-2");
+    expect(controller.getState().layouts.states.slice(-2)).toEqual([
+      expect.objectContaining({ id: "flip7-wager", name: "Flip 7 Wager", elements: [] }),
+      expect.objectContaining({ id: "flip7-wager-2", name: "Another Wager", elements: [] })
+    ]);
+
+    controller.undo();
+    expect(controller.getState().layouts.states.some((state) => state.id === "flip7-wager-2")).toBe(
+      false
+    );
+    expect(controller.getState().selectedGroupId).toBe("global");
+    controller.redo();
+    expect(controller.getState().layouts.states.some((state) => state.id === "flip7-wager-2")).toBe(
+      true
+    );
+  });
+
+  it("keeps Stage layout groups Flow-owned", () => {
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api: fakeApi()
+    });
+
+    expect(controller.addLayoutGroup({ id: "orphan", name: "Orphan" })).toBeNull();
+    expect(controller.getState().layouts.states).toHaveLength(1);
+    expect(controller.getState().error).toMatch(/Flow Tool/);
+  });
+
   it("redoes an undone layout edit", () => {
-    const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api: fakeApi()
+    });
     controller.selectGroup("intro");
     controller.addTextElement();
     controller.undo();
@@ -52,7 +186,11 @@ describe("createLayoutController", () => {
   });
 
   it("updates and moves an element", () => {
-    const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api: fakeApi()
+    });
     controller.selectGroup("intro");
     controller.updateElement("e1", { name: "Renamed" } as never);
     controller.moveElement("e1", 12.345, 6.789);
@@ -82,11 +220,19 @@ describe("createLayoutController", () => {
     });
     controller.selectGroup("intro");
     controller.reorderElement("c", "a", "before");
-    expect(controller.getState().layouts.states[0].elements.map((element) => element.id)).toEqual(["c", "a", "b"]);
+    expect(controller.getState().layouts.states[0].elements.map((element) => element.id)).toEqual([
+      "c",
+      "a",
+      "b"
+    ]);
   });
 
   it("stores hidden and locked layout element state", () => {
-    const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api: fakeApi()
+    });
     controller.selectGroup("intro");
     controller.updateElement("e1", { hidden: true, locked: true } as never);
     const el = controller.getState().layouts.states[0].elements[0] as Record<string, unknown>;
@@ -107,7 +253,11 @@ describe("createLayoutController", () => {
   });
 
   it("accepts an atomic workspace save without reloading", () => {
-    const controller = createLayoutController({ initialLayouts: layouts(), mode: "stage", api: fakeApi() });
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api: fakeApi()
+    });
     controller.selectGroup("intro");
     controller.addTextElement();
 
@@ -119,7 +269,11 @@ describe("createLayoutController", () => {
   it("saves controller configuration tags and clears dirty", async () => {
     const saveControllerLayouts = vi.fn(
       async (nextLayouts: StageLayoutCollection) =>
-        ({ ok: true, layouts: nextLayouts, storage: {} }) as unknown as LayoutSaveResponse<StageLayoutCollection>
+        ({
+          ok: true,
+          layouts: nextLayouts,
+          storage: {}
+        }) as unknown as LayoutSaveResponse<StageLayoutCollection>
     );
     const controller = createLayoutController({
       initialLayouts: layouts(),
@@ -132,7 +286,56 @@ describe("createLayoutController", () => {
     expect(await controller.save()).toBe(true);
     expect(saveControllerLayouts).toHaveBeenCalledWith(
       expect.objectContaining({
-        states: [expect.objectContaining({ elements: [expect.objectContaining({ tags: ["Phase One", "Review"] })] })]
+        states: [
+          expect.objectContaining({
+            elements: [expect.objectContaining({ tags: ["Phase One", "Review"] })]
+          })
+        ]
+      })
+    );
+    expect(controller.getState().dirty).toBe(false);
+  });
+
+  it("durably saves a game-owned controller group and its Art Manager composition reference", async () => {
+    const saveControllerLayouts = vi.fn(
+      async (nextLayouts: StageLayoutCollection) =>
+        ({
+          ok: true,
+          layouts: nextLayouts,
+          storage: {}
+        }) as unknown as LayoutSaveResponse<StageLayoutCollection>
+    );
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "controller",
+      api: fakeApi({ saveControllerLayouts })
+    });
+    controller.addLayoutGroup({ id: "private-offer", name: "Private Offer" });
+    controller.addGameObject(
+      gameObject({
+        id: "private-offer-controls",
+        name: "Private Offer Controls",
+        surface: "controller",
+        canvas: { width: 360, height: 240 }
+      })
+    );
+
+    expect(await controller.save()).toBe(true);
+    expect(saveControllerLayouts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        states: expect.arrayContaining([
+          expect.objectContaining({
+            id: "private-offer",
+            elements: [
+              expect.objectContaining({
+                id: "private-offer-controls-instance",
+                artCompositionId: "private-offer-controls",
+                width: 360,
+                height: 240
+              })
+            ]
+          })
+        ])
       })
     );
     expect(controller.getState().dirty).toBe(false);
@@ -156,7 +359,9 @@ describe("createLayoutController", () => {
 
       expect(postDraft).toHaveBeenLastCalledWith({
         layouts: expect.objectContaining({
-          states: [expect.objectContaining({ elements: [expect.objectContaining({ x: 12, y: 6 })] })]
+          states: [
+            expect.objectContaining({ elements: [expect.objectContaining({ x: 12, y: 6 })] })
+          ]
         })
       });
     } finally {
@@ -182,7 +387,51 @@ describe("createLayoutController", () => {
 
       expect(postDraft).toHaveBeenLastCalledWith({
         controllerLayouts: expect.objectContaining({
-          states: [expect.objectContaining({ elements: [expect.objectContaining({ x: 20, y: 8 })] })]
+          states: [
+            expect.objectContaining({ elements: [expect.objectContaining({ x: 20, y: 8 })] })
+          ]
+        })
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("publishes new controller groups and Game Objects through the live-prototype draft", async () => {
+    vi.useFakeTimers();
+    try {
+      const postDraft = vi.fn(async (message) => message);
+      const controller = createLayoutController({
+        initialLayouts: layouts(),
+        mode: "controller",
+        api: fakeApi(),
+        postDraft,
+        draftPublishDelayMs: 1
+      });
+
+      controller.addLayoutGroup({ id: "current-player-turn", name: "Current Player Turn" });
+      controller.addGameObject(
+        gameObject({
+          id: "turn-controls",
+          surface: "controller",
+          canvas: { width: 340, height: 120 }
+        })
+      );
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(postDraft).toHaveBeenLastCalledWith({
+        controllerLayouts: expect.objectContaining({
+          states: expect.arrayContaining([
+            expect.objectContaining({
+              id: "current-player-turn",
+              elements: [
+                expect.objectContaining({
+                  id: "turn-controls-instance",
+                  artCompositionId: "turn-controls"
+                })
+              ]
+            })
+          ])
         })
       });
     } finally {

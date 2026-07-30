@@ -71,9 +71,13 @@ import { checkpointSessionDraftPublishers } from "../../tools/common/sessionDraf
 // The TS tool dashboard (toolDashboard.ts) drives the tabs via registerDashboardTool:
 // each tool registers its dirty/save/setup, routed into its React controller. This
 // replaced the old window.setupFlowTool/saveGameFlow/isFlowDirty/… shim globals.
-const revealScreen = (id: string) => () => document.querySelector(`#${id}`)?.classList.remove("hidden");
+const revealScreen = (id: string) => () =>
+  document.querySelector(`#${id}`)?.classList.remove("hidden");
 const initialToolParams = new URLSearchParams(window.location.search);
-const initialArtCompositionId = initialToolParams.get("tool") === "art" ? initialToolParams.get("composition") || undefined : undefined;
+const initialArtCompositionId =
+  initialToolParams.get("tool") === "art"
+    ? initialToolParams.get("composition") || undefined
+    : undefined;
 
 export const legacyToolsScripts = legacyScriptsForRole("tools");
 export const toolsContext = createToolAppContext({ surface: "tools" });
@@ -95,16 +99,20 @@ void livePrototypeWorkspace.then((workspace) => {
 });
 
 let flowController: FlowEditorController | null = null;
-void livePrototypeWorkspace.then(() => mountFlowEditor({
-  api: toolsContext.api.flow,
-  artApi: toolsContext.api.art,
-  draftApi: toolsContext.api.drafts,
-  layoutApi: toolsContext.api.layout,
-  surface: toolsContext.surface,
-  revealScreen: false
-})).then((mounted) => {
-  flowController = mounted.controller;
-});
+void livePrototypeWorkspace
+  .then(() =>
+    mountFlowEditor({
+      api: toolsContext.api.flow,
+      artApi: toolsContext.api.art,
+      draftApi: toolsContext.api.drafts,
+      layoutApi: toolsContext.api.layout,
+      surface: toolsContext.surface,
+      revealScreen: false
+    })
+  )
+  .then((mounted) => {
+    flowController = mounted.controller;
+  });
 registerDashboardTool("flow", {
   getError: () => flowController?.getState().error ?? null,
   isDirty: () => flowController?.getState().dirty ?? false,
@@ -113,14 +121,18 @@ registerDashboardTool("flow", {
 });
 
 let constantsController: ConstantsController | null = null;
-void livePrototypeWorkspace.then(() => mountConstantsEditor({
-  api: toolsContext.api.constants,
-  draftApi: toolsContext.api.drafts,
-  surface: toolsContext.surface,
-  revealScreen: false
-})).then((mounted) => {
-  constantsController = mounted.controller;
-});
+void livePrototypeWorkspace
+  .then(() =>
+    mountConstantsEditor({
+      api: toolsContext.api.constants,
+      draftApi: toolsContext.api.drafts,
+      surface: toolsContext.surface,
+      revealScreen: false
+    })
+  )
+  .then((mounted) => {
+    constantsController = mounted.controller;
+  });
 registerDashboardTool("constants", {
   getError: () => constantsController?.getState().error ?? null,
   isDirty: () => constantsController?.getState().dirty ?? false,
@@ -129,14 +141,18 @@ registerDashboardTool("constants", {
 });
 
 let hostAudioController: HostAudioController | null = null;
-void livePrototypeWorkspace.then(() => mountHostAudioEditor({
-  api: toolsContext.api.hostAudio,
-  draftApi: toolsContext.api.drafts,
-  surface: toolsContext.surface,
-  revealScreen: false
-})).then((mounted) => {
-  hostAudioController = mounted.controller;
-});
+void livePrototypeWorkspace
+  .then(() =>
+    mountHostAudioEditor({
+      api: toolsContext.api.hostAudio,
+      draftApi: toolsContext.api.drafts,
+      surface: toolsContext.surface,
+      revealScreen: false
+    })
+  )
+  .then((mounted) => {
+    hostAudioController = mounted.controller;
+  });
 registerDashboardTool("host-audio", {
   getError: () => hostAudioController?.getState().error ?? null,
   isDirty: () => hostAudioController?.getState().dirty ?? false,
@@ -145,6 +161,18 @@ registerDashboardTool("host-audio", {
 });
 
 let artEditor: MountedArtEditor | null = null;
+let layoutEditor: MountedLayoutEditor | null = null;
+let removeArtCatalogSubscriptions: (() => void)[] = [];
+const syncLayoutArtCatalog = () => {
+  if (!artEditor || !layoutEditor) return;
+  const compositionState = artEditor.compositionsController.getState();
+  layoutEditor.setArtCatalog(
+    artEditor.assetsController.getState().assets,
+    compositionState.compositions.filter(
+      (composition) => !compositionState.trashedCompositionIds.has(composition.id)
+    )
+  );
+};
 let pendingArtCompositionId = "";
 const selectArtComposition = (compositionId: string): boolean => {
   if (!artEditor) return false;
@@ -158,16 +186,27 @@ const openArtComposition = (compositionId: string) => {
   void showDashboardTool("art");
   if (selectArtComposition(compositionId)) pendingArtCompositionId = "";
 };
-void livePrototypeWorkspace.then(() => mountArtEditor({
-  api: toolsContext.api.art,
-  draftApi: toolsContext.api.drafts,
-  initialCompositionId: initialArtCompositionId,
-  surface: toolsContext.surface,
-  revealScreen: false
-})).then((mounted) => {
-  artEditor = mounted;
-  if (pendingArtCompositionId && selectArtComposition(pendingArtCompositionId)) pendingArtCompositionId = "";
-});
+void livePrototypeWorkspace
+  .then(() =>
+    mountArtEditor({
+      api: toolsContext.api.art,
+      draftApi: toolsContext.api.drafts,
+      initialCompositionId: initialArtCompositionId,
+      surface: toolsContext.surface,
+      revealScreen: false
+    })
+  )
+  .then((mounted) => {
+    artEditor = mounted;
+    removeArtCatalogSubscriptions.forEach((unsubscribe) => unsubscribe());
+    removeArtCatalogSubscriptions = [
+      mounted.assetsController.subscribe(syncLayoutArtCatalog),
+      mounted.compositionsController.subscribe(syncLayoutArtCatalog)
+    ];
+    syncLayoutArtCatalog();
+    if (pendingArtCompositionId && selectArtComposition(pendingArtCompositionId))
+      pendingArtCompositionId = "";
+  });
 registerDashboardTool("art", {
   getError: () => {
     if (!artEditor) return null;
@@ -181,9 +220,9 @@ registerDashboardTool("art", {
   isDirty: () =>
     Boolean(
       artEditor &&
-        (artEditor.assetsController.getState().dirty ||
-          artEditor.compositionsController.getState().dirty ||
-          artEditor.organizationController.getState().dirty)
+      (artEditor.assetsController.getState().dirty ||
+        artEditor.compositionsController.getState().dirty ||
+        artEditor.organizationController.getState().dirty)
     ),
   save: async () => {
     if (!artEditor) return false;
@@ -192,18 +231,22 @@ registerDashboardTool("art", {
   setup: revealScreen("artScreen")
 });
 
-let layoutEditor: MountedLayoutEditor | null = null;
-void livePrototypeWorkspace.then(() => mountLayoutEditor({
-  api: toolsContext.api.layout,
-  artApi: toolsContext.api.art,
-  draftApi: toolsContext.api.drafts,
-  onOpenArtComposition: openArtComposition,
-  surface: toolsContext.surface,
-  revealScreen: false
-})).then((mounted) => {
-  layoutEditor = mounted;
-  mounted.setMode(window.activeToolId === "controller-layout" ? "controller" : "stage");
-});
+void livePrototypeWorkspace
+  .then(() =>
+    mountLayoutEditor({
+      api: toolsContext.api.layout,
+      artApi: toolsContext.api.art,
+      draftApi: toolsContext.api.drafts,
+      onOpenArtComposition: openArtComposition,
+      surface: toolsContext.surface,
+      revealScreen: false
+    })
+  )
+  .then((mounted) => {
+    layoutEditor = mounted;
+    syncLayoutArtCatalog();
+    mounted.setMode(window.activeToolId === "controller-layout" ? "controller" : "stage");
+  });
 registerDashboardTool("layout", {
   getError: () => layoutEditor?.stageController.getState().error ?? null,
   isDirty: () => layoutEditor?.stageController.getState().dirty ?? false,
