@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1226",
+  "version": "1.0.17.1227",
   "baseVersion": "1.0.17",
-  "buildNumber": 1226,
-  "commit": "bc2f4a31",
-  "branch": "codex/fix-present-text-cursor-lifecycle",
-  "generatedAt": "2026-07-30T01:01:38.441Z"
+  "buildNumber": 1227,
+  "commit": "c8e50652",
+  "branch": "codex/flow-background-double-click-up",
+  "generatedAt": "2026-07-30T01:16:17.436Z"
 }

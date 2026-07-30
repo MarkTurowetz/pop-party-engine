@@ -245,6 +245,10 @@ concepts into focused modules.
     movement, axis locking, grid snapping, and drag-position persistence.
   - `client/flow/node-view-marquee.js` owns Flow Node View rectangle selection
     setup and selection-class synchronization.
+  - Flow Node View background double-click navigation uses the same one-level
+    parent transition as its Back to Subroutines button. Nested subroutines
+    remove only the final path segment, game-state subroutines return to Root
+    Flow, node double-clicks retain drill-in behavior, and Root Flow is a no-op.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order

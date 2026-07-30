@@ -37,6 +37,7 @@ import {
   rootFlowSubroutine,
   rootFlowTargetOptions
 } from "./flowRootGraph";
+import { parentFlowNodeLocation } from "./flowNodeNavigation";
 
 const GAME_OBJECT_TIMELINE_ACTION_TYPES = new Set([
   "playGameObjectAnimation",
@@ -646,11 +647,11 @@ export function FlowEditor({
         }
       }}
       onBackToSubroutines={() => {
-        if (subroutinePath.length) {
-          setSubroutinePath((path) => path.slice(0, -1));
+        const parent = parentFlowNodeLocation(subroutinePath);
+        setSubroutinePath(parent.subroutinePath);
+        setNodeDepth(parent.depth);
+        if (parent.depth === "subroutine") {
           controller.selectActions([]);
-        } else {
-          setNodeDepth("subroutines");
         }
       }}
       onMoveNode={(nodeId, x, y) => {
