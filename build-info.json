@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1228",
+  "version": "1.0.17.1229",
   "baseVersion": "1.0.17",
-  "buildNumber": 1228,
-  "commit": "9b239667",
-  "branch": "codex/flow-optimize-decision-paths",
-  "generatedAt": "2026-07-30T05:05:09.862Z"
+  "buildNumber": 1229,
+  "commit": "f365cd78",
+  "branch": "codex/release-engine-1.3.20",
+  "generatedAt": "2026-07-30T05:32:03.406Z"
 }
