@@ -5,6 +5,7 @@ type Dict = Record<string, unknown>;
 
 interface OrchestratorOptions {
   clearStageAudioPlayers?: () => void;
+  clearPresentationClickPrompt?: () => void;
   prepareNewStageAction?: (lobby: Dict, actionKey: string) => void;
   cancelStageWipe?: () => void;
   showStageDecisionHalt?: (lobby: Dict) => void;
@@ -67,7 +68,10 @@ class StageRenderOrchestrator {
     }
 
     this.renderedPhase = nextPhase;
-    if (isNewAction) options.prepareNewStageAction?.(lobby, actionKey);
+    if (isNewAction) {
+      options.clearPresentationClickPrompt?.();
+      options.prepareNewStageAction?.(lobby, actionKey);
+    }
     if (runtimeFault) {
       options.cancelStageWipe?.();
       options.showRuntimeFault?.(lobby);

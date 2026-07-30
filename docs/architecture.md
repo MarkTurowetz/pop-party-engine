@@ -144,6 +144,10 @@ concepts into focused modules.
     `Wipe Widget MC` is only an `On`/`Off` gate; the controller explicitly invokes
     `Appear` or `Disappear` on its labeled `Wipe Art MC` child and waits only for
     that child's authored callback. No CSS fallback motion runs alongside it.
+  - The global presentation click prompt is owned exclusively by the active
+    `Present Text` action. Every new primary flow node silently clears the prompt
+    before its action runs, and End Moment/quit cleanup clear it again as a
+    boundary safeguard, so it cannot leak into later nodes or moments.
   - `Set Timer Shown` targets the placed `craftingtimer` layout GameObject, so its
     `Crafting Timer Widget MC` owns `Appear`/`Disappear` and the action callback.
     `CraftingTimerController` only updates the nested authored `timerValue` content

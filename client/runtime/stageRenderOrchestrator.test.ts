@@ -52,6 +52,77 @@ describe("StageRenderOrchestrator flow identity", () => {
     expect(orchestrator.actionKey()).toBe("round@3#9::looped:doNothing");
   });
 
+  it("clears the Present Text cursor whenever the primary flow advances to a new node", () => {
+    const clearPresentationClickPrompt = vi.fn();
+    const runStageAction = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({
+      applyStageState: vi.fn(),
+      clearPresentationClickPrompt,
+      runStageAction
+    });
+
+    orchestrator.render({
+      revision: 1,
+      phase: "post-game",
+      momentVisitId: 4,
+      actionExecutionId: 20,
+      action: { id: "present-results", type: "presentText" }
+    });
+    orchestrator.render({
+      revision: 2,
+      phase: "post-game",
+      momentVisitId: 4,
+      actionExecutionId: 21,
+      action: { id: "end-post-game", type: "endMoment" }
+    });
+
+    expect(clearPresentationClickPrompt).toHaveBeenCalledTimes(2);
+    expect(runStageAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears a stale Present Text cursor across the Post Game to Lobby boundary", () => {
+    const clearPresentationClickPrompt = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({
+      applyStageState: vi.fn(),
+      clearPresentationClickPrompt
+    });
+
+    orchestrator.render({
+      revision: 10,
+      phase: "post-game",
+      momentVisitId: 8,
+      action: { id: "present-results", type: "presentText" }
+    });
+    orchestrator.render({
+      revision: 11,
+      phase: "lobby",
+      momentVisitId: 9,
+      action: { id: "setup-lobby", type: "setupGame" }
+    });
+
+    expect(clearPresentationClickPrompt).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not clear the cursor again for duplicate heartbeat renders of one node", () => {
+    const clearPresentationClickPrompt = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({
+      applyStageState: vi.fn(),
+      clearPresentationClickPrompt
+    });
+    const lobby = {
+      revision: 30,
+      phase: "writing",
+      momentVisitId: 5,
+      actionExecutionId: 12,
+      action: { id: "wait-for-input", type: "writeAnswersInput" }
+    };
+
+    orchestrator.render(lobby);
+    orchestrator.render({ ...lobby, revision: 31 });
+
+    expect(clearPresentationClickPrompt).toHaveBeenCalledOnce();
+  });
+
   it("does not remove visual game objects merely because the root subroutine changes", () => {
     const clearPointPopups = vi.fn();
     const renderVotingCards = vi.fn();
