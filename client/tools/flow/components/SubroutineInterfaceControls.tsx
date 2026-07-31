@@ -63,7 +63,10 @@ export function SubroutineInterfaceControls({
       <header>
         <div>
           <h3>Inputs</h3>
-          <p>Caller expressions are copied into this subroutine&apos;s local <code>l</code> scope.</p>
+          <p>
+            Caller expressions, including lists, are copied into this subroutine&apos;s
+            local <code>l</code> scope.
+          </p>
         </div>
         <button
           type="button"
@@ -124,8 +127,8 @@ export function SubroutineInterfaceControls({
         <div>
           <h3>Outputs</h3>
           <p>
-            Each declared child <code>l.name</code> is type-checked and returned to the
-            parent as the same <code>l.name</code>.
+            Declare the parent&apos;s returned <code>l.name</code> here, then set its
+            value on this subroutine&apos;s End node.
           </p>
         </div>
         <button
@@ -156,6 +159,15 @@ export function SubroutineInterfaceControls({
               <ValueTypeSelect
                 value={output.valueType}
                 onChange={(value) => setOutputs(replaceAt(outputs, index, { valueType: value }))}
+              />
+            </label>
+            <label className="flow-subroutine-interface-expression">
+              <span>Return value</span>
+              <input
+                type="text"
+                value={String(output.value || "Not set")}
+                aria-label={`Output ${index + 1} return value`}
+                readOnly
               />
             </label>
             <button

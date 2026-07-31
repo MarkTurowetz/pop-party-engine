@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1235",
+  "version": "1.0.17.1236",
   "baseVersion": "1.0.17",
-  "buildNumber": 1235,
-  "commit": "0da7eff8",
-  "branch": "codex/add-log-value-flow-action",
-  "generatedAt": "2026-07-31T00:42:42.171Z"
+  "buildNumber": 1236,
+  "commit": "492e5570",
+  "branch": "codex/subroutine-boundary-interfaces",
+  "generatedAt": "2026-07-31T01:30:53.585Z"
 }

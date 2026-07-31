@@ -12,6 +12,7 @@ import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { FlowActionTypeMeta } from "./flowSelectors";
 import { createFlowPreviewModel } from "./flowPreviewModel";
 import { ActionInspector, type ActionInspectorEditHandlers } from "./components/ActionInspector";
+import { SubroutineBoundaryInspector } from "./components/SubroutineBoundaryInspector";
 import { FlowStateList } from "./components/FlowStateList";
 import { FlowToolbar } from "./components/FlowToolbar";
 import {
@@ -60,6 +61,13 @@ export interface FlowToolAppProps {
     parentAction?: FlowAction | null;
     state: FlowSubroutine | null;
   } | null;
+  inspectorBoundaryOverride?: {
+    boundary: "start" | "return";
+    onSetOutputs?: (
+      outputs: NonNullable<FlowAction["outputs"]>
+    ) => void;
+    subroutine: FlowSubroutine;
+  } | null;
   inspectorSubroutine?: FlowSubroutine | null;
   nodeCanvas?: ReactNode;
   reorder?: FlowReorderHandlers;
@@ -88,6 +96,7 @@ export function FlowToolApp({
   handlers = {},
   inspectorEdit,
   inspectorActionOverride = null,
+  inspectorBoundaryOverride = null,
   inspectorSubroutine = null,
   nodeCanvas,
   reorder,
@@ -185,7 +194,13 @@ export function FlowToolApp({
     />
   );
 
-  const inspector = inspectorActionOverride ? (
+  const inspector = inspectorBoundaryOverride ? (
+    <SubroutineBoundaryInspector
+      boundary={inspectorBoundaryOverride.boundary}
+      onSetOutputs={inspectorBoundaryOverride.onSetOutputs}
+      subroutine={inspectorBoundaryOverride.subroutine}
+    />
+  ) : inspectorActionOverride ? (
     <ActionInspector
       action={inspectorActionOverride.action}
       actionTypes={flowActionTypes}

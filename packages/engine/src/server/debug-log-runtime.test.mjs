@@ -31,14 +31,18 @@ describe("debug log runtime", () => {
   it("formats objects, missing values, and safe expressions without mutating Flow state", () => {
     const room = {
       G: { bid: 31, player: { id: "p1" } },
-      localVariables: { bonus: 2 }
+      localVariables: { bonus: 2, bids: [12, { amount: 31 }] }
     };
 
     expect(formatDebugValue(room.G.player)).toBe('{"id":"p1"}');
+    expect(applyLogValueAction(room, { value: "l.bids" }).valueText)
+      .toBe('[12,{"amount":31}]');
+    expect(applyLogValueAction(room, { value: "l.bids[0]" }).valueText).toBe("12");
+    expect(applyLogValueAction(room, { value: "l.bids[1].amount" }).valueText).toBe("31");
     expect(applyLogValueAction(room, { value: "g.bid + l.bonus" }).valueText).toBe("33");
     expect(applyLogValueAction(room, { value: "l.missing" }).valueText).toBe("undefined");
     expect(room.G).toEqual({ bid: 31, player: { id: "p1" } });
-    expect(room.localVariables).toEqual({ bonus: 2 });
+    expect(room.localVariables).toEqual({ bonus: 2, bids: [12, { amount: 31 }] });
   });
 
   it("shows malformed expressions as debug output instead of crashing the room", () => {
