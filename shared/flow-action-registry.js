@@ -320,6 +320,26 @@
             }
         },
         {
+            id: "logValue",
+            name: "Log Value",
+            category: "standard",
+            canCompleteFromStage: true,
+            stageActionType: "logValue",
+            stageRunner: "serverEffect",
+            normalize: (action, base, context) => ({
+                ...base,
+                value: context.cleanFlowText(action?.value, "l.value")
+            }),
+            toPublic: (action, base, context) => ({
+                ...base,
+                type: "logValue",
+                value: context.cleanFlowText(action.value, "l.value")
+            }),
+            applyRoomEffect: (room, action, context) => {
+                context.applyLogValueAction?.(room, action);
+            }
+        },
+        {
             id: "subroutine",
             name: "Subroutine",
             category: "standard",

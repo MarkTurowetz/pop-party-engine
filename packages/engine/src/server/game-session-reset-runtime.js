@@ -4,6 +4,8 @@ function resetGameSessionState(room) {
   if (room.gamePluginInputTimeoutId) clearTimeout(room.gamePluginInputTimeoutId);
   room.gameSessionId = Math.max(0, Number(room.gameSessionId || 0)) + 1;
   room.runtimeFault = null;
+  room.debugLog = null;
+  room.debugLogSequence = 0;
   room.sessionOutputs = { sessionId: room.gameSessionId, byVisit: {}, latestByState: {} };
   room.activeInputFlowEventKey = "";
   room.pendingFlowEvents = new Set();

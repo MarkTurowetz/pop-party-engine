@@ -837,6 +837,7 @@ body.tool-dashboard-mode .layout-shell {
   line-height: 0.95;
   text-align: center;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
   pointer-events: none;
 }
 

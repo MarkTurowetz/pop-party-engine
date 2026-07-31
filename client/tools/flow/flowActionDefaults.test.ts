@@ -49,4 +49,14 @@ describe("Flow action defaults", () => {
     expect(action).toMatchObject({ variable: "activePlayerCount", valueType: "int" });
     expect(ensureDecisionBranches).toHaveBeenCalledWith(action);
   });
+
+  it("defaults Log Value to a local expression and keeps normal action timing", () => {
+    const ensureActionTiming = vi.fn();
+    const action = { id: "log", type: "presentText" } as FlowAction;
+
+    createActionDefaults({ ensureActionTiming }).applyActionTypeDefaults(action, "logValue");
+
+    expect(action).toMatchObject({ type: "logValue", value: "l.value" });
+    expect(ensureActionTiming).toHaveBeenCalledWith(action, false);
+  });
 });

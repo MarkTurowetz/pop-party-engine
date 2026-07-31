@@ -2,6 +2,7 @@
 
 const { createFlowActionRegistry } = require("../shared/flow-action-registry");
 const { applyDynamicGameStateCode } = require("./dynamic-game-state-runtime");
+const { applyLogValueAction } = require("./debug-log-runtime");
 
 function resolveStoredAnswerRound(room, roundSpec) {
   if (!roundSpec || roundSpec === "current") return room.currentRound || 1;
@@ -89,6 +90,7 @@ function createRoomActionEffectsRuntime({
     startCraftingTimer,
     storeRandomTriviaPrompt,
     applyDynamicGameStateCode,
+    applyLogValueAction,
     executeGameAction
   }, pluginActionDefinitions);
 

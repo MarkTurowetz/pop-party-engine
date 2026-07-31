@@ -257,6 +257,11 @@ concepts into focused modules.
     Code Node performs any subsequent rename or promotion to `g`. Code Nodes,
     Decisions, and namespaced plugin contexts consume the same current local
     scope; undeclared child locals never escape.
+  - `Log Value` evaluates an authored `g.*`/`l.*` value or safe Flow expression
+    on the server, then exposes only its formatted result through the existing
+    global stage debug alert. The latest value remains visible while normal
+    flow continues; runtime faults and no-match decision diagnostics retain
+    priority, and a new game session clears the prior log.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order

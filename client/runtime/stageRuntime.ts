@@ -674,6 +674,10 @@ function clearStageDecisionDebug(lobby: Dict): void {
   (stageDebugPanel() as { clearDecisionAlert?: (l: Dict) => void } | null)?.clearDecisionAlert?.(lobby);
 }
 
+function renderStageLogValue(lobby: Dict): void {
+  (stageDebugPanel() as { renderLogValue?: (l: Dict) => void } | null)?.renderLogValue?.(lobby);
+}
+
 function showStageDecisionHalt(lobby: Dict): void {
   (stageDebugPanel() as { showDecisionHalt?: (l: Dict) => void } | null)?.showDecisionHalt?.(lobby);
 }
@@ -743,6 +747,7 @@ function applyStageState(lobby: Dict, options: Dict = {}): void {
   w().stageIntroContent.classList.remove("hidden");
   renderStageWidgetBinding("presentationClickPrompt");
   clearStageDecisionDebug(lobby);
+  renderStageLogValue(lobby);
   renderStagePlayers(players, {
     // Voice capture owns a live answer preview: the temporary T and the final
     // transcript update the current Player Answer Bubble MC while this input is active.

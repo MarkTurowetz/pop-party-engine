@@ -156,6 +156,13 @@ JSON-safe `json`. A nested call never inherits its parent's entire local
 object. Invalid input coercion or output assignment fails closed with a
 structured runtime fault instead of leaking partial values across scopes.
 
+Use the standard `Log Value` Flow action to inspect a `g.*` or `l.*` value
+without adding a Code Node. Set its **Variable / Value** field to an expression
+such as `l.bidResponse`. The server evaluates it against the current Flow scope
+and keeps the formatted result visible in the stage's existing global debug
+alert while later actions continue. A missing path displays `undefined`;
+malformed expressions display an evaluation error without halting the game.
+
 Stage and Controller renderers are declarative view-model bindings to existing
 Tools-authored Layout elements and Art components:
 

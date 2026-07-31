@@ -68,6 +68,30 @@ describe("lobby payload flow action exposure", () => {
     expect(payload.triviaPromptText).toBe("Which dinosaur had three horns?");
   });
 
+  it("exposes the latest formatted Log Value result to the stage debug surface", () => {
+    const runtime = runtimeFor({ id: "after-log", type: "doNothing" });
+    const debugLog = {
+      actionId: "log-bid",
+      expression: "l.bidResponse",
+      valueText: "accepted",
+      message: "l.bidResponse = accepted",
+      sequence: 1,
+      error: ""
+    };
+    const payload = runtime.lobbyPayload({
+      stageCode: "TEST",
+      revision: 3,
+      phase: "play",
+      flowStateId: "play",
+      debugLog,
+      players: new Map(),
+      pendingFlowEvents: new Set()
+    });
+
+    expect(payload.debugLog).toEqual(debugLog);
+    expect(payload.debugLog).not.toBe(debugLog);
+  });
+
   it("reads constants from the room that owns the payload", () => {
     const runtime = runtimeFor(null);
     const room = {

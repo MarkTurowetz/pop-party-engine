@@ -139,6 +139,7 @@ const SCHEMA: Record<string, FlowActionFieldDescriptor[]> = {
   ],
   labelNode: [{ key: "labelText", label: "Label Text", control: "textarea" }],
   codeNode: [{ key: "code", label: "Code", control: "textarea" }],
+  logValue: [{ key: "value", label: "Variable / Value", control: "text" }],
   setGameObjectShown: [
     { key: "isShown", label: "Visible", control: "boolean" },
     { key: "targetLayoutElementId", label: "Game Object", control: "gameObjectTarget" },
