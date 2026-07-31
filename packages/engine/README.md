@@ -106,6 +106,17 @@ Submission fields support private-view-model choices and bounded integers.
 Controller bindings support Art/Layout-backed text, choice hotspots, bounded
 integer fields, and submit hotspots. They refer only to authored Controller
 Layout element and Art component ids; plugins cannot inject JavaScript or CSS.
+Integer bindings render their current local value with an explicit readable
+font and caret even when the containing Art host suppresses inherited text.
+Their initial value may be supplied as `viewModel.<field>.initial` and is
+clamped to the registered bounds. Choice bindings expose local selection as
+`aria-pressed`, `.is-selected`, and
+`data-game-plugin-input-selected="true|false"` on both the control and its Art
+host. Art compositions may author top-level `Default` and `Selected` labels to
+provide custom visual states; the engine also supplies a visible generic
+selected-state fallback. These local values and states survive normal lobby
+heartbeat rendering until submission, while a reload or new input visit starts
+from the server-provided private view model.
 Inputs declare `completion` (`allRecipients`, `anyRecipient`, or `manual`),
 `disconnect` (`wait`, `completeRemaining`, or `fault`), and an optional
 authored timeout field. Every submission carries the room session, action, and

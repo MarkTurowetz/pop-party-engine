@@ -156,7 +156,11 @@ module.exports = Object.freeze([
       recipients(context) { return context.players.map((player) => player.id); },
       view(context) {
         const target = context.viewer.name === "One" ? 10 : 20;
-        return { target, options: [{ id: "over", label: "Over " + target }, { id: "under", label: "Under " + target }] };
+        return {
+          target,
+          options: [{ id: "over", label: "Over " + target }, { id: "under", label: "Under " + target }],
+          amount: { initial: context.viewer.name === "One" ? 7 : 9 }
+        };
       },
       submit(context, payload) {
         context.state.wagers ||= {};
@@ -517,6 +521,57 @@ module.exports = Object.freeze([{
       });
       const oneWagerLobby = await heartbeat(one);
       const twoWagerLobby = await heartbeat(two);
+      await controllerPage.waitForFunction(() => {
+        const input = window.controllerState?.lobby?.gamePlugin?.input;
+        return input?.type === "generated-fixture.privateWager"
+          && document.querySelectorAll("[data-game-plugin-input-binding]").length === 4;
+      }, null, { timeout: 15_000 });
+      const wagerInitialState = await controllerPage.evaluate(() => {
+        const field = document.querySelector('[data-game-plugin-input-binding="amount"]');
+        const left = document.querySelector('[data-game-plugin-input-binding="left"]');
+        const style = field ? getComputedStyle(field) : null;
+        return {
+          value: field?.value,
+          fontSize: Number.parseFloat(style?.fontSize || "0"),
+          caretColor: style?.caretColor,
+          leftPressed: left?.getAttribute("aria-pressed"),
+          leftSelected: left?.classList.contains("is-selected") === true
+        };
+      });
+      await controllerPage.locator('[data-game-plugin-input-binding="left"]').click();
+      await controllerPage.locator('[data-game-plugin-input-binding="amount"]').fill("17");
+      await controllerPage.waitForTimeout(1_600);
+      const wagerEditedState = await controllerPage.evaluate(() => {
+        const field = document.querySelector('[data-game-plugin-input-binding="amount"]');
+        const left = document.querySelector('[data-game-plugin-input-binding="left"]');
+        const right = document.querySelector('[data-game-plugin-input-binding="right"]');
+        return {
+          value: field?.value,
+          leftPressed: left?.getAttribute("aria-pressed"),
+          rightPressed: right?.getAttribute("aria-pressed"),
+          leftSelected: left?.classList.contains("is-selected") === true,
+          hostSelected: left?.parentElement?.dataset.gamePluginInputSelected
+        };
+      });
+      await controllerPage.reload({ waitUntil: "load" });
+      await controllerPage.waitForFunction(() => {
+        const input = window.controllerState?.lobby?.gamePlugin?.input;
+        return input?.type === "generated-fixture.privateWager"
+          && document.querySelector('[data-game-plugin-input-binding="amount"]')?.value === "7";
+      }, null, { timeout: 15_000 });
+      const wagerReloadedState = await controllerPage.evaluate(() => ({
+        value: document.querySelector('[data-game-plugin-input-binding="amount"]')?.value,
+        leftPressed: document.querySelector('[data-game-plugin-input-binding="left"]')?.getAttribute("aria-pressed")
+      }));
+      await controllerPage.locator('[data-game-plugin-input-binding="left"]').click();
+      await controllerPage.locator('[data-game-plugin-input-binding="amount"]').fill("17");
+      const browserSubmitResponse = controllerPage.waitForResponse((response) => (
+        response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
+      ));
+      await controllerPage.locator('[data-game-plugin-input-binding="submit"]').click();
+      const browserWagerResponse = await browserSubmitResponse;
+      const browserWagerRequest = JSON.parse(browserWagerResponse.request().postData() || "{}");
+      const firstWagerSubmit = await browserWagerResponse.json();
       const submitPluginInput = async (joined, lobby, payload, id) => (await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
         method: "POST",
         headers: playerHeaders(joined),
@@ -530,8 +585,11 @@ module.exports = Object.freeze([{
           payload
         })
       })).json());
-      const firstWagerSubmit = await submitPluginInput(one, oneWagerLobby, { side: "over", amount: 11 }, "wager-one");
-      const duplicateWagerSubmit = await submitPluginInput(one, oneWagerLobby, { side: "over", amount: 11 }, "wager-one");
+      const duplicateWagerSubmit = await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
+        method: "POST",
+        headers: playerHeaders(one),
+        body: JSON.stringify(browserWagerRequest)
+      })).json();
       const secondWagerSubmit = await submitPluginInput(two, twoWagerLobby, { side: "under", amount: 22 }, "wager-two");
       const constantsResponse = await fetch(first.startup.localUrl + "/api/game-constants");
       const constantsPayload = await constantsResponse.json();
@@ -554,6 +612,32 @@ module.exports = Object.freeze([{
       const secondConstants = await (await fetch(second.startup.localUrl + "/api/game-constants")).json();
       const secondFlow = await (await fetch(second.startup.localUrl + "/api/game-flow")).json();
       const secondControllerLayouts = await (await fetch(second.startup.localUrl + "/api/controller-layouts")).json();
+      const restartedBrowser = await chromium.launch({ headless: true });
+      const restartedControllerPage = await restartedBrowser.newPage();
+      const restartedRoomResponse = await fetch(second.startup.localUrl + "/api/stage/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ stageCode: "RSTR" })
+      });
+      const restartedRoom = await restartedRoomResponse.json();
+      await restartedControllerPage.goto(second.startup.localUrl + "/controller?stage=RSTR&name=One&join=1", { waitUntil: "load" });
+      await restartedControllerPage.waitForFunction(() => Boolean(window.controllerState?.player?.id), null, { timeout: 15_000 });
+      await fetch(second.startup.localUrl + "/api/stage/RSTR/test-config", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-stage-capability": restartedRoom.stageCapability },
+        body: JSON.stringify({ flow: wagerFlow })
+      });
+      await restartedControllerPage.waitForFunction(() => (
+        window.controllerState?.lobby?.gamePlugin?.input?.type === "generated-fixture.privateWager"
+        && document.querySelector('[data-game-plugin-input-binding="amount"]')?.value === "7"
+      ), null, { timeout: 15_000 });
+      await restartedControllerPage.locator('[data-game-plugin-input-binding="left"]').click();
+      const wagerRestartedState = await restartedControllerPage.evaluate(() => ({
+        value: document.querySelector('[data-game-plugin-input-binding="amount"]')?.value,
+        leftPressed: document.querySelector('[data-game-plugin-input-binding="left"]')?.getAttribute("aria-pressed"),
+        hostSelected: document.querySelector('[data-game-plugin-input-binding="left"]')?.parentElement?.dataset.gamePluginInputSelected
+      }));
+      await restartedBrowser.close();
       const result = {
         firstRevision: first.development.revision,
         healthRevision: firstHealth.release.contentRevision,
@@ -592,6 +676,11 @@ module.exports = Object.freeze([{
           oneWagerLobby.gamePlugin?.input?.viewModel?.target,
           twoWagerLobby.gamePlugin?.input?.viewModel?.target
         ],
+        wagerInitialState,
+        wagerEditedState,
+        wagerReloadedState,
+        wagerRestartedState,
+        browserWagerPayload: browserWagerRequest.payload,
         firstWagerWaited: firstWagerSubmit.lobby?.action?.id === "fixture-private-wager",
         duplicateWagerIgnored: duplicateWagerSubmit.duplicate === true,
         wagerCompletionAction: secondWagerSubmit.lobby?.action?.id,
@@ -634,6 +723,22 @@ module.exports = Object.freeze([{
     || development.inputBranchSelected !== "input-hit"
     || development.inputBranchedAction !== "fixture-input-hit"
     || JSON.stringify(development.privateWagerTargets) !== JSON.stringify([10, 20])
+    || development.wagerInitialState?.value !== "7"
+    || !(development.wagerInitialState?.fontSize > 0)
+    || !development.wagerInitialState?.caretColor
+    || development.wagerInitialState?.leftPressed !== "false"
+    || development.wagerInitialState?.leftSelected
+    || development.wagerEditedState?.value !== "17"
+    || development.wagerEditedState?.leftPressed !== "true"
+    || development.wagerEditedState?.rightPressed !== "false"
+    || !development.wagerEditedState?.leftSelected
+    || development.wagerEditedState?.hostSelected !== "true"
+    || development.wagerReloadedState?.value !== "7"
+    || development.wagerReloadedState?.leftPressed !== "false"
+    || development.wagerRestartedState?.value !== "7"
+    || development.wagerRestartedState?.leftPressed !== "true"
+    || development.wagerRestartedState?.hostSelected !== "true"
+    || JSON.stringify(development.browserWagerPayload) !== JSON.stringify({ side: "over", amount: 17 })
     || !development.firstWagerWaited
     || !development.duplicateWagerIgnored
     || development.wagerCompletionAction !== "fixture-input-hit"

@@ -52,6 +52,7 @@ export function createGamePluginInputView(options: {
   submit: (actionId: string, visitId: number, payload: Dict, submissionId: string) => Promise<unknown>;
 }) {
   const values = new Map<string, unknown>();
+  const submitHandlers = new WeakMap<HTMLElement, () => void>();
   let visitKey = "";
 
   function runtime(): Dict {
@@ -75,38 +76,109 @@ export function createGamePluginInputView(options: {
       target.element,
       target.host,
       key,
-      { textOverrides: { [binding.targetComponentId]: String(propertyPathValue(model, binding.source || "") ?? "") } }
+      {
+        textOverrides: { [binding.targetComponentId]: String(propertyPathValue(model, binding.source || "") ?? "") },
+        keepElements: Array.from(target.host.querySelectorAll<HTMLElement>(":scope > [data-game-plugin-input-binding]"))
+      }
     );
+  }
+
+  function integerInitialValue(binding: InputBinding, definition: Dict | undefined, model: unknown): number {
+    const fieldId = String(binding.field || "");
+    const fieldModel = propertyPathValue(model, fieldId);
+    const candidates = [
+      binding.source ? propertyPathValue(model, binding.source) : undefined,
+      fieldModel && typeof fieldModel === "object" ? (fieldModel as Dict).initial : undefined,
+      fieldModel && typeof fieldModel === "object" ? (fieldModel as Dict).value : undefined,
+      typeof fieldModel === "number" || typeof fieldModel === "string" ? fieldModel : undefined,
+      definition?.min
+    ];
+    const min = Number(definition?.min);
+    const max = Number(definition?.max);
+    const candidate = candidates.map(Number).find(Number.isFinite);
+    const integer = Math.round(candidate ?? (Number.isFinite(min) ? min : 0));
+    return Math.min(Number.isFinite(max) ? max : integer, Math.max(Number.isFinite(min) ? min : integer, integer));
+  }
+
+  function setChoiceSelected(button: HTMLButtonElement, selected: boolean): void {
+    const next = selected ? "true" : "false";
+    button.setAttribute("aria-pressed", next);
+    button.classList.toggle("is-selected", selected);
+    button.dataset.gamePluginInputSelected = next;
+    const host = button.parentElement as HTMLElement | null;
+    if (host) {
+      const hostSelected = Array.from(host.querySelectorAll<HTMLButtonElement>("[data-game-plugin-input-option]"))
+        .some((control) => control.getAttribute("aria-pressed") === "true");
+      const hostState = hostSelected ? "true" : "false";
+      const hostChanged = host.dataset.gamePluginInputSelected !== hostState;
+      host.classList.toggle("has-game-plugin-selected-input", hostSelected);
+      host.dataset.gamePluginInputSelected = hostState;
+      if (!hostChanged) return;
+      (runtime().setControllerPluginInputChoiceState as ((target: HTMLElement, selected: boolean) => unknown) | undefined)?.(
+        host,
+        hostSelected
+      );
+      return;
+    }
+    (runtime().setControllerPluginInputChoiceState as ((target: HTMLElement, selected: boolean) => unknown) | undefined)?.(
+      button,
+      selected
+    );
+  }
+
+  function existingControl(target: HTMLElement, binding: InputBinding, tagName: "button" | "input"): HTMLElement | null {
+    const selector = `[data-game-plugin-input-binding="${CSS.escape(binding.id)}"]`;
+    const controls = Array.from(target.querySelectorAll<HTMLElement>(selector));
+    const matching = controls.find((node) => node.tagName.toLowerCase() === tagName) || null;
+    for (const node of controls) {
+      if (node !== matching) node.remove();
+    }
+    if (matching) {
+      matching.hidden = false;
+      delete matching.dataset.layoutArtLegacyHidden;
+    }
+    return matching;
   }
 
   function addControl(binding: InputBinding, input: Dict, model: unknown, submitNow: () => void): void {
     const target = targetFor(binding.layoutElementId);
     if (!target) return;
-    target.host.querySelectorAll(`[data-game-plugin-input-binding="${CSS.escape(binding.id)}"]`).forEach((node) => node.remove());
     if (binding.kind === "text") {
       renderText(binding, model);
       return;
     }
     if (binding.kind === "integer") {
-      const definition = (input.manifest as InputManifest).submission.find((field) => field.id === binding.field);
-      const field = document.createElement("input");
+      const definition = (input.manifest as InputManifest).submission.find((field) => field.id === binding.field) as Dict | undefined;
+      const fieldId = String(binding.field || "");
+      const field = (existingControl(target.host, binding, "input") as HTMLInputElement | null) || document.createElement("input");
       field.type = "number";
       field.className = "game-plugin-input-control game-plugin-integer-input";
       field.dataset.gamePluginInputBinding = binding.id;
+      field.dataset.gamePluginInputField = fieldId;
       field.min = String(definition?.min ?? "");
       field.max = String(definition?.max ?? "");
       field.step = "1";
       field.inputMode = "numeric";
       field.disabled = input.submitted === true;
-      field.addEventListener("input", () => values.set(String(binding.field || ""), Number(field.value)));
-      target.host.appendChild(field);
+      if (!values.has(fieldId)) values.set(fieldId, integerInitialValue(binding, definition, model));
+      const value = values.get(fieldId);
+      const visibleValue = value === undefined ? "" : String(value);
+      if (field.value !== visibleValue) field.value = visibleValue;
+      if (field.dataset.gamePluginInputListenerBound !== "true") {
+        field.dataset.gamePluginInputListenerBound = "true";
+        field.addEventListener("input", () => {
+          values.set(field.dataset.gamePluginInputField || "", field.value === "" ? undefined : Number(field.value));
+        });
+      }
+      if (!field.parentElement) target.host.appendChild(field);
       return;
     }
-    const button = document.createElement("button");
+    const button = (existingControl(target.host, binding, "button") as HTMLButtonElement | null) || document.createElement("button");
     button.type = "button";
     button.className = "game-plugin-input-control game-plugin-action-button";
     button.dataset.gamePluginInputBinding = binding.id;
     button.disabled = input.submitted === true;
+    submitHandlers.set(button, submitNow);
     if (binding.kind === "choice") {
       const submission = (input.manifest as InputManifest).submission.find((field) => field.id === binding.field);
       const optionsSource = (submission as Dict | undefined)?.optionsSource;
@@ -119,15 +191,29 @@ export function createGamePluginInputView(options: {
           ? (option as Dict).label ?? (option as Dict).name ?? optionId
           : optionId;
       button.setAttribute("aria-label", String(label || "Choose"));
-      button.addEventListener("click", () => {
-        values.set(String(binding.field || ""), optionId);
-        if (binding.autoSubmit === true) submitNow();
-      });
+      button.dataset.gamePluginInputField = String(binding.field || "");
+      button.dataset.gamePluginInputOption = optionId;
+      button.dataset.gamePluginInputAutoSubmit = binding.autoSubmit === true ? "true" : "false";
+      setChoiceSelected(button, values.get(String(binding.field || "")) === optionId);
+      if (button.dataset.gamePluginInputListenerBound !== "true") {
+        button.dataset.gamePluginInputListenerBound = "true";
+        button.addEventListener("click", () => {
+          const fieldId = button.dataset.gamePluginInputField || "";
+          const selectedOption = button.dataset.gamePluginInputOption || "";
+          values.set(fieldId, selectedOption);
+          document.querySelectorAll<HTMLButtonElement>(`[data-game-plugin-input-field="${CSS.escape(fieldId)}"][data-game-plugin-input-option]`)
+            .forEach((control) => setChoiceSelected(control, control.dataset.gamePluginInputOption === selectedOption));
+          if (button.dataset.gamePluginInputAutoSubmit === "true") submitHandlers.get(button)?.();
+        });
+      }
     } else {
       button.setAttribute("aria-label", String(propertyPathValue(model, binding.labelSource || "") || "Submit"));
-      button.addEventListener("click", submitNow);
+      if (button.dataset.gamePluginInputListenerBound !== "true") {
+        button.dataset.gamePluginInputListenerBound = "true";
+        button.addEventListener("click", () => submitHandlers.get(button)?.());
+      }
     }
-    target.host.appendChild(button);
+    if (!button.parentElement) target.host.appendChild(button);
   }
 
   function render(lobby: Dict): boolean {

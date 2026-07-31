@@ -726,6 +726,12 @@ function setControllerButtonDisabledState(target: El | null, disabled: boolean):
   return renderer?.stopAtComponent?.(`${compositionId}-state-ref`, disabled ? "Disabled" : "Default", { instant: true }) || 0;
 }
 
+function setControllerPluginInputChoiceState(target: El | null, selected: boolean): number {
+  if (!target) return 0;
+  const renderer = artRendererForLayoutHost(target);
+  return renderer?.stopAtAll?.(selected ? "Selected" : "Default", { instant: true }) || 0;
+}
+
 function controllerLayoutElementForId(elementId: string): Dict | null {
   const normalized = normalizeTextTargetId(elementId);
   const stateElements = (controllerLayoutState(currentControllerLayoutStateId)?.elements as Dict[]) || [];
@@ -808,7 +814,7 @@ function controllerLayoutArtHost(element: Dict, target: El | null): El | null {
 function controllerLayoutArtKeepElements(host: El | null): El[] {
   if (!host) return [];
   const kept = Array.from(
-    host.querySelectorAll(":scope > input, :scope > textarea, :scope > select, :scope > .controller-widget-art-overlay")
+    host.querySelectorAll(":scope > input, :scope > textarea, :scope > select, :scope > .controller-widget-art-overlay, :scope > .game-plugin-input-control")
   ) as El[];
   return kept.filter((element) => element.parentElement === host);
 }
@@ -1328,6 +1334,7 @@ const PartyGameLayoutText = {
   setControllerButtonLifecycleState,
   playControllerButtonInteraction,
   setControllerButtonDisabledState,
+  setControllerPluginInputChoiceState,
   setControllerPlayerBannerArt,
   setControllerText: setControllerLayoutText,
   setControllerTextShown: setControllerLayoutTextShown,
@@ -1352,7 +1359,7 @@ Object.assign(w(), {
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   disposeControllerButtonArt, setControllerButtonLifecycleState,
-  playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPlayerBannerArt,
+  playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPluginInputChoiceState, setControllerPlayerBannerArt,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,
   stageLayoutGameObjectTargets, stageLayoutGameObjectVisibilityKey, stageLayoutGameObjectVisibilityOverrides, stageLayoutRegistryKeyForElement, stageLayoutState, stageLayoutStateForPhase,
