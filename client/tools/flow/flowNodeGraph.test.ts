@@ -10,7 +10,12 @@ import {
   translatedSelectedNodePositions,
   decisionBranchGraphNodeId
 } from "./flowNodeGraph";
-import { rootFlowGraphConnections, rootFlowNodeExits } from "./flowRootGraph";
+import {
+  rootFlowGraphConnections,
+  rootFlowGraphNodes,
+  rootFlowNodeExits,
+  rootFlowTargetOptions
+} from "./flowRootGraph";
 import type { GameFlow } from "../../types/game-data";
 
 function flowFixture(): GameFlow {
@@ -29,14 +34,28 @@ function flowFixture(): GameFlow {
 }
 
 describe("flowNodeGraph", () => {
-  it("builds one root subroutine node per state with positions and subtitles", () => {
+  it("builds one root game-state node per state with positions and subtitles", () => {
     const nodes = rootSubroutineGraphNodes(flowFixture(), { selectedStateId: "intro" });
 
     expect(nodes.map((node) => node.id)).toEqual(["intro", "round"]);
     expect(nodes[0].selected).toBe(true);
+    expect(nodes[0].kind).toBe("gameState");
     expect(nodes[0].subtitle).toBe("1 actions / Next: Round");
     // saved nodePosition is honoured
     expect({ x: nodes[1].x, y: nodes[1].y }).toEqual({ x: 500, y: 300 });
+  });
+
+  it("identifies root flow states as game-state invocations", () => {
+    const nodes = rootFlowGraphNodes(flowFixture());
+
+    expect(nodes.find((node) => node.id === "intro")).toMatchObject({
+      kind: "gameState",
+      valueBadge: { text: "Game State" }
+    });
+    expect(rootFlowTargetOptions(flowFixture(), "intro")).toContainEqual({
+      id: "round",
+      label: "Game State: Round"
+    });
   });
 
   it("translates every selected draggable root node as one group", () => {
@@ -50,7 +69,7 @@ describe("flowNodeGraph", () => {
     ]);
   });
 
-  it("builds Start + action + Return nodes inside a subroutine", () => {
+  it("builds Start + action + End nodes inside a game state", () => {
     const flow = flowFixture();
     const nodes = subroutineGraphNodes(flow.states[0], { selectedActionId: "a1" });
 
@@ -58,6 +77,26 @@ describe("flowNodeGraph", () => {
     expect(nodes[0].kind).toBe("system");
     expect(nodes[1].kind).toBe("action");
     expect(nodes[1].selected).toBe(true);
+    expect(nodes[0].subtitle).toBe("Game state entry");
+    expect(nodes[2]).toMatchObject({
+      title: "End",
+      subtitle: "Advance to next game state"
+    });
+  });
+
+  it("keeps Start + Return lifecycle for a callable subroutine", () => {
+    const nodes = subroutineGraphNodes({
+      id: "collect-bid",
+      name: "Collect Bid",
+      type: "subroutine",
+      actions: []
+    });
+
+    expect(nodes[0].subtitle).toBe("Subroutine entry");
+    expect(nodes[1]).toMatchObject({
+      title: "Return",
+      subtitle: "Back to parent subroutine"
+    });
   });
 
   it("attaches boolean value badges to action graph nodes", () => {

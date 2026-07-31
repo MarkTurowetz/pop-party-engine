@@ -239,7 +239,7 @@ export function FlowToolApp({
           <ToolSaveError error={error} source="flow" />
           <dl className="tool-workspace-stats">
             <div>
-              <dt>Subroutines</dt>
+              <dt>Game States</dt>
               <dd>{model.stateCount}</dd>
             </div>
             <div>
@@ -259,7 +259,7 @@ export function FlowToolApp({
           states={flow?.states || []}
         />
       }
-      sidebarLabel="Flow subroutines"
+      sidebarLabel="Flow game states"
       storageKey="partyTemplate.flowSidebarWidth"
       title="Game Flow"
       toolbar={toolbar}

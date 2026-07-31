@@ -257,6 +257,14 @@ concepts into focused modules.
     Code Node performs any subsequent rename or promotion to `g`. Code Nodes,
     Decisions, and namespaced plugin contexts consume the same current local
     scope; undeclared child locals never escape.
+  - Flow bodies share one authoring model for actions, entry selection, Start/End
+    placement, and node editing without sharing invocation semantics. A top-level
+    Game State is entered as a lifecycle transition: it clears the subroutine
+    stack, creates a fresh local `l` scope, and advances through its `Next`
+    connection rather than returning values. A nested Subroutine is called with
+    typed inputs, pushes a caller frame, and returns typed outputs to that caller.
+    The persisted flow schema remains compatible; this distinction is explicit
+    in Tools terminology and does not change existing game content.
   - `Log Value` evaluates an authored `g.*`/`l.*` value or safe Flow expression
     on the server, then exposes only its formatted result through the existing
     global stage debug alert. The latest value remains visible while normal

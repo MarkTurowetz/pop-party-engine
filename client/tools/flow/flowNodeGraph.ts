@@ -7,6 +7,7 @@ import {
 } from "./flowDecision";
 import { decisionBranchGraphNodeId } from "./flowDecisionBranchIdentity";
 import {
+  flowBodyInvocationKind,
   flowSubroutineActions,
   isFlowSubroutineAction,
   type FlowSubroutine
@@ -34,8 +35,8 @@ export interface FlowNodePoint {
 
 export interface FlowGraphNode {
   id: string;
-  /** Root/nested subroutine, action, or a system node ("start"/"return"). */
-  kind: "subroutine" | "action" | "branch" | "subAction" | "system";
+  /** Game state, nested subroutine, action, or a system node ("start"/"return"). */
+  kind: "gameState" | "subroutine" | "action" | "branch" | "subAction" | "system";
   title: string;
   subtitle: string;
   timing: string;
@@ -314,7 +315,7 @@ function lastSortedSubActionId(action: FlowAction): string {
   return String(subActions[subActions.length - 1]?.id || "");
 }
 
-/** Nodes for the root subroutines depth: one node per root flow subroutine. */
+/** Nodes for the root depth: one node per game state. */
 export function rootSubroutineGraphNodes(
   flow: GameFlow | null,
   selection: FlowGraphSelection = {}
@@ -336,7 +337,7 @@ export function rootSubroutineGraphNodes(
       (selection.selectedStateId === state.id || selectedActionIds.has(state.id));
     return {
       id: state.id,
-      kind: "subroutine",
+      kind: "gameState",
       title: state.name || state.id,
       subtitle: `${(state.actions || []).length} actions${nextName ? ` / Next: ${nextName}` : ""}`,
       timing: "",
@@ -350,7 +351,7 @@ export function rootSubroutineGraphNodes(
   });
 }
 
-/** Nodes inside a subroutine: Start + child actions/subroutines + Return. */
+/** Nodes inside a flow body: Start + child actions/subroutines + End or Return. */
 export function subroutineGraphNodes(
   subroutine: FlowSubroutine | null,
   selection: FlowGraphSelection = {},
@@ -358,6 +359,8 @@ export function subroutineGraphNodes(
 ): FlowGraphNode[] {
   if (!subroutine) return [];
   const includeSubActions = options.includeSubActions !== false;
+  const invocationKind = flowBodyInvocationKind(subroutine);
+  const isGameState = invocationKind === "enterGameState";
   const selectedActionIds = new Set(selection.selectedActionIds || []);
   const isSelected = (id: string) => selection.selectedActionId === id || selectedActionIds.has(id);
 
@@ -372,7 +375,9 @@ export function subroutineGraphNodes(
       title: "Start",
       subtitle: subroutine.entryTargetActionId
         ? `Entry -> ${subroutine.entryTargetActionId}`
-        : "Subroutine entry",
+        : isGameState
+          ? "Game state entry"
+          : "Subroutine entry",
       timing: "",
       x: startPos.x,
       y: startPos.y,
@@ -479,8 +484,8 @@ export function subroutineGraphNodes(
   nodes.push({
     id: "return",
     kind: "system",
-    title: "Return",
-    subtitle: "Back to parent subroutine",
+    title: isGameState ? "End" : "Return",
+    subtitle: isGameState ? "Advance to next game state" : "Back to parent subroutine",
     timing: "",
     x: returnPos.x,
     y: returnPos.y,

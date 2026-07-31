@@ -26,7 +26,7 @@ export function FlowStateList({
   };
   const contents = (
     <>
-      <h3>Subroutines</h3>
+      <h3>Game States</h3>
       <ol
         className={chrome ? "flow-react-list" : "tool-sidebar-list"}
         data-flow-react-component="state-list"

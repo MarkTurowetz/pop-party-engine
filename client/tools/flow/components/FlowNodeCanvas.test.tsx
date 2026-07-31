@@ -110,4 +110,18 @@ describe("FlowNodeCanvas", () => {
     expect(markup).toContain("flow-node-value-badge is-hide");
     expect(markup).toContain("Hide");
   });
+
+  it("uses game-state navigation language at the root state boundary", () => {
+    const markup = renderToStaticMarkup(
+      <FlowNodeCanvas
+        backLabel="Game States"
+        depth="subroutine"
+        nodes={nodes()}
+        stateTitle="Intro"
+      />
+    );
+
+    expect(markup).toContain("← Game States");
+    expect(markup).toContain("Inside Intro");
+  });
 });

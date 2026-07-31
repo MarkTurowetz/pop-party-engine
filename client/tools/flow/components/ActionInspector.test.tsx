@@ -3,15 +3,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { ActionInspector } from "./ActionInspector";
 
 describe("ActionInspector", () => {
-  it("renders an empty subroutine without an action", () => {
+  it("renders an empty flow-body inspector without a selection", () => {
     const markup = renderToStaticMarkup(<ActionInspector action={null} state={null} />);
 
     expect(markup).toContain('data-flow-react-component="action-inspector"');
     expect(markup).toContain('data-empty="true"');
-    expect(markup).toContain("No subroutine selected");
+    expect(markup).toContain("No game state or subroutine selected");
   });
 
-  it("renders selected subroutine metadata when no action is selected", () => {
+  it("identifies a selected root flow body as a game state", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector
         action={null}
@@ -27,8 +27,25 @@ describe("ActionInspector", () => {
 
     expect(markup).toContain('data-state-id="intro"');
     expect(markup).toContain("Intro");
-    expect(markup).toContain("Subroutine");
+    expect(markup).toContain("Game State");
     expect(markup).toContain("round-one");
+  });
+
+  it("identifies a selected callable flow body as a subroutine", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={null}
+        state={{
+          id: "collect-bid",
+          name: "Collect Bid",
+          type: "subroutine",
+          actions: []
+        }}
+      />
+    );
+
+    expect(markup).toContain("Subroutine");
+    expect(markup).not.toContain("<dd>Game State</dd>");
   });
 
   it("renders selected action fields without metadata clutter", () => {

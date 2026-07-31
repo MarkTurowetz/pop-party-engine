@@ -1,5 +1,8 @@
 import type { FlowAction } from "../../../types/game-data";
-import type { FlowSubroutine } from "../flowSubroutines";
+import {
+  flowBodyKindLabel,
+  type FlowSubroutine
+} from "../flowSubroutines";
 import type { FlowActionTypeMeta } from "../flowSelectors";
 import { ActionFieldControls } from "./ActionFieldControls";
 import type { DecisionBranchHandlers } from "./DecisionBranchControls";
@@ -101,7 +104,7 @@ export function ActionInspector({
         data-empty="true"
       >
         <h3>Inspector</h3>
-        No subroutine selected
+        No game state or subroutine selected
       </section>
     );
   }
@@ -120,7 +123,7 @@ export function ActionInspector({
           <dt>ID</dt>
           <dd>{state.id}</dd>
           <dt>Kind</dt>
-          <dd>Subroutine</dd>
+          <dd>{flowBodyKindLabel(state)}</dd>
           <dt>Actions</dt>
           <dd>{state.actions?.length || 0}</dd>
         </dl>
