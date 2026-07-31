@@ -213,6 +213,14 @@ concepts into focused modules.
     native host stays `controller-layout-hidden` instead of exposing legacy HTML styling. A missing
     player always selects the authored Join layout, even while an older room snapshot still names a
     different controller layout.
+  - Game-owned plugin inputs retain their native control nodes across heartbeat reconciliation so
+    local choice and integer edits remain visible without replaying layout lifecycle animation.
+    Integer controls render above authored field art with an explicit readable font/caret and use
+    `viewModel.<field>.initial` (then the registered minimum) as their bounded initial value. Choice
+    controls expose `aria-pressed`, `.is-selected`, and `data-game-plugin-input-selected`; the
+    corresponding Art Manager layout host receives the same data state and is stopped at the
+    authored `Selected` or `Default` label when that label exists. A static native selection ring
+    remains as the accessible fallback when custom art has no selected timeline state.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
     Controller-held input actions use one shared non-completing stage runner. Multiple choice,
     trivia, text, voice, microphone permission, and answer voting remain active until an

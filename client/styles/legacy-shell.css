@@ -1504,6 +1504,44 @@ body.tool-dashboard-mode .layout-shell {
   transform-origin: center !important;
 }
 
+.game-plugin-input-control {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.game-plugin-action-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+}
+
+.game-plugin-action-button[aria-pressed="true"],
+.game-plugin-action-button.is-selected {
+  outline: 5px solid rgba(255, 225, 86, 0.92);
+  outline-offset: -5px;
+  border-radius: 18px;
+  background: rgba(255, 225, 86, 0.12);
+}
+
+.game-plugin-integer-input {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  caret-color: var(--ink);
+  font-family: inherit;
+  font-size: clamp(22px, 8vmin, 38px);
+  font-weight: 1000;
+  line-height: 1;
+  text-align: center;
+  -webkit-text-fill-color: currentColor;
+}
+
 .controller-layout-target.controller-layout-visual-hidden,
 .controller-layout-target.controller-layout-visual-exiting {
   visibility: hidden;
