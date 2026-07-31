@@ -39,7 +39,11 @@ interface LayoutTextApi {
 declare global {
   interface Window {
     PartyGameLayoutText?: LayoutTextApi;
-    applyControllerLayoutForPhase?: (phase: string, visitKey?: string) => void;
+    applyControllerLayoutForPhase?: (
+      phase: string,
+      visitKey?: string,
+      preferRequestedState?: boolean
+    ) => void;
     loadControllerLayouts?: (options?: { forceServer?: boolean; stageCode?: string }) => Promise<unknown>;
     applyControllerRuntimeTestMessage?: (data: unknown) => void;
     setupController?: () => void | Promise<void>;
@@ -495,7 +499,11 @@ let lastRenderedControllerStageCode = "";
 let lastRenderedControllerSessionId = -1;
 let lastRenderedControllerRevision = -1;
 
-function applyControllerLayoutForPhase(phase: string, prepare?: () => void): void {
+function applyControllerLayoutForPhase(
+  phase: string,
+  prepare?: () => void,
+  options: { preferRequestedState?: boolean } = {}
+): void {
   const lobby = w.controllerState?.lobby as Dict | undefined;
   const player = w.controllerState?.player as Dict | undefined;
   const visitKey = controllerViewVisitKey(lobby, player, phase);
@@ -512,7 +520,7 @@ function applyControllerLayoutForPhase(phase: string, prepare?: () => void): voi
   if (phase !== controllerLayoutStateIds.voiceInput) getControllerVoiceInput().stopRecognition();
   getControllerLocalButtonRuntime().prepareForLayout(phase === "starting" ? controllerLayoutStateIds.lobby : phase);
   prepare?.();
-  w.applyControllerLayoutForPhase?.(phase, visitKey);
+  w.applyControllerLayoutForPhase?.(phase, visitKey, options.preferRequestedState === true);
 }
 
 function updateJoinButton(): void {

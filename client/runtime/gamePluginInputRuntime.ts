@@ -41,7 +41,11 @@ function submissionId(): string {
 }
 
 export function createGamePluginInputView(options: {
-  applyLayoutForPhase: (phase: string, prepare?: () => void) => void;
+  applyLayoutForPhase: (
+    phase: string,
+    prepare?: () => void,
+    options?: { preferRequestedState?: boolean }
+  ) => void;
   hideViews: () => void;
   renderState: (lobby: Dict) => void;
   showView: (viewId: string) => unknown;
@@ -146,7 +150,11 @@ export function createGamePluginInputView(options: {
         ? "textInput"
         : "globalAction";
     options.showView(viewId);
-    options.applyLayoutForPhase(layoutStateId, () => {});
+    options.applyLayoutForPhase(
+      layoutStateId,
+      () => {},
+      { preferRequestedState: true }
+    );
     const submitNow = () => {
       const payload = Object.fromEntries(manifest.submission.map((field) => [field.id, values.get(field.id)]));
       void options.submit(String(input.actionId), Number(input.visitId || 0), payload, submissionId())

@@ -20,6 +20,6 @@ export declare const semanticControllerLayoutStateIds: readonly [
   "controller-paused"
 ];
 export declare function isSemanticControllerLayoutStateId(value: unknown): value is ControllerLayoutStateId;
-export declare function controllerLayoutCandidateIds(phase: unknown, selectedLayoutId: unknown, hasControllerState?: boolean): string[];
+export declare function controllerLayoutCandidateIds(phase: unknown, selectedLayoutId: unknown, hasControllerState?: boolean, preferRequestedState?: boolean): string[];
 export declare function controllerChoiceLayoutStateId(inputType: unknown): ControllerLayoutStateId;
 export declare function controllerTextLayoutStateId(inputType: unknown, inputMode?: unknown): ControllerLayoutStateId;

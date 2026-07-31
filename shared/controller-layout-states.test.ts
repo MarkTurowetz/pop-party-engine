@@ -42,6 +42,15 @@ describe("controller layout states", () => {
     ]);
   });
 
+  it("lets a game-owned input explicitly select a custom controller layout before the room phase layout", () => {
+    expect(controllerLayoutCandidateIds("bet-offer", "round-initialization", true, true)).toEqual([
+      "bet-offer",
+      "round-initialization",
+      controllerLayoutStateIds.presentation,
+      controllerLayoutStateIds.lobby
+    ]);
+  });
+
   it("uses Join before a controller lobby snapshot exists", () => {
     expect(controllerLayoutCandidateIds("join", "", false)).toEqual([
       controllerLayoutStateIds.join,

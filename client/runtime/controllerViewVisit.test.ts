@@ -13,6 +13,21 @@ describe("controllerViewVisitKey", () => {
     expect(controllerViewVisitKey(first, {}, "writing")).not.toBe(controllerViewVisitKey(second, {}, "writing"));
   });
 
+  it("uses game-owned input visit ids as controller lifecycle boundaries", () => {
+    const first = {
+      gameSessionId: 3,
+      momentVisitId: 8,
+      gamePlugin: { input: { actionId: "game.input", visitId: 4 } }
+    };
+    const second = {
+      ...first,
+      gamePlugin: { input: { actionId: "game.input", visitId: 5 } }
+    };
+    expect(controllerViewVisitKey(first, {}, "round-initialization")).not.toBe(
+      controllerViewVisitKey(second, {}, "round-initialization")
+    );
+  });
+
   it("creates a fresh lifecycle when a new game starts", () => {
     const lobby = { gameSessionId: 3, momentVisitId: 8, action: { id: "presentation" } };
     expect(controllerViewVisitKey(lobby, {}, "presentation")).not.toBe(

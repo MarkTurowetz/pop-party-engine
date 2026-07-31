@@ -16,7 +16,7 @@ module.exports = defineGame({
   gameId: "pop-party-reference",
   displayName: "Pop Party Engine Reference",
   version: "1.0.17",
-  engineCompatibility: "1.3.24",
+  engineCompatibility: "1.3.25",
   content: {
     mode: "bundle",
     schemaVersion: 1

@@ -32,7 +32,11 @@ declare global {
     initializeStageMomentLayout?: () => void;
     resetStageMomentLayout?: () => void;
     stageMomentLayoutReadiness?: () => Dict;
-    applyControllerLayoutForPhase?: (phase: string, visitKey?: string) => void;
+    applyControllerLayoutForPhase?: (
+      phase: string,
+      visitKey?: string,
+      preferRequestedState?: boolean
+    ) => void;
     setStageLayoutGameObjectShownForAction?: (action: Dict, options?: Dict) => unknown;
     setStageLayoutArtElementShownForAction?: (action: Dict, options?: Dict) => unknown;
     playStageLayoutGameObjectAnimationForAction?: (action: Dict, options?: Dict) => unknown;
