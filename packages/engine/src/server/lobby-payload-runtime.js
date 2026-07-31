@@ -87,6 +87,9 @@ function createLobbyPayloadRuntime({
       countdownEndsAt: room.countdownEndsAt,
       action: currentAction,
       debugAction: debugActionPayload(room, currentAction),
+      debugLog: room.debugLog && typeof room.debugLog === "object"
+        ? { ...room.debugLog }
+        : null,
       input,
       textInput,
       microphoneAccess,

@@ -18,6 +18,26 @@ describe("flow action public runtime", () => {
     });
   });
 
+  it("serializes Log Value with its authored Flow expression", () => {
+    const runtime = createFlowActionPublicRuntime({
+      availableFlowTransitions: [],
+      flowActionTypeMeta: () => ({ category: "standard" })
+    });
+
+    expect(runtime.publicFlowAction({
+      id: "log-bid",
+      name: "Log Bid",
+      type: "logValue",
+      value: "l.bidResponse",
+      subActions: []
+    }, 0)).toMatchObject({
+      id: "log-bid",
+      actionType: "logValue",
+      type: "logValue",
+      value: "l.bidResponse"
+    });
+  });
+
   it("pipes authoritative player correctness groups onto the reveal action", () => {
     const runtime = createFlowActionPublicRuntime({});
     const action = runtime.resolveRoomActionText(

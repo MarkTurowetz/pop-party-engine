@@ -115,6 +115,7 @@ export function flowActionValueBadge(
   }
   if (action.type === "labelNode") return { text: "Label", className: "is-label" };
   if (action.type === "codeNode") return { text: "Code", className: "is-code" };
+  if (action.type === "logValue") return { text: "Log", className: "is-code" };
   if (action.type === "subroutine") return { text: "Subroutine", className: "is-subroutine" };
   const isTextAction = action.type === "presentText" || action.type === "displayText";
   if (isTextAction && !action.textTarget) return { text: "\u26a0 No Field", className: "is-warning" };
@@ -160,6 +161,7 @@ export function createActionSummary(context: FlowActionSummaryContext): FlowActi
     }
     if (action.type === "labelNode") return text(action.labelText, "Flow note");
     if (action.type === "codeNode") return text(action.code, "g.example = true");
+    if (action.type === "logValue") return `Log ${text(action.value, "l.value")} / ${timingLabel(action, isSubAction)}`;
     if (action.type === "subroutine") return `${text(action.name, "Subroutine")} / ${(Array.isArray(action.actions) ? action.actions : []).length} actions`;
 
     const timingText = timingLabel(action, isSubAction);

@@ -86,6 +86,24 @@ class StageDebugPanel {
     this.alertElement.classList.remove("hidden");
   }
 
+  renderLogValue(lobby: Dict = {}): void {
+    if (!this.alertElement) return;
+    const phase = String(lobby.phase || "lobby");
+    const decisionHalted = (lobby.lastDecisionTrace as Dict)?.selectedTarget === "none";
+    const log = lobby.debugLog as Dict | null;
+    if (
+      phase === "lobby" ||
+      phase === "starting" ||
+      lobby.runtimeFault ||
+      decisionHalted ||
+      !log?.message
+    ) {
+      return;
+    }
+    this.alertElement.textContent = `Log Value: ${String(log.message)}`;
+    this.alertElement.classList.remove("hidden");
+  }
+
   showGameObjectWarning(details: Dict = {}): void {
     if (!this.alertElement) return;
     const name = details.name || details.elementId || "Unknown Game Object";

@@ -31,6 +31,32 @@ function delayedControllerLayoutParent(seconds = 2) {
 }
 
 describe("scheduled room sub-action effects", () => {
+  it("evaluates Log Value against the current local subroutine scope", () => {
+    const markAppliedActionEffect = vi.fn();
+    const runtime = createRoomActionEffectsRuntime({
+      hasAppliedActionEffect: () => false,
+      markAppliedActionEffect,
+      resetGameSessionState: vi.fn()
+    });
+    const room = {
+      G: {},
+      localVariables: { bidResponse: "accepted" }
+    };
+    const action = {
+      id: "log-bid",
+      type: "logValue",
+      value: "l.bidResponse"
+    };
+
+    runtime.applyRoomActionEffects(room, action);
+
+    expect(markAppliedActionEffect).toHaveBeenCalledWith(room, "log-bid");
+    expect(room.debugLog).toMatchObject({
+      actionId: "log-bid",
+      message: "l.bidResponse = accepted"
+    });
+  });
+
   it("fires once after its parent is no longer the current node", () => {
     vi.useFakeTimers();
     const broadcastLobby = vi.fn();

@@ -69,6 +69,19 @@ describe("Flow action summary", () => {
       .toBe("Play host audio: Audio intro / Index 2 / E+ 0.0s");
   });
 
+  it("summarizes Log Value expressions", () => {
+    const runtime = createActionSummary(context());
+    const action = {
+      id: "log-bid",
+      type: "logValue",
+      value: "l.bidResponse",
+      timing: { mode: "E+", seconds: 0 }
+    } as FlowAction;
+
+    expect(runtime.actionSummary(action)).toBe("Log l.bidResponse / E+ 0.0s");
+    expect(runtime.actionValueBadge(action)).toEqual({ text: "Log", className: "is-code" });
+  });
+
   it("summarizes instant stop-at-label game object actions", () => {
     const runtime = createActionSummary(context());
 

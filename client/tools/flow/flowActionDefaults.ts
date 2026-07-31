@@ -133,6 +133,7 @@ export function createActionDefaults(context: FlowActionDefaultsContext = {}): F
       action.timing = { mode: "E+", seconds: 0 };
       action.subActions = [];
     }
+    if (value === "logValue") action.value = text(action.value, "l.value");
     if (["presentText", "displayText", "text", "setPlayersShown", "setPlayerAnswersShown", "setGameObjectShown", "setArtAssetShown"].includes(value)) action.isShown = action.isShown !== false;
     if (value === "setGameObjectShown" || value === "setArtAssetShown") {
       action.targetLayoutElementId = text(action.targetLayoutElementId);

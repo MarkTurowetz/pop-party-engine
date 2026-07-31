@@ -11,6 +11,7 @@ const runnerDefinitions = [
   ["playGameObjectAnimation", "playGameObjectAnimation"],
   ["stopGameObjectAnimation", "playGameObjectAnimation"],
   ["setupGame", "serverEffect"],
+  ["logValue", "serverEffect"],
   ["setPlayerAnswersShown", "setPlayerAnswersShown"],
   ["revealPlayerAnswerCorrectness", "revealPlayerAnswerCorrectness"],
   ["showPoints", "showPoints"]

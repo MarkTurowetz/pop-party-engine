@@ -62,6 +62,8 @@ function createDefaultRoom(stageCode) {
     storedPlayerAnswers: {},
     sessionOutputs: { sessionId: 0, byVisit: {}, latestByState: {} },
     runtimeFault: null,
+    debugLog: null,
+    debugLogSequence: 0,
     pendingPointPopups: [],
     pendingPointPopupNonce: 0,
     wipeShown: false,

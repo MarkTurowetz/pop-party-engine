@@ -43,6 +43,11 @@ describe("bundle game data runtime", () => {
     expect(gameData.avatarShapes).toEqual(["triangle"]);
     expect(gameData.defaultPlayerColors).toEqual(["#ffffff"]);
     expect(gameData.availableFlowActionTypes.some((action) => action.id === "prepareVotingCards")).toBe(true);
+    expect(gameData.availableFlowActionTypes).toContainEqual(expect.objectContaining({
+      id: "logValue",
+      name: "Log Value",
+      category: "standard"
+    }));
   });
 
   it("rejects incomplete constants instead of filling values from engine defaults", () => {

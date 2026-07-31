@@ -69,6 +69,28 @@ describe("ActionInspector", () => {
     expect(markup).not.toContain("<dt>Parent</dt>");
   });
 
+  it("renders the Log Value expression field", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{
+          id: "log-bid",
+          name: "Log Bid",
+          type: "logValue",
+          value: "l.bidResponse"
+        }}
+        edit={{
+          onSetActionField: () => undefined,
+          actionTargetOptions: []
+        }}
+        state={{ id: "play", name: "Play", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain('data-action-type="logValue"');
+    expect(markup).toContain("Variable / Value");
+    expect(markup).toContain('value="l.bidResponse"');
+  });
+
   it("renders moment text-field target choices for text actions", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector
