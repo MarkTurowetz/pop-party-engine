@@ -34,6 +34,15 @@ export interface FlowSubroutineOutput extends JsonObject {
   value?: string;
 }
 
+export interface FlowBody extends JsonObject {
+  id: string;
+  name?: string;
+  actions: FlowAction[];
+  entryTargetActionId?: string;
+  startNodePosition?: { x: number; y: number } | null;
+  returnNodePosition?: { x: number; y: number } | null;
+}
+
 export interface FlowAction extends JsonObject {
   id: string;
   name?: string;
@@ -46,10 +55,12 @@ export interface FlowAction extends JsonObject {
   outputs?: FlowSubroutineOutput[];
 }
 
-export interface FlowState extends JsonObject {
-  id: string;
-  name?: string;
-  actions: FlowAction[];
+export type FlowSubroutineAction = FlowAction & FlowBody & {
+  type: "subroutine";
+};
+
+export interface FlowState extends FlowBody {
+  nextStateTargetId?: string;
 }
 
 export interface FlowRouteNode extends JsonObject {

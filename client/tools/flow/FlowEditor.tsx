@@ -598,6 +598,7 @@ export function FlowEditor({
   };
   const nodeCanvas = (
     <FlowNodeCanvas
+      backLabel={activeSubroutinePath.length ? "Parent Subroutine" : "Game States"}
       depth={nodeDepth}
       stateTitle={nodeDepth === "subroutines" ? "Root Flow" : currentSubroutineTitle}
       nodes={nodeNodes}

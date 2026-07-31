@@ -5,7 +5,10 @@ import type {
 import {
   subroutineValueTypes
 } from "../flowSubroutineInterface";
-import type { FlowSubroutine } from "../flowSubroutines";
+import {
+  flowBodyInvocationKind,
+  type FlowSubroutine
+} from "../flowSubroutines";
 
 export interface SubroutineBoundaryInspectorProps {
   boundary: "start" | "return";
@@ -113,9 +116,13 @@ export function SubroutineBoundaryInspector({
   onSetOutputs,
   subroutine
 }: SubroutineBoundaryInspectorProps) {
+  const invocationKind = flowBodyInvocationKind(subroutine);
+  const isCallableSubroutine = invocationKind === "callSubroutine";
   const inputs = Array.isArray(subroutine.inputs) ? subroutine.inputs : [];
   const outputs = Array.isArray(subroutine.outputs) ? subroutine.outputs : [];
   const isStart = boundary === "start";
+  const kindLabel = isCallableSubroutine ? "Subroutine" : "Game State";
+  const boundaryLabel = isStart ? "Start" : isCallableSubroutine ? "Return" : "End";
 
   return (
     <section
@@ -126,8 +133,8 @@ export function SubroutineBoundaryInspector({
     >
       <header className="flow-inspector-header">
         <div>
-          <span className="flow-inspector-kicker">Subroutine</span>
-          <h2>{isStart ? "Start" : "End"}</h2>
+          <span className="flow-inspector-kicker">{kindLabel}</span>
+          <h2>{boundaryLabel}</h2>
         </div>
         <span className="flow-inspector-tag" title={String(subroutine.id)}>
           {subroutine.name || subroutine.id}
@@ -136,10 +143,25 @@ export function SubroutineBoundaryInspector({
       <section className="flow-subroutine-interface">
         <header>
           <div>
-            <h3>{isStart ? "Inputs" : "Outputs"}</h3>
+            <h3>
+              {isCallableSubroutine ? (isStart ? "Inputs" : "Outputs") : "Lifecycle"}
+            </h3>
           </div>
         </header>
-        {isStart ? (
+        {!isCallableSubroutine ? (
+          isStart ? (
+            <p data-game-state-boundary-description>
+              Entering this game state starts a fresh local <code>l</code> scope.
+              Game states do not receive values from a caller.
+            </p>
+          ) : (
+            <p data-game-state-boundary-description>
+              Ending this game state advances through its authored Next connection.
+              Game states do not return values to a caller; assign persistent values
+              to <code>g</code> before ending.
+            </p>
+          )
+        ) : isStart ? (
           <StartInputs inputs={inputs} />
         ) : (
           <EndOutputs outputs={outputs} onSetOutputs={onSetOutputs} />

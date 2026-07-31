@@ -34,6 +34,8 @@ describe("FlowToolApp shell", () => {
     expect(markup).not.toContain('data-flow-react-component="route-node-list"');
     expect(markup).not.toContain('data-flow-react-component="route-inspector"');
     expect(markup).not.toContain(" hidden");
+    expect(markup).toContain("Game States");
+    expect(markup).not.toContain("<h3>Subroutines</h3>");
   });
 
   it("renders the actual save error as an accessible alert", () => {
@@ -94,5 +96,38 @@ describe("FlowToolApp shell", () => {
     expect(endMarkup).toContain('value="l.parentBidResponse"');
     expect(endMarkup).toContain('value="l.bidResponse"');
     expect(endMarkup).not.toContain('aria-label="Output 1 child value" readOnly');
+  });
+
+  it("describes game-state Start and End as lifecycle boundaries", () => {
+    const gameState = {
+      id: "play",
+      name: "Play",
+      actions: []
+    };
+    const startMarkup = renderToStaticMarkup(
+      <FlowToolApp
+        flow={{ states: [gameState] }}
+        inspectorBoundaryOverride={{ boundary: "start", subroutine: gameState }}
+        inspectorSubroutine={gameState}
+        selectedStateId="play"
+        visible
+      />
+    );
+    const endMarkup = renderToStaticMarkup(
+      <FlowToolApp
+        flow={{ states: [gameState] }}
+        inspectorBoundaryOverride={{ boundary: "return", subroutine: gameState }}
+        inspectorSubroutine={gameState}
+        selectedStateId="play"
+        visible
+      />
+    );
+
+    expect(startMarkup).toContain("Game State");
+    expect(startMarkup).toContain("fresh local");
+    expect(startMarkup).not.toContain("No inputs enter this subroutine");
+    expect(endMarkup).toContain(">End<");
+    expect(endMarkup).toContain("advances through its authored Next connection");
+    expect(endMarkup).not.toContain("No outputs leave this subroutine");
   });
 });

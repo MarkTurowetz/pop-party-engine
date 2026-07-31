@@ -26,8 +26,21 @@ describe("FlowToolbar", () => {
     expect(markup).toContain('data-can-save="true"');
     expect(markup).toContain('data-can-undo="true"');
     expect(markup).toContain('data-flow-node-depth="subroutines"');
+    expect(markup).toContain("Add Game State");
+    expect(markup).toContain("Game States");
+    expect(markup).not.toContain("Add Subroutine");
     expect(markup).not.toContain("List");
     expect(markup).not.toContain("Node");
     expect(markup).not.toContain("data-flow-view-mode");
+  });
+
+  it("labels nested flow-body creation as a subroutine", () => {
+    const markup = renderToStaticMarkup(
+      <FlowToolbar canAddState={true} flowNodeDepth="subroutine" />
+    );
+
+    expect(markup).toContain("Add Subroutine");
+    expect(markup).toContain(">Subroutine<");
+    expect(markup).not.toContain("Add Game State");
   });
 });

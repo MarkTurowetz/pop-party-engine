@@ -137,7 +137,7 @@ export function rootFlowTargetOptions(
   const options = [{ id: "none", label: "None / Halt" }];
   for (const action of rootFlowActions(flow)) {
     if (action.id === currentNodeId) continue;
-    const prefix = action.rootNodeSource === "state" ? "Subroutine" : flowRouteNodeTypeName(action);
+    const prefix = action.rootNodeSource === "state" ? "Game State" : flowRouteNodeTypeName(action);
     options.push({ id: action.id, label: `${prefix}: ${action.name || action.id}` });
   }
   return options;
@@ -157,6 +157,7 @@ export function rootFlowGraphNodes(
     selection.selectedActionId ||
     selection.selectedStateId ||
     "";
+  const stateIds = new Set((flow?.states || []).map((state) => state.id));
   return subroutineGraphNodes(
     rootFlowSubroutine(flow),
     {
@@ -164,7 +165,13 @@ export function rootFlowGraphNodes(
       selectedActionId
     },
     { includeSubActions: false }
-  ).filter((node) => node.kind !== "system");
+  )
+    .filter((node) => node.kind !== "system")
+    .map((node) => stateIds.has(node.id) ? {
+      ...node,
+      kind: "gameState" as const,
+      valueBadge: { text: "Game State", className: "is-subroutine" }
+    } : node);
 }
 
 export function rootFlowNodeExits(flow: Partial<GameFlow> | null | undefined): FlowNodeExit[] {

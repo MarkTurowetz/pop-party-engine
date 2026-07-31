@@ -35,6 +35,7 @@ export function FlowToolbar({
   onSave,
   onUndo
 }: FlowToolbarProps) {
+  const atRoot = flowNodeDepth === "subroutines";
   return (
     <div
       className="flow-react-toolbar"
@@ -53,11 +54,13 @@ export function FlowToolbar({
       <button type="button" disabled={!canSave || saving} onClick={onSave}>
         {saving ? "Saving…" : "Save"}
       </button>
-      <button type="button" disabled={!canAddState} onClick={onAddState}>Add Subroutine</button>
+      <button type="button" disabled={!canAddState} onClick={onAddState}>
+        {atRoot ? "Add Game State" : "Add Subroutine"}
+      </button>
       <button type="button" disabled={!canAddAction} onClick={onAddAction}>Add Action</button>
       <button type="button" disabled={!canDelete} onClick={onDeleteSelection}>Delete</button>
       <button type="button" disabled={!canRevert} onClick={onRevert}>Revert</button>
-      <span>{flowNodeDepth}</span>
+      <span>{atRoot ? "Game States" : "Subroutine"}</span>
     </div>
   );
 }

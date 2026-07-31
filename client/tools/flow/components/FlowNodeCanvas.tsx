@@ -188,6 +188,7 @@ function clampZoom(value: number): number {
 function minimapNodeFill(node: FlowGraphNode): string {
   if (node.selected) return "#ff4fa3";
   if (node.kind === "system") return "#f8fafc";
+  if (node.kind === "gameState") return "#22d3ee";
   if (node.kind === "subroutine") return "#22d3ee";
   if (node.kind === "branch") return node.className.includes("is-no-match") ? "#fff7d6" : "#fef3c7";
   if (node.kind === "subAction") return "#fff7d6";
@@ -203,6 +204,7 @@ export interface FlowNodeCanvasProps {
   exits?: FlowNodeExit[];
   depth: "subroutines" | "subroutine";
   stateTitle?: string;
+  backLabel?: string;
   onSelectNode?: (nodeId: string, additive: boolean) => void;
   onEnterSubroutine?: (nodeId: string) => void;
   onBackToSubroutines?: () => void;
@@ -564,6 +566,7 @@ export function FlowNodeCanvas({
   connections = [],
   depth,
   stateTitle,
+  backLabel = "Game States",
   onSelectNode,
   onEnterSubroutine,
   onBackToSubroutines,
@@ -885,7 +888,7 @@ export function FlowNodeCanvas({
         <div className="flow-node-canvas-actions">
           {depth === "subroutine" ? (
             <button type="button" data-node-back onClick={() => onBackToSubroutines?.()}>
-              ← Subroutines
+              ← {backLabel}
             </button>
           ) : null}
           <button
@@ -899,7 +902,7 @@ export function FlowNodeCanvas({
         </div>
         <span data-node-canvas-help>
           {depth === "subroutines"
-            ? "Double-click a subroutine to edit its actions."
+            ? "Double-click a game state to edit its actions."
             : `Inside ${stateTitle || "subroutine"} — double-click nested subroutines to drill in or the background to go up one level.`}
         </span>
       </header>
@@ -1030,7 +1033,9 @@ export function FlowNodeCanvas({
                       onSelectNode?.(node.id, event.metaKey || event.ctrlKey || event.shiftKey)
                     }
                     onDoubleClick={() => {
-                      if (node.kind === "subroutine") onEnterSubroutine?.(node.id);
+                      if (node.kind === "gameState" || node.kind === "subroutine") {
+                        onEnterSubroutine?.(node.id);
+                      }
                       else if (node.id === "start" || node.id === "return") onBackToSubroutines?.();
                     }}
                   >
