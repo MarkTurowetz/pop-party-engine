@@ -114,7 +114,9 @@ at most once. `context.actor` is always the authenticated submitting player,
 not an authored id. Entering a new game-owned input visit also emits a distinct
 lobby revision after recipient state is installed, so each eligible
 controller's next heartbeat can render its private `gamePlugin.input` without
-being mistaken for a duplicate lobby payload.
+being mistaken for a duplicate lobby payload. A game input's declared custom
+`layoutStateId` is also selected ahead of the room's ordinary controller phase
+layout for that input visit; built-in semantic input layouts remain compatible.
 
 ## Typed subroutine interfaces
 

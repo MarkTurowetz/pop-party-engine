@@ -31,7 +31,8 @@ export function isSemanticControllerLayoutStateId(value: unknown): value is Cont
 export function controllerLayoutCandidateIds(
   phase: unknown,
   selectedLayoutId: unknown,
-  hasControllerState = true
+  hasControllerState = true,
+  preferRequestedState = false
 ): string[] {
   const candidates: string[] = [];
   const add = (value: unknown) => {
@@ -58,6 +59,7 @@ export function controllerLayoutCandidateIds(
   }
 
   const selectedId = String(selectedLayoutId || "").trim();
+  if (preferRequestedState) add(phaseId);
   add(selectedId || (phaseId === "starting" ? controllerLayoutStateIds.lobby : phaseId || controllerLayoutStateIds.lobby));
   add(phaseId === "lobby" || phaseId === "starting" ? controllerLayoutStateIds.lobby : controllerLayoutStateIds.presentation);
   add(controllerLayoutStateIds.lobby);

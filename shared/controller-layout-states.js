@@ -29,7 +29,7 @@ const semanticStateIdSet = new Set(exports.semanticControllerLayoutStateIds);
 function isSemanticControllerLayoutStateId(value) {
     return semanticStateIdSet.has(String(value || ""));
 }
-function controllerLayoutCandidateIds(phase, selectedLayoutId, hasControllerState = true) {
+function controllerLayoutCandidateIds(phase, selectedLayoutId, hasControllerState = true, preferRequestedState = false) {
     const candidates = [];
     const add = (value) => {
         const id = String(value || "").trim();
@@ -54,6 +54,8 @@ function controllerLayoutCandidateIds(phase, selectedLayoutId, hasControllerStat
         return candidates;
     }
     const selectedId = String(selectedLayoutId || "").trim();
+    if (preferRequestedState)
+        add(phaseId);
     add(selectedId || (phaseId === "starting" ? exports.controllerLayoutStateIds.lobby : phaseId || exports.controllerLayoutStateIds.lobby));
     add(phaseId === "lobby" || phaseId === "starting" ? exports.controllerLayoutStateIds.lobby : exports.controllerLayoutStateIds.presentation);
     add(exports.controllerLayoutStateIds.lobby);

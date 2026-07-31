@@ -327,10 +327,15 @@ function globalControllerLayout(): Dict {
   return w().controllerLayouts.global || { id: "global", name: "Global Layout", elements: [] };
 }
 
-function controllerLayoutStateForPhase(phase: string): Dict | null {
+function controllerLayoutStateForPhase(phase: string, preferRequestedState = false): Dict | null {
   const controllerState = w().controllerState as Dict | null;
   const selectedLayoutId = ((controllerState?.lobby as Dict)?.controllerLayoutId as string) || "";
-  for (const layoutId of controllerLayoutCandidateIds(phase, selectedLayoutId, Boolean(controllerState))) {
+  for (const layoutId of controllerLayoutCandidateIds(
+    phase,
+    selectedLayoutId,
+    Boolean(controllerState),
+    preferRequestedState
+  )) {
     const state = controllerLayoutState(layoutId);
     if (state) return state;
   }
@@ -411,11 +416,15 @@ function clearControllerLayoutTargets(retainedTokens: Set<string> = new Set()): 
   }
 }
 
-function applyControllerLayoutForPhase(phase: string, visitKey = ""): void {
+function applyControllerLayoutForPhase(
+  phase: string,
+  visitKey = "",
+  preferRequestedState = false
+): void {
   const controllerScreen = w().controllerScreen;
   const controllerPanel = w().controllerPanel;
   if (!controllerScreen || !controllerPanel) return;
-  const state = controllerLayoutStateForPhase(phase);
+  const state = controllerLayoutStateForPhase(phase, preferRequestedState);
   if (!state) return;
   const normalizedVisitKey = String(visitKey || "");
   const isNewVisit = Boolean(normalizedVisitKey && normalizedVisitKey !== currentControllerLayoutVisitKey);

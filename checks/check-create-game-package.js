@@ -118,10 +118,10 @@ module.exports = Object.freeze([
       outputs: [{ id: "choice", name: "Choice", variableField: "resultVariable" }],
       submission: [{ id: "choice", type: "choice", optionsSource: "options" }],
       controller: {
-        layoutStateId: "controller-multiple-choice",
+        layoutStateId: "fixture-plugin-input",
         bindings: [
-          { id: "hit", kind: "choice", layoutElementId: "controllerChoiceGrid", field: "choice", optionIndex: 0, autoSubmit: true },
-          { id: "stay", kind: "choice", layoutElementId: "controllerChoiceGrid", field: "choice", optionIndex: 1, autoSubmit: true }
+          { id: "hit", kind: "choice", layoutElementId: "fixture-hit-button", field: "choice", optionIndex: 0, autoSubmit: true },
+          { id: "stay", kind: "choice", layoutElementId: "fixture-stay-button", field: "choice", optionIndex: 1, autoSubmit: true }
         ]
       },
       recipients(context) { return context.players.slice(0, 1).map((player) => player.id); },
@@ -199,6 +199,91 @@ module.exports = Object.freeze([{
       const flowPayload = await flowResponse.json();
       const pluginActionMeta = flowPayload.availableActionTypes.find((item) => item.id === "generated-fixture.increment");
       const pluginInputMeta = flowPayload.availableActionTypes.find((item) => item.id === "generated-fixture.turnChoice");
+      const controllerLayoutsResponse = await fetch(first.startup.localUrl + "/api/controller-layouts");
+      const controllerLayoutsPayload = await controllerLayoutsResponse.json();
+      const customInputLayout = {
+        id: "fixture-plugin-input",
+        name: "Fixture Plugin Input",
+        hiddenInStates: false,
+        hiddenGlobals: [],
+        elements: [
+          {
+            id: "fixture-input-prompt",
+            name: "Fixture Input Prompt",
+            selector: "",
+            kind: "art",
+            artCompositionId: "layout-text-field",
+            hidden: false,
+            locked: false,
+            x: 195,
+            y: 180,
+            width: 330,
+            height: 110,
+            scale: 1,
+            rotation: 0,
+            defaultAnimationState: "On",
+            defaultText: "Choose an action",
+            fontSize: 32,
+            autoFitText: false,
+            fontFamily: "",
+            fontColor: "#17131f"
+          },
+          {
+            id: "fixture-hit-button",
+            name: "Fixture Hit Button",
+            selector: "",
+            kind: "art",
+            artCompositionId: "controller-choice-option",
+            hidden: false,
+            locked: false,
+            x: 195,
+            y: 390,
+            width: 300,
+            height: 80,
+            scale: 1,
+            rotation: 0,
+            defaultAnimationState: "On",
+            defaultText: "",
+            fontSize: 32,
+            autoFitText: false,
+            fontFamily: "",
+            fontColor: "#17131f"
+          },
+          {
+            id: "fixture-stay-button",
+            name: "Fixture Stay Button",
+            selector: "",
+            kind: "art",
+            artCompositionId: "controller-choice-option",
+            hidden: false,
+            locked: false,
+            x: 195,
+            y: 500,
+            width: 300,
+            height: 80,
+            scale: 1,
+            rotation: 0,
+            defaultAnimationState: "On",
+            defaultText: "",
+            fontSize: 32,
+            autoFitText: false,
+            fontFamily: "",
+            fontColor: "#17131f"
+          }
+        ]
+      };
+      const controllerLayouts = {
+        ...controllerLayoutsPayload.layouts,
+        states: [
+          ...controllerLayoutsPayload.layouts.states.filter((state) => state.id !== customInputLayout.id),
+          customInputLayout
+        ]
+      };
+      const controllerLayoutSaveResponse = await fetch(first.startup.localUrl + "/api/controller-layouts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ layouts: controllerLayouts })
+      });
       const fixtureLobby = {
           id: "lobby",
           name: "Lobby",
@@ -300,8 +385,17 @@ module.exports = Object.freeze([{
       });
       const inputLobby = {
         ...fixtureLobby,
-        entryTargetActionId: "fixture-turn-choice",
+        entryTargetActionId: "fixture-before-turn",
         actions: [
+          {
+            id: "fixture-before-turn",
+            name: "Before Turn Choice",
+            type: "presentText",
+            text: "Preparing controller input",
+            timing: { mode: "E+", seconds: 0 },
+            subActions: [],
+            nextTargetActionId: "fixture-turn-choice"
+          },
           {
             id: "fixture-turn-choice",
             name: "Turn Choice",
@@ -337,7 +431,13 @@ module.exports = Object.freeze([{
         headers: stageHeaders,
         body: JSON.stringify({ flow: inputFlow })
       });
-      const inputStageLobby = (await inputConfigResponse.json()).lobby;
+      const configuredInputLobby = (await inputConfigResponse.json()).lobby;
+      const inputTransitionResponse = await fetch(first.startup.localUrl + "/api/complete-action", {
+        method: "POST",
+        headers: stageHeaders,
+        body: JSON.stringify({ stageCode: "PLUG", actionId: "fixture-before-turn", source: "callback" })
+      });
+      const inputStageLobby = (await inputTransitionResponse.json()).lobby;
       const heartbeat = async (joined) => (await (await fetch(first.startup.localUrl + "/api/heartbeat", {
         method: "POST",
         headers: playerHeaders(joined),
@@ -349,7 +449,7 @@ module.exports = Object.freeze([{
       try {
         await controllerPage.waitForFunction(() => {
           const input = window.controllerState?.lobby?.gamePlugin?.input;
-          const layoutElement = window.controllerLayoutElementForId?.("controllerChoiceGrid");
+          const layoutElement = window.controllerLayoutElementForId?.("fixture-hit-button");
           const layoutHost = layoutElement && window.controllerLayoutTargetElement?.(layoutElement);
           const control = document.querySelector('[data-game-plugin-input-binding="hit"]');
           return input?.actionId === "fixture-turn-choice"
@@ -361,7 +461,9 @@ module.exports = Object.freeze([{
           viewStateId: window.controllerState?.controllerViewStateId,
           input: window.controllerState?.lobby?.gamePlugin?.input,
           runtimeConfig: document.getElementById("pop-party-runtime-config")?.textContent,
-          choiceHost: document.querySelector('[data-controller-layout-element-id="controllerChoiceGrid"]')?.outerHTML,
+          activeLayoutElements: Array.from(document.querySelectorAll("[data-controller-layout-element-id]"))
+            .map((node) => node.getAttribute("data-controller-layout-element-id")),
+          choiceHost: document.querySelector('[data-controller-layout-element-id="fixture-hit-button"]')?.outerHTML,
           controls: document.querySelectorAll("[data-game-plugin-input-binding]").length
         }));
         throw new Error("Generated controller input did not activate: " + JSON.stringify(diagnostic), { cause: error });
@@ -370,7 +472,7 @@ module.exports = Object.freeze([{
         viewStateId: window.controllerState?.controllerViewStateId,
         actionId: window.controllerState?.lobby?.gamePlugin?.input?.actionId,
         layoutHostActive: (() => {
-          const layoutElement = window.controllerLayoutElementForId?.("controllerChoiceGrid");
+          const layoutElement = window.controllerLayoutElementForId?.("fixture-hit-button");
           const layoutHost = layoutElement && window.controllerLayoutTargetElement?.(layoutElement);
           const control = document.querySelector('[data-game-plugin-input-binding="hit"]');
           return Boolean(layoutHost && control && layoutHost.contains(control));
@@ -451,6 +553,7 @@ module.exports = Object.freeze([{
       const second = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
       const secondConstants = await (await fetch(second.startup.localUrl + "/api/game-constants")).json();
       const secondFlow = await (await fetch(second.startup.localUrl + "/api/game-flow")).json();
+      const secondControllerLayouts = await (await fetch(second.startup.localUrl + "/api/controller-layouts")).json();
       const result = {
         firstRevision: first.development.revision,
         healthRevision: firstHealth.release.contentRevision,
@@ -462,6 +565,10 @@ module.exports = Object.freeze([{
         pluginInputVisible: Boolean(pluginInputMeta && pluginInputMeta.fields.some((field) => field.key === "resultVariable")),
         flowSaveStatus: flowSaveResponse.status,
         flowSaveError: flowSavePayload.error,
+        controllerLayoutSaveStatus: controllerLayoutSaveResponse.status,
+        customControllerLayoutReloaded: secondControllerLayouts.layouts.states
+          .some((state) => state.id === "fixture-plugin-input"
+            && state.elements.some((element) => element.id === "fixture-hit-button")),
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
           && controllerHtml.includes("generated-fixture.controllerCounter"),
         pluginViewModel: configuredLobby.gamePlugin?.viewModels?.["generated-fixture.stageCounter"]?.label,
@@ -469,6 +576,8 @@ module.exports = Object.freeze([{
         configuredFault: configuredLobby.runtimeFault,
         branchSelected: completedLobby.lastDecisionTrace?.selectedBranch,
         branchedAction: completedLobby.action?.id,
+        inputTransitionAction: inputStageLobby.action?.id,
+        privateInputHiddenBeforeTransition: configuredInputLobby.gamePlugin?.input == null,
         privateInputHiddenFromStage: inputStageLobby.gamePlugin?.input == null,
         inputDeliveryRevisionAdvanced: Number(oneInputLobby.revision) > Number(inputStageLobby.revision),
         currentPlayerInputVisible: turnInput?.viewModel?.viewer === one.player.id,
@@ -506,14 +615,18 @@ module.exports = Object.freeze([{
     || !development.pluginActionVisible
     || !development.pluginInputVisible
     || development.flowSaveStatus !== 200
+    || development.controllerLayoutSaveStatus !== 200
+    || !development.customControllerLayoutReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"
     || development.branchSelected !== "branch-hit"
     || development.branchedAction !== "fixture-hit"
+    || development.inputTransitionAction !== "fixture-turn-choice"
+    || !development.privateInputHiddenBeforeTransition
     || !development.privateInputHiddenFromStage
     || !development.inputDeliveryRevisionAdvanced
     || !development.currentPlayerInputVisible
-    || development.currentPlayerInputLayout !== "controller-multiple-choice"
+    || development.currentPlayerInputLayout !== "fixture-plugin-input"
     || development.controllerInputViewState !== "gamePluginInput"
     || development.controllerInputAction !== "fixture-turn-choice"
     || !development.controllerLayoutControlBound
