@@ -34,8 +34,8 @@ function createNestedRuntime() {
             { name: "bonus", valueType: "integer", source: "l.parentBonus" }
           ],
           outputs: [
-            { name: "choice", valueType: "string" },
-            { name: "total", valueType: "integer" }
+            { name: "choice", valueType: "string", value: "l.choice" },
+            { name: "total", valueType: "integer", value: "l.total" }
           ],
           actions: [{
             id: "choose",
@@ -132,13 +132,18 @@ describe("subroutine interface runtime", () => {
         target: "g.legacyScore"
       }
     ])).toEqual([
-      { name: "score", valueType: "integer" }
+      { name: "score", valueType: "integer", value: "" }
     ]);
   });
 
   it("evaluates g/l expressions and enforces authored value types", () => {
-    const room = { G: { base: 3 }, localVariables: { bonus: 2 } };
+    const room = {
+      G: { base: 3 },
+      localVariables: { bonus: 2, bids: [14, { amount: 31 }] }
+    };
     expect(evaluateSubroutineValue(room, "g.base + l.bonus")).toBe(5);
+    expect(evaluateSubroutineValue(room, "l.bids[0]")).toBe(14);
+    expect(evaluateSubroutineValue(room, "l.bids[1].amount")).toBe(31);
     expect(coerceSubroutineValue("7", "integer")).toBe(7);
     expect(() => coerceSubroutineValue("7.5", "integer", "Count")).toThrow(/Count must be an integer/);
   });
@@ -183,5 +188,42 @@ describe("subroutine interface runtime", () => {
       {},
       {}
     )).toThrow('Output "choice" was not assigned');
+  });
+
+  it("evaluates an authored child return expression and stores it under the parent output name", () => {
+    const parentLocals = { existing: true };
+    expect(applySubroutineOutputs(
+      { G: {} },
+      {
+        outputs: [{
+          name: "parentBidResponse",
+          valueType: "string",
+          value: "l.bidResponse"
+        }]
+      },
+      { bidResponse: "I can't believe you bid more than 30!" },
+      parentLocals
+    )).toEqual({
+      existing: true,
+      parentBidResponse: "I can't believe you bid more than 30!"
+    });
+  });
+
+  it("returns JSON-safe lists through typed subroutine interfaces", () => {
+    const parentLocals = {};
+    expect(applySubroutineOutputs(
+      { G: {} },
+      {
+        outputs: [{
+          name: "rankedPlayers",
+          valueType: "json",
+          value: "l.players"
+        }]
+      },
+      { players: [{ id: "p1" }, { id: "p2" }] },
+      parentLocals
+    )).toEqual({
+      rankedPlayers: [{ id: "p1" }, { id: "p2" }]
+    });
   });
 });

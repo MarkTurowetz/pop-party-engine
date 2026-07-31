@@ -91,6 +91,32 @@ describe("ActionInspector", () => {
     expect(markup).toContain('value="l.bidResponse"');
   });
 
+  it("keeps subroutine output values visible but read-only at the parent call site", () => {
+    const markup = renderToStaticMarkup(
+      <ActionInspector
+        action={{
+          id: "collect-bid",
+          name: "Collect Bid",
+          type: "subroutine",
+          outputs: [{
+            name: "parentBidResponse",
+            valueType: "string",
+            value: ""
+          }]
+        }}
+        edit={{
+          onSetActionField: () => undefined,
+          actionTargetOptions: []
+        }}
+        state={{ id: "play", name: "Play", actions: [] }}
+      />
+    );
+
+    expect(markup).toContain("Return value");
+    expect(markup).toContain('value="Not set"');
+    expect(markup).toMatch(/aria-label="Output 1 return value"[^>]*readOnly/);
+  });
+
   it("renders moment text-field target choices for text actions", () => {
     const markup = renderToStaticMarkup(
       <ActionInspector
@@ -282,7 +308,9 @@ describe("ActionInspector", () => {
     expect(markup).toContain("Add Input");
     expect(markup).toContain("Add Output");
     expect(markup).toContain("g.currentPlayerId");
-    expect(markup).toContain("same");
+    expect(markup).toContain("End node");
+    expect(markup).toContain("Return value");
+    expect(markup).toContain("Not set");
     expect(markup).not.toContain("Child value");
     expect(markup).not.toContain("Caller target");
     expect(markup).not.toContain("Add S+ Sub-action");

@@ -77,23 +77,42 @@ function normalizeSubroutineOutputs(values) {
     const name = uniqueName(value?.name, `output${index + 1}`, used);
     return {
       name,
-      valueType: normalizeSubroutineValueType(value?.valueType)
+      valueType: normalizeSubroutineValueType(value?.valueType),
+      value: normalizeExpression(value?.value)
     };
   });
 }
 
-function pathParts(path) {
+function readableScopePathPattern() {
+  return /^[gGlL](?:(?:\.[A-Za-z_$][\w$]*)|(?:\[(?:0|[1-9]\d*)\]))+$/;
+}
+
+function isReadableScopePath(path) {
+  return readableScopePathPattern().test(String(path || "").trim());
+}
+
+function pathParts(path, allowIndexes = false) {
   const text = String(path || "").trim();
-  if (!/^[gGlL](?:\.[A-Za-z_$][\w$]*)+$/.test(text)) {
+  const pattern = allowIndexes
+    ? readableScopePathPattern()
+    : /^[gGlL](?:\.[A-Za-z_$][\w$]*)+$/;
+  if (!pattern.test(text)) {
     throw new Error(`Expected a g.* or l.* path, received "${text}"`);
   }
-  const parts = text.split(".").slice(1);
+  const parts = allowIndexes
+    ? [...text.slice(1).matchAll(/\.([A-Za-z_$][\w$]*)|\[(\d+)\]/g)].map(
+        (match) => match[1] ?? Number(match[2])
+      )
+    : text.split(".").slice(1);
+  if (parts.some((part) => typeof part === "number" && !Number.isSafeInteger(part))) {
+    throw new Error(`Unsafe flow scope path: ${text}`);
+  }
   if (parts.some((part) => unsafePathParts.has(part))) throw new Error(`Unsafe flow scope path: ${text}`);
   return { scope: text[0].toLowerCase(), parts };
 }
 
 function readScopePath(globals, locals, path) {
-  const parsed = pathParts(path);
+  const parsed = pathParts(path, true);
   let value = parsed.scope === "l" ? locals : globals;
   for (const part of parsed.parts) {
     if (value == null || !Object.prototype.hasOwnProperty.call(Object(value), part)) return undefined;
@@ -117,7 +136,7 @@ function evaluateSubroutineValue(room, expression, locals = room?.localVariables
   if (!text) return undefined;
   const globals = isPlainObject(room?.G) ? room.G : {};
   const localScope = isPlainObject(locals) ? locals : {};
-  if (/^[gGlL](?:\.[A-Za-z_$][\w$]*)+$/.test(text)) {
+  if (isReadableScopePath(text)) {
     return cloneJson(readScopePath(globals, localScope, text), undefined);
   }
   const looksLikeExpression = /^[gGlL](?:\.|$)/.test(text)
@@ -178,10 +197,13 @@ function applySubroutineOutputs(room, action, calleeLocals, callerLocals) {
   const locals = isPlainObject(callerLocals) ? callerLocals : {};
   const childLocals = isPlainObject(calleeLocals) ? calleeLocals : {};
   for (const output of normalizeSubroutineOutputs(action?.outputs)) {
-    if (!Object.prototype.hasOwnProperty.call(childLocals, output.name)) {
+    const hasAuthoredValue = Boolean(output.value);
+    if (!hasAuthoredValue && !Object.prototype.hasOwnProperty.call(childLocals, output.name)) {
       throw new Error(`Output "${output.name}" was not assigned in the child subroutine`);
     }
-    const rawValue = cloneJson(childLocals[output.name], undefined);
+    const rawValue = hasAuthoredValue
+      ? evaluateSubroutineValue(room, output.value, childLocals)
+      : cloneJson(childLocals[output.name], undefined);
     if (rawValue === undefined) {
       throw new Error(`Output "${output.name}" must be assigned a JSON-safe value`);
     }
@@ -201,6 +223,7 @@ module.exports = Object.freeze({
   normalizeSubroutineOutputs,
   normalizeSubroutineValueType,
   normalizeSubroutineVariableName,
+  isReadableScopePath,
   readScopePath,
   writeScopePath
 });

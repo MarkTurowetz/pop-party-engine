@@ -92,6 +92,10 @@ export function FlowEditor({
 
   const [nodeDepth, setNodeDepth] = useState<FlowNodeDepth>("subroutines");
   const [subroutinePath, setSubroutinePath] = useState<string[]>([]);
+  const [selectedBoundary, setSelectedBoundary] = useState<{
+    boundary: "start" | "return";
+    scopeKey: string;
+  } | null>(null);
   const [layoutSnapshot, setLayoutSnapshot] = useState<StageLayoutCollection | null>(stageLayouts);
   const [artCompositionSnapshot, setArtCompositionSnapshot] =
     useState<ArtComposition[]>(artCompositions);
@@ -108,6 +112,10 @@ export function FlowEditor({
     () => (hasValidSubroutinePath ? subroutinePath : []),
     [hasValidSubroutinePath, subroutinePath]
   );
+  const activeSubroutinePathKey = activeSubroutinePath.join("/");
+  const boundaryScopeKey = `${nodeDepth}:${selectedStateId}:${activeSubroutinePathKey}`;
+  const activeSelectedBoundary =
+    selectedBoundary?.scopeKey === boundaryScopeKey ? selectedBoundary.boundary : "";
   const currentSubroutine = requestedSubroutineRef?.subroutine || selectedState;
   const currentSubroutineActions = flowSubroutineActions(currentSubroutine);
   const currentSubroutineTitle = flowSubroutineTitle(currentSubroutine);
@@ -405,6 +413,7 @@ export function FlowEditor({
     : undefined;
 
   const deleteSelection = useCallback(() => {
+    if (activeSelectedBoundary) return;
     if (selection.selectedFlowRouteNodeId && selection.selectedFlowRouteBranchId) {
       controller.removeRouteBranch(
         selection.selectedFlowRouteNodeId,
@@ -452,6 +461,7 @@ export function FlowEditor({
     selectedActionIds,
     activeSubroutinePath,
     nodeDepth,
+    activeSelectedBoundary,
     selection.selectedFlowRouteNodeId,
     selection.selectedFlowRouteBranchId
   ]);
@@ -558,8 +568,8 @@ export function FlowEditor({
 
   const graphSelection = {
     selectedStateId,
-    selectedActionId,
-    selectedActionIds,
+    selectedActionId: activeSelectedBoundary || selectedActionId,
+    selectedActionIds: activeSelectedBoundary ? new Set<string>() : selectedActionIds,
     selectedRouteNodeId: selection.selectedFlowRouteNodeId,
     selectedRouteBranchId: selection.selectedFlowRouteBranchId
   };
@@ -581,11 +591,11 @@ export function FlowEditor({
           currentSubroutine,
           (type) => flowActionTypes.find((meta) => meta.id === type)?.category === "input"
         );
-  const optimizeNodeLayout = useCallback(() => {
+  const optimizeNodeLayout = () => {
     const positions = optimizedVerticalNodePositions(nodeNodes, nodeConnections, nodeDepth);
     if (positions.length)
       controller.setNodePositions(nodeDepth, selectedStateId, positions, activeSubroutinePath);
-  }, [controller, nodeConnections, nodeDepth, nodeNodes, selectedStateId, activeSubroutinePath]);
+  };
   const nodeCanvas = (
     <FlowNodeCanvas
       depth={nodeDepth}
@@ -610,6 +620,16 @@ export function FlowEditor({
       }}
       onSelectNode={(nodeId, additive) => {
         const node = nodeNodes.find((candidate) => candidate.id === nodeId);
+        if (
+          nodeDepth === "subroutine"
+          && node?.kind === "system"
+          && (nodeId === "start" || nodeId === "return")
+        ) {
+          controller.clearActionSelection();
+          setSelectedBoundary({ boundary: nodeId, scopeKey: boundaryScopeKey });
+          return;
+        }
+        setSelectedBoundary(null);
         if (node?.kind === "branch" && node.parentNodeId && node.branchId) {
           if (nodeDepth === "subroutines")
             controller.selectRouteBranch(node.parentNodeId, node.branchId);
@@ -632,6 +652,7 @@ export function FlowEditor({
         }
       }}
       onEnterSubroutine={(nodeId) => {
+        setSelectedBoundary(null);
         if (nodeDepth === "subroutines") {
           if (rootFlowNodeSource(flow, nodeId) === "state") {
             controller.selectState(nodeId);
@@ -647,6 +668,7 @@ export function FlowEditor({
         }
       }}
       onBackToSubroutines={() => {
+        setSelectedBoundary(null);
         const parent = parentFlowNodeLocation(subroutinePath);
         setSubroutinePath(parent.subroutinePath);
         setNodeDepth(parent.depth);
@@ -704,7 +726,9 @@ export function FlowEditor({
       <FlowToolApp
         canAddAction={nodeDepth === "subroutines" || (hasState && nodeDepth === "subroutine")}
         canAddState={true}
-        canDelete={hasState || hasActionSelection || hasRouteSelection}
+        canDelete={
+          !activeSelectedBoundary && (hasState || hasActionSelection || hasRouteSelection)
+        }
         canRedo={snapshot.canRedo}
         canRevert={dirty}
         canSave={dirty}
@@ -730,6 +754,25 @@ export function FlowEditor({
                   state: rootInspectorSubroutine
                 }
               : null
+        }
+        inspectorBoundaryOverride={
+          activeSelectedBoundary && currentSubroutine
+            ? {
+                boundary: activeSelectedBoundary,
+                subroutine: currentSubroutine,
+                onSetOutputs:
+                  activeSelectedBoundary === "return"
+                  && isFlowSubroutineAction(currentSubroutine)
+                    ? (outputs) =>
+                        controller.setActionField(
+                          selectedStateId,
+                          currentSubroutine.id,
+                          "outputs",
+                          outputs
+                        )
+                    : undefined
+              }
+            : null
         }
         inspectorEdit={inspectorEdit}
         inspectorSubroutine={currentSubroutine}

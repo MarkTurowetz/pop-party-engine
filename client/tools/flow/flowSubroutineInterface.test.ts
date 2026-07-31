@@ -16,7 +16,8 @@ describe("flow subroutine interface model", () => {
     expect(second.name).toBe("input2");
     expect(output).toEqual({
       name: "output1",
-      valueType: "string"
+      valueType: "string",
+      value: ""
     });
   });
 

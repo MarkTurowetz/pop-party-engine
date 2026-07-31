@@ -12,7 +12,7 @@ export const subroutineValueTypes: ReadonlyArray<{
   { id: "integer", name: "Integer" },
   { id: "number", name: "Number" },
   { id: "boolean", name: "Boolean" },
-  { id: "json", name: "JSON" }
+  { id: "json", name: "List / JSON" }
 ];
 
 export function normalizeSubroutineVariableName(value: unknown, fallback: string): string {
@@ -59,7 +59,7 @@ export function createSubroutineOutput(
     "output",
     existing.map((item) => item.name)
   );
-  return { name, valueType: "string" };
+  return { name, valueType: "string", value: "" };
 }
 
 export function renameSubroutineInterfaceItem<

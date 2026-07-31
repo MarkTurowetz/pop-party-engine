@@ -5478,7 +5478,11 @@ body.is-resizing-art-timeline {
 }
 
 .flow-subroutine-interface-row.is-output {
-  grid-template-columns: minmax(140px, 1fr) minmax(100px, 0.65fr) auto;
+  grid-template-columns:
+    minmax(120px, 0.8fr)
+    minmax(100px, 0.6fr)
+    minmax(150px, 1.2fr)
+    auto;
 }
 
 .flow-subroutine-interface-row label {
@@ -5498,6 +5502,12 @@ body.is-resizing-art-timeline {
 .flow-subroutine-interface-row select {
   width: 100%;
   min-width: 0;
+}
+
+.flow-subroutine-interface-row input[readonly] {
+  color: #5e5475;
+  background: #eee9df;
+  cursor: default;
 }
 
 .flow-subroutine-interface-remove {

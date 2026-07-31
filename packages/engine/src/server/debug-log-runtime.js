@@ -2,6 +2,7 @@
 
 const {
   evaluateSubroutineValue,
+  isReadableScopePath,
   readScopePath
 } = require("./subroutine-interface-runtime");
 
@@ -24,7 +25,7 @@ function applyLogValueAction(room, action) {
   let valueText = "";
   let error = "";
   try {
-    const value = /^[gGlL](?:\.[A-Za-z_$][\w$]*)+$/.test(expression)
+    const value = isReadableScopePath(expression)
       ? readScopePath(room?.G || {}, room?.localVariables || {}, expression)
       : evaluateSubroutineValue(room, expression, room?.localVariables);
     valueText = formatDebugValue(

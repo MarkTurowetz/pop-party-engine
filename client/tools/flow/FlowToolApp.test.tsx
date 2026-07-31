@@ -45,4 +45,54 @@ describe("FlowToolApp shell", () => {
     expect(markup).toContain('role="alert"');
     expect(markup).toContain("Draft revision conflict");
   });
+
+  it("renders read-only Start inputs and editable End output values", () => {
+    const subroutine = {
+      id: "collect-bid",
+      name: "Collect Bid",
+      type: "subroutine",
+      inputs: [{
+        name: "playerBidAmount",
+        valueType: "integer" as const,
+        source: "l.playerBidAmount"
+      }],
+      outputs: [{
+        name: "parentBidResponse",
+        valueType: "string" as const,
+        value: "l.bidResponse"
+      }],
+      actions: []
+    };
+    const startMarkup = renderToStaticMarkup(
+      <FlowToolApp
+        flow={{ states: [{ id: "play", actions: [subroutine] }] }}
+        inspectorBoundaryOverride={{ boundary: "start", subroutine }}
+        inspectorSubroutine={subroutine}
+        selectedStateId="play"
+        visible
+      />
+    );
+    expect(startMarkup).toContain('data-subroutine-boundary="start"');
+    expect(startMarkup).toContain('value="l.playerBidAmount"');
+    expect(startMarkup).toContain('value="Integer"');
+    expect(startMarkup).toContain("readOnly");
+
+    const endMarkup = renderToStaticMarkup(
+      <FlowToolApp
+        flow={{ states: [{ id: "play", actions: [subroutine] }] }}
+        inspectorBoundaryOverride={{
+          boundary: "return",
+          subroutine,
+          onSetOutputs: () => undefined
+        }}
+        inspectorSubroutine={subroutine}
+        selectedStateId="play"
+        visible
+      />
+    );
+    expect(endMarkup).toContain('data-subroutine-boundary="return"');
+    expect(endMarkup).toContain('value="l.parentBidResponse"');
+    expect(endMarkup).toContain('value="l.bidResponse"');
+    expect(endMarkup).not.toContain('aria-label="Output 1 child value" readOnly');
+  });
 });
