@@ -123,7 +123,9 @@ Each input copies a caller expression such as `g.currentPlayerId` or
 `l.roundBonus` into a fresh child-local property. Child Code Nodes, Decisions,
 plugin contexts, and plugin output fields can read or write that isolated
 `l` object. When the child returns, only its declared outputs are type-checked
-and copied to explicit `l.*` parent targets or `g.*` global targets.
+and copied from each child `l.name` to the same `l.name` in the parent. Every
+declared output must be assigned by the child before it returns. The parent can
+rename a result or promote it to `g` in a following Code Node.
 
 ```json
 {
@@ -138,13 +140,16 @@ and copied to explicit `l.*` parent targets or `g.*` global targets.
   "outputs": [
     {
       "name": "choice",
-      "valueType": "string",
-      "source": "l.choice",
-      "target": "l.turnChoice"
+      "valueType": "string"
     }
   ]
 }
 ```
+
+For that declaration, the child writes `l.choice`; after return, the parent
+reads `l.choice`. A following parent Code Node can use
+`l.turnChoice = l.choice` or `g.lastChoice = l.choice` when another name or
+scope is desired.
 
 Supported interface types are `string`, `integer`, `number`, `boolean`, and
 JSON-safe `json`. A nested call never inherits its parent's entire local

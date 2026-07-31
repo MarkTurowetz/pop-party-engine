@@ -77,9 +77,7 @@ function normalizeSubroutineOutputs(values) {
     const name = uniqueName(value?.name, `output${index + 1}`, used);
     return {
       name,
-      valueType: normalizeSubroutineValueType(value?.valueType),
-      source: normalizeExpression(value?.source, `l.${name}`),
-      target: normalizeExpression(value?.target)
+      valueType: normalizeSubroutineValueType(value?.valueType)
     };
   });
 }
@@ -177,12 +175,18 @@ function createSubroutineLocalScope(room, action) {
 }
 
 function applySubroutineOutputs(room, action, calleeLocals, callerLocals) {
-  const globals = isPlainObject(room?.G) ? room.G : (room.G = {});
   const locals = isPlainObject(callerLocals) ? callerLocals : {};
+  const childLocals = isPlainObject(calleeLocals) ? calleeLocals : {};
   for (const output of normalizeSubroutineOutputs(action?.outputs)) {
-    const rawValue = evaluateSubroutineValue(room, output.source || `l.${output.name}`, calleeLocals);
+    if (!Object.prototype.hasOwnProperty.call(childLocals, output.name)) {
+      throw new Error(`Output "${output.name}" was not assigned in the child subroutine`);
+    }
+    const rawValue = cloneJson(childLocals[output.name], undefined);
+    if (rawValue === undefined) {
+      throw new Error(`Output "${output.name}" must be assigned a JSON-safe value`);
+    }
     const value = coerceSubroutineValue(rawValue, output.valueType, `Output "${output.name}"`);
-    if (output.target) writeScopePath(globals, locals, output.target, value);
+    locals[output.name] = cloneJson(value, null);
   }
   return locals;
 }

@@ -16,9 +16,7 @@ describe("flow subroutine interface model", () => {
     expect(second.name).toBe("input2");
     expect(output).toEqual({
       name: "output1",
-      valueType: "string",
-      source: "l.output1",
-      target: "l.output1"
+      valueType: "string"
     });
   });
 
@@ -27,6 +25,10 @@ describe("flow subroutine interface model", () => {
     expect(renameSubroutineInterfaceItem([
       { name: "choice", valueType: "string", source: "l.choice" },
       { name: "score", valueType: "integer", source: "l.score" }
+    ], 1, "choice")[1].name).toBe("choice2");
+    expect(renameSubroutineInterfaceItem([
+      { name: "choice", valueType: "string" },
+      { name: "score", valueType: "integer" }
     ], 1, "choice")[1].name).toBe("choice2");
   });
 });

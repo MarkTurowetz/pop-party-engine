@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1233",
+  "version": "1.0.17.1234",
   "baseVersion": "1.0.17",
-  "buildNumber": 1233,
-  "commit": "c2da2de0",
-  "branch": "codex/plugin-input-subroutine-abi-1.3.24",
-  "generatedAt": "2026-07-30T21:19:08.770Z"
+  "buildNumber": 1234,
+  "commit": "8a919c6c",
+  "branch": "codex/simplify-subroutine-outputs-resizable-inspector",
+  "generatedAt": "2026-07-30T23:34:07.906Z"
 }

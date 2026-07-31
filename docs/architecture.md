@@ -252,10 +252,11 @@ concepts into focused modules.
   - Nested subroutine actions define typed call interfaces. Caller expressions
     read from the room-global `g` object or the caller's `l` object, then
     initialize a fresh child-local `l` object. Return restores the caller frame
-    before type-checking and assigning declared child outputs to explicit
-    parent `l.*` or global `g.*` targets. Code Nodes, Decisions, and namespaced
-    plugin contexts consume the same current local scope; undeclared child
-    locals never escape.
+    before type-checking each declared child `l.name` and copying it to the same
+    parent `l.name`. Declared outputs must be assigned before return. A parent
+    Code Node performs any subsequent rename or promotion to `g`. Code Nodes,
+    Decisions, and namespaced plugin contexts consume the same current local
+    scope; undeclared child locals never escape.
   - `client/flow/action-summary.js` owns shared Flow Tool action summary text.
 
 ## Refactor Order

@@ -247,7 +247,7 @@ function createRoomFlowHelpersRuntime({
         code: "SUBROUTINE_OUTPUT_INVALID",
         message: `${parentAction.name || parentAction.id || "Subroutine"} could not return its declared outputs.`,
         actionId: parentAction.id,
-        expected: "Declared outputs that resolve and assign to compatible g.* or parent l.* targets",
+        expected: "Declared child l.* outputs that are assigned and compatible with their authored types",
         actual: String(error?.message || error)
       });
       return false;

@@ -26,6 +26,9 @@ describe("FlowToolApp shell", () => {
     expect(markup).toContain('data-flow-react-component="node-canvas"');
     expect(markup).toContain('data-flow-react-component="action-inspector"');
     expect(markup).toContain('data-flow-react-component="toolbar"');
+    expect(markup).toContain('data-flow-react-component="inspector-resizer"');
+    expect(markup).toContain('aria-label="Resize action inspector"');
+    expect(markup).toContain('--flow-inspector-width:420px');
     expect(markup).toContain('class="flow-node-workspace-content"');
     expect(markup).not.toContain('data-flow-react-component="action-list"');
     expect(markup).not.toContain('data-flow-react-component="route-node-list"');

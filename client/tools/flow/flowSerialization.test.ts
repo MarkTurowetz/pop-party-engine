@@ -112,7 +112,12 @@ describe("Flow serialization", () => {
               id: "nested",
               type: "subroutine",
               inputs: [{ name: "playerId", valueType: "string", source: "g.currentPlayerId" }],
-              outputs: [{ name: "choice", valueType: "string", source: "l.choice", target: "l.choice" }],
+              outputs: [{
+                name: "choice",
+                valueType: "string",
+                source: "l.legacyChoice",
+                target: "g.legacyChoice"
+              }],
               actions: [{ id: "inside", type: "presentText" }]
             },
             { id: "plain", type: "presentText" }
@@ -131,7 +136,7 @@ describe("Flow serialization", () => {
               id: "nested",
               type: "subroutine",
               inputs: [{ name: "playerId", valueType: "string", source: "g.currentPlayerId" }],
-              outputs: [{ name: "choice", valueType: "string", source: "l.choice", target: "l.choice" }],
+              outputs: [{ name: "choice", valueType: "string" }],
               actions: [{ id: "inside", type: "presentText", subActions: [] }],
               subActions: []
             },

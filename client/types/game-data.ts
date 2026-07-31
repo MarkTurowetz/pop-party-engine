@@ -31,8 +31,6 @@ export interface FlowSubroutineInput extends JsonObject {
 export interface FlowSubroutineOutput extends JsonObject {
   name: string;
   valueType: FlowSubroutineValueType;
-  source: string;
-  target: string;
 }
 
 export interface FlowAction extends JsonObject {

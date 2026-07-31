@@ -3632,11 +3632,18 @@ body.is-resizing-art-timeline {
 
 .flow-node-workspace-content {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  grid-template-columns:
+    minmax(320px, 1fr)
+    12px
+    minmax(320px, var(--flow-inspector-width, 420px));
   gap: 12px;
   min-height: 0;
   min-width: 0;
   height: 100%;
+}
+
+.flow-inspector-resizer {
+  min-height: 0;
 }
 
 .flow-node-workspace-content .flow-react-node-canvas,
@@ -5471,7 +5478,7 @@ body.is-resizing-art-timeline {
 }
 
 .flow-subroutine-interface-row.is-output {
-  grid-template-columns: minmax(92px, 0.7fr) minmax(82px, 0.5fr) minmax(125px, 1fr) minmax(125px, 1fr) auto;
+  grid-template-columns: minmax(140px, 1fr) minmax(100px, 0.65fr) auto;
 }
 
 .flow-subroutine-interface-row label {
