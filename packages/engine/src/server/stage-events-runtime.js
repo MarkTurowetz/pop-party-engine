@@ -5,6 +5,7 @@ function createStageEventsRuntime({
   getRoom,
   heartbeatIntervalMs,
   lobbyPayload,
+  markStagePublished = () => {},
   sendJson,
   sendSse
 }) {
@@ -32,9 +33,12 @@ function createStageEventsRuntime({
     });
     res.write(": connected\n\n");
 
+    const firstStageClient = room.stageClients.size === 0;
     room.stageClients.add(res);
     sendSse(res, "ready", { stageCode });
-    sendSse(res, "lobby", lobbyPayload(room));
+    const payload = lobbyPayload(room);
+    sendSse(res, "lobby", payload);
+    if (firstStageClient) markStagePublished(room, payload);
 
     const heartbeat = setInterval(() => {
       sendSse(res, "ping", { sentAt: Date.now() });

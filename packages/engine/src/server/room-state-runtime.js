@@ -131,6 +131,11 @@ function createDefaultRoom(stageCode) {
     answersSubmittedAdvanceRemainingMs: 0,
     lastDecisionTrace: null,
     runtimeFlowOverride: null,
+    surfaceProjections: {
+      stage: { fingerprint: "", revision: 0, publishedRevision: 0 },
+      controllers: new Map()
+    },
+    stagePublicationPending: false,
     revision: 0
   };
 }

@@ -22,6 +22,7 @@ import { createControllerSessionRuntime } from "./controllerSessionRuntime";
 import { createControllerActionBindings, type ControllerActionBindingsOptions } from "./controllerActionBindings";
 import { createControllerSetupBindings } from "./controllerSetupBindings";
 import { createControllerLocalButtonRuntime, type ControllerLocalButtonSlot } from "./controllerLocalButtonRuntime";
+import { semanticSurfaceRevision } from "./surfaceRenderRuntime";
 import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
@@ -611,7 +612,7 @@ function renderControllerState(lobbyInput: unknown): void {
   const lobby = lobbyInput as Dict;
   const nextStageCode = String(lobby.stageCode || w.controllerState.stageCode || "");
   const nextSessionId = Number(lobby.gameSessionId || 0);
-  const nextRevision = Number(lobby.revision);
+  const nextRevision = semanticSurfaceRevision(lobby);
   if (nextStageCode !== lastRenderedControllerStageCode) {
     lastRenderedControllerStageCode = nextStageCode;
     lastRenderedControllerSessionId = -1;

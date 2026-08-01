@@ -57,6 +57,7 @@ const {
   createStageEventsRuntime,
   createStaticFilesRuntime,
   createStartHandlersRuntime,
+  createSurfaceProjectionRuntime,
   createTriviaContentRuntime,
   createVotingRuntime,
   flowStateHasActionType,
@@ -535,11 +536,17 @@ const {
   readGameFlow
 });
 
+const surfaceProjectionRuntime = createSurfaceProjectionRuntime();
+
 // broadcastLobby is used by early modules; lobbyPayload is wired up later via lazy getter.
 const {
   broadcastLobby,
   sendSse
-} = createRoomBroadcastRuntime({ getLobbyPayload: () => lobbyPayload });
+} = createRoomBroadcastRuntime({
+  getLobbyPayload: () => lobbyPayload,
+  markStagePublished: surfaceProjectionRuntime.markStagePublished,
+  shouldPublishStage: surfaceProjectionRuntime.shouldPublishStage
+});
 
 async function broadcastArtAssetsChanged(payload) {
   for (const room of rooms.values()) {
@@ -1427,6 +1434,7 @@ const {
   microphoneAccessPayload,
   normalizePlayerFilter,
   publicPlayer,
+  projectLobbyPayload: surfaceProjectionRuntime.project,
   resolveRoomActionText,
   runtimeGameFlow,
   gamePluginViewModels: gameRendererRuntime.viewModels,
@@ -1447,6 +1455,7 @@ const {
   getRoom,
   heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
   lobbyPayload,
+  markStagePublished: surfaceProjectionRuntime.markStagePublished,
   sendJson,
   sendSse
 });

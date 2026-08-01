@@ -1,6 +1,8 @@
 // Typed port of the legacy client/stage/render-orchestrator.js IIFE. Installs
 // window.PartyGameStageRenderOrchestrator for the legacy stage runtime.
 
+import { semanticSurfaceRevision } from "./surfaceRenderRuntime";
+
 type Dict = Record<string, unknown>;
 
 interface OrchestratorOptions {
@@ -10,7 +12,7 @@ interface OrchestratorOptions {
   cancelStageWipe?: () => void;
   showStageDecisionHalt?: (lobby: Dict) => void;
   showRuntimeFault?: (lobby: Dict) => void;
-  applyStageState?: (lobby: Dict) => void;
+  applyStageState?: (lobby: Dict, options?: RenderOptions) => void;
   scheduleSubActions?: (action: Dict, actionKey: string) => void;
   runStageWipe?: (onCovered: () => void, complete: () => void) => void;
   completeFlowAction?: (kind: string, actionId: unknown) => void;
@@ -53,7 +55,11 @@ class StageRenderOrchestrator {
 
   render(lobby: Dict = {}, renderOptions: RenderOptions = {}): void {
     const options = this.options;
-    const revision = Number(lobby.revision);
+    const applyStageState = (payload: Dict) => {
+      if (renderOptions.force === true) options.applyStageState?.(payload, renderOptions);
+      else options.applyStageState?.(payload);
+    };
+    const revision = semanticSurfaceRevision(lobby);
     const hasRevision = Number.isFinite(revision) && revision >= 0;
     if (renderOptions.force !== true && hasRevision && revision <= this.renderedRevision) return;
     if (hasRevision) this.renderedRevision = Math.max(this.renderedRevision, revision);
@@ -77,7 +83,7 @@ class StageRenderOrchestrator {
       options.showRuntimeFault?.(lobby);
       this.renderedActionKey = actionKey;
       this.renderedAction = null;
-      options.applyStageState?.({ ...lobby, action: null });
+      applyStageState({ ...lobby, action: null });
       return;
     }
     if (haltedByDecision) {
@@ -85,7 +91,7 @@ class StageRenderOrchestrator {
       options.showStageDecisionHalt?.(lobby);
       this.renderedActionKey = actionKey;
       this.renderedAction = null;
-      options.applyStageState?.({ ...lobby, action: null });
+      applyStageState({ ...lobby, action: null });
       return;
     }
 
@@ -96,7 +102,7 @@ class StageRenderOrchestrator {
       options.runStageWipe?.(
         () => {
           if (this.renderedActionKey !== actionKey) return;
-          options.applyStageState?.(lobby);
+          applyStageState(lobby);
         },
         () => {
           if (this.renderedActionKey !== actionKey) return;
@@ -109,7 +115,7 @@ class StageRenderOrchestrator {
 
     this.renderedActionKey = actionKey;
     this.renderedAction = (lobby.action as Dict) || null;
-    options.applyStageState?.(lobby);
+    applyStageState(lobby);
     if (isNewAction) options.runStageAction?.((lobby.action as Dict) || null, true, actionKey);
   }
 }

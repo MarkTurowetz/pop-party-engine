@@ -861,6 +861,59 @@ module.exports = Object.freeze([{
         headers: stageHeaders,
         body: JSON.stringify({ flow: wagerFlow })
       });
+      const stagePage = await browser.newPage();
+      await stagePage.goto(first.startup.localUrl + "/stage?stage=PLUG", { waitUntil: "load" });
+      try {
+        await stagePage.waitForFunction(() => (
+          window.currentStageState?.action?.id === "fixture-private-wager"
+          && Number(window.__popPartyStageMetrics?.applyCount || 0) > 0
+          && document.querySelector('[data-stage-layout-element-id="stagetitle"]')
+        ), null, { timeout: 15_000 });
+      } catch (error) {
+        const diagnostic = await stagePage.evaluate(() => ({
+          state: window.currentStageState,
+          metrics: window.__popPartyStageMetrics,
+          layoutHosts: Array.from(document.querySelectorAll("[data-stage-layout-element-id]"))
+            .map((node) => node.getAttribute("data-stage-layout-element-id")),
+          bodyText: document.body.innerText.slice(0, 500)
+        }));
+        throw new Error("Generated Stage projection fixture did not activate: " + JSON.stringify(diagnostic), { cause: error });
+      }
+      await stagePage.evaluate(() => {
+        const host = document.querySelector('[data-stage-layout-element-id="stagetitle"]');
+        if (!host) return;
+        window.__fixtureStageHost = host;
+        window.__fixtureStageRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(host);
+        window.__fixtureStageAnimation = host.animate(
+          [{ transform: "translateY(0px)" }, { transform: "translateY(-2px)" }, { transform: "translateY(0px)" }],
+          { duration: 400, iterations: Infinity }
+        );
+        window.__fixtureStageFrameGaps = [];
+        window.__fixtureStageFrameStop = false;
+        let previous = performance.now();
+        const observe = (now) => {
+          window.__fixtureStageFrameGaps.push(now - previous);
+          previous = now;
+          if (!window.__fixtureStageFrameStop) requestAnimationFrame(observe);
+        };
+        requestAnimationFrame(observe);
+        window.__fixtureStageLongTasks = [];
+        if (window.__popPartyStageMetrics) window.__popPartyStageMetrics.maxDurationMs = 0;
+        if (typeof PerformanceObserver === "function") {
+          try {
+            window.__fixtureStageLongTaskObserver = new PerformanceObserver((list) => {
+              for (const entry of list.getEntries()) window.__fixtureStageLongTasks.push(entry.duration);
+            });
+            window.__fixtureStageLongTaskObserver.observe({ entryTypes: ["longtask"] });
+          } catch {}
+        }
+        const originalApplyLayout = window.applyStageLayoutForPhase;
+        window.__fixtureStageLayoutApplyCount = 0;
+        window.applyStageLayoutForPhase = (...args) => {
+          window.__fixtureStageLayoutApplyCount += 1;
+          return originalApplyLayout?.(...args);
+        };
+      });
       const oneWagerLobby = await heartbeat(one);
       const twoWagerLobby = await heartbeat(two);
       await controllerPage.waitForFunction(() => {
@@ -930,6 +983,20 @@ module.exports = Object.freeze([{
       }));
       await controllerPage.locator('[data-game-plugin-input-binding="left"]').click();
       await controllerPage.locator('[data-game-plugin-input-binding="amount"]').fill("17");
+      await heartbeat(two);
+      await stagePage.waitForFunction(() => (window.currentStageState?.players || []).length === 2, null, { timeout: 15_000 });
+      await stagePage.waitForTimeout(100);
+      const stageBeforePartialSubmission = await stagePage.evaluate(() => {
+        window.__fixtureStageProjectionBefore = structuredClone(window.currentStageState);
+        return {
+          applyCount: window.__popPartyStageMetrics?.applyCount,
+          roomRevision: window.currentStageState?.revision,
+          surfaceRevision: window.currentStageState?.surfaceRevision,
+          layoutApplyCount: window.__fixtureStageLayoutApplyCount,
+          animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
+          rendererPresent: Boolean(window.__fixtureStageRenderer)
+        };
+      });
       const browserSubmitResponse = controllerPage.waitForResponse((response) => (
         response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
       ));
@@ -955,6 +1022,22 @@ module.exports = Object.freeze([{
         animationTime: Number(window.__fixturePersistentAnimation?.currentTime || 0),
         animationState: window.__fixturePersistentAnimation?.playState
       }));
+      await stagePage.waitForTimeout(150);
+      const stageAfterPartialSubmission = await stagePage.evaluate(() => ({
+        applyCount: window.__popPartyStageMetrics?.applyCount,
+        roomRevision: window.currentStageState?.revision,
+        surfaceRevision: window.currentStageState?.surfaceRevision,
+        layoutApplyCount: window.__fixtureStageLayoutApplyCount,
+        hostRetained: window.__fixtureStageHost === document.querySelector('[data-stage-layout-element-id="stagetitle"]'),
+        rendererRetained: window.__fixtureStageRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixtureStageHost),
+        animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
+        animationState: window.__fixtureStageAnimation?.playState,
+        changedProjectionKeys: Array.from(new Set([
+          ...Object.keys(window.__fixtureStageProjectionBefore || {}),
+          ...Object.keys(window.currentStageState || {})
+        ])).filter((key) => !["revision", "serverNow", "surfaceRevision"].includes(key)
+          && JSON.stringify(window.__fixtureStageProjectionBefore?.[key]) !== JSON.stringify(window.currentStageState?.[key]))
+      }));
       const duplicateWagerSubmit = await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
         method: "POST",
         headers: playerHeaders(one),
@@ -973,20 +1056,27 @@ module.exports = Object.freeze([{
       });
       await controllerPage.waitForTimeout(50);
       const secondWagerSubmit = await submitPluginInputResponse(two, twoWagerLobby, { side: "under", amount: 22 }, "wager-two");
-      let burstCompletionLobby = secondWagerSubmit.body?.lobby;
-      for (let index = 0; index < transitionBurstActions.length; index += 1) {
-        const response = await fetch(first.startup.localUrl + "/api/complete-action", {
-          method: "POST",
-          headers: stageHeaders,
-          body: JSON.stringify({
-            stageCode: "PLUG",
-            actionId: burstCompletionLobby?.action?.id,
-            source: "callback"
-          })
-        });
-        burstCompletionLobby = (await response.json()).lobby;
-      }
+      await stagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-input-hit", null, { timeout: 15_000 });
+      const burstCompletionLobby = (await (await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby")).json()).lobby;
       await controllerPage.waitForFunction(() => window.controllerState?.lobby?.action?.id === "fixture-input-hit", null, { timeout: 15_000 });
+      const stageAfterTransitionBurst = await stagePage.evaluate(() => {
+        window.__fixtureStageFrameStop = true;
+        window.__fixtureStageLongTaskObserver?.disconnect?.();
+        return {
+          applyCount: window.__popPartyStageMetrics?.applyCount,
+          surfaceRevision: window.currentStageState?.surfaceRevision,
+          layoutApplyCount: window.__fixtureStageLayoutApplyCount,
+          layoutSliceApplyCount: window.__popPartyStageMetrics?.sliceApplyCounts?.phase,
+          hostRetained: window.__fixtureStageHost === document.querySelector('[data-stage-layout-element-id="stagetitle"]'),
+          rendererRetained: window.__fixtureStageRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixtureStageHost),
+          animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
+          animationState: window.__fixtureStageAnimation?.playState,
+          maxFrameGap: Math.max(...(window.__fixtureStageFrameGaps || [0])),
+          maxLongTask: Math.max(0, ...(window.__fixtureStageLongTasks || [])),
+          maxApplyDuration: Number(window.__popPartyStageMetrics?.maxDurationMs || 0),
+          measuredFrames: window.__fixtureStageFrameGaps?.length || 0
+        };
+      });
       const transitionedControllerIdentity = await controllerPage.evaluate(() => {
         window.__fixtureTransitionFrameStop = true;
         return {
@@ -1018,6 +1108,7 @@ module.exports = Object.freeze([{
       });
       const flowSavePayload = await flowSaveResponse.json();
       const savedRevision = JSON.parse(fs.readFileSync(".pop-party/content/content-bundle.json", "utf8")).rootHash;
+      await stagePage.close();
       await first.runtime.stop().catch(() => {});
       await browser.close();
       const second = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
@@ -1113,6 +1204,9 @@ module.exports = Object.freeze([{
         ],
         waitingWagerLayout: twoWagerLobby.gamePlugin?.input?.layoutStateId,
         submittedWagerLayout: firstWagerSubmit.lobby?.gamePlugin?.input?.layoutStateId,
+        stageBeforePartialSubmission,
+        stageAfterPartialSubmission,
+        stageAfterTransitionBurst,
         persistentIdentityBefore,
         submittedControllerState,
         transitionedControllerIdentity,
@@ -1220,6 +1314,27 @@ module.exports = Object.freeze([{
     || !development.submittedControllerState?.globalRendererRetained
     || development.submittedControllerState?.animationState !== "running"
     || !(development.submittedControllerState?.animationTime > development.persistentIdentityBefore?.animationTime)
+    || !development.stageBeforePartialSubmission?.rendererPresent
+    || development.stageAfterPartialSubmission?.applyCount !== development.stageBeforePartialSubmission?.applyCount
+    || development.stageAfterPartialSubmission?.roomRevision !== development.stageBeforePartialSubmission?.roomRevision
+    || development.stageAfterPartialSubmission?.surfaceRevision !== development.stageBeforePartialSubmission?.surfaceRevision
+    || development.stageAfterPartialSubmission?.layoutApplyCount !== development.stageBeforePartialSubmission?.layoutApplyCount
+    || !development.stageAfterPartialSubmission?.hostRetained
+    || !development.stageAfterPartialSubmission?.rendererRetained
+    || development.stageAfterPartialSubmission?.animationState !== "running"
+    || !(development.stageAfterPartialSubmission?.animationTime > development.stageBeforePartialSubmission?.animationTime)
+    || !(development.stageAfterTransitionBurst?.applyCount > development.stageAfterPartialSubmission?.applyCount)
+    || !(development.stageAfterTransitionBurst?.surfaceRevision > development.stageAfterPartialSubmission?.surfaceRevision)
+    || development.stageAfterTransitionBurst?.layoutApplyCount !== development.stageBeforePartialSubmission?.layoutApplyCount
+    || development.stageAfterTransitionBurst?.layoutSliceApplyCount !== 1
+    || !development.stageAfterTransitionBurst?.hostRetained
+    || !development.stageAfterTransitionBurst?.rendererRetained
+    || development.stageAfterTransitionBurst?.animationState !== "running"
+    || !(development.stageAfterTransitionBurst?.animationTime > development.stageAfterPartialSubmission?.animationTime)
+    || development.stageAfterTransitionBurst?.measuredFrames < 5
+    || development.stageAfterTransitionBurst?.maxFrameGap >= 250
+    || development.stageAfterTransitionBurst?.maxLongTask >= 250
+    || development.stageAfterTransitionBurst?.maxApplyDuration >= 200
     || !development.transitionedControllerIdentity?.persistentHostRetained
     || !development.transitionedControllerIdentity?.persistentArtRetained
     || !development.transitionedControllerIdentity?.persistentRendererRetained
@@ -1238,6 +1353,7 @@ module.exports = Object.freeze([{
   if (!fs.existsSync(path.join(targetRoot, ".pop-party", "content", "content-bundle.json"))) {
     throw new Error("Generated game development workspace was not created inside the game");
   }
+  console.log(`Stage projection browser evidence: private applies ${development.stageBeforePartialSubmission.applyCount}->${development.stageAfterPartialSubmission.applyCount}, public burst max frame gap ${development.stageAfterTransitionBurst.maxFrameGap.toFixed(1)}ms, max apply ${development.stageAfterTransitionBurst.maxApplyDuration.toFixed(1)}ms, layout reflows ${development.stageAfterTransitionBurst.layoutApplyCount}.`);
   const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });
   if (!migrationPreview.includes("Migration preview valid: level 0 -> 0") || !migrationPreview.includes("Changed paths: (none)")) {
     throw new Error("Generated game migration preview contract failed");
