@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -10,6 +11,7 @@ import { shouldNavigateUpFromCanvasDoubleClick } from "../flowNodeNavigation";
 
 const MINIMAP_W = 300;
 const MINIMAP_H = 260;
+const MINIMAP_INSET = 4;
 const NEW_CONNECTED_ACTION_WIDTH = 260;
 const NEW_CONNECTED_ACTION_HEIGHT = 134;
 const NEW_CONNECTED_ACTION_SIDE_GAP = 70;
@@ -25,7 +27,9 @@ interface ViewportRect {
 
 function FlowNodeMinimap({
   nodes,
-  connections,
+  wires,
+  originX,
+  originY,
   worldWidth,
   worldHeight,
   zoom,
@@ -33,31 +37,30 @@ function FlowNodeMinimap({
   stageRef
 }: {
   nodes: FlowGraphNode[];
-  connections: FlowGraphConnection[];
+  wires: WirePath[];
+  originX: number;
+  originY: number;
   worldWidth: number;
   worldHeight: number;
   zoom: number;
   viewport: ViewportRect;
   stageRef: RefObject<HTMLDivElement | null>;
 }) {
-  const scale = Math.min(MINIMAP_W / worldWidth, MINIMAP_H / worldHeight);
-  const mmW = worldWidth * scale;
-  const mmH = worldHeight * scale;
-  const viewX = (viewport.scrollLeft / zoom) * scale;
-  const viewY = (viewport.scrollTop / zoom) * scale;
+  const scale = Math.min(
+    (MINIMAP_W - MINIMAP_INSET * 2) / worldWidth,
+    (MINIMAP_H - MINIMAP_INSET * 2) / worldHeight
+  );
+  const mmW = worldWidth * scale + MINIMAP_INSET * 2;
+  const mmH = worldHeight * scale + MINIMAP_INSET * 2;
+  const viewX = MINIMAP_INSET + (viewport.scrollLeft / zoom) * scale;
+  const viewY = MINIMAP_INSET + (viewport.scrollTop / zoom) * scale;
   const viewW = (viewport.clientW / zoom) * scale;
   const viewH = (viewport.clientH / zoom) * scale;
-  const byId = new Map(nodes.map((node) => [node.id, node]));
-  const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id));
-  const visibleConnections = connections.filter((connection) =>
-    connectionIsVisible(connection, selectedIds)
-  );
-
   const centerStageOn = (clientX: number, clientY: number, rect: DOMRect) => {
     const stage = stageRef.current;
     if (!stage) return;
-    const worldX = clampNumber((clientX - rect.left) / scale, 0, worldWidth);
-    const worldY = clampNumber((clientY - rect.top) / scale, 0, worldHeight);
+    const worldX = clampNumber((clientX - rect.left - MINIMAP_INSET) / scale, 0, worldWidth);
+    const worldY = clampNumber((clientY - rect.top - MINIMAP_INSET) / scale, 0, worldHeight);
     stage.scrollLeft = clampNumber(
       worldX * zoom - stage.clientWidth / 2,
       0,
@@ -117,24 +120,22 @@ function FlowNodeMinimap({
         height={mmH}
         style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
       >
-        {visibleConnections.map((connection) => {
-          const from = byId.get(connection.from);
-          const to = byId.get(connection.to);
-          if (!from || !to) return null;
-          const route = buildConnectionRoute(connection, from, to, nodes, scale);
-          const highlighted = selectedIds.has(connection.from);
-          return (
-            <path
-              key={connection.id}
-              d={route.d}
-              fill="none"
-              stroke={highlighted ? "#ff4fa3" : "#38bdf8"}
-              strokeLinecap="round"
-              strokeWidth={highlighted ? 3 : 2}
-              opacity={highlighted ? 0.95 : 0.72}
-            />
-          );
-        })}
+        <g transform={`translate(${MINIMAP_INSET} ${MINIMAP_INSET})`}>
+          {wires.map((wire) => {
+            return (
+              <path
+                key={wire.id}
+                data-minimap-wire-id={wire.id}
+                d={connectionRoutePath(wire.route, originX, originY, scale)}
+                fill="none"
+                stroke={wire.highlighted ? "#ff4fa3" : "#38bdf8"}
+                strokeLinecap="round"
+                strokeWidth={wire.highlighted ? 3 : 2}
+                opacity={wire.highlighted ? 0.95 : 0.72}
+              />
+            );
+          })}
+        </g>
       </svg>
       {nodes.map((node) => (
         <div
@@ -142,8 +143,8 @@ function FlowNodeMinimap({
           data-minimap-node={node.id}
           style={{
             position: "absolute",
-            left: node.x * scale,
-            top: node.y * scale,
+            left: MINIMAP_INSET + (node.x - originX) * scale,
+            top: MINIMAP_INSET + (node.y - originY) * scale,
             width: Math.max(2, node.width * scale),
             height: Math.max(2, node.height * scale),
             background: minimapNodeFill(node),
@@ -299,12 +300,86 @@ interface WirePath {
   label: string;
   labelKind: FlowGraphConnection["labelKind"];
   highlighted: boolean;
+  route: ConnectionRoute;
 }
 
-interface ConnectionRoute {
+export interface FlowPoint {
+  x: number;
+  y: number;
+}
+
+export interface FlowBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+export interface ConnectionRoute {
+  kind: "curve" | "orthogonal";
+  points: FlowPoint[];
   d: string;
   labelX: number;
   labelY: number;
+  bounds: FlowBounds;
+}
+
+export interface FlowGraphGeometry {
+  originX: number;
+  originY: number;
+  width: number;
+  height: number;
+  contentBounds: FlowBounds;
+  routes: Map<string, ConnectionRoute>;
+}
+
+const WORLD_MIN_WIDTH = 1600;
+const WORLD_MIN_HEIGHT = 920;
+const WORLD_TRAILING_PADDING = 160;
+const WORLD_NEGATIVE_EDGE_PADDING = 32;
+const WIRE_BOUNDS_CLEARANCE = 4;
+
+function boundsFromPoints(points: FlowPoint[]): FlowBounds {
+  return {
+    minX: Math.min(...points.map((point) => point.x)),
+    minY: Math.min(...points.map((point) => point.y)),
+    maxX: Math.max(...points.map((point) => point.x)),
+    maxY: Math.max(...points.map((point) => point.y))
+  };
+}
+
+function unionBounds(a: FlowBounds, b: FlowBounds): FlowBounds {
+  return {
+    minX: Math.min(a.minX, b.minX),
+    minY: Math.min(a.minY, b.minY),
+    maxX: Math.max(a.maxX, b.maxX),
+    maxY: Math.max(a.maxY, b.maxY)
+  };
+}
+
+function expandBounds(bounds: FlowBounds, amount: number): FlowBounds {
+  return {
+    minX: bounds.minX - amount,
+    minY: bounds.minY - amount,
+    maxX: bounds.maxX + amount,
+    maxY: bounds.maxY + amount
+  };
+}
+
+function connectionRoutePath(
+  route: Pick<ConnectionRoute, "kind" | "points">,
+  originX = 0,
+  originY = 0,
+  scale = 1
+): string {
+  const point = (index: number) => {
+    const value = route.points[index];
+    return `${(value.x - originX) * scale} ${(value.y - originY) * scale}`;
+  };
+  if (route.kind === "curve") {
+    return `M ${point(0)} C ${point(1)}, ${point(2)}, ${point(3)}`;
+  }
+  return route.points.map((_, index) => `${index === 0 ? "M" : "L"} ${point(index)}`).join(" ");
 }
 
 function connectionSourcePoint(
@@ -335,19 +410,27 @@ function connectionTargetPoint(
 
 function routeCurve(
   sourcePoint: { x: number; y: number },
-  targetPoint: { x: number; y: number },
-  scale = 1
+  targetPoint: { x: number; y: number }
 ): ConnectionRoute {
-  const x1 = sourcePoint.x * scale;
-  const y1 = sourcePoint.y * scale;
-  const x2 = targetPoint.x * scale;
-  const y2 = targetPoint.y * scale;
-  const dy = Math.max(40 * scale, Math.abs(y2 - y1) / 2);
-  return {
-    d: `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`,
-    labelX: (x1 + x2) / 2,
-    labelY: (y1 + y2) / 2
+  const dy = Math.max(40, Math.abs(targetPoint.y - sourcePoint.y) / 2);
+  const points = [
+    sourcePoint,
+    { x: sourcePoint.x, y: sourcePoint.y + dy },
+    { x: targetPoint.x, y: targetPoint.y - dy },
+    targetPoint
+  ];
+  const route = {
+    kind: "curve" as const,
+    points,
+    d: "",
+    labelX: (sourcePoint.x + targetPoint.x) / 2,
+    labelY: (sourcePoint.y + targetPoint.y) / 2,
+    // A cubic Bézier remains inside the convex hull of its control points, so
+    // this is conservative without needing browser SVG measurement.
+    bounds: boundsFromPoints(points)
   };
+  route.d = connectionRoutePath(route);
+  return route;
 }
 
 function verticalRangesOverlap(
@@ -360,15 +443,13 @@ function verticalRangesOverlap(
 }
 
 function routeUpwardOrthogonal(
+  connection: FlowGraphConnection,
   sourcePoint: { x: number; y: number },
   from: FlowGraphNode,
   to: FlowGraphNode,
-  nodes: FlowGraphNode[],
-  scale = 1
+  nodes: FlowGraphNode[]
 ): ConnectionRoute {
   const targetCenterX = to.x + to.width / 2;
-  const useLeftSide = sourcePoint.x < targetCenterX;
-  const targetX = useLeftSide ? to.x : to.x + to.width;
   const targetY = to.y + to.height / 2;
   const dropY = sourcePoint.y + 52;
   const routeTop = Math.min(targetY, dropY);
@@ -384,6 +465,16 @@ function routeUpwardOrthogonal(
       to.x + to.width,
       ...overlappingNodes.map((node) => node.x + node.width)
     ) + 100;
+  const preferredLeft = sourcePoint.x < targetCenterX;
+  const labelSize = wireLabelBoundsDimensions(connection.label, connection.labelKind || "default");
+  const leftCorridorAccessible =
+    leftBound - (labelSize?.width || 0) / 2 - WIRE_BOUNDS_CLEARANCE >= 0;
+  // The authored coordinate space has a fixed zero origin. Prefer the natural
+  // side only when that corridor is already accessible; otherwise use the
+  // opposite corridor. Geometry normalization below remains the final safety net
+  // for explicit/custom points or future routes that legitimately go negative.
+  const useLeftSide = preferredLeft ? leftCorridorAccessible : false;
+  const targetX = useLeftSide ? to.x : to.x + to.width;
   const corridorX = useLeftSide ? leftBound : rightBound;
   const points = [
     sourcePoint,
@@ -392,30 +483,31 @@ function routeUpwardOrthogonal(
     { x: corridorX, y: targetY },
     { x: targetX, y: targetY }
   ];
-  const d = points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x * scale} ${point.y * scale}`)
-    .join(" ");
-  return {
-    d,
-    labelX: corridorX * scale,
-    labelY: ((dropY + targetY) / 2) * scale
+  const route = {
+    kind: "orthogonal" as const,
+    points,
+    d: "",
+    labelX: corridorX,
+    labelY: (dropY + targetY) / 2,
+    bounds: boundsFromPoints(points)
   };
+  route.d = connectionRoutePath(route);
+  return route;
 }
 
-function buildConnectionRoute(
+export function buildConnectionRoute(
   connection: FlowGraphConnection,
   from: FlowGraphNode,
   to: FlowGraphNode,
-  nodes: FlowGraphNode[],
-  scale = 1
+  nodes: FlowGraphNode[]
 ): ConnectionRoute {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const sourcePoint = connectionSourcePoint(connection, from, byId);
   const targetPoint = connectionTargetPoint(connection, to);
   if (targetPoint.y < sourcePoint.y) {
-    return routeUpwardOrthogonal(sourcePoint, from, to, nodes, scale);
+    return routeUpwardOrthogonal(connection, sourcePoint, from, to, nodes);
   }
-  return routeCurve(sourcePoint, targetPoint, scale);
+  return routeCurve(sourcePoint, targetPoint);
 }
 
 function connectionIsVisible(connection: FlowGraphConnection, selectedIds: Set<string>): boolean {
@@ -423,28 +515,26 @@ function connectionIsVisible(connection: FlowGraphConnection, selectedIds: Set<s
 }
 
 function buildWirePaths(
-  nodes: FlowGraphNode[],
   connections: FlowGraphConnection[],
-  selectedIds: Set<string>
+  selectedIds: Set<string>,
+  geometry: FlowGraphGeometry
 ): WirePath[] {
-  const byId = new Map(nodes.map((node) => [node.id, node]));
   const paths: WirePath[] = [];
   for (const connection of connections) {
     if (!connectionIsVisible(connection, selectedIds)) continue;
-    const from = byId.get(connection.from);
-    const to = byId.get(connection.to);
-    if (!from || !to) continue;
-    const route = buildConnectionRoute(connection, from, to, nodes);
+    const route = geometry.routes.get(connection.id);
+    if (!route) continue;
     paths.push({
       id: connection.id,
-      d: route.d,
-      labelX: route.labelX,
-      labelY: route.labelY,
+      d: connectionRoutePath(route, geometry.originX, geometry.originY),
+      labelX: route.labelX - geometry.originX,
+      labelY: route.labelY - geometry.originY,
       label: connection.label,
       labelKind: connection.labelKind || "default",
       // Only the OUTGOING wire highlights — selecting a node shows where it goes next,
       // not what points into it.
-      highlighted: selectedIds.has(connection.from)
+      highlighted: selectedIds.has(connection.from),
+      route
     });
   }
   return paths;
@@ -483,6 +573,85 @@ function truncateWireLabel(label: string): string {
   return label.length > 26 ? `${label.slice(0, 23)}...` : label;
 }
 
+function wireLabelDimensions(
+  label: string,
+  kind: FlowGraphConnection["labelKind"]
+): { width: number; height: number } | null {
+  if (!label) return null;
+  if ((kind || "default") === "default") {
+    return { width: Math.max(12, label.length * 7), height: 14 };
+  }
+  const icon = wireLabelIcon(kind);
+  const renderedLabel = truncateWireLabel(label);
+  return {
+    width: Math.max(54, Math.min(220, renderedLabel.length * 7.5 + (icon ? 34 : 18))),
+    height: 24
+  };
+}
+
+function wireLabelBoundsDimensions(
+  label: string,
+  kind: FlowGraphConnection["labelKind"]
+): { width: number; height: number } | null {
+  const rendered = wireLabelDimensions(label, kind);
+  if (!rendered) return null;
+  const renderedLabel = (kind || "default") === "default" ? label : truncateWireLabel(label);
+  const iconAllowance = (kind || "default") === "default" ? 0 : wireLabelIcon(kind) ? 34 : 18;
+  return {
+    width: Math.max(rendered.width, Array.from(renderedLabel).length * 12 + iconAllowance),
+    height: Math.max(rendered.height, 18)
+  };
+}
+
+function routeRenderedBounds(route: ConnectionRoute, connection: FlowGraphConnection): FlowBounds {
+  let bounds = expandBounds(route.bounds, WIRE_BOUNDS_CLEARANCE);
+  const labelSize = wireLabelBoundsDimensions(connection.label, connection.labelKind || "default");
+  if (labelSize) {
+    bounds = unionBounds(bounds, {
+      minX: route.labelX - labelSize.width / 2 - WIRE_BOUNDS_CLEARANCE,
+      minY: route.labelY - labelSize.height / 2 - WIRE_BOUNDS_CLEARANCE,
+      maxX: route.labelX + labelSize.width / 2 + WIRE_BOUNDS_CLEARANCE,
+      maxY: route.labelY + labelSize.height / 2 + WIRE_BOUNDS_CLEARANCE
+    });
+  }
+  return bounds;
+}
+
+export function buildFlowGraphGeometry(
+  nodes: FlowGraphNode[],
+  connections: FlowGraphConnection[]
+): FlowGraphGeometry {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const routes = new Map<string, ConnectionRoute>();
+  let contentBounds: FlowBounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  for (const node of nodes) {
+    contentBounds = unionBounds(contentBounds, {
+      minX: node.x,
+      minY: node.y,
+      maxX: node.x + node.width,
+      maxY: node.y + node.height
+    });
+  }
+  for (const connection of connections) {
+    const from = byId.get(connection.from);
+    const to = byId.get(connection.to);
+    if (!from || !to) continue;
+    const route = buildConnectionRoute(connection, from, to, nodes);
+    routes.set(connection.id, route);
+    contentBounds = unionBounds(contentBounds, routeRenderedBounds(route, connection));
+  }
+  const originX = contentBounds.minX < 0 ? contentBounds.minX - WORLD_NEGATIVE_EDGE_PADDING : 0;
+  const originY = contentBounds.minY < 0 ? contentBounds.minY - WORLD_NEGATIVE_EDGE_PADDING : 0;
+  return {
+    originX,
+    originY,
+    width: Math.max(WORLD_MIN_WIDTH, contentBounds.maxX + WORLD_TRAILING_PADDING - originX),
+    height: Math.max(WORLD_MIN_HEIGHT, contentBounds.maxY + WORLD_TRAILING_PADDING - originY),
+    contentBounds,
+    routes
+  };
+}
+
 function WireLabel({ wire }: { wire: WirePath }) {
   if (!wire.label) return null;
   const kind = wire.labelKind || "default";
@@ -503,8 +672,7 @@ function WireLabel({ wire }: { wire: WirePath }) {
 
   const icon = wireLabelIcon(kind);
   const label = truncateWireLabel(wire.label);
-  const width = Math.max(54, Math.min(220, label.length * 7.5 + (icon ? 34 : 18)));
-  const height = 24;
+  const { width, height } = wireLabelDimensions(wire.label, kind)!;
   const x = wire.labelX - width / 2;
   const y = wire.labelY - height / 2;
   const stroke = wireLabelStroke(kind, wire.highlighted);
@@ -543,19 +711,6 @@ function WireLabel({ wire }: { wire: WirePath }) {
   );
 }
 
-const WORLD_MIN_WIDTH = 1600;
-const WORLD_MIN_HEIGHT = 920;
-
-function worldSize(nodes: FlowGraphNode[]): { width: number; height: number } {
-  let width = WORLD_MIN_WIDTH;
-  let height = WORLD_MIN_HEIGHT;
-  for (const node of nodes) {
-    width = Math.max(width, node.x + node.width + 160);
-    height = Math.max(height, node.y + node.height + 160);
-  }
-  return { width, height };
-}
-
 /**
  * Static node-graph canvas (slice 1). Renders the typed {@link FlowGraphNode} list
  * at absolute positions; selection + depth navigation route back to the controller.
@@ -581,6 +736,8 @@ export function FlowNodeCanvas({
   const [livePosition, setLivePosition] = useState<LivePosition | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
+  const geometryRef = useRef({ originX: 0, originY: 0 });
+  const renderedOriginRef = useRef<{ x: number; y: number } | null>(null);
   const connectRef = useRef<ConnectState | null>(null);
   const [connectPreview, setConnectPreview] = useState<{
     x1: number;
@@ -660,7 +817,10 @@ export function FlowNodeCanvas({
   const toWorldPoint = (clientX: number, clientY: number) => {
     const rect = worldRef.current?.getBoundingClientRect();
     const z = zoomRef.current || 1;
-    return { x: (clientX - (rect?.left ?? 0)) / z, y: (clientY - (rect?.top ?? 0)) / z };
+    return {
+      x: (clientX - (rect?.left ?? 0)) / z + geometryRef.current.originX,
+      y: (clientY - (rect?.top ?? 0)) / z + geometryRef.current.originY
+    };
   };
 
   const beginConnect = (
@@ -698,9 +858,7 @@ export function FlowNodeCanvas({
       const targetId = targetNodeElement?.getAttribute("data-node-id") || "";
       const targetKind = targetNodeElement?.getAttribute("data-node-kind");
       const validTargetId =
-        targetKind !== "branch" &&
-        targetKind !== "subAction" &&
-        targetId !== connect.exit.nodeId
+        targetKind !== "branch" && targetKind !== "subAction" && targetId !== connect.exit.nodeId
           ? targetId
           : "";
       if ((upEvent.metaKey || upEvent.ctrlKey) && onCreateConnectedAction) {
@@ -710,12 +868,7 @@ export function FlowNodeCanvas({
           nodes.find((candidate) => candidate.id === connect.exit.nodeId),
           nodes.find((candidate) => candidate.id === validTargetId)
         );
-        onCreateConnectedAction(
-          connect.exit,
-          position.x,
-          position.y,
-          validTargetId || undefined
-        );
+        onCreateConnectedAction(connect.exit, position.x, position.y, validTargetId || undefined);
         return;
       }
       if (validTargetId) onConnect(connect.exit, validTargetId);
@@ -730,11 +883,12 @@ export function FlowNodeCanvas({
     if (node.draggable === false) return;
     const movingNodeIds = node.selected
       ? nodes
-          .filter((candidate) =>
-            candidate.selected &&
-            candidate.draggable !== false &&
-            candidate.kind !== "branch" &&
-            candidate.kind !== "subAction"
+          .filter(
+            (candidate) =>
+              candidate.selected &&
+              candidate.draggable !== false &&
+              candidate.kind !== "branch" &&
+              candidate.kind !== "subAction"
           )
           .map((candidate) => candidate.id)
       : [node.id];
@@ -861,7 +1015,18 @@ export function FlowNodeCanvas({
         );
       })()
     : nodes;
-  const { width, height } = worldSize(displayNodes);
+  const geometry = buildFlowGraphGeometry(displayNodes, connections);
+  const { originX, originY, width, height } = geometry;
+  useLayoutEffect(() => {
+    const previous = renderedOriginRef.current;
+    const stage = stageRef.current;
+    if (previous && stage) {
+      stage.scrollLeft += (previous.x - originX) * zoomRef.current;
+      stage.scrollTop += (previous.y - originY) * zoomRef.current;
+    }
+    geometryRef.current = { originX, originY };
+    renderedOriginRef.current = { x: originX, y: originY };
+  }, [originX, originY]);
   // Selecting a node highlights the nodes it points TO (its next steps) in pink, so you
   // can follow where the flow goes — not what points back into it.
   const selectedIds = new Set(displayNodes.filter((node) => node.selected).map((node) => node.id));
@@ -869,7 +1034,7 @@ export function FlowNodeCanvas({
   for (const connection of connections) {
     if (selectedIds.has(connection.from)) connectedIds.add(connection.to);
   }
-  const wires = buildWirePaths(displayNodes, connections, selectedIds);
+  const wires = buildWirePaths(connections, selectedIds, geometry);
   return (
     <section
       className="flow-react-node-canvas"
@@ -927,6 +1092,10 @@ export function FlowNodeCanvas({
           <div
             className="flow-node-graph"
             data-node-zoom={zoom}
+            data-world-origin-x={originX}
+            data-world-origin-y={originY}
+            data-world-width={width}
+            data-world-height={height}
             style={{ width: width * zoom, height: height * zoom, position: "relative" }}
           >
             <div
@@ -949,8 +1118,8 @@ export function FlowNodeCanvas({
                   data-node-marquee
                   style={{
                     position: "absolute",
-                    left: Math.min(marquee.x1, marquee.x2),
-                    top: Math.min(marquee.y1, marquee.y2),
+                    left: Math.min(marquee.x1, marquee.x2) - originX,
+                    top: Math.min(marquee.y1, marquee.y2) - originY,
                     width: Math.abs(marquee.x2 - marquee.x1),
                     height: Math.abs(marquee.y2 - marquee.y1),
                     border: "2px dashed currentColor",
@@ -993,7 +1162,7 @@ export function FlowNodeCanvas({
                 {connectPreview ? (
                   <path
                     data-connect-preview
-                    d={`M ${connectPreview.x1} ${connectPreview.y1} L ${connectPreview.x2} ${connectPreview.y2}`}
+                    d={`M ${connectPreview.x1 - originX} ${connectPreview.y1 - originY} L ${connectPreview.x2 - originX} ${connectPreview.y2 - originY}`}
                     fill="none"
                     stroke={WIRE_HIGHLIGHT_COLOR}
                     strokeWidth={3.5}
@@ -1015,8 +1184,8 @@ export function FlowNodeCanvas({
                     aria-current={node.selected ? "true" : undefined}
                     style={{
                       position: "absolute",
-                      left: node.x,
-                      top: node.y,
+                      left: node.x - originX,
+                      top: node.y - originY,
                       width: node.width,
                       minHeight: node.height,
                       touchAction: "none",
@@ -1035,8 +1204,8 @@ export function FlowNodeCanvas({
                     onDoubleClick={() => {
                       if (node.kind === "gameState" || node.kind === "subroutine") {
                         onEnterSubroutine?.(node.id);
-                      }
-                      else if (node.id === "start" || node.id === "return") onBackToSubroutines?.();
+                      } else if (node.id === "start" || node.id === "return")
+                        onBackToSubroutines?.();
                     }}
                   >
                     <div className="flow-node-main">
@@ -1134,7 +1303,9 @@ export function FlowNodeCanvas({
         {displayNodes.length ? (
           <FlowNodeMinimap
             nodes={displayNodes}
-            connections={connections}
+            wires={wires}
+            originX={originX}
+            originY={originY}
             worldWidth={width}
             worldHeight={height}
             zoom={zoom}

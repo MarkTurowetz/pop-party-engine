@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FlowNodeCanvas, newConnectedActionPosition } from "./FlowNodeCanvas";
+import {
+  buildConnectionRoute,
+  buildFlowGraphGeometry,
+  FlowNodeCanvas,
+  newConnectedActionPosition
+} from "./FlowNodeCanvas";
 import type { FlowGraphConnection, FlowGraphNode } from "../flowNodeGraph";
 
 function nodes(selectedSource = true): FlowGraphNode[] {
@@ -41,6 +46,58 @@ const jumpConnection: FlowGraphConnection = {
   label: "Jump",
   labelKind: "jump-preview",
   visibleWhenSelected: true
+};
+
+function flipSevenShapedNodes(): FlowGraphNode[] {
+  return [
+    {
+      id: "overlap-at-zero",
+      kind: "action",
+      title: "Overlapping action",
+      subtitle: "message",
+      timing: "",
+      x: 0,
+      y: 2400,
+      width: 260,
+      height: 1000,
+      className: "is-standard",
+      selected: false
+    },
+    {
+      id: "opening-deal-complete",
+      kind: "action",
+      title: "Branch on Opening Deal Complete",
+      subtitle: "decision",
+      timing: "",
+      x: 302,
+      y: 5428,
+      width: 260,
+      height: 134,
+      className: "is-decision",
+      selected: false
+    },
+    {
+      id: "draw-opening-card",
+      kind: "action",
+      title: "Draw Opening Card",
+      subtitle: "drawCard",
+      timing: "",
+      x: 542,
+      y: 1858,
+      width: 260,
+      height: 134,
+      className: "is-standard",
+      selected: false
+    }
+  ];
+}
+
+const flipSevenBackEdge: FlowGraphConnection = {
+  id: "opening-deal-complete->draw-opening-card:no-match",
+  from: "opening-deal-complete",
+  to: "draw-opening-card",
+  label: "No Match",
+  labelKind: "branch-no-match"
 };
 
 describe("FlowNodeCanvas", () => {
@@ -123,5 +180,70 @@ describe("FlowNodeCanvas", () => {
 
     expect(markup).toContain("← Game States");
     expect(markup).toContain("Inside Intro");
+  });
+
+  it("routes the Flip 7-shaped upward edge away from an inaccessible negative left corridor", () => {
+    const graphNodes = flipSevenShapedNodes();
+    const route = buildConnectionRoute(flipSevenBackEdge, graphNodes[1], graphNodes[2], graphNodes);
+
+    expect(route.kind).toBe("orthogonal");
+    expect(route.points[2].x).toBeGreaterThan(802);
+    expect(route.points.at(-1)?.x).toBe(802);
+    expect(route.bounds.minX).toBeGreaterThanOrEqual(302);
+  });
+
+  it("keeps complete routes, labels, and stroke clearance inside normalized world bounds", () => {
+    const graphNodes = flipSevenShapedNodes();
+    const geometry = buildFlowGraphGeometry(graphNodes, [flipSevenBackEdge]);
+
+    expect(geometry.contentBounds.minX - geometry.originX).toBeGreaterThanOrEqual(0);
+    expect(geometry.contentBounds.minY - geometry.originY).toBeGreaterThanOrEqual(0);
+    expect(geometry.contentBounds.maxX - geometry.originX).toBeLessThanOrEqual(geometry.width);
+    expect(geometry.contentBounds.maxY - geometry.originY).toBeLessThanOrEqual(geometry.height);
+    expect(geometry.width).toBeGreaterThan(geometry.contentBounds.maxX - geometry.originX);
+    expect(geometry.height).toBeGreaterThan(geometry.contentBounds.maxY - geometry.originY);
+  });
+
+  it("normalizes explicit negative connection geometry without changing authored node positions", () => {
+    const graphNodes = flipSevenShapedNodes();
+    const connection: FlowGraphConnection = {
+      ...flipSevenBackEdge,
+      id: "negative-explicit-source",
+      fromPoint: { x: -80, y: 5500 }
+    };
+    const geometry = buildFlowGraphGeometry(graphNodes, [connection]);
+    const markup = renderToStaticMarkup(
+      <FlowNodeCanvas depth="subroutine" nodes={graphNodes} connections={[connection]} />
+    );
+
+    expect(geometry.originX).toBeLessThan(-80);
+    expect(geometry.contentBounds.minX - geometry.originX).toBeGreaterThan(0);
+    expect(markup).toContain(`data-world-origin-x="${geometry.originX}"`);
+    expect(graphNodes[1].x).toBe(302);
+  });
+
+  it("preserves right-side backward routing and ordinary forward curves", () => {
+    const backwardNodes = [
+      { ...nodes()[0], id: "lower-right", x: 800, y: 800 },
+      { ...nodes()[1], id: "upper-left", x: 200, y: 100 }
+    ];
+    const backward = buildConnectionRoute(
+      { id: "right-back", from: "lower-right", to: "upper-left", label: "Back" },
+      backwardNodes[0],
+      backwardNodes[1],
+      backwardNodes
+    );
+    const forward = buildConnectionRoute(
+      { id: "forward", from: "upper-left", to: "lower-right", label: "Next" },
+      backwardNodes[1],
+      backwardNodes[0],
+      backwardNodes
+    );
+
+    expect(backward.kind).toBe("orthogonal");
+    expect(backward.points[2].x).toBeGreaterThan(1060);
+    expect(backward.points.at(-1)?.x).toBe(460);
+    expect(forward.kind).toBe("curve");
+    expect(forward.d).toContain(" C ");
   });
 });
