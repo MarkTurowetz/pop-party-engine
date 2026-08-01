@@ -1,12 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { controllerPlayerBannerRenderOptions, layoutTextArtRenderOptions, layoutTextArtUsesNestedPrefab } from "./layoutRuntime";
+import {
+  controllerPlayerBannerRenderOptions,
+  layoutTextArtRenderOptions,
+  layoutTextArtUsesNestedPrefab,
+  normalizedStageLayoutScope,
+  stageLayoutGameObjectVisibilityKey,
+  stageLayoutRegistryKeyForElement
+} from "./layoutRuntime";
 
 const globals = globalThis as typeof globalThis & {
   artComposition?: (id: string) => Record<string, unknown> | null;
 };
 const previousArtComposition = globals.artComposition;
+const previousStageLayoutStateId = (globals as Record<string, unknown>).currentStageLayoutStateId;
 
 beforeEach(() => {
+  (globals as Record<string, unknown>).currentStageLayoutStateId = "lobby";
   globalThis.__POP_PARTY_RUNTIME_CONFIG__ = {
     semanticRoles: {
       "engine.stage.layoutText": { compositionId: "layout-text-field" },
@@ -24,6 +33,22 @@ beforeEach(() => {
 
 afterEach(() => {
   globals.artComposition = previousArtComposition;
+  (globals as Record<string, unknown>).currentStageLayoutStateId = previousStageLayoutStateId;
+});
+
+describe("stage layout scope contract", () => {
+  it("maps legacy booleans and canonical strings to the same Stage keys", () => {
+    expect(normalizedStageLayoutScope(false)).toBe("moment");
+    expect(normalizedStageLayoutScope("moment")).toBe("moment");
+    expect(normalizedStageLayoutScope(true)).toBe("global");
+    expect(normalizedStageLayoutScope("global")).toBe("global");
+    expect(stageLayoutGameObjectVisibilityKey("stagetitle", false)).toBe("lobby:stagetitle");
+    expect(stageLayoutGameObjectVisibilityKey("stagetitle", "moment")).toBe("lobby:stagetitle");
+    expect(stageLayoutGameObjectVisibilityKey("stageBackground", true)).toBe("global:stageBackground");
+    expect(stageLayoutGameObjectVisibilityKey("stageBackground", "global")).toBe("global:stageBackground");
+    expect(stageLayoutRegistryKeyForElement("stagetitle", "moment")).toBe("lobby:stagetitle");
+    expect(stageLayoutRegistryKeyForElement("stageBackground", "global")).toBe("global:stageBackground");
+  });
 });
 
 describe("layout text art runtime targeting", () => {

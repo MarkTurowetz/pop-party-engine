@@ -309,6 +309,68 @@ async function main() {
     const stagePage = await browser.newPage();
     await stagePage.goto(`http://${host}:${port}/stage`, { waitUntil: "domcontentloaded" });
     await stagePage.waitForFunction(() => Boolean(document.querySelector("#stageCodeText")?.dataset.stageCodeValue));
+    await stagePage.waitForFunction(() =>
+      document.querySelector("[data-stage-layout-element-id='stagetitle']")?.dataset.textFitSource === "Party Game Template Test"
+    );
+    const stageScopeState = await stagePage.evaluate(() => {
+      const momentHost = document.querySelector("[data-stage-layout-element-id='stagetitle']");
+      const globalHost = document.querySelector("[data-stage-layout-element-id='stagebackground']");
+      const globalElementId = globalHost?.dataset.stageLayoutElementId || "";
+      const momentRenderer = window.PartyGameLayoutGameObjects.artRendererForLayoutHost(momentHost);
+      const globalRenderer = window.PartyGameLayoutGameObjects.artRendererForLayoutHost(globalHost);
+      const momentVisibility = window.setStageLayoutGameObjectShownForAction({
+        commandSource: "flow-action",
+        targetLayoutElementId: "stagetitle",
+        targetLayoutScope: "moment",
+        targetLayoutSurface: "stage",
+        isShown: true,
+        instant: true
+      }, { returnResult: true });
+      const globalVisibility = window.setStageLayoutGameObjectShownForAction({
+        commandSource: "flow-action",
+        targetLayoutElementId: globalElementId,
+        targetLayoutScope: "global",
+        targetLayoutSurface: "stage",
+        isShown: true,
+        instant: true
+      }, { returnResult: true });
+      const momentAnimation = window.playStageLayoutGameObjectAnimationForAction({
+        commandSource: "flow-action",
+        targetLayoutElementId: "stagetitle",
+        targetLayoutScope: "moment",
+        targetLayoutSurface: "stage",
+        animationName: "On",
+        instant: true
+      }, { returnResult: true });
+      window.applyStageLayoutForPhase("lobby");
+      return {
+        activeRegistryKeys: Array.from(window.stageLayoutGameObjectRegistry().activeIds || []),
+        registryKeys: Array.from(window.stageLayoutGameObjectRegistry().objects?.keys?.() || []),
+        debugHidden: document.querySelector("#stageDebugAlert")?.classList.contains("hidden") === true,
+        debugText: document.querySelector("#stageDebugAlert")?.textContent || "",
+        globalIdentityRetained: globalHost === document.querySelector("[data-stage-layout-element-id='stagebackground']"),
+        globalRendererMounted: Boolean(globalRenderer),
+        globalRendererRetained: globalRenderer === window.PartyGameLayoutGameObjects.artRendererForLayoutHost(globalHost),
+        globalVisibility,
+        momentAnimation,
+        momentIdentityRetained: momentHost === document.querySelector("[data-stage-layout-element-id='stagetitle']"),
+        momentRendererMounted: Boolean(momentRenderer),
+        momentRendererRetained: momentRenderer === window.PartyGameLayoutGameObjects.artRendererForLayoutHost(momentHost),
+        momentVisibility,
+        titleText: momentHost?.dataset.textFitSource || ""
+      };
+    });
+    assert(stageScopeState.debugHidden, `Lobby exposed a Stage scope warning: ${JSON.stringify(stageScopeState)}`);
+    assert(!stageScopeState.debugText.includes("Game Object Warning"), `Lobby recorded a false Stage scope warning: ${JSON.stringify(stageScopeState)}`);
+    assert(stageScopeState.titleText === "Party Game Template Test", `Lobby title rendered ${stageScopeState.titleText || "no text"}`);
+    assert(stageScopeState.momentVisibility?.missing === false, `Moment visibility lookup failed: ${JSON.stringify(stageScopeState.momentVisibility)}`);
+    assert(stageScopeState.globalVisibility?.missing === false, `Global visibility lookup failed: ${JSON.stringify(stageScopeState)}`);
+    assert(stageScopeState.momentAnimation?.missing === false, `Moment animation lookup failed: ${JSON.stringify(stageScopeState.momentAnimation)}`);
+    assert(stageScopeState.activeRegistryKeys.includes("lobby:stagetitle"), `Moment entity registered under the wrong key: ${JSON.stringify(stageScopeState)}`);
+    assert(stageScopeState.activeRegistryKeys.includes("global:stagebackground"), `Global entity registered under the wrong key: ${JSON.stringify(stageScopeState)}`);
+    assert(stageScopeState.momentRendererMounted && stageScopeState.globalRendererMounted, `Stage Art renderers did not mount: ${JSON.stringify(stageScopeState)}`);
+    assert(stageScopeState.momentIdentityRetained && stageScopeState.momentRendererRetained, "Lobby moment host or renderer was rebuilt during same-state reconciliation");
+    assert(stageScopeState.globalIdentityRetained && stageScopeState.globalRendererRetained, "Stage global host or renderer was rebuilt during same-state reconciliation");
     const stageCode = await stagePage.locator("#stageCodeText").getAttribute("data-stage-code-value");
     assert(stageCode, "stage did not publish a room code");
 

@@ -651,7 +651,10 @@ function setPresentationClickPromptForAction(isShown: boolean, options: Dict = {
       isShown: isShown !== false,
       instant: options.instant === true
     }),
-    { returnResult: true }
+    // This is idempotent runtime synchronization and can run before the first
+    // Stage layout frame has registered its Global objects. A genuinely
+    // authored Flow command still uses the warning-producing runner path.
+    { returnResult: true, suppressMissingWarning: true }
   );
 }
 
