@@ -40,16 +40,16 @@ function createStartHandlersRuntime({
       return;
     }
     if (room.phase === "intro") {
-      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
       return;
     }
     if (room.phase === "starting") {
-      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
       return;
     }
 
     enterStartingPhase(room);
-    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
   }
 
   async function handleCancelStart(req, res) {
@@ -80,17 +80,17 @@ function createStartHandlersRuntime({
       return;
     }
     if (room.phase !== "starting") {
-      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
       return;
     }
     if (Date.now() >= room.countdownEndsAt) {
-      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+      sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
       return;
     }
 
     enterLobbyPhase(room);
     broadcastLobby(room);
-    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room) });
+    sendJson(res, 200, { ok: true, lobby: lobbyPayload(room, playerId) });
   }
 
   return {

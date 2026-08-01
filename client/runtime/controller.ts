@@ -22,7 +22,7 @@ import { createControllerSessionRuntime } from "./controllerSessionRuntime";
 import { createControllerActionBindings, type ControllerActionBindingsOptions } from "./controllerActionBindings";
 import { createControllerSetupBindings } from "./controllerSetupBindings";
 import { createControllerLocalButtonRuntime, type ControllerLocalButtonSlot } from "./controllerLocalButtonRuntime";
-import { semanticSurfaceRevision } from "./surfaceRenderRuntime";
+import { semanticSurfaceRevision, surfacePayloadMatches } from "./surfaceRenderRuntime";
 import { controllerLayoutStateIds } from "../../shared/controller-layout-states";
 
 type Dict = Record<string, unknown>;
@@ -610,6 +610,11 @@ async function advanceControllerStageClick(actionId: string): Promise<Dict | nul
 function renderControllerState(lobbyInput: unknown): void {
   if (!w.controllerState) return;
   const lobby = lobbyInput as Dict;
+  // Controller and Stage semantic revisions are intentionally independent.
+  // Never let a Stage-scoped mutation response poison the Controller's stale
+  // response gate. Legacy flat payloads remain compatible because they have no
+  // explicit surface marker.
+  if (!surfacePayloadMatches(lobby, "controller")) return;
   const nextStageCode = String(lobby.stageCode || w.controllerState.stageCode || "");
   const nextSessionId = Number(lobby.gameSessionId || 0);
   const nextRevision = semanticSurfaceRevision(lobby);

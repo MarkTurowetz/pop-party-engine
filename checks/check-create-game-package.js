@@ -474,6 +474,205 @@ module.exports = Object.freeze([{
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ layouts: controllerLayouts })
       });
+      const vipRoomResponse = await fetch(first.startup.localUrl + "/api/stage/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ stageCode: "VIPR" })
+      });
+      const vipRoom = await vipRoomResponse.json();
+      const sourceLobbyState = flowPayload.flow.states.find((state) => state.id === "lobby");
+      const vipControllerFlow = {
+        ...flowPayload.flow,
+        states: [
+          { ...sourceLobbyState, nextStateTargetId: "intro" },
+          {
+            id: "intro",
+            name: "VIP Next Fixture",
+            entryTargetActionId: "vip-next",
+            nextStateTargetId: "crafting-game-state",
+            actions: [
+              {
+                id: "vip-next",
+                name: "VIP Next",
+                type: "presentText",
+                category: "input",
+                timing: { mode: "E+", seconds: 0 },
+                nextTargetActionId: "vip-intro-end",
+                stageClickTargetActionId: "vip-intro-end",
+                text: "VIP advances this authored step",
+                textTarget: "layout-text-field-instance-1",
+                isShown: true,
+                instant: true,
+                subActions: []
+              },
+              {
+                id: "vip-intro-end",
+                name: "End VIP Next Fixture",
+                type: "endMoment",
+                category: "standard",
+                timing: { mode: "E+", seconds: 0 },
+                nextTargetActionId: "return",
+                subActions: []
+              }
+            ]
+          },
+          {
+            id: "crafting-game-state",
+            name: "VIP Crafting Choice Fixture",
+            entryTargetActionId: "vip-crafting-next",
+            nextStateTargetId: "none",
+            actions: [
+              {
+                id: "vip-crafting-next",
+                name: "VIP Crafting Next",
+                type: "presentText",
+                category: "input",
+                timing: { mode: "E+", seconds: 0 },
+                nextTargetActionId: "vip-random-choice",
+                stageClickTargetActionId: "vip-random-choice",
+                text: "Open the crafting question",
+                textTarget: "crafting-game-statemomenttext",
+                isShown: true,
+                instant: true,
+                subActions: []
+              },
+              {
+                id: "vip-random-choice",
+                name: "Prepare Crafting Choice",
+                type: "getRandomMultipleChoiceContent",
+                category: "standard",
+                timing: { mode: "E+", seconds: 0 },
+                nextTargetActionId: "vip-crafting-choice",
+                variableName: "multipleChoicePrompt",
+                subActions: []
+              },
+              {
+                id: "vip-crafting-choice",
+                name: "Crafting Multiple Choice",
+                type: "triviaInput",
+                category: "input",
+                timing: { mode: "E+", seconds: 0 },
+                nextTargetActionId: "return",
+                contentVariable: "multipleChoicePrompt",
+                inputMode: "submitOnce",
+                locked: false,
+                randomizeOptions: true,
+                timerEndTargetActionId: "none",
+                answersSubmittedTargetActionId: "none",
+                subActions: []
+              }
+            ]
+          }
+        ]
+      };
+      const vipConfigResponse = await fetch(first.startup.localUrl + "/api/stage/VIPR/test-config", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-stage-capability": vipRoom.stageCapability },
+        body: JSON.stringify({ flow: vipControllerFlow })
+      });
+      if (!vipConfigResponse.ok) throw new Error("Could not install the VIP Controller projection fixture");
+      const vipStagePage = await browser.newPage();
+      await vipStagePage.addInitScript(({ stageCode, stageCapability }) => {
+        sessionStorage.setItem("partyTemplateStageCapability:" + stageCode, stageCapability);
+      }, { stageCode: "VIPR", stageCapability: vipRoom.stageCapability });
+      await vipStagePage.goto(first.startup.localUrl + "/stage?stage=VIPR", { waitUntil: "load" });
+      const vipControllerPage = await browser.newPage();
+      const waitingControllerPage = await browser.newPage();
+      await vipControllerPage.goto(first.startup.localUrl + "/controller?stage=VIPR&name=Vip&join=1", { waitUntil: "load" });
+      await vipControllerPage.waitForFunction(() => (
+        window.controllerState?.player?.isVip === true
+        && document.querySelector('[data-option-id="lobby.startGame"]')
+      ), null, { timeout: 15_000 });
+      await waitingControllerPage.goto(first.startup.localUrl + "/controller?stage=VIPR&name=Waiting&join=1", { waitUntil: "load" });
+      await waitingControllerPage.waitForFunction(() => (
+        window.controllerState?.player?.isVip === false
+        && !document.querySelector('[data-option-id="lobby.startGame"]')
+      ), null, { timeout: 15_000 });
+
+      const startResponsePromise = vipControllerPage.waitForResponse((response) => (
+        response.url().endsWith("/api/start") && response.request().method() === "POST"
+      ));
+      await vipControllerPage.locator('[data-option-id="lobby.startGame"]').click();
+      const startControllerLobby = (await (await startResponsePromise).json()).lobby;
+      try {
+        await vipControllerPage.waitForFunction(() => (
+          window.controllerState?.controllerViewStateId === "inGame"
+          && document.querySelector('[data-option-id="global.next"]')
+        ), null, { timeout: 15_000 });
+      } catch (error) {
+        const controllerDiagnostic = await vipControllerPage.evaluate(() => ({
+          bodyText: document.body.innerText.slice(0, 500),
+          buttons: Array.from(document.querySelectorAll("button")).map((button) => ({
+            actionId: button.dataset.actionId,
+            disabled: button.disabled,
+            optionId: button.dataset.optionId,
+            text: button.textContent?.trim()
+          })),
+          lobby: window.controllerState?.lobby,
+          viewStateId: window.controllerState?.controllerViewStateId
+        }));
+        const stageDiagnostic = await vipStagePage.evaluate(() => ({
+          lobby: window.currentStageState,
+          bodyText: document.body.innerText.slice(0, 500)
+        }));
+        throw new Error("VIP Controller did not receive the first Next action: " + JSON.stringify({ controllerDiagnostic, stageDiagnostic }), { cause: error });
+      }
+      const vipFirstNextState = await vipControllerPage.evaluate(() => ({
+        actionId: document.querySelector('[data-option-id="global.next"]')?.dataset.actionId,
+        phase: window.controllerState?.lobby?.phase,
+        surface: window.controllerState?.lobby?.surface,
+        surfaceRevision: window.controllerState?.lobby?.surfaceRevision,
+        viewStateId: window.controllerState?.controllerViewStateId
+      }));
+      await waitingControllerPage.waitForFunction(() => (
+        window.controllerState?.controllerViewStateId === "inGame"
+        && !document.querySelector('[data-option-id="global.next"]')
+      ), null, { timeout: 15_000 });
+      const nonVipWaitingState = await waitingControllerPage.evaluate(() => ({
+        phase: window.controllerState?.lobby?.phase,
+        surface: window.controllerState?.lobby?.surface,
+        viewStateId: window.controllerState?.controllerViewStateId,
+        nextButtons: document.querySelectorAll('[data-option-id="global.next"]').length
+      }));
+
+      const controllerAdvanceSurfaces = [];
+      for (let step = 0; step < 2; step += 1) {
+        const previousActionId = await vipControllerPage.locator('[data-option-id="global.next"]').getAttribute("data-action-id");
+        const responsePromise = vipControllerPage.waitForResponse((response) => (
+          response.url().endsWith("/api/input-event") && response.request().method() === "POST"
+        ));
+        await vipControllerPage.locator('[data-option-id="global.next"]').click();
+        const responseLobby = (await (await responsePromise).json()).lobby;
+        controllerAdvanceSurfaces.push(responseLobby?.surface);
+        if (step < 1) {
+          await vipControllerPage.waitForFunction((priorActionId) => {
+            const next = document.querySelector('[data-option-id="global.next"]');
+            return next && next.dataset.actionId && next.dataset.actionId !== priorActionId;
+          }, previousActionId, { timeout: 15_000 });
+        }
+      }
+      await vipControllerPage.waitForFunction(() => (
+        window.controllerState?.controllerViewStateId === "choiceInput"
+        && document.querySelectorAll('#controllerChoiceGrid [data-controller-option]').length >= 2
+      ), null, { timeout: 15_000 });
+      const vipCraftingChoiceState = await vipControllerPage.evaluate(() => ({
+        actionId: window.controllerState?.lobby?.action?.id,
+        optionCount: document.querySelectorAll('#controllerChoiceGrid [data-controller-option]').length,
+        phase: window.controllerState?.lobby?.phase,
+        surface: window.controllerState?.lobby?.surface,
+        surfaceRevision: window.controllerState?.lobby?.surfaceRevision,
+        viewStateId: window.controllerState?.controllerViewStateId
+      }));
+      await vipStagePage.close();
+      await vipControllerPage.close();
+      await waitingControllerPage.close();
+      const vipControllerJourney = {
+        advanceSurfaces: controllerAdvanceSurfaces,
+        craftingChoice: vipCraftingChoiceState,
+        firstNext: vipFirstNextState,
+        nonVipWaiting: nonVipWaitingState,
+        startSurface: startControllerLobby?.surface
+      };
       const fixtureLobby = {
           id: "lobby",
           name: "Lobby",
@@ -1161,6 +1360,7 @@ module.exports = Object.freeze([{
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
           && controllerHtml.includes("generated-fixture.controllerCounter"),
         pluginViewModel: configuredLobby.gamePlugin?.viewModels?.["generated-fixture.stageCounter"]?.label,
+        vipControllerJourney,
         configuredAction: configuredLobby.action?.id,
         configuredFault: configuredLobby.runtimeFault,
         branchSelected: completedLobby.lastDecisionTrace?.selectedBranch,
@@ -1243,6 +1443,18 @@ module.exports = Object.freeze([{
     || !development.persistentLayerReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"
+    || development.vipControllerJourney?.startSurface !== "controller"
+    || development.vipControllerJourney?.firstNext?.surface !== "controller"
+    || development.vipControllerJourney?.firstNext?.viewStateId !== "inGame"
+    || !development.vipControllerJourney?.firstNext?.actionId
+    || development.vipControllerJourney?.nonVipWaiting?.surface !== "controller"
+    || development.vipControllerJourney?.nonVipWaiting?.viewStateId !== "inGame"
+    || development.vipControllerJourney?.nonVipWaiting?.nextButtons !== 0
+    || JSON.stringify(development.vipControllerJourney?.advanceSurfaces) !== JSON.stringify(["controller", "controller"])
+    || development.vipControllerJourney?.craftingChoice?.surface !== "controller"
+    || development.vipControllerJourney?.craftingChoice?.viewStateId !== "choiceInput"
+    || development.vipControllerJourney?.craftingChoice?.phase !== "crafting-game-state"
+    || development.vipControllerJourney?.craftingChoice?.optionCount < 2
     || development.branchSelected !== "branch-hit"
     || development.branchedAction !== "fixture-hit"
     || development.inputTransitionAction !== "fixture-turn-choice"
@@ -1354,6 +1566,7 @@ module.exports = Object.freeze([{
     throw new Error("Generated game development workspace was not created inside the game");
   }
   console.log(`Stage projection browser evidence: private applies ${development.stageBeforePartialSubmission.applyCount}->${development.stageAfterPartialSubmission.applyCount}, public burst max frame gap ${development.stageAfterTransitionBurst.maxFrameGap.toFixed(1)}ms, max apply ${development.stageAfterTransitionBurst.maxApplyDuration.toFixed(1)}ms, layout reflows ${development.stageAfterTransitionBurst.layoutApplyCount}.`);
+  console.log(`Controller projection browser evidence: start ${development.vipControllerJourney.startSurface}, Next ${development.vipControllerJourney.advanceSurfaces.join("/")}, crafting choices ${development.vipControllerJourney.craftingChoice.optionCount}.`);
   const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });
   if (!migrationPreview.includes("Migration preview valid: level 0 -> 0") || !migrationPreview.includes("Changed paths: (none)")) {
     throw new Error("Generated game migration preview contract failed");

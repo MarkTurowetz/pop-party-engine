@@ -1542,6 +1542,12 @@ const {
   applyRoomActionEffects,
   broadcastLobby,
   completeCurrentAction,
+  controllerViewerPlayerId: (req, room, payload) => {
+    const playerId = normalizePlayerId(payload?.playerId);
+    return playerId && room.players.has(playerId) && runtimeCapabilities.verifyPlayer(req, room, playerId)
+      ? playerId
+      : "";
+  },
   currentRoomAction,
   emitInputFlowEvent,
   getExistingRoom,

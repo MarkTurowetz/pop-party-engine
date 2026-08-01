@@ -170,6 +170,11 @@ concepts into focused modules.
     (or an explicit `Set Controller Layout` target), but Tool reads and saves are lossless: an older
     moment-specific or temporarily unreferenced layout remains editable and cannot disappear merely
     because the current flow does not select it.
+  - Controller and Stage payloads carry independent semantic surface revisions. Every authenticated
+    Controller mutation response—including Start, Cancel Start, and controller-originated Stage Click—
+    returns that player's private Controller projection. The Controller rejects an explicitly Stage-scoped
+    payload before its stale-response gate, while continuing to accept legacy flat payloads without a
+    `surface` marker. A Stage revision can therefore never suppress a later private heartbeat or input visit.
   - Selector-backed Join and Lobby controls begin `controller-layout-hidden`. The active controller
     layout removes that gate only after it has positioned the host and attached authored art, so
     native HTML labels, inputs, and buttons cannot flash during initial load or room entry. Joining
