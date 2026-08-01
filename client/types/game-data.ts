@@ -99,7 +99,14 @@ export interface LayoutElement extends JsonObject {
 export interface LayoutState extends JsonObject {
   id: string;
   name?: string;
+  hiddenInStates?: boolean;
+  hiddenGlobals?: string[];
+  hiddenLayers?: string[];
   elements: LayoutElement[];
+}
+
+export interface ControllerLayoutLayer extends LayoutState {
+  zIndex: number;
 }
 
 export interface StageLayoutCollection extends JsonObject {
@@ -109,6 +116,7 @@ export interface StageLayoutCollection extends JsonObject {
   };
   global: LayoutState;
   states: LayoutState[];
+  layers?: ControllerLayoutLayer[];
 }
 
 export type ControllerLayoutCollection = StageLayoutCollection;

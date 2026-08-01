@@ -114,6 +114,15 @@ describe("controller layout initial state", () => {
     ]);
   });
 
+  it("serializes persistent controller layers and state visibility", () => {
+    const source = layouts() as StageLayoutCollection;
+    source.layers = [{ id: "round-context", name: "Round Context", zIndex: 150, elements: [] }];
+    source.states[0].hiddenLayers = ["round-context"];
+    const saved = serializeLayoutsForSave(source, "controller");
+    expect(saved.layers).toEqual([expect.objectContaining({ id: "round-context", zIndex: 150 })]);
+    expect(saved.states[0].hiddenLayers).toEqual(["round-context"]);
+  });
+
   it("serializes the stage background layer separately from normal content", () => {
     expect(
       serializeLayoutsForSave(stageLayouts("BACKGROUND"), "stage").global.elements[0].layoutLayer

@@ -57,6 +57,11 @@
   transform-origin: center !important;
 }
 
+.controller-persistent-layout-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .game-plugin-input-control {
   position: absolute;
   inset: 0;

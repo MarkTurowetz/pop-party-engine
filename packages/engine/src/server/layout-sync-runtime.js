@@ -50,6 +50,8 @@ function createLayoutSyncRuntime({
     const normalizedLayouts = normalizeControllerLayouts(layouts);
     const inputLayoutStates = createControllerInputLayoutStates();
     normalizedLayouts.global.elements = dedupeLayoutElements(normalizedLayouts.global.elements || []);
+    normalizedLayouts.layers = (normalizedLayouts.layers || [])
+      .map((layer) => ({ ...layer, elements: dedupeLayoutElements(layer.elements || []) }));
     normalizedLayouts.states = (normalizedLayouts.states || [])
       .map((state) => ({ ...state, elements: dedupeLayoutElements(state.elements || []) }));
     for (const inputLayoutState of inputLayoutStates) {

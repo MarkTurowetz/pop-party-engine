@@ -273,7 +273,8 @@ function rendererManifest(registration, surface) {
     surface,
     target: Object.freeze({
       layoutElementId: String(value.target.layoutElementId),
-      layoutScope: String(value.target.layoutScope || "moment")
+      layoutScope: String(value.target.layoutScope || "moment"),
+      layoutLayerId: String(value.target.layoutLayerId || "")
     }),
     bindings: Object.freeze(value.bindings.map((binding) => Object.freeze({
       id: String(binding.id),
@@ -342,7 +343,13 @@ function inputManifest(registration) {
     controller: Object.freeze({
       layoutStateId: String(config.controller.layoutStateId || ""),
       layoutStateIdField: String(config.controller.layoutStateIdField || ""),
-      bindings: Object.freeze(config.controller.bindings.map((binding) => Object.freeze(cloneJson(binding))))
+      bindings: Object.freeze(config.controller.bindings.map((binding) => Object.freeze(cloneJson(binding)))),
+      ...(config.controller.submitted ? {
+        submitted: Object.freeze({
+          layoutStateId: String(config.controller.submitted.layoutStateId || ""),
+          bindings: Object.freeze(config.controller.submitted.bindings.map((binding) => Object.freeze(cloneJson(binding))))
+        })
+      } : {})
     })
   });
 }
@@ -566,15 +573,18 @@ function createGameInputRuntime({
     if (!registration || !playerId || !ensure(room, action) || !room.gamePluginInputRecipientIds.has(playerId)) return null;
     try {
       const config = registration.value;
+      const submitted = room.gamePluginInputSubmissions?.has(playerId) === true;
       return {
         actionId: String(action.id || ""),
         type: registration.id,
         visitId: Number(room.gamePluginInputVisitId || 0),
         gameSessionId: Number(room.gameSessionId || 0),
-        submitted: room.gamePluginInputSubmissions?.has(playerId) === true,
-        layoutStateId: String(config.controller.layoutStateIdField
-          ? action?.[config.controller.layoutStateIdField] || ""
-          : config.controller.layoutStateId || ""),
+        submitted,
+        layoutStateId: String(submitted && config.controller.submitted
+          ? config.controller.submitted.layoutStateId
+          : config.controller.layoutStateIdField
+            ? action?.[config.controller.layoutStateIdField] || ""
+            : config.controller.layoutStateId || ""),
         viewModel: privateView(room, action, registration, playerId)
       };
     } catch (error) {
@@ -608,7 +618,6 @@ function createGameInputRuntime({
     }
     try {
       const actor = publicPlayerSnapshot(room.players.get(actorId), room);
-      let broadcastRequested = false;
       let completionRequested = false;
       const context = Object.freeze({
         namespace: registration.ownerNamespace,
@@ -621,7 +630,7 @@ function createGameInputRuntime({
         random: inputRandom(room, action, registration, actorId, String(request.submissionId || "")),
         outputs: createOutputWriter(room, action, registration.value),
         completion: Object.freeze({ request() { completionRequested = true; } }),
-        broadcast: Object.freeze({ request() { broadcastRequested = true; } })
+        broadcast: Object.freeze({ request() {} })
       });
       const result = registration.value.submit(context, payload, Object.freeze(cloneJson(action, {})));
       if (result && typeof result.then === "function") throw new Error("Game input submit functions must be synchronous");
@@ -630,7 +639,12 @@ function createGameInputRuntime({
         submittedAt: Date.now()
       });
       if (completionRequested) complete(room, action, registration);
-      else if (!maybeComplete(room, action, registration) && broadcastRequested) broadcastLobby(room);
+      else if (!maybeComplete(room, action, registration)) {
+        // The submitted controller is an authoritative per-recipient state.
+        // Always publish it immediately, even when game-owned submit logic did
+        // not request a general state broadcast.
+        broadcastLobby(room);
+      }
       return { status: 200, duplicate: false };
     } catch (error) {
       fail(room, action, "GAME_PLUGIN_INPUT_SUBMIT_FAILED", `Game input "${registration.id}" submission failed`, String(error?.message || error));

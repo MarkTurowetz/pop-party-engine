@@ -37,6 +37,7 @@ function createControllerLayoutNormalizationRuntime({
       height: normalizeLayoutNumber(incomingCanvas.height, defaultControllerLayouts.canvas.height, 320, 3000)
     };
     const incomingStates = Array.isArray(layouts?.states) ? layouts.states : defaultControllerLayouts.states;
+    const incomingLayers = Array.isArray(layouts?.layers) ? layouts.layers : [];
     const normalizedDefaultGlobal = normalizeControllerState(defaultControllerLayouts.global, -1);
     const normalizedDefaultStates = defaultControllerLayouts.states.map((state, index) => normalizeControllerState(state, index)).filter(Boolean);
     const defaultStatesById = new Map(normalizedDefaultStates.map((state) => [state.id, state]));
@@ -55,6 +56,19 @@ function createControllerLayoutNormalizationRuntime({
     const incomingGlobal = normalizeControllerState(hasIncomingGlobal ? layouts.global : defaultControllerLayouts.global, -1);
     const globalElements = (incomingGlobal?.elements || []).filter(shouldIncludeGlobalElement);
     const globalElementIds = new Set(globalElements.map((element) => element.id));
+    const seenLayerIds = new Set();
+    const normalizedLayers = incomingLayers
+      .map((layer, layerIndex) => {
+        const normalized = normalizeControllerState(layer, layerIndex);
+        if (!normalized || seenLayerIds.has(normalized.id)) return null;
+        seenLayerIds.add(normalized.id);
+        return {
+          ...normalized,
+          zIndex: normalizeLayoutNumber(layer?.zIndex, (layerIndex + 1) * 100, -10000, 10000)
+        };
+      })
+      .filter(Boolean);
+    const layerIds = new Set(normalizedLayers.map((layer) => layer.id));
     return {
       canvas,
       global: {
@@ -64,6 +78,7 @@ function createControllerLayoutNormalizationRuntime({
         name: incomingGlobal?.name || normalizedDefaultGlobal.name,
         elements: globalElements
       },
+      layers: normalizedLayers,
       states: normalizedStates.map((state) => {
         const defaultState = defaultStatesById.get(state.id);
         const hiddenGlobals = new Set(
@@ -75,7 +90,12 @@ function createControllerLayoutNormalizationRuntime({
         }
         return {
           ...state,
-          hiddenGlobals: [...hiddenGlobals]
+          hiddenGlobals: [...hiddenGlobals],
+          hiddenLayers: [...new Set(
+            (Array.isArray(state.hiddenLayers) ? state.hiddenLayers : [])
+              .map((id) => String(id || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))
+              .filter((id) => layerIds.has(id))
+          )]
         };
       })
     };

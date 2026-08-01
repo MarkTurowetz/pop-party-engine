@@ -4,6 +4,7 @@ const PLUGIN_NAMESPACE_PATTERN = /^[a-z][a-z0-9-]{1,47}$/;
 const REGISTRATION_ID_PATTERN = /^[a-z][a-z0-9-]{1,47}\.[a-z][a-zA-Z0-9.-]{0,95}$/;
 const ACTION_FIELD_KEY_PATTERN = /^[a-z][a-zA-Z0-9]{0,63}$/;
 const ACTION_OUTPUT_ID_PATTERN = /^[a-z][a-zA-Z0-9]{0,63}$/;
+const LAYOUT_LAYER_ID_PATTERN = /^[a-z][a-z0-9-]{0,47}$/;
 const ACTION_FIELD_CONTROLS = new Set([
   "actionTarget",
   "boolean",
@@ -204,44 +205,55 @@ function validateInputRegistration(id, value) {
     throw new Error(`Input "${id}" controller requires bindings`);
   }
   const submissionById = new Map(value.submission.map((field) => [String(field.id), field]));
-  const bindingIds = new Set();
-  let hasSubmissionTrigger = false;
-  for (const binding of value.controller.bindings) {
-    assertPlainObject(binding, `Input "${id}" controller binding`);
-    const bindingId = String(binding.id || "").trim();
-    if (!ACTION_OUTPUT_ID_PATTERN.test(bindingId) || bindingIds.has(bindingId)) {
-      throw new Error(`Input "${id}" has an invalid or duplicate controller binding id: ${bindingId || "(missing)"}`);
-    }
-    bindingIds.add(bindingId);
-    if (!INPUT_BINDING_KINDS.has(binding.kind)) {
-      throw new Error(`Input "${id}" binding "${bindingId}" has unsupported kind "${String(binding.kind || "")}"`);
-    }
-    if (!String(binding.layoutElementId || "").trim()) {
-      throw new Error(`Input "${id}" binding "${bindingId}" requires layoutElementId`);
-    }
-    if (binding.kind === "text" && (!String(binding.source || "").trim() || !String(binding.targetComponentId || "").trim())) {
-      throw new Error(`Input "${id}" text binding "${bindingId}" requires source and targetComponentId`);
-    }
-    if (binding.kind === "choice") {
-      const submissionField = submissionById.get(String(binding.field || ""));
-      if (submissionField?.type !== "choice") {
-        throw new Error(`Input "${id}" choice binding "${bindingId}" must reference a choice submission field`);
+  function validateControllerBindings(bindings, label, { requireSubmissionTrigger = false } = {}) {
+    if (!Array.isArray(bindings)) throw new Error(`Input "${id}" ${label} requires bindings`);
+    const bindingIds = new Set();
+    let hasSubmissionTrigger = false;
+    for (const binding of bindings) {
+      assertPlainObject(binding, `Input "${id}" controller binding`);
+      const bindingId = String(binding.id || "").trim();
+      if (!ACTION_OUTPUT_ID_PATTERN.test(bindingId) || bindingIds.has(bindingId)) {
+        throw new Error(`Input "${id}" has an invalid or duplicate controller binding id: ${bindingId || "(missing)"}`);
       }
-      if (!Number.isInteger(Number(binding.optionIndex)) || Number(binding.optionIndex) < 0) {
-        throw new Error(`Input "${id}" choice binding "${bindingId}" requires a non-negative optionIndex`);
+      bindingIds.add(bindingId);
+      if (!INPUT_BINDING_KINDS.has(binding.kind)) {
+        throw new Error(`Input "${id}" binding "${bindingId}" has unsupported kind "${String(binding.kind || "")}"`);
       }
-      if (binding.autoSubmit === true) hasSubmissionTrigger = true;
-    }
-    if (binding.kind === "integer") {
-      const submissionField = submissionById.get(String(binding.field || ""));
-      if (submissionField?.type !== "integer") {
-        throw new Error(`Input "${id}" integer binding "${bindingId}" must reference an integer submission field`);
+      if (!String(binding.layoutElementId || "").trim()) {
+        throw new Error(`Input "${id}" binding "${bindingId}" requires layoutElementId`);
       }
+      if (binding.kind === "text" && (!String(binding.source || "").trim() || !String(binding.targetComponentId || "").trim())) {
+        throw new Error(`Input "${id}" text binding "${bindingId}" requires source and targetComponentId`);
+      }
+      if (binding.kind === "choice") {
+        const submissionField = submissionById.get(String(binding.field || ""));
+        if (submissionField?.type !== "choice") {
+          throw new Error(`Input "${id}" choice binding "${bindingId}" must reference a choice submission field`);
+        }
+        if (!Number.isInteger(Number(binding.optionIndex)) || Number(binding.optionIndex) < 0) {
+          throw new Error(`Input "${id}" choice binding "${bindingId}" requires a non-negative optionIndex`);
+        }
+        if (binding.autoSubmit === true) hasSubmissionTrigger = true;
+      }
+      if (binding.kind === "integer") {
+        const submissionField = submissionById.get(String(binding.field || ""));
+        if (submissionField?.type !== "integer") {
+          throw new Error(`Input "${id}" integer binding "${bindingId}" must reference an integer submission field`);
+        }
+      }
+      if (binding.kind === "submit") hasSubmissionTrigger = true;
     }
-    if (binding.kind === "submit") hasSubmissionTrigger = true;
+    if (requireSubmissionTrigger && !hasSubmissionTrigger) {
+      throw new Error(`Input "${id}" controller requires a submit binding or an auto-submit choice binding`);
+    }
   }
-  if (!hasSubmissionTrigger) {
-    throw new Error(`Input "${id}" controller requires a submit binding or an auto-submit choice binding`);
+  validateControllerBindings(value.controller.bindings, "controller", { requireSubmissionTrigger: true });
+  if (value.controller.submitted !== undefined) {
+    assertPlainObject(value.controller.submitted, `Input "${id}" submitted controller`);
+    if (!String(value.controller.submitted.layoutStateId || "").trim()) {
+      throw new Error(`Input "${id}" submitted controller requires layoutStateId`);
+    }
+    validateControllerBindings(value.controller.submitted.bindings, "submitted controller");
   }
   const completion = String(value.completion || "allRecipients");
   if (!INPUT_COMPLETION_POLICIES.has(completion)) {
@@ -271,7 +283,10 @@ function validateRendererRegistration(kind, id, value) {
     throw new Error(`Renderer "${id}" target requires layoutElementId`);
   }
   const scope = String(value.target.layoutScope || "moment");
-  if (!["global", "moment"].includes(scope)) throw new Error(`Renderer "${id}" has unsupported layoutScope "${scope}"`);
+  if (!["global", "layer", "moment"].includes(scope)) throw new Error(`Renderer "${id}" has unsupported layoutScope "${scope}"`);
+  if (scope === "layer" && !LAYOUT_LAYER_ID_PATTERN.test(String(value.target.layoutLayerId || "").trim())) {
+    throw new Error(`Renderer "${id}" targeting a persistent layer requires a normalized layoutLayerId`);
+  }
   if (typeof value.select !== "function") throw new Error(`Renderer "${id}" requires a select function`);
   if (!Array.isArray(value.bindings) || value.bindings.length === 0) {
     throw new Error(`Renderer "${id}" requires at least one binding`);

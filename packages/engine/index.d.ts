@@ -137,6 +137,10 @@ export interface GameInputRegistration<TState extends Record<string, unknown> = 
     layoutStateId?: string;
     layoutStateIdField?: string;
     bindings: GameInputControllerBinding[];
+    submitted?: {
+      layoutStateId: string;
+      bindings: GameInputControllerBinding[];
+    };
   };
   completion?: "allRecipients" | "anyRecipient" | "manual";
   disconnect?: "wait" | "completeRemaining" | "fault";
@@ -148,7 +152,11 @@ export interface GameInputRegistration<TState extends Record<string, unknown> = 
 
 export interface GameRendererRegistration<TState extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
-  target: { layoutElementId: string; layoutScope?: "moment" | "global" };
+  target: {
+    layoutElementId: string;
+    layoutScope?: "moment" | "global" | "layer";
+    layoutLayerId?: string;
+  };
   bindings: GameRendererBinding[];
   select(context: GameRendererSelectionContext<TState>): unknown;
 }

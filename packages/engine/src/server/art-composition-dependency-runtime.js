@@ -66,7 +66,7 @@ function createArtCompositionDependencyReport({
   for (const composition of compositions || []) visitArtComponents(composition.components, composition);
 
   function visitLayouts(layouts, kind) {
-    const states = [layouts?.global, ...(layouts?.states || [])].filter(Boolean);
+    const states = [layouts?.global, ...(layouts?.layers || []), ...(layouts?.states || [])].filter(Boolean);
     for (const state of states) {
       for (const element of state.elements || []) {
         if (!element.artCompositionId) continue;

@@ -141,6 +141,7 @@ export function LayoutEditor({
   const [gameObjectPickerOpen, setGameObjectPickerOpen] = useState(false);
   const [gameObjectSearch, setGameObjectSearch] = useState("");
   const [groupCreatorOpen, setGroupCreatorOpen] = useState(false);
+  const [groupCreatorKind, setGroupCreatorKind] = useState<"state" | "layer">("state");
   const [newGroupName, setNewGroupName] = useState("New Controller Layout");
   const [newGroupId, setNewGroupId] = useState("new-controller-layout");
   const [groupIdEdited, setGroupIdEdited] = useState(false);
@@ -167,6 +168,8 @@ export function LayoutEditor({
 
   const groups = layoutGroups(layouts);
   const group = groups.find((item) => item.id === selectedGroupId) || layouts.global || null;
+  const selectedPersistentLayer = (layouts.layers || []).find((item) => item.id === selectedGroupId) || null;
+  const selectedControllerState = (layouts.states || []).find((item) => item.id === selectedGroupId) || null;
   const canvasWidth = Number(layouts.canvas?.width || (mode === "controller" ? 390 : 1920));
   const canvasHeight = Number(layouts.canvas?.height || (mode === "controller" ? 844 : 1080));
   const fallbackPreviewWidth = mode === "controller" ? 420 : 960;
@@ -483,16 +486,38 @@ export function LayoutEditor({
             type="button"
             data-layout-add-group
             aria-expanded={groupCreatorOpen}
-            onClick={() => setGroupCreatorOpen((current) => !current)}
+            onClick={() => {
+              setGroupCreatorKind("state");
+              setNewGroupName("New Controller Layout");
+              setNewGroupId("new-controller-layout");
+              setGroupIdEdited(false);
+              setGroupCreatorOpen(true);
+            }}
           >
             Add Game Layout
+          </button>
+          <button
+            type="button"
+            data-layout-add-persistent-layer
+            aria-expanded={groupCreatorOpen && groupCreatorKind === "layer"}
+            onClick={() => {
+              setGroupCreatorKind("layer");
+              setNewGroupName("Persistent Layer");
+              setNewGroupId("persistent-layer");
+              setGroupIdEdited(false);
+              setGroupCreatorOpen(true);
+            }}
+          >
+            Add Persistent Layer
           </button>
           {groupCreatorOpen ? (
             <form
               data-layout-group-create-form
               onSubmit={(event) => {
                 event.preventDefault();
-                const createdId = controller.addLayoutGroup({ id: newGroupId, name: newGroupName });
+                const createdId = groupCreatorKind === "layer"
+                  ? controller.addPersistentLayer({ id: newGroupId, name: newGroupName })
+                  : controller.addLayoutGroup({ id: newGroupId, name: newGroupName });
                 if (!createdId) return;
                 setGroupCreatorOpen(false);
                 setNewGroupName("New Controller Layout");
@@ -527,7 +552,11 @@ export function LayoutEditor({
                   }}
                 />
               </label>
-              <small>Use this ID in a game-owned controller input registration.</small>
+              <small>
+                {groupCreatorKind === "layer"
+                  ? "Use this stable ID as a persistent renderer layer scope."
+                  : "Use this ID in a game-owned controller input registration."}
+              </small>
               <div>
                 <button type="submit" disabled={!newGroupId}>
                   Create
@@ -551,12 +580,50 @@ export function LayoutEditor({
             >
               <span>
                 <strong>{item.name || item.id}</strong>
-                <small>{item.id}</small>
+                <small>
+                  {item.id}
+                  {(layouts.layers || []).some((layer) => layer.id === item.id) ? " · persistent" : ""}
+                </small>
               </span>
             </button>
           </li>
         ))}
       </ol>
+      {selectedPersistentLayer ? (
+        <label data-layout-persistent-layer-order>
+          <span>Persistent layer z-order</span>
+          <input
+            type="number"
+            value={selectedPersistentLayer.zIndex}
+            onChange={(event) => controller.updatePersistentLayer(selectedPersistentLayer.id, {
+              zIndex: Number(event.target.value)
+            })}
+          />
+          <small>Lower values render behind Global (200); active state renders at 300.</small>
+        </label>
+      ) : null}
+      {selectedControllerState && (layouts.layers || []).length ? (
+        <fieldset data-layout-persistent-layer-visibility>
+          <legend>Persistent layers in this state</legend>
+          {(layouts.layers || []).map((layer) => {
+            const visible = !(selectedControllerState.hiddenLayers || []).includes(layer.id);
+            return (
+              <label key={layer.id}>
+                <input
+                  type="checkbox"
+                  checked={visible}
+                  onChange={(event) => controller.setPersistentLayerVisible(
+                    selectedControllerState.id,
+                    layer.id,
+                    event.target.checked
+                  )}
+                />
+                <span>{layer.name || layer.id}</span>
+              </label>
+            );
+          })}
+        </fieldset>
+      ) : null}
       <div className="layout-object-list-panel" data-layout-react-component="object-list">
         <h3>Game Objects</h3>
         {group ? (

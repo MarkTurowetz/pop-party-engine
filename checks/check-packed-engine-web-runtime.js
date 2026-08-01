@@ -239,8 +239,19 @@ module.exports = Object.freeze([{
     await assertScreenBoots(browser, startup.localUrl, "stage", {
       pathName: "/stage?stage=PLUG",
       verify: async (page) => {
-        await page.waitForFunction(() => [...document.querySelectorAll("[data-art-component-id='layout-text-field-text']")]
-          .some((element) => element.textContent?.trim() === "PLUGIN 2"));
+        try {
+          await page.waitForFunction(() => [...document.querySelectorAll("[data-art-component-id='layout-text-field-text']")]
+            .some((element) => element.textContent?.trim() === "PLUGIN 2"), { timeout: 5000 });
+        } catch (error) {
+          const state = await page.evaluate(() => ({
+            componentText: [...document.querySelectorAll("[data-art-component-id]")]
+              .map((element) => [element.getAttribute("data-art-component-id"), element.textContent?.trim()]),
+            viewModels: window.currentStageState?.lobby?.gamePlugin?.viewModels || window.currentStageState?.gamePlugin?.viewModels,
+            runtimeFault: window.currentStageState?.lobby?.runtimeFault || window.currentStageState?.runtimeFault,
+            target: document.querySelector("[data-stage-layout-element-id='stagetitle']")?.outerHTML
+          }));
+          throw new Error(`Stage plugin renderer did not paint: ${error.message}; state=${JSON.stringify(state)}`);
+        }
       }
     });
     await assertScreenBoots(browser, startup.localUrl, "controller", {

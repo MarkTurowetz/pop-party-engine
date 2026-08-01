@@ -150,7 +150,13 @@ module.exports = Object.freeze([
           { id: "right", kind: "choice", layoutElementId: "controllerInvalidBanner", field: "side", optionIndex: 1 },
           { id: "amount", kind: "integer", layoutElementId: "controllerTextInput", field: "amount" },
           { id: "submit", kind: "submit", layoutElementId: "controllerTextSubmitButtonContainer" }
-        ]
+        ],
+        submitted: {
+          layoutStateId: "fixture-wager-confirmed",
+          bindings: [
+            { id: "confirmedTarget", kind: "text", layoutElementId: "fixture-wager-confirmation", source: "target", targetComponentId: "text" }
+          ]
+        }
       },
       disconnect: "completeRemaining",
       recipients(context) { return context.players.map((player) => player.id); },
@@ -276,11 +282,69 @@ module.exports = Object.freeze([{
           }
         ]
       };
+      const wagerConfirmedLayout = {
+        id: "fixture-wager-confirmed",
+        name: "Fixture Wager Confirmed",
+        hiddenGlobals: [],
+        hiddenLayers: [],
+        elements: [{
+          id: "fixture-wager-confirmation",
+          name: "Wager Confirmation",
+          selector: "",
+          kind: "art",
+          artCompositionId: "layout-text-field",
+          hidden: false,
+          locked: false,
+          x: 195,
+          y: 420,
+          width: 330,
+          height: 120,
+          scale: 1,
+          rotation: 0,
+          defaultAnimationState: "On",
+          defaultText: "Wager confirmed",
+          fontSize: 32,
+          autoFitText: false,
+          fontFamily: "",
+          fontColor: "#17131f"
+        }]
+      };
+      const persistentContextLayer = {
+        id: "fixture-persistent-context",
+        name: "Fixture Persistent Context",
+        zIndex: 150,
+        elements: [{
+          id: "fixture-persistent-pulse",
+          name: "Persistent Pulse",
+          selector: "",
+          kind: "art",
+          artCompositionId: "layout-text-field",
+          hidden: false,
+          locked: false,
+          x: 195,
+          y: 90,
+          width: 300,
+          height: 70,
+          scale: 1,
+          rotation: 0,
+          defaultAnimationState: "On",
+          defaultText: "Persistent context",
+          fontSize: 24,
+          autoFitText: false,
+          fontFamily: "",
+          fontColor: "#17131f"
+        }]
+      };
       const controllerLayouts = {
         ...controllerLayoutsPayload.layouts,
+        layers: [
+          ...(controllerLayoutsPayload.layouts.layers || []).filter((layer) => layer.id !== persistentContextLayer.id),
+          persistentContextLayer
+        ],
         states: [
-          ...controllerLayoutsPayload.layouts.states.filter((state) => state.id !== customInputLayout.id),
-          customInputLayout
+          ...controllerLayoutsPayload.layouts.states.filter((state) => ![customInputLayout.id, wagerConfirmedLayout.id].includes(state.id)),
+          customInputLayout,
+          wagerConfirmedLayout
         ]
       };
       const controllerLayoutSaveResponse = await fetch(first.startup.localUrl + "/api/controller-layouts", {
@@ -550,7 +614,8 @@ module.exports = Object.freeze([{
           leftPressed: left?.getAttribute("aria-pressed"),
           rightPressed: right?.getAttribute("aria-pressed"),
           leftSelected: left?.classList.contains("is-selected") === true,
-          hostSelected: left?.parentElement?.dataset.gamePluginInputSelected
+          hostSelected: left?.parentElement?.dataset.gamePluginInputSelected,
+          focused: document.activeElement === field
         };
       });
       await controllerPage.reload({ waitUntil: "load" });
@@ -563,6 +628,28 @@ module.exports = Object.freeze([{
         value: document.querySelector('[data-game-plugin-input-binding="amount"]')?.value,
         leftPressed: document.querySelector('[data-game-plugin-input-binding="left"]')?.getAttribute("aria-pressed")
       }));
+      await controllerPage.evaluate(() => {
+        const host = document.querySelector('[data-controller-layout-scope="layer:fixture-persistent-context"][data-controller-layout-element-id="fixture-persistent-pulse"]');
+        const globalHost = document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]');
+        if (!host || !globalHost) return;
+        window.__fixturePersistentHost = host;
+        window.__fixturePersistentArtLayer = host.querySelector(":scope > .controller-widget-art-layer");
+        window.__fixturePersistentRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(host);
+        window.__fixtureGlobalHost = globalHost;
+        window.__fixtureGlobalRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(globalHost);
+        window.__fixturePersistentAnimation = host.animate(
+          [{ opacity: 1 }, { opacity: 0.82 }, { opacity: 1 }],
+          { duration: 500, iterations: Infinity }
+        );
+      });
+      await controllerPage.waitForTimeout(120);
+      const persistentIdentityBefore = await controllerPage.evaluate(() => ({
+        scope: window.__fixturePersistentHost?.getAttribute("data-controller-layout-scope"),
+        zIndex: window.__fixturePersistentHost ? getComputedStyle(window.__fixturePersistentHost).zIndex : "",
+        persistentRendererPresent: Boolean(window.__fixturePersistentRenderer),
+        globalRendererPresent: Boolean(window.__fixtureGlobalRenderer),
+        animationTime: Number(window.__fixturePersistentAnimation?.currentTime || 0)
+      }));
       await controllerPage.locator('[data-game-plugin-input-binding="left"]').click();
       await controllerPage.locator('[data-game-plugin-input-binding="amount"]').fill("17");
       const browserSubmitResponse = controllerPage.waitForResponse((response) => (
@@ -572,6 +659,24 @@ module.exports = Object.freeze([{
       const browserWagerResponse = await browserSubmitResponse;
       const browserWagerRequest = JSON.parse(browserWagerResponse.request().postData() || "{}");
       const firstWagerSubmit = await browserWagerResponse.json();
+      await controllerPage.waitForFunction(() => (
+        window.controllerState?.lobby?.gamePlugin?.input?.submitted === true
+        && window.controllerState?.lobby?.gamePlugin?.input?.layoutStateId === "fixture-wager-confirmed"
+        && document.querySelector('[data-controller-layout-element-id="fixture-wager-confirmation"]')
+        && document.querySelectorAll("[data-game-plugin-input-binding]").length === 0
+      ), null, { timeout: 15_000 });
+      const submittedControllerState = await controllerPage.evaluate(() => ({
+        layoutStateId: window.controllerState?.lobby?.gamePlugin?.input?.layoutStateId,
+        submitted: window.controllerState?.lobby?.gamePlugin?.input?.submitted,
+        activeControls: document.querySelectorAll("[data-game-plugin-input-binding]").length,
+        persistentHostRetained: window.__fixturePersistentHost === document.querySelector('[data-controller-layout-scope="layer:fixture-persistent-context"][data-controller-layout-element-id="fixture-persistent-pulse"]'),
+        persistentArtRetained: window.__fixturePersistentArtLayer === window.__fixturePersistentHost?.querySelector(":scope > .controller-widget-art-layer"),
+        persistentRendererRetained: window.__fixturePersistentRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixturePersistentHost),
+        globalHostRetained: window.__fixtureGlobalHost === document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]'),
+        globalRendererRetained: window.__fixtureGlobalRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixtureGlobalHost),
+        animationTime: Number(window.__fixturePersistentAnimation?.currentTime || 0),
+        animationState: window.__fixturePersistentAnimation?.playState
+      }));
       const submitPluginInput = async (joined, lobby, payload, id) => (await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
         method: "POST",
         headers: playerHeaders(joined),
@@ -591,6 +696,18 @@ module.exports = Object.freeze([{
         body: JSON.stringify(browserWagerRequest)
       })).json();
       const secondWagerSubmit = await submitPluginInput(two, twoWagerLobby, { side: "under", amount: 22 }, "wager-two");
+      await controllerPage.waitForFunction(() => window.controllerState?.lobby?.action?.id === "fixture-input-hit", null, { timeout: 15_000 });
+      const transitionedControllerIdentity = await controllerPage.evaluate(() => ({
+        persistentHostRetained: window.__fixturePersistentHost === document.querySelector('[data-controller-layout-scope="layer:fixture-persistent-context"][data-controller-layout-element-id="fixture-persistent-pulse"]'),
+        persistentArtRetained: window.__fixturePersistentArtLayer === window.__fixturePersistentHost?.querySelector(":scope > .controller-widget-art-layer"),
+        persistentRendererRetained: window.__fixturePersistentRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixturePersistentHost),
+        globalHostRetained: window.__fixtureGlobalHost === document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]'),
+        globalRendererRetained: window.__fixtureGlobalRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixtureGlobalHost),
+        originalGlobalConnected: window.__fixtureGlobalHost?.isConnected === true,
+        globalCandidates: document.querySelectorAll('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]').length,
+        animationTime: Number(window.__fixturePersistentAnimation?.currentTime || 0),
+        animationState: window.__fixturePersistentAnimation?.playState
+      }));
       const constantsResponse = await fetch(first.startup.localUrl + "/api/game-constants");
       const constantsPayload = await constantsResponse.json();
       constantsPayload.constants.gameTitle = "Generated Fixture Edited";
@@ -653,6 +770,8 @@ module.exports = Object.freeze([{
         customControllerLayoutReloaded: secondControllerLayouts.layouts.states
           .some((state) => state.id === "fixture-plugin-input"
             && state.elements.some((element) => element.id === "fixture-hit-button")),
+        persistentLayerReloaded: secondControllerLayouts.layouts.layers
+          ?.some((layer) => layer.id === "fixture-persistent-context" && layer.zIndex === 150),
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
           && controllerHtml.includes("generated-fixture.controllerCounter"),
         pluginViewModel: configuredLobby.gamePlugin?.viewModels?.["generated-fixture.stageCounter"]?.label,
@@ -676,6 +795,11 @@ module.exports = Object.freeze([{
           oneWagerLobby.gamePlugin?.input?.viewModel?.target,
           twoWagerLobby.gamePlugin?.input?.viewModel?.target
         ],
+        waitingWagerLayout: twoWagerLobby.gamePlugin?.input?.layoutStateId,
+        submittedWagerLayout: firstWagerSubmit.lobby?.gamePlugin?.input?.layoutStateId,
+        persistentIdentityBefore,
+        submittedControllerState,
+        transitionedControllerIdentity,
         wagerInitialState,
         wagerEditedState,
         wagerReloadedState,
@@ -706,6 +830,7 @@ module.exports = Object.freeze([{
     || development.flowSaveStatus !== 200
     || development.controllerLayoutSaveStatus !== 200
     || !development.customControllerLayoutReloaded
+    || !development.persistentLayerReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"
     || development.branchSelected !== "branch-hit"
@@ -733,17 +858,41 @@ module.exports = Object.freeze([{
     || development.wagerEditedState?.rightPressed !== "false"
     || !development.wagerEditedState?.leftSelected
     || development.wagerEditedState?.hostSelected !== "true"
+    || !development.wagerEditedState?.focused
     || development.wagerReloadedState?.value !== "7"
     || development.wagerReloadedState?.leftPressed !== "false"
     || development.wagerRestartedState?.value !== "7"
     || development.wagerRestartedState?.leftPressed !== "true"
     || development.wagerRestartedState?.hostSelected !== "true"
     || JSON.stringify(development.browserWagerPayload) !== JSON.stringify({ side: "over", amount: 17 })
+    || development.waitingWagerLayout !== "controller-text-input"
+    || development.submittedWagerLayout !== "fixture-wager-confirmed"
+    || development.persistentIdentityBefore?.scope !== "layer:fixture-persistent-context"
+    || development.persistentIdentityBefore?.zIndex !== "150"
+    || !development.persistentIdentityBefore?.persistentRendererPresent
+    || !development.persistentIdentityBefore?.globalRendererPresent
+    || development.submittedControllerState?.layoutStateId !== "fixture-wager-confirmed"
+    || development.submittedControllerState?.submitted !== true
+    || development.submittedControllerState?.activeControls !== 0
+    || !development.submittedControllerState?.persistentHostRetained
+    || !development.submittedControllerState?.persistentArtRetained
+    || !development.submittedControllerState?.persistentRendererRetained
+    || !development.submittedControllerState?.globalHostRetained
+    || !development.submittedControllerState?.globalRendererRetained
+    || development.submittedControllerState?.animationState !== "running"
+    || !(development.submittedControllerState?.animationTime > development.persistentIdentityBefore?.animationTime)
+    || !development.transitionedControllerIdentity?.persistentHostRetained
+    || !development.transitionedControllerIdentity?.persistentArtRetained
+    || !development.transitionedControllerIdentity?.persistentRendererRetained
+    || !development.transitionedControllerIdentity?.globalHostRetained
+    || !development.transitionedControllerIdentity?.globalRendererRetained
+    || development.transitionedControllerIdentity?.animationState !== "running"
+    || !(development.transitionedControllerIdentity?.animationTime >= development.submittedControllerState?.animationTime)
     || !development.firstWagerWaited
     || !development.duplicateWagerIgnored
     || development.wagerCompletionAction !== "fixture-input-hit"
     || development.secondFlowActionType !== "generated-fixture.increment") {
-    throw new Error("Generated game tools did not persist an independently valid local content revision");
+    throw new Error(`Generated game tools did not persist an independently valid local content revision: ${JSON.stringify(development)}`);
   }
   if (!fs.existsSync(path.join(targetRoot, ".pop-party", "content", "content-bundle.json"))) {
     throw new Error("Generated game development workspace was not created inside the game");

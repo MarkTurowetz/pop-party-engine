@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1240",
+  "version": "1.0.17.1241",
   "baseVersion": "1.0.17",
-  "buildNumber": 1240,
-  "commit": "5d2dbe0f",
-  "branch": "codex/flow-canvas-world-bounds-1.3.27",
-  "generatedAt": "2026-08-01T02:30:55.262Z"
+  "buildNumber": 1241,
+  "commit": "65c96202",
+  "branch": "codex/controller-layers-submitted-state-1.3.28",
+  "generatedAt": "2026-08-01T03:25:08.772Z"
 }

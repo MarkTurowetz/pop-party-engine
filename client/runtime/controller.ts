@@ -494,10 +494,10 @@ function getControllerSessionRuntime() {
   );
 }
 
-let currentControllerViewVisitKey = "";
 let lastRenderedControllerStageCode = "";
 let lastRenderedControllerSessionId = -1;
 let lastRenderedControllerRevision = -1;
+let lastControllerViewStateId = "";
 
 function applyControllerLayoutForPhase(
   phase: string,
@@ -507,15 +507,6 @@ function applyControllerLayoutForPhase(
   const lobby = w.controllerState?.lobby as Dict | undefined;
   const player = w.controllerState?.player as Dict | undefined;
   const visitKey = controllerViewVisitKey(lobby, player, phase);
-  const isNewVisit = Boolean(visitKey && visitKey !== currentControllerViewVisitKey);
-  if (isNewVisit) {
-    getControllerGlobalActionView().dispose();
-    getControllerLocalButtonRuntime().dispose();
-    getControllerChoiceInputView().reset();
-    getControllerTextInputView().reset();
-    getGamePluginInputView().reset();
-  }
-  if (visitKey) currentControllerViewVisitKey = visitKey;
   getControllerGlobalActionView().prepareForLayout(phase);
   if (phase !== controllerLayoutStateIds.voiceInput) getControllerVoiceInput().stopRecognition();
   getControllerLocalButtonRuntime().prepareForLayout(phase === "starting" ? controllerLayoutStateIds.lobby : phase);
@@ -651,6 +642,12 @@ function renderControllerState(lobbyInput: unknown): void {
   const controllerPhase = (lobby.phase as string) || "lobby";
   w.controllerState.phase = controllerPhase;
   const renderedState = getControllerStateRuntime().render(lobby, me);
+  if (lastControllerViewStateId && lastControllerViewStateId !== renderedState.id) {
+    if (lastControllerViewStateId === "gamePluginInput") getGamePluginInputView().reset();
+    if (lastControllerViewStateId === "choiceInput") getControllerChoiceInputView().reset();
+    if (lastControllerViewStateId === "textInput") getControllerTextInputView().reset();
+  }
+  lastControllerViewStateId = renderedState.id;
   // Layout application can recreate the authored banner prefab. Player data
   // must be injected after that lifecycle boundary so its default "PLAYER"
   // text can never replace the current identity on refresh or a later visit.

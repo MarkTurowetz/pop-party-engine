@@ -1,5 +1,6 @@
 import type {
   ArtComposition,
+  ControllerLayoutLayer,
   LayoutElement,
   LayoutState,
   StageLayoutCollection
@@ -123,6 +124,7 @@ function serializeGroup(raw: LayoutState, mode: LayoutMode): LayoutState {
     name: String(group.name || ""),
     hiddenInStates: group.id === "global" ? group.hiddenInStates === true : false,
     hiddenGlobals: Array.isArray(group.hiddenGlobals) ? [...group.hiddenGlobals] : [],
+    hiddenLayers: Array.isArray(group.hiddenLayers) ? [...group.hiddenLayers] : [],
     elements: (Array.isArray(group.elements) ? group.elements : []).map((element) =>
       serializeElement(element as LayoutElement, mode)
     )
@@ -136,7 +138,7 @@ export function serializeLayoutsForSave(
   const fallbackCanvas =
     mode === "controller" ? { width: 390, height: 844 } : { width: 1920, height: 1080 };
   const canvas = (layouts?.canvas || {}) as { width?: number; height?: number };
-  return {
+  const result = {
     canvas: {
       width: Number(canvas.width || fallbackCanvas.width),
       height: Number(canvas.height || fallbackCanvas.height)
@@ -145,8 +147,15 @@ export function serializeLayoutsForSave(
       (layouts?.global as LayoutState) || { id: "global", name: "Global Layout", elements: [] },
       mode
     ),
-    states: (layouts?.states || []).map((state) => serializeGroup(state as LayoutState, mode))
+    states: (layouts?.states || []).map((state) => serializeGroup(state as LayoutState, mode)),
+    ...(mode === "controller" ? {
+      layers: ((layouts?.layers || []) as ControllerLayoutLayer[]).map((layer, index) => ({
+        ...serializeGroup(layer, mode),
+        zIndex: Number.isFinite(Number(layer.zIndex)) ? Number(layer.zIndex) : (index + 1) * 100
+      }))
+    } : {})
   } as StageLayoutCollection;
+  return result;
 }
 
 export function layoutSnapshot(
@@ -156,8 +165,8 @@ export function layoutSnapshot(
   return JSON.stringify(serializeLayoutsForSave(layouts, mode));
 }
 
-/** All groups (global + states) for a layout collection. */
+/** All authorable groups for a layout collection. */
 export function layoutGroups(layouts: StageLayoutCollection | null | undefined): LayoutState[] {
   if (!layouts) return [];
-  return [layouts.global, ...(layouts.states || [])].filter(Boolean) as LayoutState[];
+  return [layouts.global, ...(layouts.layers || []), ...(layouts.states || [])].filter(Boolean) as LayoutState[];
 }

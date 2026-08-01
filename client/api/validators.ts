@@ -90,6 +90,13 @@ function assertLayoutCollection(value: unknown, endpoint: string, label: string)
   const global = assertRecord(layouts.global, endpoint, `${label}.global`);
   assertString(global.id, endpoint, `${label}.global.id`);
   assertArray(global.elements, endpoint, `${label}.global.elements`);
+  const layers = layouts.layers === undefined ? [] : assertArray(layouts.layers, endpoint, `${label}.layers`);
+  layers.forEach((layer, index) => {
+    const item = assertRecord(layer, endpoint, `${label}.layers[${index}]`);
+    assertString(item.id, endpoint, `${label}.layers[${index}].id`);
+    assertNumber(item.zIndex, endpoint, `${label}.layers[${index}].zIndex`);
+    assertArray(item.elements, endpoint, `${label}.layers[${index}].elements`);
+  });
   const states = assertArray(layouts.states, endpoint, `${label}.states`);
   states.forEach((state, stateIndex) => {
     const stateLabel = `${label}.states[${stateIndex}]`;
