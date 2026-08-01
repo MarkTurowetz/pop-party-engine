@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1244",
+  "version": "1.0.17.1245",
   "baseVersion": "1.0.17",
-  "buildNumber": 1244,
-  "commit": "8334701c",
-  "branch": "codex/controller-input-runtime-1.3.30",
-  "generatedAt": "2026-08-01T10:05:50.851Z"
+  "buildNumber": 1245,
+  "commit": "1ffcfef4",
+  "branch": "codex/release-engine-1.3.30",
+  "generatedAt": "2026-08-01T10:15:07.314Z"
 }
