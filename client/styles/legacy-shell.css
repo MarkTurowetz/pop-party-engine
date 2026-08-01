@@ -1509,6 +1509,11 @@ body.tool-dashboard-mode .layout-shell {
   pointer-events: none !important;
 }
 
+.controller-layout-plugin-input-unavailable {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 .game-plugin-input-control {
   position: absolute;
   inset: 0;

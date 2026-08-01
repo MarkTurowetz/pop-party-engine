@@ -244,11 +244,16 @@ function createGameActionExecutor({
       })
     });
     try {
+      const revisionBeforeExecution = Number(room.revision || 0);
       const result = config.execute(context, Object.freeze(cloneJson(action, {})));
       if (result && typeof result.then === "function") {
         throw new Error("Game action execute functions must be synchronous");
       }
-      if (broadcastRequested && execution.deferBroadcast !== true) queueMicrotask(() => broadcastLobby(room));
+      if (broadcastRequested && execution.deferBroadcast !== true) {
+        queueMicrotask(() => {
+          if (Number(room.revision || 0) === revisionBeforeExecution) broadcastLobby(room);
+        });
+      }
       return true;
     } catch (error) {
       createRuntimeFault(room, {

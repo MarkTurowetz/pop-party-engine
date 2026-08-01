@@ -119,9 +119,11 @@ export type GameInputSubmissionField =
   | { id: string; type: "choice"; optionsSource: string }
   | { id: string; type: "integer"; min: number; max: number };
 
+export type GameInputSubmitValues = Readonly<Record<string, string | number>>;
+
 export type GameInputControllerBinding =
   | { id: string; kind: "text"; layoutElementId: string; source: string; targetComponentId: string }
-  | { id: string; kind: "choice"; layoutElementId: string; field: string; optionIndex: number; labelSource?: string; autoSubmit?: boolean }
+  | { id: string; kind: "choice"; layoutElementId: string; field: string; optionIndex: number; labelSource?: string; autoSubmit?: boolean; submitValues?: GameInputSubmitValues; holdSubmit?: { seconds: number; submitValues: GameInputSubmitValues } }
   | { id: string; kind: "integer"; layoutElementId: string; field: string }
   | { id: string; kind: "submit"; layoutElementId: string; labelSource?: string };
 
