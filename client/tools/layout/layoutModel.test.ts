@@ -123,6 +123,35 @@ describe("controller layout initial state", () => {
     expect(saved.states[0].hiddenLayers).toEqual(["round-context"]);
   });
 
+  it("serializes authored dynamic choice collection geometry", () => {
+    const source = layouts();
+    source.states[0].elements.push({
+      id: "targets",
+      kind: "collection",
+      x: 195,
+      y: 420,
+      width: 330,
+      height: 500,
+      collectionDirection: "horizontal",
+      collectionGap: 12,
+      collectionDistribution: "space-evenly",
+      collectionAlignment: "center",
+      collectionPadding: 8,
+      collectionOverflow: "scroll",
+      zIndex: 7
+    });
+    expect(serializeLayoutsForSave(source, "controller").states[0].elements[1]).toMatchObject({
+      kind: "collection",
+      collectionDirection: "horizontal",
+      collectionGap: 12,
+      collectionDistribution: "space-evenly",
+      collectionAlignment: "center",
+      collectionPadding: 8,
+      collectionOverflow: "scroll",
+      zIndex: 7
+    });
+  });
+
   it("serializes the stage background layer separately from normal content", () => {
     expect(
       serializeLayoutsForSave(stageLayouts("BACKGROUND"), "stage").global.elements[0].layoutLayer

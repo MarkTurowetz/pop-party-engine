@@ -117,6 +117,38 @@ provide custom visual states; the engine also supplies a visible generic
 selected-state fallback. These local values and states survive normal lobby
 heartbeat rendering until submission, while a reload or new input visit starts
 from the server-provided private view model.
+
+Variable-cardinality choices use one Tools-authored Controller Layout collection
+instead of fixed placeholder slots. The collection owns its bounds, direction,
+gap, distribution, alignment, padding, overflow, and local z-order. A
+`choiceCollection` binding supplies one existing Controller Game Object as the
+item template:
+
+```js
+{
+  id: "targets",
+  kind: "choiceCollection",
+  layoutElementId: "target-options",
+  field: "targetPlayerId",
+  item: {
+    artCompositionId: "my-game-choice-button",
+    targetComponentId: "option-text",
+    labelSource: "label",
+    disabledSource: "disabled"
+  },
+  autoSubmit: true
+}
+```
+
+The corresponding choice submission field's `optionsSource` remains the single
+private option source. Every option's `id` is both its reconciliation key and
+its server-validated submitted value. The runtime creates no placeholder items,
+retains unchanged DOM and Art renderer identities across heartbeats and keyed
+reordering, and disables a removed item before disposing it. The item Game
+Object must be a same-surface Controller `gameObject`; missing, Stage-owned, or
+prefab templates fail closed. Fixed `choice` bindings remain supported for
+genuinely fixed-cardinality decisions.
+
 Inputs declare `completion` (`allRecipients`, `anyRecipient`, or `manual`),
 `disconnect` (`wait`, `completeRemaining`, or `fault`), and an optional
 authored timeout field. Every submission carries the room session, action, and

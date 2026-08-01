@@ -240,6 +240,14 @@ concepts into focused modules.
     model, and the client removes the active controls before they can submit again. Multiple text
     bindings targeting one submitted Art host are combined into one render so no later binding can
     restore an earlier component's authored default text.
+  - Variable plugin choices use a Tools-authored Controller Layout `collection` plus a
+    `choiceCollection` binding. The private option `id` is the keyed DOM/Art identity and the
+    server-validated submitted value. One native button directly hosts one existing Controller
+    Game Object, so visible and interactive bounds stay identical. Keyed reconciliation preserves
+    unchanged controls, renderers, timelines, focus, and active hold gestures across heartbeats;
+    removed items are disabled and marked stale before their renderer is disposed. Collection
+    geometry is authored in Layout, and the Layout preview renders the same item Game Object and
+    long-label override through the shared geometry rules. Fixed `choice` bindings remain valid.
   - Controller Layout supports named persistent layers in addition to Global and the active state.
     Each layer has a normalized ID and explicit z-index, remains mounted across active-state visits,
     and can be hidden per state without clearing its DOM node, Art renderer, or timeline. Runtime

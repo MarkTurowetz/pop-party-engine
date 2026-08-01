@@ -124,6 +124,21 @@ export type GameInputSubmitValues = Readonly<Record<string, string | number>>;
 export type GameInputControllerBinding =
   | { id: string; kind: "text"; layoutElementId: string; source: string; targetComponentId: string }
   | { id: string; kind: "choice"; layoutElementId: string; field: string; optionIndex: number; labelSource?: string; autoSubmit?: boolean; submitValues?: GameInputSubmitValues; holdSubmit?: { seconds: number; submitValues: GameInputSubmitValues } }
+  | {
+      id: string;
+      kind: "choiceCollection";
+      layoutElementId: string;
+      field: string;
+      item: {
+        artCompositionId: string;
+        targetComponentId: string;
+        labelSource?: string;
+        disabledSource?: string;
+      };
+      autoSubmit?: boolean;
+      submitValues?: GameInputSubmitValues;
+      holdSubmit?: { seconds: number; submitValues: GameInputSubmitValues };
+    }
   | { id: string; kind: "integer"; layoutElementId: string; field: string }
   | { id: string; kind: "submit"; layoutElementId: string; labelSource?: string };
 

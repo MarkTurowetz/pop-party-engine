@@ -1531,6 +1531,34 @@ body.tool-dashboard-mode .layout-shell {
   cursor: pointer;
 }
 
+.controller-choice-collection {
+  min-width: 0;
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.controller-choice-collection > .controller-choice-collection-item.game-plugin-input-control {
+  position: relative;
+  inset: auto;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  touch-action: manipulation;
+}
+
+.controller-choice-collection > .controller-choice-collection-item:focus-visible {
+  outline: 4px solid rgba(36, 88, 255, 0.9);
+  outline-offset: -4px;
+}
+
+.controller-choice-collection > .controller-choice-collection-item[aria-disabled="true"] {
+  cursor: default;
+}
+
 .game-plugin-action-button[aria-pressed="true"],
 .game-plugin-action-button.is-selected {
   outline: 5px solid rgba(255, 225, 86, 0.92);

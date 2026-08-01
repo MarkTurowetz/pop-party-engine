@@ -57,6 +57,7 @@ function createLayoutNormalizationRuntime(options = {}) {
     inferLayoutElementKind: (kind, selector) => {
       const cleanKind = String(kind || "").trim().toLowerCase();
       if (cleanKind === "text") return "text";
+      if (cleanKind === "collection") return "collection";
       return /waitingstatus|joinprompt|stage-title|stage(?:presentation|prompt|intro)|roundintro.*text/i.test(String(selector || ""))
         ? "text"
         : "art";

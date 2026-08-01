@@ -20,7 +20,7 @@ const ACTION_FIELD_CONTROLS = new Set([
 ]);
 const ACTION_CATEGORIES = new Set(["input", "logic", "standard"]);
 const INPUT_FIELD_TYPES = new Set(["choice", "integer"]);
-const INPUT_BINDING_KINDS = new Set(["choice", "integer", "submit", "text"]);
+const INPUT_BINDING_KINDS = new Set(["choice", "choiceCollection", "integer", "submit", "text"]);
 const INPUT_COMPLETION_POLICIES = new Set(["allRecipients", "anyRecipient", "manual"]);
 const INPUT_DISCONNECT_POLICIES = new Set(["wait", "completeRemaining", "fault"]);
 const INPUT_TIMEOUT_POLICIES = new Set(["wait", "complete", "fault"]);
@@ -241,13 +241,27 @@ function validateInputRegistration(id, value) {
       if (binding.kind === "text" && (!String(binding.source || "").trim() || !String(binding.targetComponentId || "").trim())) {
         throw new Error(`Input "${id}" text binding "${bindingId}" requires source and targetComponentId`);
       }
-      if (binding.kind === "choice") {
+      if (binding.kind === "choice" || binding.kind === "choiceCollection") {
         const submissionField = submissionById.get(String(binding.field || ""));
         if (submissionField?.type !== "choice") {
-          throw new Error(`Input "${id}" choice binding "${bindingId}" must reference a choice submission field`);
+          throw new Error(`Input "${id}" ${binding.kind} binding "${bindingId}" must reference a choice submission field`);
         }
-        if (!Number.isInteger(Number(binding.optionIndex)) || Number(binding.optionIndex) < 0) {
+        if (binding.kind === "choice" && (!Number.isInteger(Number(binding.optionIndex)) || Number(binding.optionIndex) < 0)) {
           throw new Error(`Input "${id}" choice binding "${bindingId}" requires a non-negative optionIndex`);
+        }
+        if (binding.kind === "choiceCollection") {
+          assertPlainObject(binding.item, `Input "${id}" choiceCollection binding "${bindingId}" item`);
+          if (!String(binding.item.artCompositionId || "").trim()) {
+            throw new Error(`Input "${id}" choiceCollection binding "${bindingId}" item requires artCompositionId`);
+          }
+          if (!String(binding.item.targetComponentId || "").trim()) {
+            throw new Error(`Input "${id}" choiceCollection binding "${bindingId}" item requires targetComponentId`);
+          }
+          for (const sourceName of ["labelSource", "disabledSource"]) {
+            if (binding.item[sourceName] !== undefined && !String(binding.item[sourceName] || "").trim()) {
+              throw new Error(`Input "${id}" choiceCollection binding "${bindingId}" item ${sourceName} must be a non-empty property path`);
+            }
+          }
         }
         if (binding.submitValues !== undefined) validateSubmitValues(binding.submitValues, `binding "${bindingId}" submitValues`);
         if (binding.holdSubmit !== undefined) {

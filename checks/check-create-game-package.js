@@ -225,6 +225,53 @@ module.exports = Object.freeze([
         context.state.gestures[context.actor.id] = payload;
       }
     }
+  },
+  {
+    id: "generated-fixture.dynamicTargets",
+    value: {
+      name: "Dynamic Targets",
+      fields: [
+        { key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" },
+        { key: "optionCount", label: "Option Count", control: "integer", min: 0, max: 8, default: 2 }
+      ],
+      submission: [{ id: "targetPlayerId", type: "choice", optionsSource: "targets" }],
+      controller: {
+        layoutStateId: "fixture-dynamic-targets",
+        bindings: [{
+          id: "targets",
+          kind: "choiceCollection",
+          layoutElementId: "fixture-target-collection",
+          field: "targetPlayerId",
+          item: {
+            artCompositionId: "controller-text-input-field",
+            targetComponentId: "placeholder-text",
+            labelSource: "label",
+            disabledSource: "disabled"
+          },
+          autoSubmit: true,
+          holdSubmit: { seconds: 1.5, submitValues: {} }
+        }]
+      },
+      recipients(context) { return context.players.slice(0, 2).map((player) => player.id); },
+      view(context, action) {
+        const requested = Math.max(0, Number(action.optionCount || 0));
+        const count = context.viewer.name === "Two" ? Math.max(0, Math.min(requested, 2)) : requested;
+        return {
+          viewer: context.viewer.id,
+          targets: Array.from({ length: count }, (_, index) => ({
+            id: context.viewer.id + "-target-" + index,
+            label: index === 2
+              ? "A very long private target label for " + context.viewer.name + " number " + index
+              : context.viewer.name + " target " + index,
+            disabled: index === 5
+          }))
+        };
+      },
+      submit(context, payload) {
+        context.state.dynamicTargets ||= {};
+        context.state.dynamicTargets[context.actor.id] = payload.targetPlayerId;
+      }
+    }
   }
 ]);
 `);
@@ -430,6 +477,35 @@ module.exports = Object.freeze([{
           fontColor: "#17131f"
         }]
       };
+      const dynamicTargetsLayout = {
+        id: "fixture-dynamic-targets",
+        name: "Fixture Dynamic Targets",
+        hiddenGlobals: [],
+        hiddenLayers: [],
+        elements: [{
+          id: "fixture-target-collection",
+          name: "Private Target Collection",
+          selector: "",
+          kind: "collection",
+          artCompositionId: "",
+          hidden: false,
+          locked: false,
+          x: 195,
+          y: 430,
+          width: 350,
+          height: 280,
+          scale: 1,
+          rotation: 0,
+          defaultAnimationState: "On",
+          collectionDirection: "vertical",
+          collectionGap: 12,
+          collectionDistribution: "start",
+          collectionAlignment: "stretch",
+          collectionPadding: 10,
+          collectionOverflow: "auto",
+          zIndex: 25
+        }]
+      };
       const persistentContextLayer = {
         id: "fixture-persistent-context",
         name: "Fixture Persistent Context",
@@ -463,10 +539,11 @@ module.exports = Object.freeze([{
           persistentContextLayer
         ],
         states: [
-          ...controllerLayoutsPayload.layouts.states.filter((state) => ![customInputLayout.id, wagerConfirmedLayout.id, gestureConfirmedLayout.id].includes(state.id)),
+          ...controllerLayoutsPayload.layouts.states.filter((state) => ![customInputLayout.id, wagerConfirmedLayout.id, gestureConfirmedLayout.id, dynamicTargetsLayout.id].includes(state.id)),
           customInputLayout,
           wagerConfirmedLayout,
-          gestureConfirmedLayout
+          gestureConfirmedLayout,
+          dynamicTargetsLayout
         ]
       };
       const controllerLayoutSaveResponse = await fetch(first.startup.localUrl + "/api/controller-layouts", {
@@ -1025,6 +1102,197 @@ module.exports = Object.freeze([{
       ), null, { timeout: 15_000 });
       const secondHoldSubmit = await submitPluginInputResponse(two, twoGestureHoldLobby, { choice: "delta", mode: "hold" }, "gesture-hold-two");
       const gestureBrowserSubmissionCountAfterHold = gestureBrowserSubmissionCount;
+      const secondControllerPage = await browser.newPage();
+      await secondControllerPage.addInitScript((session) => {
+        sessionStorage.setItem("partyTemplatePlayerId", session.playerId);
+        sessionStorage.setItem("partyTemplatePlayerName", session.playerName);
+        sessionStorage.setItem("partyTemplateStageCode", "PLUG");
+        sessionStorage.setItem("partyTemplatePlayerCapability", session.playerCapability);
+      }, {
+        playerId: two.player.id,
+        playerName: two.player.name,
+        playerCapability: two.playerCapability
+      });
+      await secondControllerPage.goto(first.startup.localUrl + "/controller?stage=PLUG&name=Two&join=1", { waitUntil: "load" });
+      await secondControllerPage.waitForFunction((playerId) => window.controllerState?.player?.id === playerId, two.player.id, { timeout: 15_000 });
+      const dynamicFlowForCount = (optionCount) => ({
+        ...flowPayload.flow,
+        states: flowPayload.flow.states.map((state) => state.id === "lobby" ? {
+          ...fixtureLobby,
+          entryTargetActionId: "fixture-dynamic-targets",
+          actions: [
+            {
+              id: "fixture-dynamic-targets",
+              name: "Dynamic Targets " + optionCount,
+              type: "generated-fixture.dynamicTargets",
+              optionCount,
+              answersSubmittedTargetActionId: "fixture-dynamic-done",
+              timing: { mode: "E+", seconds: 0 },
+              subActions: []
+            },
+            {
+              id: "fixture-dynamic-done",
+              name: "Dynamic Targets Done",
+              type: "presentText",
+              text: "Dynamic targets complete",
+              timing: { mode: "E+", seconds: 0 },
+              subActions: [],
+              nextTargetActionId: "none"
+            }
+          ]
+        } : state)
+      });
+      const configureDynamicCount = async (optionCount) => {
+        await fetch(first.startup.localUrl + "/api/stage/PLUG/test-config", {
+          method: "POST",
+          headers: stageHeaders,
+          body: JSON.stringify({ flow: dynamicFlowForCount(optionCount) })
+        });
+        const firstLobby = await heartbeat(one);
+        const secondLobby = await heartbeat(two);
+        try {
+          await controllerPage.waitForFunction(({ actionId, count }) => (
+            window.controllerState?.lobby?.gamePlugin?.input?.actionId === actionId
+            && document.querySelectorAll('[data-game-plugin-choice-collection-item="true"]').length === count
+          ), { actionId: "fixture-dynamic-targets", count: optionCount }, { timeout: 15_000 });
+        } catch (error) {
+          const diagnostic = await controllerPage.evaluate(() => ({
+            input: window.controllerState?.lobby?.gamePlugin?.input,
+            collectionHosts: Array.from(document.querySelectorAll('[data-controller-layout-element-id]'))
+              .map((element) => ({
+                id: element.getAttribute('data-controller-layout-element-id'),
+                kind: element.getAttribute('data-controller-layout-element-kind'),
+                scope: element.getAttribute('data-controller-layout-scope'),
+                children: element.querySelectorAll('[data-game-plugin-choice-collection-item="true"]').length
+              })),
+            collectionItems: document.querySelectorAll('[data-game-plugin-choice-collection-item="true"]').length,
+            bodyText: document.body.innerText.slice(0, 500)
+          }));
+          throw new Error("Dynamic Controller collection did not reconcile: " + JSON.stringify({ optionCount, diagnostic }), { cause: error });
+        }
+        await secondControllerPage.waitForFunction(({ actionId, count }) => (
+          window.controllerState?.lobby?.gamePlugin?.input?.actionId === actionId
+          && document.querySelectorAll('[data-game-plugin-choice-collection-item="true"]').length === count
+        ), { actionId: "fixture-dynamic-targets", count: Math.min(optionCount, 2) }, { timeout: 15_000 });
+        return { firstLobby, secondLobby };
+      };
+      const dynamicCardinalities = [];
+      for (const count of [0, 1, 2, 6]) {
+        const configured = await configureDynamicCount(count);
+        dynamicCardinalities.push({
+          requested: count,
+          first: configured.firstLobby.gamePlugin?.input?.viewModel?.targets?.length,
+          second: configured.secondLobby.gamePlugin?.input?.viewModel?.targets?.length,
+          stagePrivateInput: (await (await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby")).json()).lobby.gamePlugin?.input
+        });
+      }
+      const dynamicSixOneLobby = await heartbeat(one);
+      const dynamicSixTwoLobby = await heartbeat(two);
+      let dynamicBrowserSubmissionCount = 0;
+      controllerPage.on("request", (request) => {
+        if (request.url().endsWith("/api/game-plugin-input") && request.method() === "POST") dynamicBrowserSubmissionCount += 1;
+      });
+      const dynamicIdentityBefore = await controllerPage.evaluate(() => {
+        const buttons = Array.from(document.querySelectorAll('[data-game-plugin-choice-collection-item="true"]'));
+        const retained = buttons[0];
+        const removed = buttons[3];
+        retained?.focus();
+        window.__fixtureDynamicRetainedButton = retained;
+        window.__fixtureDynamicRetainedRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(retained);
+        window.__fixtureDynamicRetainedArtLayer = retained?.querySelector(":scope > .controller-widget-art-layer");
+        window.__fixtureDynamicRemovedButton = removed;
+        return {
+          count: buttons.length,
+          retainedOption: retained?.dataset.gamePluginInputOption,
+          removedOption: removed?.dataset.gamePluginInputOption,
+          rendererPresent: Boolean(window.__fixtureDynamicRetainedRenderer)
+        };
+      });
+      const dynamicRetained = controllerPage.locator('[data-game-plugin-input-option="' + dynamicIdentityBefore.retainedOption + '"]');
+      await dynamicRetained.dispatchEvent("pointerdown", { pointerId: 191, pointerType: "touch", button: 0, isPrimary: true });
+      await controllerPage.route("**/api/heartbeat", async (route) => {
+        const response = await route.fetch();
+        const payload = await response.json();
+        const input = payload.lobby?.gamePlugin?.input;
+        if (input?.type === "generated-fixture.dynamicTargets") {
+          const targets = input.viewModel.targets;
+          input.viewModel.targets = [targets[1], targets[0], targets[2], targets[4], targets[5], {
+            id: input.viewModel.viewer + "-target-added",
+            label: "New authoritative private target"
+          }];
+          payload.lobby.surfaceRevision = Number(payload.lobby.surfaceRevision || 0) + 1;
+          payload.lobby.revision = Number(payload.lobby.revision || 0) + 1;
+        }
+        await route.fulfill({ response, json: payload });
+      }, { times: 1 });
+      await controllerPage.waitForFunction(() => (
+        document.querySelector('[data-game-plugin-input-option$="-target-added"]')
+        && window.__fixtureDynamicRemovedButton?.isConnected === false
+      ), null, { timeout: 15_000 });
+      const dynamicReconcileState = await controllerPage.evaluate(() => {
+        const retained = window.__fixtureDynamicRetainedButton;
+        const removed = window.__fixtureDynamicRemovedButton;
+        const container = document.querySelector('[data-controller-layout-element-id="fixture-target-collection"]');
+        const buttons = Array.from(container?.querySelectorAll(':scope > [data-game-plugin-choice-collection-item="true"]') || []);
+        const artLayer = retained?.querySelector(":scope > .controller-widget-art-layer");
+        const buttonRect = retained?.getBoundingClientRect();
+        const artRect = artLayer?.getBoundingClientRect();
+        return {
+          count: buttons.length,
+          order: buttons.map((button) => button.dataset.gamePluginInputOption),
+          retained: retained === buttons[1],
+          rendererRetained: window.__fixtureDynamicRetainedRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(retained),
+          artLayerRetained: window.__fixtureDynamicRetainedArtLayer === artLayer,
+          focused: document.activeElement === retained,
+          holding: retained?.dataset.gamePluginInputHolding,
+          ariaBusy: retained?.getAttribute("aria-busy"),
+          removedDisconnected: removed?.isConnected === false,
+          removedDisabled: removed?.disabled === true,
+          removedStale: removed?.dataset.gamePluginInputStale,
+          longLabel: container?.querySelector('[data-game-plugin-input-option$="-target-2"] [data-art-component-id="placeholder-text"]')?.textContent?.trim(),
+          overflowed: Number(container?.scrollHeight || 0) > Number(container?.clientHeight || 0),
+          overflow: container ? getComputedStyle(container).overflow : "",
+          gap: container ? getComputedStyle(container).gap : "",
+          padding: container ? getComputedStyle(container).padding : "",
+          zIndex: container ? getComputedStyle(container).zIndex : "",
+          matchingBounds: Boolean(buttonRect && artRect
+            && Math.abs(buttonRect.left - artRect.left) < 1
+            && Math.abs(buttonRect.top - artRect.top) < 1
+            && Math.abs(buttonRect.width - artRect.width) < 1
+            && Math.abs(buttonRect.height - artRect.height) < 1)
+        };
+      });
+      await dynamicRetained.dispatchEvent("pointercancel", { pointerId: 191, pointerType: "touch", button: 0, isPrimary: true });
+      await controllerPage.evaluate(() => window.__fixtureDynamicRemovedButton?.click());
+      await controllerPage.waitForTimeout(100);
+      const dynamicStaleSubmissionCount = dynamicBrowserSubmissionCount;
+      const dynamicStagePage = await browser.newPage();
+      await dynamicStagePage.goto(first.startup.localUrl + "/stage?stage=PLUG", { waitUntil: "load" });
+      await dynamicStagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-dynamic-targets", null, { timeout: 15_000 });
+      const dynamicStageBefore = await dynamicStagePage.evaluate(() => ({
+        applies: window.__popPartyStageMetrics?.applyCount,
+        surfaceRevision: window.currentStageState?.surfaceRevision
+      }));
+      const dynamicSubmitResponsePromise = controllerPage.waitForResponse((response) => (
+        response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
+      ));
+      await dynamicRetained.click();
+      const dynamicSubmitResponse = await dynamicSubmitResponsePromise;
+      const dynamicSubmitRequest = JSON.parse(dynamicSubmitResponse.request().postData() || "{}");
+      await dynamicStagePage.waitForTimeout(150);
+      const dynamicStageAfterPartial = await dynamicStagePage.evaluate(() => ({
+        applies: window.__popPartyStageMetrics?.applyCount,
+        surfaceRevision: window.currentStageState?.surfaceRevision
+      }));
+      const dynamicSecondResponsePromise = secondControllerPage.waitForResponse((response) => (
+        response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
+      ));
+      await secondControllerPage.locator('[data-game-plugin-choice-collection-item="true"]:not(:disabled)').first().click();
+      await dynamicSecondResponsePromise;
+      await dynamicStagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-dynamic-done", null, { timeout: 15_000 });
+      const dynamicBarrierAction = (await (await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby")).json()).lobby.action?.id;
+      await dynamicStagePage.close();
+      await secondControllerPage.close();
       const transitionBurstActions = Array.from({ length: 24 }, (_, index) => ({
         id: "fixture-transition-burst-" + index,
         name: "Transition Burst " + index,
@@ -1355,6 +1623,11 @@ module.exports = Object.freeze([{
         customControllerLayoutReloaded: secondControllerLayouts.layouts.states
           .some((state) => state.id === "fixture-plugin-input"
             && state.elements.some((element) => element.id === "fixture-hit-button")),
+        dynamicControllerLayoutReloaded: secondControllerLayouts.layouts.states
+          .some((state) => state.id === "fixture-dynamic-targets"
+            && state.elements.some((element) => element.id === "fixture-target-collection"
+              && element.kind === "collection"
+              && element.collectionOverflow === "auto")),
         persistentLayerReloaded: secondControllerLayouts.layouts.layers
           ?.some((layer) => layer.id === "fixture-persistent-context" && layer.zIndex === 150),
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
@@ -1398,6 +1671,20 @@ module.exports = Object.freeze([{
         gestureInvalidStatus: invalidGestureResponse.status,
         gestureSecondHoldStatus: secondHoldSubmit.status,
         gestureSecondHoldAction: secondHoldSubmit.body?.lobby?.action?.id,
+        dynamicCardinalities,
+        dynamicPrivateSets: {
+          firstViewer: dynamicSixOneLobby.gamePlugin?.input?.viewModel?.viewer,
+          secondViewer: dynamicSixTwoLobby.gamePlugin?.input?.viewModel?.viewer,
+          firstIds: dynamicSixOneLobby.gamePlugin?.input?.viewModel?.targets?.map((target) => target.id),
+          secondIds: dynamicSixTwoLobby.gamePlugin?.input?.viewModel?.targets?.map((target) => target.id)
+        },
+        dynamicIdentityBefore,
+        dynamicReconcileState,
+        dynamicStaleSubmissionCount,
+        dynamicSubmitPayload: dynamicSubmitRequest.payload,
+        dynamicStageBefore,
+        dynamicStageAfterPartial,
+        dynamicBarrierAction,
         privateWagerTargets: [
           oneWagerLobby.gamePlugin?.input?.viewModel?.target,
           twoWagerLobby.gamePlugin?.input?.viewModel?.target
@@ -1440,6 +1727,7 @@ module.exports = Object.freeze([{
     || development.flowSaveStatus !== 200
     || development.controllerLayoutSaveStatus !== 200
     || !development.customControllerLayoutReloaded
+    || !development.dynamicControllerLayoutReloaded
     || !development.persistentLayerReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"
@@ -1492,6 +1780,35 @@ module.exports = Object.freeze([{
     || development.gestureInvalidStatus !== 422
     || development.gestureSecondHoldStatus !== 200
     || development.gestureSecondHoldAction !== "fixture-gesture-done"
+    || JSON.stringify(development.dynamicCardinalities.map((item) => [item.requested, item.first, item.second])) !== JSON.stringify([[0, 0, 0], [1, 1, 1], [2, 2, 2], [6, 6, 2]])
+    || development.dynamicCardinalities.some((item) => item.stagePrivateInput != null)
+    || development.dynamicPrivateSets?.firstViewer === development.dynamicPrivateSets?.secondViewer
+    || development.dynamicPrivateSets?.firstIds?.some((id) => development.dynamicPrivateSets?.secondIds?.includes(id))
+    || development.dynamicIdentityBefore?.count !== 6
+    || !development.dynamicIdentityBefore?.rendererPresent
+    || development.dynamicReconcileState?.count !== 6
+    || !development.dynamicReconcileState?.retained
+    || !development.dynamicReconcileState?.rendererRetained
+    || !development.dynamicReconcileState?.artLayerRetained
+    || !development.dynamicReconcileState?.focused
+    || development.dynamicReconcileState?.holding !== "true"
+    || development.dynamicReconcileState?.ariaBusy !== "true"
+    || !development.dynamicReconcileState?.removedDisconnected
+    || !development.dynamicReconcileState?.removedDisabled
+    || development.dynamicReconcileState?.removedStale !== "true"
+    || !development.dynamicReconcileState?.order?.at(-1)?.endsWith("-target-added")
+    || !development.dynamicReconcileState?.longLabel?.toLowerCase().includes("very long private target label")
+    || !development.dynamicReconcileState?.overflowed
+    || development.dynamicReconcileState?.overflow !== "auto"
+    || development.dynamicReconcileState?.gap !== "12px"
+    || development.dynamicReconcileState?.padding !== "10px"
+    || development.dynamicReconcileState?.zIndex !== "325"
+    || !development.dynamicReconcileState?.matchingBounds
+    || development.dynamicStaleSubmissionCount !== 0
+    || JSON.stringify(development.dynamicSubmitPayload) !== JSON.stringify({ targetPlayerId: development.dynamicIdentityBefore?.retainedOption })
+    || development.dynamicStageAfterPartial?.applies !== development.dynamicStageBefore?.applies
+    || development.dynamicStageAfterPartial?.surfaceRevision !== development.dynamicStageBefore?.surfaceRevision
+    || development.dynamicBarrierAction !== "fixture-dynamic-done"
     || JSON.stringify(development.privateWagerTargets) !== JSON.stringify([10, 20])
     || development.wagerInitialState?.value !== "7"
     || !(development.wagerInitialState?.fontSize > 0)

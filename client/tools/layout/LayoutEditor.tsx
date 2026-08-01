@@ -9,6 +9,10 @@ import {
 } from "react";
 import type { ArtAsset, ArtComposition, LayoutElement } from "../../types/game-data";
 import { gameTextHtml } from "../../runtime/gameTextMarkup";
+import {
+  choiceCollectionItemDimensions,
+  choiceCollectionLayoutStyle
+} from "../../runtime/controllerChoiceCollectionLayout";
 import { gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
 import {
   ArtPreviewRenderer,
@@ -43,6 +47,37 @@ export interface LayoutEditorProps {
   controllerController: LayoutController;
   initialMode?: "stage" | "controller";
   surface?: string;
+  gamePluginInputs?: GamePluginInputManifest[];
+}
+
+interface GamePluginChoiceCollectionBinding {
+  kind: "choiceCollection";
+  layoutElementId: string;
+  item: { artCompositionId: string; targetComponentId: string };
+}
+
+interface GamePluginInputManifest {
+  controller?: {
+    bindings?: GamePluginChoiceCollectionBinding[];
+    submitted?: { bindings?: GamePluginChoiceCollectionBinding[] };
+  };
+}
+
+function choiceCollectionBindingForElement(
+  inputs: GamePluginInputManifest[],
+  elementId: string
+): GamePluginChoiceCollectionBinding | null {
+  for (const input of inputs) {
+    const bindings = [
+      ...(input.controller?.bindings || []),
+      ...(input.controller?.submitted?.bindings || [])
+    ];
+    const binding = bindings.find((candidate) =>
+      candidate.kind === "choiceCollection" && candidate.layoutElementId === elementId
+    );
+    if (binding) return binding;
+  }
+  return null;
 }
 
 function get(element: LayoutElement, key: string): unknown {
@@ -132,7 +167,8 @@ export function LayoutEditor({
   stageController,
   controllerController,
   initialMode = "stage",
-  surface = "layout"
+  surface = "layout",
+  gamePluginInputs = []
 }: LayoutEditorProps) {
   const [mode, setMode] = useState<"stage" | "controller">(initialMode);
   const [controllerPreviewTagsByGroup, setControllerPreviewTagsByGroup] = useState<
@@ -283,6 +319,18 @@ export function LayoutEditor({
     const compositionId = layoutElementArtCompositionId(element);
     const composition = compositionId ? compositionById.get(compositionId) : null;
     const isText = element.kind === "text" || compositionId === "layout-text-field";
+    const isCollection = mode === "controller" && element.kind === "collection";
+    const collectionBinding = isCollection
+      ? choiceCollectionBindingForElement(gamePluginInputs, element.id)
+      : null;
+    const collectionCompositionCandidate = collectionBinding
+      ? compositionById.get(collectionBinding.item.artCompositionId) || null
+      : null;
+    const collectionComposition = collectionCompositionCandidate
+      && String(collectionCompositionCandidate.surface || "").toLowerCase() === "controller"
+      && String(collectionCompositionCandidate.compositionKind || "gameObject").toLowerCase() === "gameobject"
+      ? collectionCompositionCandidate
+      : null;
     const textValue = String(get(element, "defaultText") || "");
     const fontFamily = normalizeGameTextFontFamily(get(element, "fontFamily"));
     const selected = selectedElementIds.has(element.id);
@@ -300,13 +348,14 @@ export function LayoutEditor({
       background: composition ? "transparent" : "rgba(255,255,255,0.08)",
       color: isText ? String(get(element, "fontColor") || "#ffffff") : "#fff",
       fontFamily: isText ? fontFamily : undefined,
-      display: "grid",
-      placeItems: "center",
+      display: isCollection ? undefined : "grid",
+      placeItems: isCollection ? undefined : "center",
       opacity: hidden ? (selected ? 0.28 : 0.08) : 1,
-      overflow: "visible",
+      overflow: isCollection ? undefined : "visible",
       boxSizing: "border-box",
       zIndex: get(element, "layoutLayer") === "background" ? 0 : Math.max(1, total - index),
-      pointerEvents: locked || hidden ? "none" : "auto"
+      pointerEvents: locked || hidden ? "none" : "auto",
+      ...(isCollection ? choiceCollectionLayoutStyle(element as Record<string, unknown>) : {})
     };
     const compositionCanvas = composition?.canvas || { width, height };
     const compositionScaleX = width / Math.max(1, Number(compositionCanvas.width || width));
@@ -365,6 +414,63 @@ export function LayoutEditor({
               textOverride={isText ? layoutTextOverride(element) : undefined}
             />
           </div>
+        ) : isCollection ? (
+          ["Option", "A realistic long private option label", "Option"].map((label, previewIndex) => {
+            const itemDimensions = collectionComposition
+              ? choiceCollectionItemDimensions(
+                  element as Record<string, unknown>,
+                  collectionComposition as unknown as Record<string, unknown>,
+                  3
+                )
+              : { width: element.collectionDirection === "horizontal" ? 96 : width, height: 72 };
+            const itemCanvas = collectionComposition?.canvas || itemDimensions;
+            return (
+            <div
+              data-layout-choice-collection-preview-item
+              key={`${element.id}-preview-${previewIndex}`}
+              style={{
+                position: "relative",
+                boxSizing: "border-box",
+                flex: "0 0 auto",
+                width: itemDimensions.width,
+                height: itemDimensions.height,
+                minWidth: 0,
+                display: "grid",
+                placeItems: "center",
+                padding: collectionComposition ? 0 : 8,
+                border: collectionComposition ? 0 : "1px dashed rgba(255,255,255,0.55)",
+                borderRadius: 12,
+                overflow: "visible",
+                textAlign: "center",
+                fontSize: 14,
+                lineHeight: 1.1,
+                pointerEvents: "none"
+              }}
+            >
+              {collectionComposition ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: Number(itemCanvas.width || itemDimensions.width),
+                    height: Number(itemCanvas.height || itemDimensions.height),
+                    transform: `scale(${itemDimensions.width / Math.max(1, Number(itemCanvas.width || 1))}, ${itemDimensions.height / Math.max(1, Number(itemCanvas.height || 1))})`,
+                    transformOrigin: "top left"
+                  }}
+                >
+                  <ArtPreviewRenderer
+                    assetUrlById={assetUrlById}
+                    components={collectionComposition.components || []}
+                    compositionById={compositionById}
+                    interactive={false}
+                    showHandles={false}
+                    textOverrides={{ [collectionBinding!.item.targetComponentId]: label }}
+                  />
+                </div>
+              ) : label}
+            </div>
+            );
+          })
         ) : (
           <span
             dangerouslySetInnerHTML={isText ? { __html: gameTextHtml(textValue) } : undefined}
@@ -430,6 +536,15 @@ export function LayoutEditor({
       <button type="button" data-layout-add-text onClick={() => controller.addTextElement()}>
         Add Text
       </button>
+      {mode === "controller" ? (
+        <button
+          type="button"
+          data-layout-add-choice-collection
+          onClick={() => controller.addChoiceCollection()}
+        >
+          Add Choice Collection
+        </button>
+      ) : null}
       <button
         type="button"
         data-layout-add-game-object
@@ -915,6 +1030,7 @@ function LayoutElementInspector({
   const commit = (patch: Partial<LayoutElement>) => controller.updateElement(element.id, patch);
   const isText =
     element.kind === "text" || get(element, "artCompositionId") === "layout-text-field";
+  const isCollection = mode === "controller" && element.kind === "collection";
   const defaultDimensions = artCompositionDefaultDimensions(artComposition);
   return (
     <section
@@ -1003,6 +1119,74 @@ function LayoutElementInspector({
             onChange={(tags) => commit({ tags })}
           />
         </>
+      ) : null}
+      {isCollection ? (
+        <fieldset data-layout-choice-collection-fields>
+          <legend>Dynamic choice collection</legend>
+          <label className="flow-react-field" data-layout-field="collectionDirection">
+            <span>Direction</span>
+            <select
+              value={String(get(element, "collectionDirection") || "vertical")}
+              onChange={(event) => commit({ collectionDirection: event.target.value } as Partial<LayoutElement>)}
+            >
+              <option value="vertical">Vertical</option>
+              <option value="horizontal">Horizontal</option>
+            </select>
+          </label>
+          <label className="flow-react-field" data-layout-field="collectionDistribution">
+            <span>Distribution</span>
+            <select
+              value={String(get(element, "collectionDistribution") || "start")}
+              onChange={(event) => commit({ collectionDistribution: event.target.value } as Partial<LayoutElement>)}
+            >
+              <option value="start">Start</option>
+              <option value="center">Center</option>
+              <option value="end">End</option>
+              <option value="space-between">Space between</option>
+              <option value="space-around">Space around</option>
+              <option value="space-evenly">Space evenly</option>
+            </select>
+          </label>
+          <label className="flow-react-field" data-layout-field="collectionAlignment">
+            <span>Alignment</span>
+            <select
+              value={String(get(element, "collectionAlignment") || "stretch")}
+              onChange={(event) => commit({ collectionAlignment: event.target.value } as Partial<LayoutElement>)}
+            >
+              <option value="stretch">Stretch</option>
+              <option value="start">Start</option>
+              <option value="center">Center</option>
+              <option value="end">End</option>
+            </select>
+          </label>
+          <label className="flow-react-field" data-layout-field="collectionOverflow">
+            <span>Overflow</span>
+            <select
+              value={String(get(element, "collectionOverflow") || "auto")}
+              onChange={(event) => commit({ collectionOverflow: event.target.value } as Partial<LayoutElement>)}
+            >
+              <option value="auto">Auto scroll</option>
+              <option value="scroll">Always scroll</option>
+              <option value="hidden">Hidden</option>
+              <option value="visible">Visible</option>
+            </select>
+          </label>
+          {[
+            ["collectionGap", "Gap", 16],
+            ["collectionPadding", "Padding", 0],
+            ["zIndex", "Local z-order", 0]
+          ].map(([key, label, fallback]) => (
+            <label className="flow-react-field" data-layout-field={String(key)} key={String(key)}>
+              <span>{String(label)}</span>
+              <input
+                type="number"
+                key={`${element.id}-${String(key)}-${String(get(element, String(key)) ?? fallback)}`}
+                defaultValue={String(get(element, String(key)) ?? fallback)}
+                onBlur={(event) => commit({ [String(key)]: Number(event.target.value) } as Partial<LayoutElement>)}
+              />
+            </label>
+          ))}
+        </fieldset>
       ) : null}
       {SCALAR_FIELDS.map((field) => (
         <label className="flow-react-field" data-layout-field={field.key} key={field.key}>

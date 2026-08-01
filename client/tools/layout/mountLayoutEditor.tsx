@@ -94,6 +94,18 @@ export async function mountLayoutEditor(
   let renderVersion = 0;
   let artAssets = loadedArt.assets || [];
   let artCompositions = loadedArt.compositions || [];
+  let gamePluginInputs: Array<{
+    controller?: {
+      bindings?: Array<{ kind: "choiceCollection"; layoutElementId: string; item: { artCompositionId: string; targetComponentId: string } }>;
+      submitted?: { bindings?: Array<{ kind: "choiceCollection"; layoutElementId: string; item: { artCompositionId: string; targetComponentId: string } }> };
+    };
+  }> = [];
+  try {
+    const config = JSON.parse(doc.getElementById("pop-party-runtime-config")?.textContent || "{}");
+    gamePluginInputs = Array.isArray(config?.gamePlugin?.inputs) ? config.gamePlugin.inputs : [];
+  } catch {
+    gamePluginInputs = [];
+  }
   const render = () => {
     root.render(
       <LayoutEditor
@@ -105,6 +117,7 @@ export async function mountLayoutEditor(
         controllerController={controllerController}
         initialMode={requestedMode}
         surface={options.surface}
+        gamePluginInputs={gamePluginInputs}
       />
     );
   };

@@ -45,6 +45,7 @@ export interface LayoutController {
   selectElement(elementId: string, additive?: boolean): void;
   clearElementSelection(): void;
   addTextElement(): void;
+  addChoiceCollection(): string | null;
   addGameObject(composition: ArtComposition): string | null;
   addLayoutGroup(input: { id?: string; name: string }): string | null;
   addPersistentLayer(input: { id?: string; name: string; zIndex?: number }): string | null;
@@ -203,6 +204,50 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
         target.elements = [...(target.elements || []), element];
         selectedElementIds = new Set([element.id]);
       }),
+    addChoiceCollection: () => {
+      if (mode !== "controller") {
+        error = "Dynamic choice collections are available only on Controller Layouts.";
+        emit();
+        return null;
+      }
+      const target = group();
+      if (!target) return null;
+      const elementId = uniqueLayoutAuthoringId(
+        "choice-collection",
+        (target.elements || []).map((element) => element.id),
+        "choice-collection"
+      );
+      recordMutation(() => {
+        const element: LayoutElement = {
+          id: elementId,
+          name: "Choice Collection",
+          selector: "",
+          kind: "collection",
+          artCompositionId: "",
+          hidden: false,
+          locked: false,
+          x: Number(layouts.canvas?.width || 390) / 2,
+          y: Number(layouts.canvas?.height || 844) / 2,
+          width: 330,
+          height: 500,
+          scale: 1,
+          rotation: 0,
+          tags: [],
+          defaultAnimationState: "On",
+          collectionDirection: "vertical",
+          collectionGap: 16,
+          collectionDistribution: "start",
+          collectionAlignment: "stretch",
+          collectionPadding: 0,
+          collectionOverflow: "auto",
+          zIndex: 0
+        };
+        target.elements = [...(target.elements || []), element];
+        selectedElementIds = new Set([element.id]);
+        error = null;
+      });
+      return elementId;
+    },
     addGameObject: (composition) => {
       const target = group();
       const compositionId = normalizeLayoutAuthoringId(composition?.id);

@@ -8,6 +8,7 @@
 
 import "./layoutGameObjectRuntime"; // ensure PartyGameLayoutGameObjects is installed first
 import { controllerLayoutCandidateIds } from "../../shared/controller-layout-states";
+import { choiceCollectionLayoutStyle } from "./controllerChoiceCollectionLayout";
 import { avatarTimelineLabelForShape } from "./stagePlayerRoster";
 import { runtimeSemanticCompositionId } from "./semanticRoleRuntime";
 
@@ -439,6 +440,11 @@ function clearControllerLayoutTargets(retainedTokens: Set<string> = new Set()): 
       target.remove();
       continue;
     }
+    if (target.classList.contains("dynamic-controller-choice-collection")) {
+      clearControllerChoiceCollection(target);
+      target.remove();
+      continue;
+    }
     if (elementId) clearControllerArtInstanceRenderer(elementId, target);
     if (target.classList.contains("dynamic-controller-art-instance")) {
       target.remove();
@@ -531,9 +537,12 @@ function applyControllerElementLayout(element: Dict, scopeOrGlobal: boolean | st
   target.dataset.controllerLayoutArtCompositionId = (element.artCompositionId as string) || "";
   target.dataset.controllerLayoutVisibilityKey = (entity.visibilityKey as string) || "";
   applyLayoutElementBoxStyles(target, element, "controller");
-  target.style.zIndex = String(zIndex);
+  target.style.zIndex = String(zIndex + Number(element.zIndex || 0));
   if (element.kind === "text") {
     applyControllerLayoutTextProperties(target, element);
+  } else if (element.kind === "collection") {
+    target.classList.add("controller-choice-collection");
+    Object.assign(target.style, choiceCollectionLayoutStyle(element));
   } else if (isControllerLayoutArtElement(element)) {
     target.classList.add("controller-widget-art-host", "has-controller-widget-art");
     const renderer = attachRenderedLayoutArtEntity(
@@ -558,7 +567,9 @@ const registerControllerLayoutEntity = createPlacedLayoutEntityRegistrar({
   visibilityKeyFor: controllerLayoutVisibilityKey,
   isArt: (layoutElement: Dict | null) => layoutElement?.kind === "art" || Boolean(layoutElement?.artCompositionId),
   isDynamic: (layoutElement: Dict | null, layoutTarget: El | null) =>
-    isDynamicControllerArtInstance(layoutElement) || (layoutElement?.kind === "text" && !layoutElementTargetMatchesSelector(layoutElement, layoutTarget))
+    isDynamicControllerArtInstance(layoutElement)
+      || layoutElement?.kind === "collection"
+      || (layoutElement?.kind === "text" && !layoutElementTargetMatchesSelector(layoutElement, layoutTarget))
 });
 
 function normalizedControllerLayoutScope(scopeOrGlobal: boolean | string = "", target: El | null = null): string {
@@ -819,6 +830,12 @@ function setControllerPluginInputHoldingState(target: El | null, holding: boolea
   return renderer?.stopAtAll?.(holding ? "Holding" : selected ? "Selected" : "Default", { instant: true }) || 0;
 }
 
+function setControllerPluginInputCollectionState(target: El | null, state: string): number {
+  if (!target) return 0;
+  const renderer = artRendererForLayoutHost(target);
+  return renderer?.stopAtAll?.(String(state || "Default"), { instant: true }) || 0;
+}
+
 function controllerLayoutElementForId(elementId: string): Dict | null {
   const normalized = normalizeTextTargetId(elementId);
   const stateElements = (controllerLayoutState(currentControllerLayoutStateId)?.elements as Dict[]) || [];
@@ -961,6 +978,7 @@ function controllerLayoutScopeForElement(element: Dict): string {
 function controllerLayoutTargetElement(element: Dict, requestedScope = ""): El | null {
   const controllerPanel = w().controllerPanel;
   const scope = requestedScope || controllerLayoutScopeForElement(element);
+  if (element.kind === "collection") return getOrCreateControllerChoiceCollection(element, scope);
   if (isDynamicControllerArtInstance(element)) return getOrCreateControllerArtInstance(element, scope);
   const target = controllerPanel.querySelector(element.selector as string) as El | null;
   if (target && isControllerLayoutArtElement(element)) return controllerLayoutArtHost(element, target);
@@ -976,6 +994,29 @@ function controllerLayoutTargetElement(element: Dict, requestedScope = ""): El |
     controllerPanel.appendChild(dynamic);
   }
   return dynamic;
+}
+
+function getOrCreateControllerChoiceCollection(element: Dict, scope = ""): El | null {
+  const root = w().controllerPanel;
+  const id = String(element.id || "");
+  if (!root || !id) return null;
+  let host = root.querySelector(`.dynamic-controller-choice-collection[data-layout-element-id="${CSS.escape(id)}"][data-controller-layout-scope="${CSS.escape(scope)}"]`) as El | null;
+  if (!host) {
+    host = document.createElement("div");
+    host.className = "dynamic-controller-choice-collection controller-choice-collection";
+    host.dataset.layoutElementId = id;
+    host.dataset.controllerLayoutScope = scope;
+    root.appendChild(host);
+  }
+  return host;
+}
+
+function clearControllerChoiceCollection(host: El): void {
+  for (const button of Array.from(host.querySelectorAll<HTMLElement>(":scope > [data-game-plugin-choice-collection-item='true']"))) {
+    const rendererKey = button.dataset.gamePluginChoiceRendererKey || button.dataset.layoutRendererKey || "";
+    if (rendererKey) clearControllerArtInstanceRenderer(rendererKey, button);
+    button.remove();
+  }
 }
 
 const controllerArtInstanceRenderers = new Map();
@@ -1468,6 +1509,7 @@ const PartyGameLayoutText = {
   setControllerButtonDisabledState,
   setControllerPluginInputChoiceState,
   setControllerPluginInputHoldingState,
+  setControllerPluginInputCollectionState,
   setControllerPlayerBannerArt,
   setControllerText: setControllerLayoutText,
   setControllerTextShown: setControllerLayoutTextShown,
@@ -1493,6 +1535,7 @@ Object.assign(w(), {
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   disposeControllerButtonArt, setControllerButtonLifecycleState,
   playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPluginInputChoiceState, setControllerPluginInputHoldingState, setControllerPlayerBannerArt,
+  setControllerPluginInputCollectionState,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,
   stageLayoutGameObjectTargets, stageLayoutGameObjectVisibilityKey, stageLayoutGameObjectVisibilityOverrides, stageLayoutRegistryKeyForElement, stageLayoutState, stageLayoutStateForPhase,
