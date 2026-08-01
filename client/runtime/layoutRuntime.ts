@@ -1202,7 +1202,7 @@ function applyStageElementLayout(element: Dict, isGlobal: boolean, shouldInitial
 
 const registerStageLayoutEntity = createPlacedLayoutEntityRegistrar({
   registry: stageLayoutGameObjectRegistry,
-  registryKeyFor: (id: string, globalTarget: boolean) => stageLayoutGameObjectVisibilityKey(id, globalTarget),
+  registryKeyFor: stageLayoutGameObjectVisibilityKey,
   visibilityKeyFor: stageLayoutGameObjectVisibilityKey,
   isArt: (layoutElement: Dict | null) => layoutElement?.kind === "art" && Boolean(layoutElement?.artCompositionId),
   isDynamic: isDynamicStageArtInstance
@@ -1231,14 +1231,17 @@ function stageLayoutElementVisibilityKey(elementId: string, target: El | null = 
   });
 }
 
-function stageLayoutGameObjectVisibilityKey(elementId: string, isGlobal: boolean | string = false): string {
+function normalizedStageLayoutScope(scopeOrGlobal: boolean | string = false): "global" | "moment" {
+  return scopeOrGlobal === true || scopeOrGlobal === "global" ? "global" : "moment";
+}
+
+function stageLayoutGameObjectVisibilityKey(elementId: string, scopeOrGlobal: boolean | string = false): string {
   if (!elementId) return "";
-  return `${isGlobal ? "global" : w().currentStageLayoutStateId || "moment"}:${elementId}`;
+  return `${normalizedStageLayoutScope(scopeOrGlobal) === "global" ? "global" : w().currentStageLayoutStateId || "moment"}:${elementId}`;
 }
 
 function stageLayoutRegistryKeyForElement(elementId: string, scope: boolean | string = "", target: El | null = null): string {
-  if (scope === "global") return stageLayoutGameObjectVisibilityKey(elementId, true);
-  if (scope === "moment") return stageLayoutGameObjectVisibilityKey(elementId, false);
+  if (scope === "global" || scope === "moment") return stageLayoutGameObjectVisibilityKey(elementId, scope);
   return stageLayoutGameObjectVisibilityKey(elementId, target?.classList?.contains("stage-global-layout-target") === true);
 }
 
@@ -1489,4 +1492,11 @@ Object.assign(w(), {
   stageLayoutTargetByElementId, stageLayoutTargetElement, stageLayoutTextDefault, stageMomentLayoutReadiness, textFieldPadding
 });
 
-export { controllerPlayerBannerRenderOptions, layoutTextArtRenderOptions, layoutTextArtUsesNestedPrefab };
+export {
+  controllerPlayerBannerRenderOptions,
+  layoutTextArtRenderOptions,
+  layoutTextArtUsesNestedPrefab,
+  normalizedStageLayoutScope,
+  stageLayoutGameObjectVisibilityKey,
+  stageLayoutRegistryKeyForElement
+};

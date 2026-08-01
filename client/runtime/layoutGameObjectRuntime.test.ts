@@ -2,6 +2,41 @@ import { describe, expect, it, vi } from "vitest";
 import { PartyGameLayoutGameObjects } from "./layoutGameObjectRuntime";
 
 describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () => {
+  it("canonicalizes legacy booleans and named placement scopes before adapter callbacks", () => {
+    const register = vi.fn((entity) => entity);
+    const registryKeyFor = vi.fn((id: string, scope: string) => `${scope}:${id}`);
+    const visibilityKeyFor = vi.fn((id: string, scope: string) => `${scope}:${id}`);
+    const place = PartyGameLayoutGameObjects.createPlacedLayoutEntityRegistrar({
+      registry: () => ({ register }),
+      registryKeyFor,
+      visibilityKeyFor
+    });
+    const target = {} as HTMLElement;
+
+    expect(place({ id: "legacy-moment" }, target, false)).toMatchObject({
+      layoutScope: "moment",
+      isGlobal: false,
+      registryKey: "moment:legacy-moment",
+      visibilityKey: "moment:legacy-moment"
+    });
+    expect(place({ id: "legacy-global" }, target, true)).toMatchObject({
+      layoutScope: "global",
+      isGlobal: true,
+      registryKey: "global:legacy-global",
+      visibilityKey: "global:legacy-global"
+    });
+    expect(place({ id: "active" }, target, "state:lobby")).toMatchObject({
+      layoutScope: "state:lobby",
+      registryKey: "state:lobby:active"
+    });
+    expect(place({ id: "context" }, target, "layer:round-context")).toMatchObject({
+      layoutScope: "layer:round-context",
+      registryKey: "layer:round-context:context"
+    });
+    expect(registryKeyFor.mock.calls.every(([, scope]) => typeof scope === "string")).toBe(true);
+    expect(visibilityKeyFor.mock.calls.every(([, scope]) => typeof scope === "string")).toBe(true);
+  });
+
   it("activates an active-layout entity by silently applying its authored setup state", () => {
     const applyVisibilityState = vi.fn();
     const playAnimation = vi.fn(() => 125);

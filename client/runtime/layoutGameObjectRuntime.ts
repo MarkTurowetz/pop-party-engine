@@ -356,20 +356,25 @@ function layoutElementTargetMatchesSelector(element: Dict | null, target: El | n
   }
 }
 
+function normalizeLayoutPlacementScope(scopeOrGlobal: boolean | string = false): string {
+  if (typeof scopeOrGlobal === "string") return scopeOrGlobal.trim() || "moment";
+  return scopeOrGlobal ? "global" : "moment";
+}
+
 function registerPlacedLayoutEntity(element: Dict | null, target: El | null, scopeOrGlobal: boolean | string = false, options: Dict = {}): Dict {
   const id = (element?.id as string) || "";
-  const scope = typeof scopeOrGlobal === "string" ? scopeOrGlobal : scopeOrGlobal ? "global" : "moment";
+  const scope = normalizeLayoutPlacementScope(scopeOrGlobal);
   const isGlobal = scope === "global";
   const entity: Dict = {
     element,
     id,
-    registryKey: (options.registryKeyFor as ((id: string, s: boolean | string, t: El | null) => string) | undefined)?.(id, scope, target) || id,
+    registryKey: (options.registryKeyFor as ((id: string, scope: string, t: El | null) => string) | undefined)?.(id, scope, target) || id,
     isArt: (options.isArt as ((e: Dict | null, t: El | null) => boolean) | undefined)?.(element, target) === true,
     isDynamic: (options.isDynamic as ((e: Dict | null, t: El | null) => boolean) | undefined)?.(element, target) === true,
     isGlobal: isGlobal === true,
     layoutScope: scope,
     target,
-    visibilityKey: (options.visibilityKeyFor as ((id: string, s: boolean | string) => string) | undefined)?.(id, scope) || ""
+    visibilityKey: (options.visibilityKeyFor as ((id: string, scope: string) => string) | undefined)?.(id, scope) || ""
   };
   return (options.registry as (() => { register?: (e: Dict) => Dict }) | undefined)?.()?.register?.(entity) || entity;
 }
@@ -688,6 +693,7 @@ export const PartyGameLayoutGameObjects = {
   createPlacedLayoutGameObjectTargetResolver,
   finishLayoutElementTargetApplication,
   initializeLayoutEntity,
+  normalizeLayoutPlacementScope,
   layoutElementTargetMatchesSelector,
   layoutElementVisibilityKey,
   layoutTargetByElementId,
