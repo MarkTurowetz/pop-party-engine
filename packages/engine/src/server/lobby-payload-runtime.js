@@ -16,6 +16,7 @@ function createLobbyPayloadRuntime({
   publicPlayer,
   resolveRoomActionText,
   runtimeGameFlow,
+  projectLobbyPayload = (_room, _viewerPlayerId, payload) => payload,
   scheduleMicrophoneAccessAdvance,
   scheduleRoomSubActions = () => {},
   selectVip,
@@ -61,7 +62,7 @@ function createLobbyPayloadRuntime({
     if (!runtimeFault && microphoneAccess && allActivePlayersHaveSubmittedInput(room)) {
       scheduleMicrophoneAccessAdvance(room);
     }
-    return {
+    const payload = {
       type: "lobby",
       stageCode: room.stageCode,
       revision: room.revision,
@@ -117,6 +118,7 @@ function createLobbyPayloadRuntime({
       votingResultsShown: room.votingResultsShown === true,
       players: activePlayers(room).map((player) => publicPlayer(player, room, currentAction))
     };
+    return projectLobbyPayload(room, viewerPlayerId, payload);
   }
 
   function debugActionPayload(room, currentAction) {

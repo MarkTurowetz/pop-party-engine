@@ -2,6 +2,7 @@ import { StageCountdownPopupController } from "./stageCountdownPopupController";
 import { StageManagedTextSources, type StageManagedTextSource } from "./stageManagedTextSources";
 import { StageSubActionScheduler } from "./stageSubActionScheduler";
 import { renderGamePluginSurface } from "./gamePluginRendererRuntime";
+import { AnimationFrameRenderQueue, SurfaceSliceReconciler } from "./surfaceRenderRuntime";
 
 // Typed port of the legacy client/stage-runtime.js (top-level classic script) — the
 // stage orchestrator. Defines setupStage (app-shell dispatches setupStage()),
@@ -81,6 +82,15 @@ declare global {
     pauseMenu: El;
     returnToGameButton: El;
     quitToLobbyButton: El;
+    __popPartyStageMetrics?: {
+      applyCount: number;
+      lastDurationMs: number;
+      maxDurationMs: number;
+      lastAppliedSlices: string[];
+      lastRoomRevision: number;
+      lastSurfaceRevision: number;
+      sliceApplyCounts: Record<string, number>;
+    };
   }
 }
 
@@ -96,9 +106,11 @@ let stageWipeControllerInstance: Dict | null = null;
 let stageRenderOrchestratorInstance: Dict | null = null;
 let stageWidgetArtRendererInstance: Dict | null = null;
 let stageCountdownPopupControllerInstance: StageCountdownPopupController | null = null;
+let stageFrameRenderQueue: AnimationFrameRenderQueue<Dict> | null = null;
 const initializedStageWidgetEntityRenderers = new WeakMap<El, unknown>();
 let renderedStageJoinQrUrl = "";
 const stageManagedTextSources = new StageManagedTextSources();
+const stageSurfaceSlices = new SurfaceSliceReconciler();
 const stageSubActionScheduler = new StageSubActionScheduler({
   currentGameSessionId: () => Number((w().currentStageState as Dict | null)?.gameSessionId || 0),
   run: (action, actionKey) => runStageAction(action, false, actionKey)
@@ -732,75 +744,165 @@ function setStageWaitingStatus(message: unknown, isVisible = true): void {
 }
 
 function applyStageState(lobby: Dict, options: Dict = {}): void {
+  const startedAt = globalThis.performance?.now?.() || Date.now();
+  const force = options.force === true || options.initializeMomentText === true;
+  const appliedSlices: string[] = [];
+  const changed = (slice: string, value: unknown): boolean => {
+    const didChange = stageSurfaceSlices.changed(slice, value, force);
+    if (didChange) appliedSlices.push(slice);
+    return didChange;
+  };
   const wasPaused = w().isStagePaused;
   w().currentStageState = lobby;
   const players = (lobby.players as Dict[]) || [];
   const phase = (lobby.phase as string) || "lobby";
   const isLobbyPhase = phase === "lobby" || phase === "starting";
-  if (w().stageCountdownTimer !== null) clearInterval(w().stageCountdownTimer!);
-  w().stageCountdownTimer = null;
-  stageCountdownPopupController().beforePhase(phase);
   const liveGameTitle = lobby.gameTitle || (w().gameConstants as Dict).gameTitle || "Party Game Template";
-  document.title = liveGameTitle as string;
-  renderStageActionDebug(lobby);
-  setStageCodeDisplays(lobby.stageCode || stageCodeValue());
-  w().applyStageLayoutForPhase!(phase);
-  reconcileStageManagedText(lobby, liveGameTitle, options);
-  renderStageWidgetBinding("stageCodePanel", { stageCode: stageCodeValue(lobby.stageCode as string) });
-  renderStageWidgetBinding("stageCodeWidget", { stageCode: stageCodeValue(lobby.stageCode as string) });
-  renderStageJoinQr(stageCodeValue(lobby.stageCode as string), isLobbyPhase);
-  w().stageMain.classList.remove("hidden");
-  w().stageFooter.classList.remove("hidden");
-  w().stageIntroContent.classList.remove("hidden");
-  renderStageWidgetBinding("presentationClickPrompt");
-  clearStageDecisionDebug(lobby);
-  renderStageLogValue(lobby);
-  renderStagePlayers(players, {
-    // Voice capture owns a live answer preview: the temporary T and the final
-    // transcript update the current Player Answer Bubble MC while this input is active.
-    liveAnswerPreviewEnabled: String((lobby.textInput as Dict | null)?.type || "") === "voice"
+  const phaseChanged = changed("phase", {
+    stageCode: lobby.stageCode,
+    gameSessionId: lobby.gameSessionId,
+    phase,
+    contentRevision: (lobby.release as Dict | null)?.contentRevision
   });
-  renderPointPopups((lobby.pendingPointPopups as Dict[]) || [], { deferAnimation: true });
-  renderVotingCards((lobby.votingCards as Dict[]) || [], votingCardRenderOptions(lobby));
-  renderCraftingTimer(lobby.craftingTimer as Dict, {
-    deferVisibility: true
-  });
-  setStagePaused(lobby.isPaused === true, { localOnly: true });
-  if (wasPaused && lobby.isPaused !== true && w().pausedCompletionRequest) {
-    const pending = w().pausedCompletionRequest as Dict;
-    w().pausedCompletionRequest = null;
-    setTimeout(() => {
-      if ((w().currentStageState as Dict)?.action && ((w().currentStageState as Dict).action as Dict)?.id === pending.actionId) {
-        completeFlowAction(pending.source as string, pending.actionId as string);
-      }
-    }, 0);
+
+  if (changed("debug", {
+    action: lobby.action,
+    debugAction: lobby.debugAction,
+    debugLog: lobby.debugLog,
+    lastDecisionTrace: lobby.lastDecisionTrace,
+    runtimeFault: lobby.runtimeFault
+  })) {
+    renderStageActionDebug(lobby);
+    clearStageDecisionDebug(lobby);
+    renderStageLogValue(lobby);
+  }
+
+  if (changed("shell", { stageCode: lobby.stageCode, liveGameTitle, isLobbyPhase })) {
+    document.title = liveGameTitle as string;
+    setStageCodeDisplays(lobby.stageCode || stageCodeValue());
+    renderStageWidgetBinding("stageCodePanel", { stageCode: stageCodeValue(lobby.stageCode as string) });
+    renderStageWidgetBinding("stageCodeWidget", { stageCode: stageCodeValue(lobby.stageCode as string) });
+    renderStageJoinQr(stageCodeValue(lobby.stageCode as string), isLobbyPhase);
+    w().stageMain.classList.remove("hidden");
+    w().stageFooter.classList.remove("hidden");
+    w().stageIntroContent.classList.remove("hidden");
+  }
+
+  if (phaseChanged) {
+    stageCountdownPopupController().beforePhase(phase);
+    w().applyStageLayoutForPhase!(phase);
+  }
+
+  if (changed("managedText", {
+    phase,
+    flowStateId: lobby.flowStateId,
+    momentVisitId: lobby.momentVisitId,
+    action: lobby.action,
+    gameTitle: liveGameTitle,
+    triviaPromptText: lobby.triviaPromptText
+  })) {
+    reconcileStageManagedText(lobby, liveGameTitle, options);
+  }
+
+  if (changed("presentation", { action: lobby.action, momentVisitId: lobby.momentVisitId })) {
+    renderStageWidgetBinding("presentationClickPrompt");
+  }
+
+  if (changed("roster", {
+    players,
+    playersShown: lobby.playersShown,
+    liveAnswerPreviewType: (lobby.textInput as Dict | null)?.type
+  })) {
+    renderStagePlayers(players, {
+      // Voice capture owns a live answer preview: the temporary T and the final
+      // transcript update the current Player Answer Bubble MC while this input is active.
+      liveAnswerPreviewEnabled: String((lobby.textInput as Dict | null)?.type || "") === "voice"
+    });
+  }
+
+  if (changed("pointPopups", lobby.pendingPointPopups || [])) {
+    renderPointPopups((lobby.pendingPointPopups as Dict[]) || [], { deferAnimation: true });
+  }
+  const votingOptions = votingCardRenderOptions(lobby);
+  if (changed("voting", { cards: lobby.votingCards || [], options: votingOptions })) {
+    renderVotingCards((lobby.votingCards as Dict[]) || [], votingOptions);
+  }
+  if (changed("craftingTimer", lobby.craftingTimer || null)) {
+    renderCraftingTimer(lobby.craftingTimer as Dict, { deferVisibility: true });
+  }
+
+  if (changed("pause", lobby.isPaused === true)) {
+    setStagePaused(lobby.isPaused === true, { localOnly: true });
+    if (wasPaused && lobby.isPaused !== true && w().pausedCompletionRequest) {
+      const pending = w().pausedCompletionRequest as Dict;
+      w().pausedCompletionRequest = null;
+      setTimeout(() => {
+        if ((w().currentStageState as Dict)?.action && ((w().currentStageState as Dict).action as Dict)?.id === pending.actionId) {
+          completeFlowAction(pending.source as string, pending.actionId as string);
+        }
+      }, 0);
+    }
   }
 
   const vip = players.find((player) => player.isVip);
-  renderStageWidgetBinding("joinWidget");
-  setStageWaitingStatus(vip ? `Waiting for ${vip.name} to start the game` : "", phase !== "intro" && players.length > 0);
-
-  if (phase === "starting") {
-    w().countdownClockOffset = (Number(lobby.serverNow) || Date.now()) - Date.now();
-    setStageWaitingStatus("Tap CANCEL to stop", true);
-    const updateCountdown = () => {
-      const now = Date.now() + w().countdownClockOffset;
-      const remainingMs = Math.max(0, (Number(lobby.countdownEndsAt) || now) - now);
-      const seconds = Math.ceil(remainingMs / 1000);
-      renderStageWidgetBinding("countdownPopup", { seconds });
-      stageCountdownPopupController().afterPhase(phase);
-      stageCountdownPopupController().update(seconds);
-    };
-    updateCountdown();
-    w().stageCountdownTimer = setInterval(updateCountdown, 100) as unknown as number;
-  } else {
-    stageCountdownPopupController().afterPhase(phase);
+  if (changed("waiting", { phase, players: players.map(({ id, name, isVip }) => ({ id, name, isVip })) })) {
+    renderStageWidgetBinding("joinWidget");
+    setStageWaitingStatus(vip ? `Waiting for ${vip.name} to start the game` : "", phase !== "intro" && players.length > 0);
   }
-  renderGamePluginSurface("stage", lobby);
+
+  if (changed("countdown", { phase, countdownStartedAt: lobby.countdownStartedAt, countdownEndsAt: lobby.countdownEndsAt })) {
+    if (w().stageCountdownTimer !== null) clearInterval(w().stageCountdownTimer!);
+    w().stageCountdownTimer = null;
+    if (phase === "starting") {
+      w().countdownClockOffset = (Number(lobby.serverNow) || Date.now()) - Date.now();
+      setStageWaitingStatus("Tap CANCEL to stop", true);
+      const updateCountdown = () => {
+        const now = Date.now() + w().countdownClockOffset;
+        const remainingMs = Math.max(0, (Number(lobby.countdownEndsAt) || now) - now);
+        const seconds = Math.ceil(remainingMs / 1000);
+        renderStageWidgetBinding("countdownPopup", { seconds });
+        stageCountdownPopupController().afterPhase(phase);
+        stageCountdownPopupController().update(seconds);
+      };
+      updateCountdown();
+      w().stageCountdownTimer = setInterval(updateCountdown, 100) as unknown as number;
+    } else {
+      stageCountdownPopupController().afterPhase(phase);
+    }
+  }
+
+  if (changed("gamePlugin", (lobby.gamePlugin as Dict | null)?.viewModels || {})) {
+    renderGamePluginSurface("stage", lobby);
+  }
+
+  const durationMs = Math.max(0, (globalThis.performance?.now?.() || Date.now()) - startedAt);
+  const metrics = w().__popPartyStageMetrics || {
+    applyCount: 0,
+    lastDurationMs: 0,
+    maxDurationMs: 0,
+    lastAppliedSlices: [],
+    lastRoomRevision: -1,
+    lastSurfaceRevision: -1,
+    sliceApplyCounts: {}
+  };
+  metrics.applyCount += 1;
+  metrics.lastDurationMs = durationMs;
+  metrics.maxDurationMs = Math.max(metrics.maxDurationMs, durationMs);
+  metrics.lastAppliedSlices = appliedSlices;
+  metrics.lastRoomRevision = Number(lobby.revision);
+  metrics.lastSurfaceRevision = Number(lobby.surfaceRevision ?? lobby.revision);
+  metrics.sliceApplyCounts ||= {};
+  for (const slice of appliedSlices) metrics.sliceApplyCounts[slice] = Number(metrics.sliceApplyCounts[slice] || 0) + 1;
+  w().__popPartyStageMetrics = metrics;
 }
 
 function renderStageLobby(lobby: Dict, options: Dict = {}): void {
   (stageRenderOrchestrator() as { render?: (l: Dict, o?: Dict) => void } | null)?.render?.(lobby, options);
+}
+
+function scheduleStageLobbyRender(lobby: Dict): void {
+  if (!stageFrameRenderQueue) stageFrameRenderQueue = new AnimationFrameRenderQueue(renderStageLobby);
+  stageFrameRenderQueue.enqueue(lobby);
 }
 
 function prepareNewStageAction(lobby: Dict, actionKey: string): void {
@@ -1032,7 +1134,7 @@ async function subscribeToStage(stageCode: string): Promise<void> {
   const streamUrl = new URL(`${location.origin}/api/stage/${stageCode}/events`);
   if (ticket) streamUrl.searchParams.set("ticket", ticket);
   const stream = new EventSource(streamUrl.toString());
-  stream.addEventListener("lobby", (event) => renderStageLobby(JSON.parse((event as MessageEvent).data)));
+  stream.addEventListener("lobby", (event) => scheduleStageLobbyRender(JSON.parse((event as MessageEvent).data)));
   stream.addEventListener("artAssetsChanged", () => reloadStageArtAssets());
   stream.addEventListener("error", () => {
     stream.close();

@@ -30,6 +30,7 @@ const serverApi = {
   ...require("./inactive-player-sweep-runtime"),
   ...require("./player-answers-runtime"),
   ...require("./room-broadcast-runtime"),
+  ...require("./surface-projection-runtime"),
   ...require("./room-state-runtime"),
   ...require("./room-runtime-content-runtime"),
   ...require("./draft-preview-room-runtime"),

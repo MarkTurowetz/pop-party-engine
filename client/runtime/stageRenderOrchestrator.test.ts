@@ -152,6 +152,25 @@ describe("StageRenderOrchestrator flow identity", () => {
     expect(orchestrator.actionKey()).toBe("lobby::display:displayText");
   });
 
+  it("ignores room-only revisions when the semantic Stage projection is unchanged", () => {
+    const applyStageState = vi.fn();
+    const runStageAction = vi.fn();
+    const orchestrator = new StageRenderOrchestrator({ applyStageState, runStageAction });
+    const lobby = {
+      revision: 40,
+      surfaceRevision: 7,
+      surface: "stage",
+      phase: "round",
+      action: { id: "wait", type: "controllerInput" }
+    };
+
+    orchestrator.render(lobby);
+    orchestrator.render({ ...lobby, revision: 41 });
+
+    expect(applyStageState).toHaveBeenCalledOnce();
+    expect(runStageAction).toHaveBeenCalledOnce();
+  });
+
   it("allows an explicit same-revision refresh to reconcile new art without replaying the action", () => {
     const applyStageState = vi.fn();
     const runStageAction = vi.fn();
