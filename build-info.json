@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1239",
+  "version": "1.0.17.1240",
   "baseVersion": "1.0.17",
-  "buildNumber": 1239,
-  "commit": "e553caf0",
-  "branch": "codex/plugin-input-visual-state-1.3.26",
-  "generatedAt": "2026-07-31T21:09:45.188Z"
+  "buildNumber": 1240,
+  "commit": "5d2dbe0f",
+  "branch": "codex/flow-canvas-world-bounds-1.3.27",
+  "generatedAt": "2026-08-01T02:30:55.262Z"
 }
