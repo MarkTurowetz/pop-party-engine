@@ -1,9 +1,14 @@
+import {
+  choiceCollectionItemDimensions,
+  choiceCollectionLayoutStyle
+} from "./controllerChoiceCollectionLayout";
+
 type Dict = Record<string, unknown>;
 type SubmitValues = Record<string, string | number>;
 
 type InputBinding = {
   id: string;
-  kind: "choice" | "integer" | "submit" | "text";
+  kind: "choice" | "choiceCollection" | "integer" | "submit" | "text";
   layoutElementId: string;
   field?: string;
   optionIndex?: number;
@@ -13,6 +18,12 @@ type InputBinding = {
   autoSubmit?: boolean;
   submitValues?: SubmitValues;
   holdSubmit?: { seconds: number; submitValues: SubmitValues };
+  item?: {
+    artCompositionId: string;
+    targetComponentId: string;
+    labelSource?: string;
+    disabledSource?: string;
+  };
 };
 
 type InputManifest = {
@@ -60,6 +71,8 @@ export function createGamePluginInputView(options: {
   const values = new Map<string, unknown>();
   const submitHandlers = new WeakMap<HTMLElement, (overrides?: SubmitValues) => void>();
   const controlBindings = new WeakMap<HTMLElement, InputBinding>();
+  const collectionControlAuthority = new WeakMap<HTMLButtonElement, { bindingId: string; optionId: string; visitKey: string }>();
+  const activeCollectionOptionIds = new Map<string, Set<string>>();
   const activeHolds = new Map<HTMLButtonElement, { pointerId: number; timer: ReturnType<typeof setTimeout> }>();
   const suppressedHosts = new Set<HTMLElement>();
   let visitKey = "";
@@ -76,6 +89,15 @@ export function createGamePluginInputView(options: {
     if (!element) return null;
     const host = (rt.controllerLayoutTargetElement as ((item: Dict) => HTMLElement | null))?.(element);
     return host ? { element, host } : null;
+  }
+
+  function controllerComposition(compositionId: string): Dict | null {
+    const compositions = (runtime().artCompositions as Dict[] | undefined) || [];
+    const composition = compositions.find((item) => String(item.id || "") === compositionId) || null;
+    if (!composition) return null;
+    const surface = String(composition.surface || "").trim().toLowerCase();
+    const kind = String(composition.compositionKind || "gameObject").trim().toLowerCase();
+    return surface === "controller" && kind === "gameobject" ? composition : null;
   }
 
   function renderTextBindings(bindings: InputBinding[], model: unknown): void {
@@ -126,6 +148,10 @@ export function createGamePluginInputView(options: {
     button.setAttribute("aria-pressed", next);
     button.classList.toggle("is-selected", selected);
     button.dataset.gamePluginInputSelected = next;
+    if (button.dataset.gamePluginChoiceCollectionItem === "true") {
+      applyCollectionVisualState(button);
+      return;
+    }
     const host = button.parentElement as HTMLElement | null;
     if (host) {
       const hostSelected = Array.from(host.querySelectorAll<HTMLButtonElement>("[data-game-plugin-input-option]"))
@@ -160,6 +186,10 @@ export function createGamePluginInputView(options: {
     button.dataset.gamePluginInputHolding = state;
     button.classList.toggle("is-holding", holding);
     button.setAttribute("aria-busy", state);
+    if (button.dataset.gamePluginChoiceCollectionItem === "true") {
+      applyCollectionVisualState(button);
+      return;
+    }
     const host = button.parentElement as HTMLElement | null;
     if (!host) return;
     const hostHolding = Array.from(host.querySelectorAll<HTMLButtonElement>("[data-game-plugin-input-holding]"))
@@ -183,6 +213,47 @@ export function createGamePluginInputView(options: {
 
   function cancelAllHolds(): void {
     for (const button of Array.from(activeHolds.keys())) cancelHold(button);
+  }
+
+  function collectionVisualState(button: HTMLButtonElement): string {
+    if (button.dataset.gamePluginInputStale === "true") return "Stale";
+    if (button.dataset.gamePluginInputSubmitted === "true") return "Submitted";
+    if (button.disabled || button.dataset.gamePluginInputDisabled === "true") return "Disabled";
+    if (button.dataset.gamePluginInputHolding === "true") return "Holding";
+    return button.dataset.gamePluginInputSelected === "true" ? "Selected" : "Default";
+  }
+
+  function applyCollectionVisualState(button: HTMLButtonElement): void {
+    (runtime().setControllerPluginInputCollectionState as ((target: HTMLElement, state: string) => unknown) | undefined)?.(
+      button,
+      collectionVisualState(button)
+    );
+  }
+
+  function collectionControlIsAuthoritative(button: HTMLButtonElement): boolean {
+    const authority = collectionControlAuthority.get(button);
+    if (!authority) return button.dataset.gamePluginChoiceCollectionItem !== "true";
+    return authority.visitKey === visitKey
+      && activeCollectionOptionIds.get(authority.bindingId)?.has(authority.optionId) === true
+      && button.dataset.gamePluginInputStale !== "true"
+      && button.isConnected;
+  }
+
+  function clearCollectionControl(button: HTMLButtonElement, remove = true): void {
+    cancelHold(button);
+    button.disabled = true;
+    button.dataset.gamePluginInputStale = "true";
+    button.setAttribute("aria-disabled", "true");
+    applyCollectionVisualState(button);
+    collectionControlAuthority.delete(button);
+    const rendererKey = button.dataset.gamePluginChoiceRendererKey || "";
+    if (rendererKey) {
+      (runtime().clearControllerArtInstanceRenderer as ((key: string, host: HTMLElement) => void) | undefined)?.(
+        rendererKey,
+        button
+      );
+    }
+    if (remove) button.remove();
   }
 
   function choiceOption(binding: InputBinding, input: Dict, model: unknown): { id: string; label: string } | null {
@@ -226,10 +297,55 @@ export function createGamePluginInputView(options: {
     return matching;
   }
 
+  function bindChoiceControlListeners(button: HTMLButtonElement): void {
+    if (button.dataset.gamePluginInputListenerBound === "true") return;
+    button.dataset.gamePluginInputListenerBound = "true";
+    button.addEventListener("pointerdown", (event) => {
+      const current = controlBindings.get(button);
+      if (!current?.holdSubmit || button.disabled || activeHolds.has(button) || !collectionControlIsAuthoritative(button)) return;
+      const holdSubmit = current.holdSubmit;
+      button.dataset.gamePluginInputSuppressClick = "false";
+      try { button.setPointerCapture(event.pointerId); } catch { /* Synthetic pointers may not be capturable. */ }
+      setHolding(button, true);
+      const timer = setTimeout(() => {
+        if (
+          !button.isConnected
+          || button.disabled
+          || controlBindings.get(button)?.id !== current.id
+          || !collectionControlIsAuthoritative(button)
+        ) {
+          cancelHold(button);
+          return;
+        }
+        activeHolds.delete(button);
+        setHolding(button, false);
+        button.dataset.gamePluginInputSuppressClick = "true";
+        const overrides = { ...(current.submitValues || {}), ...holdSubmit.submitValues };
+        selectChoice(button, overrides);
+        submitHandlers.get(button)?.(overrides);
+      }, holdSubmit.seconds * 1000);
+      activeHolds.set(button, { pointerId: event.pointerId, timer });
+    });
+    button.addEventListener("pointerup", () => cancelHold(button));
+    button.addEventListener("pointercancel", () => cancelHold(button));
+    button.addEventListener("lostpointercapture", () => cancelHold(button));
+    button.addEventListener("click", () => {
+      if (!collectionControlIsAuthoritative(button) || button.disabled) return;
+      if (button.dataset.gamePluginInputSuppressClick === "true") {
+        button.dataset.gamePluginInputSuppressClick = "false";
+        return;
+      }
+      const current = controlBindings.get(button);
+      const overrides = current?.submitValues || {};
+      selectChoice(button, overrides);
+      if (button.dataset.gamePluginInputAutoSubmit === "true") submitHandlers.get(button)?.(overrides);
+    });
+  }
+
   function addControl(binding: InputBinding, input: Dict, model: unknown, submitNow: (overrides?: SubmitValues) => void): void {
     const target = targetFor(binding.layoutElementId);
     if (!target) return;
-    if (binding.kind === "text") return;
+    if (binding.kind === "text" || binding.kind === "choiceCollection") return;
     if (binding.kind === "integer") {
       const definition = (input.manifest as InputManifest).submission.find((field) => field.id === binding.field) as Dict | undefined;
       const fieldId = String(binding.field || "");
@@ -275,43 +391,7 @@ export function createGamePluginInputView(options: {
       button.dataset.gamePluginInputOption = option.id;
       button.dataset.gamePluginInputAutoSubmit = binding.autoSubmit === true ? "true" : "false";
       setChoiceSelected(button, values.get(String(binding.field || "")) === option.id);
-      if (button.dataset.gamePluginInputListenerBound !== "true") {
-        button.dataset.gamePluginInputListenerBound = "true";
-        button.addEventListener("pointerdown", (event) => {
-          const current = controlBindings.get(button);
-          if (!current?.holdSubmit || button.disabled || activeHolds.has(button)) return;
-          const holdSubmit = current.holdSubmit;
-          button.dataset.gamePluginInputSuppressClick = "false";
-          try { button.setPointerCapture(event.pointerId); } catch { /* Synthetic pointers may not be capturable. */ }
-          setHolding(button, true);
-          const timer = setTimeout(() => {
-            if (!button.isConnected || button.disabled || controlBindings.get(button)?.id !== current.id) {
-              cancelHold(button);
-              return;
-            }
-            activeHolds.delete(button);
-            setHolding(button, false);
-            button.dataset.gamePluginInputSuppressClick = "true";
-            const overrides = { ...(current.submitValues || {}), ...holdSubmit.submitValues };
-            selectChoice(button, overrides);
-            submitHandlers.get(button)?.(overrides);
-          }, holdSubmit.seconds * 1000);
-          activeHolds.set(button, { pointerId: event.pointerId, timer });
-        });
-        button.addEventListener("pointerup", () => cancelHold(button));
-        button.addEventListener("pointercancel", () => cancelHold(button));
-        button.addEventListener("lostpointercapture", () => cancelHold(button));
-        button.addEventListener("click", () => {
-          if (button.dataset.gamePluginInputSuppressClick === "true") {
-            button.dataset.gamePluginInputSuppressClick = "false";
-            return;
-          }
-          const current = controlBindings.get(button);
-          const overrides = current?.submitValues || {};
-          selectChoice(button, overrides);
-          if (button.dataset.gamePluginInputAutoSubmit === "true") submitHandlers.get(button)?.(overrides);
-        });
-      }
+      bindChoiceControlListeners(button);
     } else {
       button.setAttribute("aria-label", String(propertyPathValue(model, binding.labelSource || "") || "Submit"));
       if (button.dataset.gamePluginInputListenerBound !== "true") {
@@ -320,6 +400,125 @@ export function createGamePluginInputView(options: {
       }
     }
     if (!button.parentElement) target.host.appendChild(button);
+  }
+
+  function collectionOptions(binding: InputBinding, input: Dict, model: unknown): Array<{ id: string; label: string; disabled: boolean }> {
+    const submission = (input.manifest as InputManifest).submission.find((field) => field.id === binding.field);
+    const choices = propertyPathValue(model, String((submission as Dict | undefined)?.optionsSource || ""));
+    const item = binding.item;
+    if (!Array.isArray(choices) || !item) return [];
+    const result: Array<{ id: string; label: string; disabled: boolean }> = [];
+    const seen = new Set<string>();
+    for (const option of choices) {
+      const rawId = option && typeof option === "object" ? (option as Dict).id : option;
+      if (rawId === undefined || rawId === null) continue;
+      const id = String(rawId);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      const labelValue = option && typeof option === "object"
+        ? propertyPathValue(option, item.labelSource || "label")
+          ?? (option as Dict).label
+          ?? (option as Dict).name
+          ?? id
+        : option;
+      const disabledValue = option && typeof option === "object"
+        ? propertyPathValue(option, item.disabledSource || "disabled")
+        : false;
+      result.push({ id, label: String(labelValue ?? id), disabled: disabledValue === true });
+    }
+    return result;
+  }
+
+  function addChoiceCollection(
+    binding: InputBinding,
+    input: Dict,
+    model: unknown,
+    submitNow: (overrides?: SubmitValues) => void
+  ): void {
+    const target = targetFor(binding.layoutElementId);
+    const item = binding.item;
+    if (!target || target.element.kind !== "collection" || !item) return;
+    const composition = controllerComposition(String(item.artCompositionId || ""));
+    if (!composition) {
+      target.host.classList.add("controller-layout-plugin-input-unavailable");
+      target.host.dataset.gamePluginInputUnavailable = "true";
+      suppressedHosts.add(target.host);
+      return;
+    }
+    Object.assign(target.host.style, choiceCollectionLayoutStyle(target.element));
+    target.host.classList.add("controller-choice-collection");
+    target.host.dataset.gamePluginChoiceCollectionBinding = binding.id;
+    const focusedControl = document.activeElement instanceof HTMLButtonElement
+      && target.host.contains(document.activeElement)
+      ? document.activeElement
+      : null;
+    const optionsForViewer = collectionOptions(binding, input, model);
+    const activeIds = new Set(optionsForViewer.map((option) => option.id));
+    activeCollectionOptionIds.set(binding.id, activeIds);
+    const existing = Array.from(
+      target.host.querySelectorAll<HTMLButtonElement>(`:scope > button[data-game-plugin-input-binding="${CSS.escape(binding.id)}"][data-game-plugin-choice-collection-item="true"]`)
+    );
+    const byOptionId = new Map<string, HTMLButtonElement>();
+    for (const button of existing) {
+      const sameVisit = button.dataset.gamePluginInputVisitKey === visitKey;
+      const optionId = button.dataset.gamePluginInputOption || "";
+      if (sameVisit && activeIds.has(optionId) && !byOptionId.has(optionId)) byOptionId.set(optionId, button);
+      else clearCollectionControl(button);
+    }
+    const dimensions = choiceCollectionItemDimensions(target.element, composition, optionsForViewer.length);
+    for (const option of optionsForViewer) {
+      let button = byOptionId.get(option.id);
+      if (!button) {
+        button = document.createElement("button");
+        button.type = "button";
+        button.className = "game-plugin-input-control game-plugin-action-button controller-choice-collection-item controller-widget-art-host has-controller-widget-art";
+        button.dataset.gamePluginChoiceCollectionItem = "true";
+        button.dataset.gamePluginInputListenerBound = "false";
+      }
+      button.hidden = false;
+      button.dataset.gamePluginInputBinding = binding.id;
+      button.dataset.gamePluginInputVisitKey = visitKey;
+      button.dataset.gamePluginInputField = String(binding.field || "");
+      button.dataset.gamePluginInputOption = option.id;
+      button.dataset.controllerOption = option.id;
+      button.dataset.gamePluginInputAutoSubmit = binding.autoSubmit === true ? "true" : "false";
+      button.dataset.gamePluginInputDisabled = option.disabled ? "true" : "false";
+      button.dataset.gamePluginInputSubmitted = input.submitted === true ? "true" : "false";
+      button.dataset.gamePluginInputStale = "false";
+      button.setAttribute("aria-label", option.label);
+      button.setAttribute("aria-disabled", option.disabled || input.submitted === true || submitting ? "true" : "false");
+      button.disabled = option.disabled || input.submitted === true || submitting;
+      button.style.width = `${dimensions.width}px`;
+      button.style.height = `${dimensions.height}px`;
+      button.style.flex = "0 0 auto";
+      button.style.minWidth = "0";
+      submitHandlers.set(button, submitNow);
+      controlBindings.set(button, binding);
+      collectionControlAuthority.set(button, { bindingId: binding.id, optionId: option.id, visitKey });
+      bindChoiceControlListeners(button);
+      target.host.appendChild(button);
+      const rendererKey = `plugin-input:${visitKey}:${binding.id}:${option.id}`;
+      button.dataset.gamePluginChoiceRendererKey = rendererKey;
+      (runtime().renderControllerArtInstance as ((element: Dict, host: HTMLElement, key: string, options: Dict) => unknown) | undefined)?.(
+        {
+          id: rendererKey,
+          kind: "art",
+          artCompositionId: item.artCompositionId,
+          width: dimensions.width,
+          height: dimensions.height,
+          scale: 1,
+          defaultAnimationState: "On"
+        },
+        button,
+        rendererKey,
+        { textOverrides: { [item.targetComponentId]: option.label }, keepElements: [] }
+      );
+      setChoiceSelected(button, values.get(String(binding.field || "")) === option.id);
+      applyCollectionVisualState(button);
+    }
+    if (focusedControl && collectionControlIsAuthoritative(focusedControl) && !focusedControl.disabled) {
+      focusedControl.focus({ preventScroll: true });
+    }
   }
 
   function restoreSuppressedHosts(): void {
@@ -338,6 +537,7 @@ export function createGamePluginInputView(options: {
     const nextVisitKey = `${input.gameSessionId}:${input.actionId}:${input.visitId}`;
     if (nextVisitKey !== visitKey) {
       cancelAllHolds();
+      activeCollectionOptionIds.clear();
       values.clear();
       submitting = false;
       visitKey = nextVisitKey;
@@ -364,6 +564,7 @@ export function createGamePluginInputView(options: {
     if (renderModeKey && renderModeKey !== nextRenderModeKey) cancelAllHolds();
     renderModeKey = nextRenderModeKey;
     restoreSuppressedHosts();
+    activeCollectionOptionIds.clear();
     const availableBindings = activeBindings.filter((binding) => binding.kind !== "choice" || choiceOption(binding, withManifest, model));
     const availableBindingIds = new Set(availableBindings.map((binding) => binding.id));
     const bindingsByHost = new Map<HTMLElement, InputBinding[]>();
@@ -396,8 +597,12 @@ export function createGamePluginInputView(options: {
     }
     document.querySelectorAll<HTMLElement>("[data-game-plugin-input-binding]").forEach((control) => {
       if (!availableBindingIds.has(control.dataset.gamePluginInputBinding || "")) {
-        if (control instanceof HTMLButtonElement) cancelHold(control);
-        control.remove();
+        if (control instanceof HTMLButtonElement && control.dataset.gamePluginChoiceCollectionItem === "true") {
+          clearCollectionControl(control);
+        } else {
+          if (control instanceof HTMLButtonElement) cancelHold(control);
+          control.remove();
+        }
       }
     });
     const submitNow = (overrides: SubmitValues = {}) => {
@@ -405,7 +610,14 @@ export function createGamePluginInputView(options: {
       submitting = true;
       cancelAllHolds();
       document.querySelectorAll<HTMLInputElement | HTMLButtonElement>("[data-game-plugin-input-binding]")
-        .forEach((control) => { control.disabled = true; });
+        .forEach((control) => {
+          control.disabled = true;
+          if (control instanceof HTMLButtonElement && control.dataset.gamePluginChoiceCollectionItem === "true") {
+            control.dataset.gamePluginInputSubmitted = "true";
+            control.setAttribute("aria-disabled", "true");
+            applyCollectionVisualState(control);
+          }
+        });
       const payload = Object.fromEntries(manifest.submission.map((field) => [field.id, overrides[field.id] ?? values.get(field.id)]));
       void options.submit(String(input.actionId), Number(input.visitId || 0), payload, submissionId())
         .then((result) => {
@@ -417,6 +629,9 @@ export function createGamePluginInputView(options: {
           submitting = false;
         });
     };
+    for (const binding of availableBindings.filter((candidate) => candidate.kind === "choiceCollection")) {
+      addChoiceCollection(binding, withManifest, model, submitNow);
+    }
     for (const binding of availableBindings) addControl(binding, withManifest, model, submitNow);
     renderTextBindings(availableBindings.filter((binding) => binding.kind === "text"), model);
     return true;
@@ -429,7 +644,12 @@ export function createGamePluginInputView(options: {
     visitKey = "";
     renderModeKey = "";
     submitting = false;
-    document.querySelectorAll("[data-game-plugin-input-binding]").forEach((node) => node.remove());
+    activeCollectionOptionIds.clear();
+    document.querySelectorAll<HTMLElement>("[data-game-plugin-input-binding]").forEach((node) => {
+      if (node instanceof HTMLButtonElement && node.dataset.gamePluginChoiceCollectionItem === "true") {
+        clearCollectionControl(node);
+      } else node.remove();
+    });
   }
 
   return Object.freeze({ render, reset });

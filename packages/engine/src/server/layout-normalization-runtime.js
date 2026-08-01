@@ -76,7 +76,7 @@ function createLayoutNormalizationRuntime({
         selector,
         stageWidgetArtCompositionId: stageWidgetCompositionId
       }));
-    return {
+    const normalized = {
       id,
       name: cleanFlowText(element.name, element.id || fallbackId),
       selector: shouldPromoteTextToArt ? "" : selector,
@@ -99,6 +99,29 @@ function createLayoutNormalizationRuntime({
       fontFamily: textDefaultsEnabled ? artComponentSchema.normalizeTextFontFamily(element.fontFamily) : "",
       fontColor: textDefaultsEnabled ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
     };
+    if (kind === "collection") {
+      normalized.selector = "";
+      normalized.artCompositionId = "";
+      normalized.collectionDirection = String(element.collectionDirection || "vertical").trim().toLowerCase() === "horizontal"
+        ? "horizontal"
+        : "vertical";
+      const distribution = String(element.collectionDistribution || "start").trim().toLowerCase();
+      normalized.collectionDistribution = ["start", "center", "end", "space-between", "space-around", "space-evenly"].includes(distribution)
+        ? distribution
+        : "start";
+      const alignment = String(element.collectionAlignment || "stretch").trim().toLowerCase();
+      normalized.collectionAlignment = ["start", "center", "end", "stretch"].includes(alignment)
+        ? alignment
+        : "stretch";
+      const overflow = String(element.collectionOverflow || "auto").trim().toLowerCase();
+      normalized.collectionOverflow = ["visible", "hidden", "auto", "scroll"].includes(overflow)
+        ? overflow
+        : "auto";
+      normalized.collectionGap = normalizeLayoutNumber(element.collectionGap, 16, 0, 500);
+      normalized.collectionPadding = normalizeLayoutNumber(element.collectionPadding, 0, 0, 500);
+      normalized.zIndex = normalizeLayoutNumber(element.zIndex, 0, -1000, 1000);
+    }
+    return normalized;
   }
 
   function normalizeLayoutDefaultAnimationState(value) {

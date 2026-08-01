@@ -218,6 +218,52 @@ describe("game plugin ABI", () => {
     }))).toThrow(/outside its declared bounds/);
   });
 
+  it("accepts a reusable authored choice collection and rejects incomplete item templates", () => {
+    const pluginWithBinding = (binding) => defineGamePlugin({
+      namespace: "dynamic",
+      register(registry) {
+        registry.inputs("dynamic.targets", {
+          name: "Dynamic Targets",
+          fields: [{ key: "answersSubmittedTargetActionId", label: "After", control: "actionTarget" }],
+          submission: [{ id: "target", type: "choice", optionsSource: "targets" }],
+          controller: { layoutStateId: "dynamic-targets", bindings: [binding] },
+          recipients: () => [],
+          view: () => ({}),
+          submit() {}
+        });
+      }
+    });
+    expect(() => createGamePluginRegistry().install(pluginWithBinding({
+      id: "targets",
+      kind: "choiceCollection",
+      layoutElementId: "target-collection",
+      field: "target",
+      item: {
+        artCompositionId: "fixture-controller-target-option",
+        targetComponentId: "target-label",
+        labelSource: "display.label",
+        disabledSource: "disabled"
+      },
+      autoSubmit: true
+    }))).not.toThrow();
+    expect(() => createGamePluginRegistry().install(pluginWithBinding({
+      id: "targets",
+      kind: "choiceCollection",
+      layoutElementId: "target-collection",
+      field: "target",
+      item: { targetComponentId: "target-label" },
+      autoSubmit: true
+    }))).toThrow(/artCompositionId/);
+    expect(() => createGamePluginRegistry().install(pluginWithBinding({
+      id: "targets",
+      kind: "choiceCollection",
+      layoutElementId: "target-collection",
+      field: "target",
+      item: { artCompositionId: "fixture-controller-target-option" },
+      autoSubmit: true
+    }))).toThrow(/targetComponentId/);
+  });
+
   it("adds namespaced action metadata, normalization, public serialization, and stage completion", () => {
     const registrations = createGamePluginRegistry().install(fixturePlugin()).actions;
     const definitions = createPluginFlowActionDefinitions(registrations);

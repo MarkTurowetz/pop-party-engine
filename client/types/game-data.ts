@@ -94,6 +94,19 @@ export interface LayoutElement extends JsonObject {
   fontSize?: number;
   fontColor?: string;
   autoFitText?: boolean;
+  collectionDirection?: "horizontal" | "vertical";
+  collectionGap?: number;
+  collectionDistribution?:
+    | "start"
+    | "center"
+    | "end"
+    | "space-between"
+    | "space-around"
+    | "space-evenly";
+  collectionAlignment?: "start" | "center" | "end" | "stretch";
+  collectionPadding?: number;
+  collectionOverflow?: "visible" | "hidden" | "auto" | "scroll";
+  zIndex?: number;
 }
 
 export interface LayoutState extends JsonObject {
