@@ -41,6 +41,7 @@ const visualBridge = (): VisualBridgeApi | undefined => w().PartyGameVisualBridg
 const artComposition = (id: string): Dict | null => w().artComposition?.(id) || null;
 const layoutArtRendererByHost = new WeakMap<El, TreeRenderer>();
 const layoutArtRenderOptionsByRenderer = new WeakMap<TreeRenderer, Dict>();
+const layoutArtRenderSignatureByRenderer = new WeakMap<TreeRenderer, string>();
 
 function artRendererForLayoutHost(host: El | null): TreeRenderer | null {
   if (!host) return null;
@@ -126,10 +127,23 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
   }
   layoutArtRenderOptionsByRenderer.set(renderer, options);
   const components = ((composition.components as Dict[]) || []).map((component) => cloneLayoutArtComponent(component, options, String(composition.id || element?.artCompositionId || "")));
-  renderer.render(components, (composition.canvas as Dict) || { width: 1, height: 1 }, {
-    instant: true,
-    timeline: effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined)
+  const canvas = (composition.canvas as Dict) || { width: 1, height: 1 };
+  const timeline = effectiveVisibilityTimeline(composition.timeline as TimelineDocument | null | undefined);
+  const renderSignature = JSON.stringify({
+    compositionId: composition.id || element?.artCompositionId || "",
+    components,
+    canvas,
+    timeline,
+    bindingOptions: {
+      componentOverrides: options.componentOverrides || {},
+      textOverrides: options.textOverrides || {},
+      textStyle: options.textStyle || null
+    }
   });
+  if (isNewRenderer || layoutArtRenderSignatureByRenderer.get(renderer) !== renderSignature) {
+    renderer.render(components, canvas, { instant: true, timeline });
+    layoutArtRenderSignatureByRenderer.set(renderer, renderSignature);
+  }
   const authoredSetupState = String(element?.defaultAnimationState || "").trim();
   if (isNewRenderer && authoredSetupState) renderer.stopAtAll?.(authoredSetupState, { instant: true });
   layoutArtRendererByHost.set(host, renderer);
@@ -177,10 +191,11 @@ function cloneLayoutArtComponent(component: Dict, options: Dict = {}, compositio
   return clone;
 }
 
-function clearLayoutArtInstanceRenderer(renderers: Map<string, { clear: (o: Dict) => void }>, elementId: string, host: El | null = null): void {
+function clearLayoutArtInstanceRenderer(renderers: Map<string, TreeRenderer>, elementId: string, host: El | null = null): void {
   const rendererKey = host?.dataset?.layoutRendererKey || elementId;
   const renderer = renderers.get(rendererKey);
   if (renderer) renderer.clear({ instant: true });
+  if (renderer) layoutArtRenderSignatureByRenderer.delete(renderer);
   renderers.delete(rendererKey);
   if (host) layoutArtRendererByHost.delete(host);
   if (host) {
@@ -225,7 +240,7 @@ function createDynamicLayoutArtInstanceApi(options: Dict = {}) {
       });
     },
     clear(elementId: string, host: El | null = null) {
-      clearLayoutArtInstanceRenderer(renderers as Map<string, { clear: (o: Dict) => void }>, elementId, host);
+      clearLayoutArtInstanceRenderer(renderers as Map<string, TreeRenderer>, elementId, host);
     },
     removeInactive(activeIds: Set<string>, registry: unknown) {
       removeInactiveLayoutArtInstances({ root: root(), selector: options.selector, activeIds, clearRenderer: api.clear, registry });
@@ -268,8 +283,9 @@ function applyLayoutElementBoxStyles(target: El | null, element: Dict | null, pr
 
 function finishLayoutElementTargetApplication(target: El | null, isNewLayoutTarget: boolean, suppressedClass: string): void {
   if (!target || !isNewLayoutTarget) return;
-  void target.offsetWidth;
-  target.classList.remove(suppressedClass);
+  // Avoid a synchronous style/layout flush for every authored element. The
+  // suppression class only needs to cover the current reconciliation turn.
+  queueMicrotask(() => target.isConnected && target.classList.remove(suppressedClass));
 }
 
 function layoutTargetByElementId(options: Dict): El | null {
@@ -340,23 +356,26 @@ function layoutElementTargetMatchesSelector(element: Dict | null, target: El | n
   }
 }
 
-function registerPlacedLayoutEntity(element: Dict | null, target: El | null, isGlobal = false, options: Dict = {}): Dict {
+function registerPlacedLayoutEntity(element: Dict | null, target: El | null, scopeOrGlobal: boolean | string = false, options: Dict = {}): Dict {
   const id = (element?.id as string) || "";
+  const scope = typeof scopeOrGlobal === "string" ? scopeOrGlobal : scopeOrGlobal ? "global" : "moment";
+  const isGlobal = scope === "global";
   const entity: Dict = {
     element,
     id,
-    registryKey: (options.registryKeyFor as ((id: string, g: boolean, t: El | null) => string) | undefined)?.(id, isGlobal, target) || id,
+    registryKey: (options.registryKeyFor as ((id: string, s: boolean | string, t: El | null) => string) | undefined)?.(id, scope, target) || id,
     isArt: (options.isArt as ((e: Dict | null, t: El | null) => boolean) | undefined)?.(element, target) === true,
     isDynamic: (options.isDynamic as ((e: Dict | null, t: El | null) => boolean) | undefined)?.(element, target) === true,
     isGlobal: isGlobal === true,
+    layoutScope: scope,
     target,
-    visibilityKey: (options.visibilityKeyFor as ((id: string, g: boolean) => string) | undefined)?.(id, isGlobal) || ""
+    visibilityKey: (options.visibilityKeyFor as ((id: string, s: boolean | string) => string) | undefined)?.(id, scope) || ""
   };
   return (options.registry as (() => { register?: (e: Dict) => Dict }) | undefined)?.()?.register?.(entity) || entity;
 }
 
 function createPlacedLayoutEntityRegistrar(options: Dict = {}) {
-  return (element: Dict | null, target: El | null, isGlobal = false) => registerPlacedLayoutEntity(element, target, isGlobal, options);
+  return (element: Dict | null, target: El | null, scopeOrGlobal: boolean | string = false) => registerPlacedLayoutEntity(element, target, scopeOrGlobal, options);
 }
 
 function attachRenderedLayoutArtEntity(entity: Dict | null, renderInstance: unknown, options: Dict = {}): unknown {

@@ -378,7 +378,7 @@ async function main() {
     assert(startState.artRootCount === 1, `Start button has ${startState.artRootCount} competing art renderers: ${JSON.stringify(startState.artRootDetails)}`);
     assert(startState.buttonDisplay !== "none" && startState.buttonVisibility !== "hidden" && startState.buttonOpacity !== "0" && startState.buttonWidth > 0 && startState.buttonHeight > 0 && !startState.buttonHidden,
       `Start button is not visible: ${JSON.stringify(startState)}`);
-    assert(startState.text === "START GAME", `unexpected Start button text: ${startState.text}`);
+    assert(startState.text === "START GAME", `unexpected Start button text: ${JSON.stringify(startState)}`);
     assert(startState.avatarSource === "prefab-player-avatar-mc", `controller avatar used ${startState.avatarSource || "no shared Player Avatar MC"}`);
     assert(startState.avatarMaskWidth > 40 && startState.avatarMaskHeight > 40, `controller avatar collapsed to ${startState.avatarMaskWidth}x${startState.avatarMaskHeight}`);
     assert(startState.avatarMaskColor && startState.avatarMaskColor !== "rgba(0, 0, 0, 0)", "controller avatar sprite has no visible player color");

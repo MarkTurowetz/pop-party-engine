@@ -474,6 +474,14 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
 
       expect(renderCalls.length).toBe(2);
       expect(playCalls).toEqual([]);
+
+      const retainedLayer = root.querySelector(".controller-widget-art-layer");
+      api.render({ id: "test", artCompositionId: "controller-primary-button" }, root as unknown as HTMLElement, "test", {
+        keepElements: [overlay as unknown as HTMLElement],
+        textOverrides: { text: "Reconciled while disappearing" }
+      });
+      expect(renderCalls.length).toBe(2);
+      expect(root.querySelector(".controller-widget-art-layer")).toBe(retainedLayer);
     } finally {
       globals.document = previousDocument;
       host.artComposition = previousComposition;

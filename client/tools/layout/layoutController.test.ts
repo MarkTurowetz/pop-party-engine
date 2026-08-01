@@ -157,6 +157,27 @@ describe("createLayoutController", () => {
     );
   });
 
+  it("authors persistent layers with z-order and per-state show/hide through history", () => {
+    const controller = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "controller",
+      api: fakeApi()
+    });
+
+    expect(controller.addPersistentLayer({ id: "Round Context", name: "Round Context", zIndex: 150 }))
+      .toBe("round-context");
+    controller.updatePersistentLayer("round-context", { zIndex: 175 });
+    controller.setPersistentLayerVisible("intro", "round-context", false);
+    expect(controller.getState().layouts.layers).toEqual([
+      expect.objectContaining({ id: "round-context", zIndex: 175 })
+    ]);
+    expect(controller.getState().layouts.states[0].hiddenLayers).toEqual(["round-context"]);
+    controller.undo();
+    expect(controller.getState().layouts.states[0].hiddenLayers).toEqual(undefined);
+    controller.redo();
+    expect(controller.getState().layouts.states[0].hiddenLayers).toEqual(["round-context"]);
+  });
+
   it("keeps Stage layout groups Flow-owned", () => {
     const controller = createLayoutController({
       initialLayouts: layouts(),

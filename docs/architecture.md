@@ -221,6 +221,16 @@ concepts into focused modules.
     corresponding Art Manager layout host receives the same data state and is stopped at the
     authored `Selected` or `Default` label when that label exists. A static native selection ring
     remains as the accessible fallback when custom art has no selected timeline state.
+    An input may also declare `controller.submitted`; after an authenticated recipient submits,
+    only that recipient is moved to the submitted layout and bindings while the barrier remains
+    open for everyone else. The server continues to build that view from the recipient's private
+    model, and the client removes the active controls before they can submit again.
+  - Controller Layout supports named persistent layers in addition to Global and the active state.
+    Each layer has a normalized ID and explicit z-index, remains mounted across active-state visits,
+    and can be hidden per state without clearing its DOM node, Art renderer, or timeline. Runtime
+    reconciliation keys placements by `global`, `layer:<id>`, or `state:<id>` scope plus element ID;
+    unchanged models skip Art tree rendering and new targets defer transition suppression without
+    a per-element synchronous layout flush.
   - `client/stage/action-runners.js` owns client-side stage action dispatch.
     Controller-held input actions use one shared non-completing stage runner. Multiple choice,
     trivia, text, voice, microphone permission, and answer voting remain active until an

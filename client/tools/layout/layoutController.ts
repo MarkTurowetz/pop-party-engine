@@ -2,6 +2,7 @@ import type { LayoutApi } from "../../api/layoutApi";
 import { gameTextDefaultFontFamily } from "../../textFonts";
 import type {
   ArtComposition,
+  ControllerLayoutLayer,
   JsonObject,
   LayoutElement,
   LayoutState,
@@ -46,6 +47,9 @@ export interface LayoutController {
   addTextElement(): void;
   addGameObject(composition: ArtComposition): string | null;
   addLayoutGroup(input: { id?: string; name: string }): string | null;
+  addPersistentLayer(input: { id?: string; name: string; zIndex?: number }): string | null;
+  updatePersistentLayer(layerId: string, patch: { name?: string; zIndex?: number }): void;
+  setPersistentLayerVisible(stateId: string, layerId: string, visible: boolean): void;
   removeSelectedElements(): void;
   reorderElement(
     sourceElementId: string,
@@ -284,6 +288,49 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
         error = null;
       });
       return groupId;
+    },
+    addPersistentLayer: (input) => {
+      if (mode !== "controller") {
+        error = "Persistent layers are available only on Controller Layouts.";
+        emit();
+        return null;
+      }
+      const name = String(input?.name || "").trim().replace(/\s+/g, " ").slice(0, 240) || "Persistent Layer";
+      const layerId = uniqueLayoutAuthoringId(
+        input?.id || name,
+        layoutGroups(layouts).map((item) => item.id),
+        "persistent-layer"
+      );
+      const existingZ = (layouts.layers || []).map((layer) => Number(layer.zIndex || 0));
+      const zIndex = Number.isFinite(Number(input.zIndex))
+        ? Number(input.zIndex)
+        : Math.max(0, ...existingZ) + 100;
+      recordMutation(() => {
+        const layer: ControllerLayoutLayer = { id: layerId, name, zIndex, elements: [] };
+        layouts.layers = [...(layouts.layers || []), layer];
+        selectedGroupId = layerId;
+        selectedElementIds = new Set();
+        error = null;
+      });
+      return layerId;
+    },
+    updatePersistentLayer: (layerId, patch) => {
+      const layer = (layouts.layers || []).find((item) => item.id === layerId);
+      if (!layer) return;
+      recordMutation(() => {
+        if (patch.name !== undefined) layer.name = String(patch.name).trim().slice(0, 240) || layer.name;
+        if (patch.zIndex !== undefined && Number.isFinite(Number(patch.zIndex))) layer.zIndex = Number(patch.zIndex);
+      });
+    },
+    setPersistentLayerVisible: (stateId, layerId, visible) => {
+      const state = (layouts.states || []).find((item) => item.id === stateId);
+      if (!state || !(layouts.layers || []).some((layer) => layer.id === layerId)) return;
+      recordMutation(() => {
+        const hidden = new Set(state.hiddenLayers || []);
+        if (visible) hidden.delete(layerId);
+        else hidden.add(layerId);
+        state.hiddenLayers = [...hidden];
+      });
     },
     removeSelectedElements: () =>
       mutateGroup((target) => {

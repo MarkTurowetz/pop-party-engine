@@ -190,7 +190,7 @@ function setLabelText(label: HTMLElement, component: Component, labelText: strin
       text: labelText,
       defaults: { defaultText: schema().componentLabel(component), fontSize: baseSize, fontColor: (component?.fontColor as string) || "#17131f" },
       fallbackSize: baseSize,
-      renderOptions: { padding: ART_TEXT_PADDING }
+      renderOptions: { padding: ART_TEXT_PADDING, textTransform: artTextTransform(label, component) }
     }) as Dict | null;
     label.style.setProperty("--component-font-size", `${num(layout?.fontSize, baseSize)}px`);
   } else {
@@ -211,13 +211,25 @@ function renderComponentText(target: HTMLElement | null, component: Component | 
           text,
           defaults: { defaultText: schema().componentLabel(component), fontSize: baseSize, fontColor: (component?.fontColor as string) || "#17131f" },
           fallbackSize: baseSize,
-          renderOptions: { padding: ART_TEXT_PADDING }
+          renderOptions: { padding: ART_TEXT_PADDING, textTransform: artTextTransform(target, component) }
         })
       : componentTextLayout(component, text)
   ) as Dict;
   if (!textFit?.renderLayoutTextField) target.textContent = text;
   target.style.setProperty("--component-font-size", `${layout.fontSize}px`);
   return layout;
+}
+
+function artTextTransform(target: HTMLElement, component: Component): string {
+  const authored = String(component.textTransform || "").trim();
+  if (authored) return authored;
+  try {
+    const computed = target.ownerDocument?.defaultView?.getComputedStyle(target)?.textTransform;
+    if (computed) return computed;
+  } catch {
+    // Detached test/runtime targets may not expose computed styles yet.
+  }
+  return "uppercase";
 }
 
 function renderedArtTextElement(target: HTMLElement, component: Component = {}): Dict {
@@ -774,6 +786,12 @@ class ArtObjectTreeRenderer {
           layer: { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) }
         });
         this.views.set(key, view);
+        // The constructor builds the tree while detached. Reconcile once after
+        // attaching so inherited authored styles (for example button text
+        // transforms) are available without a forced layout read or a later
+        // redundant renderer pass.
+        this.host.appendChild(view.element);
+        view.update(component, canvas, { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) });
         view.initialize();
       } else {
         view.update(component, canvas, { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) });

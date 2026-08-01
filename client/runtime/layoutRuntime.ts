@@ -13,7 +13,7 @@ import { runtimeSemanticCompositionId } from "./semanticRoleRuntime";
 
 type Dict = Record<string, unknown>;
 type El = HTMLElement;
-type LayoutCollection = { canvas?: { width?: number; height?: number }; global?: Dict; states?: Dict[] };
+type LayoutCollection = { canvas?: { width?: number; height?: number }; global?: Dict; layers?: Dict[]; states?: Dict[] };
 
 interface TextFitApi {
   renderLayoutTextField?: (target: El, element: Dict, options: Dict) => Dict | null;
@@ -199,7 +199,15 @@ function stageLayoutArtRenderOptions(element: Dict | null, host: El | null): Dic
 
 function controllerWidgetTextRenderOptions(compositionId: unknown, text: unknown): Dict {
   const componentId = controllerWidgetTextComponentId(compositionId);
-  return componentId ? { textOverrides: { [componentId]: String(text ?? "") } } : {};
+  if (!componentId) return {};
+  const value = String(text ?? "");
+  return {
+    textOverrides: {
+      [componentId]: String(compositionId || "") === controllerPrimaryButtonArtCompositionId()
+        ? value.toUpperCase()
+        : value
+    }
+  };
 }
 
 function controllerLayoutArtDefaultText(element: Dict | null, host: El | null): string {
@@ -327,6 +335,12 @@ function globalControllerLayout(): Dict {
   return w().controllerLayouts.global || { id: "global", name: "Global Layout", elements: [] };
 }
 
+function controllerLayoutLayers(): Dict[] {
+  return (w().controllerLayouts.layers || []).slice().sort((left, right) =>
+    Number(left.zIndex || 0) - Number(right.zIndex || 0) || String(left.id || "").localeCompare(String(right.id || ""))
+  );
+}
+
 function controllerLayoutStateForPhase(phase: string, preferRequestedState = false): Dict | null {
   const controllerState = w().controllerState as Dict | null;
   const selectedLayoutId = ((controllerState?.lobby as Dict)?.controllerLayoutId as string) || "";
@@ -352,29 +366,50 @@ function allControllerLayoutSelectors(): Set<string> {
       if (element.selector) selectors.add(element.selector as string);
     }
   }
+  for (const layer of controllerLayoutLayers()) {
+    for (const element of (layer.elements as Dict[]) || []) {
+      if (element.selector) selectors.add(element.selector as string);
+    }
+  }
   return selectors;
 }
 
-function activeLayoutElementTokens(state: Dict, globalLayout: Dict): Set<string> {
+function activeLayoutElementTokens(
+  state: Dict,
+  globalLayout: Dict,
+  layers: Dict[] = [],
+  retainHiddenGlobals = false,
+  stateScopedTokens = false
+): Set<string> {
   const tokens = new Set<string>();
   const momentIds = new Set<string>();
   for (const element of (state.elements as Dict[]) || []) {
     if (element.id) {
       momentIds.add(element.id as string);
-      tokens.add(`moment:${element.id}`);
+      tokens.add(stateScopedTokens ? `state:${state.id}:${element.id}` : `moment:${element.id}`);
     }
   }
-  if (globalLayout.hiddenInStates === true) return tokens;
-  const hiddenGlobals = new Set((state.hiddenGlobals as string[]) || []);
-  for (const element of (globalLayout.elements as Dict[]) || []) {
-    if (element.id && !hiddenGlobals.has(element.id as string) && !momentIds.has(element.id as string)) tokens.add(`global:${element.id}`);
+  if (retainHiddenGlobals) {
+    for (const element of (globalLayout.elements as Dict[]) || []) {
+      if (element.id) tokens.add(`global:${element.id}`);
+    }
+  } else if (globalLayout.hiddenInStates !== true) {
+    const hiddenGlobals = new Set((state.hiddenGlobals as string[]) || []);
+    for (const element of (globalLayout.elements as Dict[]) || []) {
+      if (element.id && !hiddenGlobals.has(element.id as string) && !momentIds.has(element.id as string)) tokens.add(`global:${element.id}`);
+    }
+  }
+  for (const layer of layers) {
+    for (const element of (layer.elements as Dict[]) || []) {
+      if (element.id) tokens.add(`layer:${layer.id}:${element.id}`);
+    }
   }
   return tokens;
 }
 
 function controllerLayoutTargetToken(target: El): string {
   const elementId = target.dataset.controllerLayoutElementId || "";
-  return elementId ? `${target.classList.contains("controller-global-layout-target") ? "global" : "moment"}:${elementId}` : "";
+  return elementId ? `${target.dataset.controllerLayoutScope || (target.classList.contains("controller-global-layout-target") ? "global" : `state:${currentControllerLayoutStateId}`)}:${elementId}` : "";
 }
 
 function currentControllerLayoutTokens(): Set<string> {
@@ -405,7 +440,11 @@ function clearControllerLayoutTargets(retainedTokens: Set<string> = new Set()): 
       continue;
     }
     if (elementId) clearControllerArtInstanceRenderer(elementId, target);
-    target.classList.remove("controller-layout-target", "controller-widget-art-host", "has-controller-widget-art", "controller-layout-visual-hidden", "controller-layout-visual-exiting", "controller-layout-visual-update", "controller-layout-visual-instant", "controller-layout-transition-suppressed", "controller-global-layout-target");
+    if (target.classList.contains("dynamic-controller-art-instance")) {
+      target.remove();
+      continue;
+    }
+    target.classList.remove("controller-layout-target", "controller-widget-art-host", "has-controller-widget-art", "controller-layout-visual-hidden", "controller-layout-visual-exiting", "controller-layout-visual-update", "controller-layout-visual-instant", "controller-layout-transition-suppressed", "controller-global-layout-target", "controller-persistent-layout-target", "controller-persistent-layout-hidden");
     target.classList.add("controller-layout-hidden");
     for (const prop of ["--controller-layout-x", "--controller-layout-y", "--controller-layout-w", "--controller-layout-h", "--controller-layout-scale", "--controller-layout-rotation", "--controller-text-color", "--controller-text-font-size", "color", "font-size"]) {
       target.style.removeProperty(prop);
@@ -413,6 +452,8 @@ function clearControllerLayoutTargets(retainedTokens: Set<string> = new Set()): 
     delete target.dataset.controllerLayoutElementId;
     delete target.dataset.controllerLayoutArtCompositionId;
     delete target.dataset.controllerLayoutVisibilityKey;
+    delete target.dataset.controllerLayoutScope;
+    target.style.removeProperty("z-index");
   }
 }
 
@@ -428,9 +469,14 @@ function applyControllerLayoutForPhase(
   if (!state) return;
   const normalizedVisitKey = String(visitKey || "");
   const isNewVisit = Boolean(normalizedVisitKey && normalizedVisitKey !== currentControllerLayoutVisitKey);
-  if (isNewVisit) controllerLayoutVisibilityOverrides.clear();
-  const previousTokens = isNewVisit ? new Set<string>() : currentControllerLayoutTokens();
-  const retainedTokens = isNewVisit ? new Set<string>() : activeLayoutElementTokens(state, globalControllerLayout());
+  if (isNewVisit) {
+    for (const key of [...controllerLayoutVisibilityOverrides.keys()]) {
+      if (key.startsWith("state:")) controllerLayoutVisibilityOverrides.delete(key);
+    }
+  }
+  const previousTokens = currentControllerLayoutTokens();
+  const layers = controllerLayoutLayers();
+  const retainedTokens = activeLayoutElementTokens(state, globalControllerLayout(), layers, true, true);
   (controllerLayoutGameObjectRegistry() as { beginFrame?: () => void } | null)?.beginFrame?.();
   removeInactiveControllerArtInstances(activeControllerArtInstanceIds(state));
   clearControllerLayoutTargets(retainedTokens);
@@ -442,31 +488,50 @@ function applyControllerLayoutForPhase(
   controllerPanel.style.width = `${canvas.width}px`;
   controllerPanel.style.height = `${canvas.height}px`;
   controllerPanel.style.setProperty("--controller-board-scale", `${fitScale}`);
+  const stateScope = `state:${state.id}`;
+  for (const layer of layers) {
+    const scope = `layer:${layer.id}`;
+    const hidden = new Set((state.hiddenLayers as string[]) || []).has(String(layer.id || ""));
+    for (const element of (layer.elements as Dict[]) || []) {
+      applyControllerElementLayout(element, scope, !previousTokens.has(`${scope}:${element.id}`), Number(layer.zIndex || 0), hidden);
+    }
+  }
   for (const element of (state.elements as Dict[]) || []) {
-    applyControllerElementLayout(element, false, !previousTokens.has(`moment:${element.id}`));
+    applyControllerElementLayout(element, stateScope, !previousTokens.has(`${stateScope}:${element.id}`), 300);
   }
   const hiddenGlobals = new Set((state.hiddenGlobals as string[]) || []);
   const momentIds = new Set(((state.elements as Dict[]) || []).map((element) => element.id as string).filter(Boolean));
   const globalLayout = globalControllerLayout();
-  if (globalLayout.hiddenInStates === true) return;
   for (const element of (globalLayout.elements as Dict[]) || []) {
-    if (hiddenGlobals.has(element.id as string) || momentIds.has(element.id as string)) continue;
-    applyControllerElementLayout(element, true, !previousTokens.has(`global:${element.id}`));
+    const isOverriddenByState = momentIds.has(element.id as string);
+    if (isOverriddenByState && element.selector) continue;
+    const hidden = globalLayout.hiddenInStates === true
+      || hiddenGlobals.has(element.id as string)
+      || isOverriddenByState;
+    applyControllerElementLayout(element, "global", !previousTokens.has(`global:${element.id}`), 200, hidden);
   }
 }
 
-function applyControllerElementLayout(element: Dict, isGlobal = false, shouldActivate = true): void {
-  const target = controllerLayoutTargetElement(element);
+function applyControllerElementLayout(element: Dict, scopeOrGlobal: boolean | string = false, shouldActivate = true, zIndex = 0, layerHidden = false): void {
+  const scope = typeof scopeOrGlobal === "string"
+    ? scopeOrGlobal
+    : scopeOrGlobal ? "global" : `state:${currentControllerLayoutStateId}`;
+  const isGlobal = scope === "global";
+  const target = controllerLayoutTargetElement(element, scope);
   if (!target) return;
-  const entity = registerControllerLayoutEntity(element, target, isGlobal);
+  const entity = registerControllerLayoutEntity(element, target, scope);
   const isNewLayoutTarget = beginLayoutElementTargetApplication(target, {
     targetClass: "controller-layout-target", hiddenClass: "controller-layout-hidden", suppressedClass: "controller-layout-transition-suppressed"
   });
   target.classList.toggle("controller-global-layout-target", isGlobal);
+  target.classList.toggle("controller-persistent-layout-target", scope.startsWith("layer:"));
+  target.classList.toggle("controller-persistent-layout-hidden", layerHidden);
   target.dataset.controllerLayoutElementId = (entity.id as string) || "";
+  target.dataset.controllerLayoutScope = scope;
   target.dataset.controllerLayoutArtCompositionId = (element.artCompositionId as string) || "";
   target.dataset.controllerLayoutVisibilityKey = (entity.visibilityKey as string) || "";
   applyLayoutElementBoxStyles(target, element, "controller");
+  target.style.zIndex = String(zIndex);
   if (element.kind === "text") {
     applyControllerLayoutTextProperties(target, element);
   } else if (isControllerLayoutArtElement(element)) {
@@ -496,30 +561,39 @@ const registerControllerLayoutEntity = createPlacedLayoutEntityRegistrar({
     isDynamicControllerArtInstance(layoutElement) || (layoutElement?.kind === "text" && !layoutElementTargetMatchesSelector(layoutElement, layoutTarget))
 });
 
-function controllerLayoutVisibilityKey(elementId: string, isGlobal: boolean | string = false): string {
+function normalizedControllerLayoutScope(scopeOrGlobal: boolean | string = "", target: El | null = null): string {
+  if (scopeOrGlobal === true || scopeOrGlobal === "global") return "global";
+  const scope = String(scopeOrGlobal || "");
+  if (scope.startsWith("layer:")) return scope;
+  if (scope === "layer" && target?.dataset.controllerLayoutScope?.startsWith("layer:")) return target.dataset.controllerLayoutScope;
+  if (scope === "moment" || scope === "controller" || scopeOrGlobal === false || !scope) {
+    return target?.dataset.controllerLayoutScope || `state:${currentControllerLayoutStateId || "controller"}`;
+  }
+  return scope.startsWith("state:") ? scope : `state:${scope}`;
+}
+
+function controllerLayoutVisibilityKey(elementId: string, scopeOrGlobal: boolean | string = false): string {
   if (!elementId) return "";
-  return `${isGlobal ? "global" : currentControllerLayoutStateId || "controller"}:${elementId}`;
+  return `${normalizedControllerLayoutScope(scopeOrGlobal)}:${elementId}`;
 }
 
 function controllerLayoutRegistryKeyForElement(elementId: string, scopeOrGlobal: boolean | string = "", target: El | null = null): string {
-  if (scopeOrGlobal === true || scopeOrGlobal === "global") return controllerLayoutVisibilityKey(elementId, true);
-  if (scopeOrGlobal === false || scopeOrGlobal === "moment" || scopeOrGlobal === "controller") return controllerLayoutVisibilityKey(elementId, false);
-  return controllerLayoutVisibilityKey(elementId, target?.classList?.contains("controller-global-layout-target") === true);
+  return `${normalizedControllerLayoutScope(scopeOrGlobal, target)}:${elementId}`;
 }
 
 function controllerLayoutTargetByElementId(elementId: string, scope = ""): El | null {
-  return layoutTargetByElementId({
-    root: w().controllerPanel, elementId, layoutAttribute: "data-controller-layout-element-id", dynamicSelector: ".dynamic-controller-art-instance", globalClass: "controller-global-layout-target", scope
-  });
+  const root = w().controllerPanel;
+  if (!root || !elementId) return null;
+  const base = `[data-controller-layout-element-id="${CSS.escape(elementId)}"]`;
+  if (scope) {
+    const normalizedScope = normalizedControllerLayoutScope(scope);
+    return root.querySelector(`${base}[data-controller-layout-scope="${CSS.escape(normalizedScope)}"]`) as El | null;
+  }
+  return root.querySelector(base) as El | null;
 }
 
 function controllerLayoutElementVisibilityKey(elementId: string, target: El | null = null, scope = ""): unknown {
-  return layoutElementVisibilityKey(elementId, target, {
-    visibilityDatasetKey: "controllerLayoutVisibilityKey", scope,
-    currentElements: () => (controllerLayoutState(currentControllerLayoutStateId)?.elements as Dict[]) || [],
-    globalElements: () => (globalControllerLayout().elements as Dict[]) || [],
-    keyFor: controllerLayoutVisibilityKey
-  });
+  return target?.dataset.controllerLayoutVisibilityKey || `${normalizedControllerLayoutScope(scope, target)}:${elementId}`;
 }
 
 const controllerLayoutGameObjectTargets = createPlacedLayoutGameObjectTargetResolver({
@@ -607,6 +681,13 @@ function controllerLayoutElementForTarget(target: El | null): Dict | null {
   if (!elementId) return null;
   const stateElements = (controllerLayoutState(currentControllerLayoutStateId)?.elements as Dict[]) || [];
   const globalElements = (globalControllerLayout().elements as Dict[]) || [];
+  const scope = layoutTarget?.dataset.controllerLayoutScope || target.dataset?.controllerLayoutScope || "";
+  if (scope.startsWith("layer:")) {
+    const layerId = scope.slice("layer:".length);
+    const layer = controllerLayoutLayers().find((item) => item.id === layerId);
+    return ((layer?.elements as Dict[]) || []).find((element) => element.id === elementId) || null;
+  }
+  if (scope === "global") return globalElements.find((element) => element.id === elementId) || null;
   return stateElements.find((element) => element.id === elementId) || globalElements.find((element) => element.id === elementId) || null;
 }
 
@@ -736,7 +817,11 @@ function controllerLayoutElementForId(elementId: string): Dict | null {
   const normalized = normalizeTextTargetId(elementId);
   const stateElements = (controllerLayoutState(currentControllerLayoutStateId)?.elements as Dict[]) || [];
   const globalElements = (globalControllerLayout().elements as Dict[]) || [];
-  return stateElements.find((element) => normalizeTextTargetId(element.id) === normalized) || globalElements.find((element) => normalizeTextTargetId(element.id) === normalized) || null;
+  const layerElements = controllerLayoutLayers().flatMap((layer) => (layer.elements as Dict[]) || []);
+  return stateElements.find((element) => normalizeTextTargetId(element.id) === normalized)
+    || globalElements.find((element) => normalizeTextTargetId(element.id) === normalized)
+    || layerElements.find((element) => normalizeTextTargetId(element.id) === normalized)
+    || null;
 }
 
 function setControllerLayoutTextShown(elementId: string, isShown: boolean, options: Dict = {}): number {
@@ -852,18 +937,36 @@ function setControllerPlayerBannerArt(target: El | null, player: Dict = {}): voi
   syncControllerPlayerBannerChildren(target);
 }
 
-function controllerLayoutTargetElement(element: Dict): El | null {
+function controllerLayoutScopeForElement(element: Dict): string {
+  const elementId = String(element.id || "");
+  const state = controllerLayoutState(currentControllerLayoutStateId);
+  if (((state?.elements as Dict[]) || []).some((item) => item === element || String(item.id || "") === elementId)) {
+    return `state:${currentControllerLayoutStateId}`;
+  }
+  if (((globalControllerLayout().elements as Dict[]) || []).some((item) => item === element || String(item.id || "") === elementId)) {
+    return "global";
+  }
+  const layer = controllerLayoutLayers().find((item) =>
+    ((item.elements as Dict[]) || []).some((candidate) => candidate === element || String(candidate.id || "") === elementId)
+  );
+  return layer ? `layer:${layer.id}` : `state:${currentControllerLayoutStateId}`;
+}
+
+function controllerLayoutTargetElement(element: Dict, requestedScope = ""): El | null {
   const controllerPanel = w().controllerPanel;
-  if (isDynamicControllerArtInstance(element)) return getOrCreateControllerArtInstance(element);
+  const scope = requestedScope || controllerLayoutScopeForElement(element);
+  if (isDynamicControllerArtInstance(element)) return getOrCreateControllerArtInstance(element, scope);
   const target = controllerPanel.querySelector(element.selector as string) as El | null;
   if (target && isControllerLayoutArtElement(element)) return controllerLayoutArtHost(element, target);
   if (target || element.kind !== "text") return target;
   const id = String(element.selector || "").replace(/^#/, "") || (element.id as string);
-  let dynamic = controllerPanel.querySelector(`#${CSS.escape(id)}`) as El | null;
+  let dynamic = controllerPanel.querySelector(`.controller-dynamic-text[data-controller-layout-element-id="${CSS.escape(String(element.id || id))}"][data-controller-layout-scope="${CSS.escape(scope)}"]`) as El | null;
   if (!dynamic) {
     dynamic = document.createElement("div");
-    dynamic.id = id;
+    if (!scope || scope.startsWith("state:")) dynamic.id = id;
     dynamic.className = "controller-dynamic-text";
+    dynamic.dataset.controllerLayoutElementId = String(element.id || id);
+    dynamic.dataset.controllerLayoutScope = scope;
     controllerPanel.appendChild(dynamic);
   }
   return dynamic;
@@ -879,15 +982,35 @@ function isDynamicControllerArtInstance(element: Dict | null): boolean {
 }
 
 function activeControllerArtInstanceIds(state: Dict): Set<string> {
-  return activeDynamicLayoutArtInstanceIds(state, globalControllerLayout(), isDynamicControllerArtInstance);
+  const ids = activeDynamicLayoutArtInstanceIds(state, globalControllerLayout(), isDynamicControllerArtInstance);
+  for (const element of (globalControllerLayout().elements as Dict[]) || []) {
+    if (isDynamicControllerArtInstance(element)) ids.add(String(element.id || ""));
+  }
+  for (const layer of controllerLayoutLayers()) {
+    for (const element of (layer.elements as Dict[]) || []) {
+      if (isDynamicControllerArtInstance(element)) ids.add(String(element.id || ""));
+    }
+  }
+  return ids;
 }
 
 function removeInactiveControllerArtInstances(activeIds: Set<string>): void {
   controllerDynamicArtInstances.removeInactive(activeIds, controllerLayoutGameObjectRegistry());
 }
 
-function getOrCreateControllerArtInstance(element: Dict): El | null {
-  return controllerDynamicArtInstances.getOrCreate(element);
+function getOrCreateControllerArtInstance(element: Dict, scope = ""): El | null {
+  const root = w().controllerPanel;
+  const id = String(element.id || "");
+  if (!root || !id) return null;
+  let host = root.querySelector(`.dynamic-controller-art-instance[data-layout-element-id="${CSS.escape(id)}"][data-controller-layout-scope="${CSS.escape(scope)}"]`) as El | null;
+  if (!host) {
+    host = document.createElement("div");
+    host.className = "dynamic-controller-art-instance controller-widget-art-host";
+    host.dataset.layoutElementId = id;
+    host.dataset.controllerLayoutScope = scope;
+    root.appendChild(host);
+  }
+  return host;
 }
 
 function renderControllerArtInstance(element: Dict, host: El, rendererKey = "", renderOptions: Dict = {}): unknown {
@@ -1351,7 +1474,7 @@ Object.assign(w(), {
   clearControllerArtInstanceRenderer, clearControllerLayoutTargets, clearStageArtInstanceRenderer, clearStageLayoutTargets,
   compactLayoutTextId, controllerArtInstanceRenderers, controllerDynamicArtInstances, controllerLayoutComputedFontSize, controllerLayoutElementForId, controllerLayoutElementForTarget,
   controllerLayoutElementVisibilityKey, controllerLayoutEntityForElementId, controllerLayoutGameObjectRegistry, controllerLayoutGameObjectTargets, controllerLayoutRegistryKeyForElement,
-  controllerLayoutState, controllerLayoutStateForPhase, controllerLayoutTargetByElementId, controllerLayoutTargetElement, controllerLayoutVisibilityKey, controllerLayoutVisibilityOverrides,
+  controllerLayoutLayers, controllerLayoutState, controllerLayoutStateForPhase, controllerLayoutTargetByElementId, controllerLayoutTargetElement, controllerLayoutVisibilityKey, controllerLayoutVisibilityOverrides,
   createLayoutGameObjectRegistry, dynamicStageTextElementId, getOrCreateControllerArtInstance, getOrCreateDynamicStageTextElement, getOrCreateStageArtInstance,
   globalControllerLayout, globalStageLayout, isDynamicControllerArtInstance, isDynamicStageArtInstance, isLayoutTextArtElement,
   layoutDefaultText, layoutTextArtRenderOptions, layoutTextDefault, loadControllerLayouts, loadStageLayouts, normalizeTextTargetId,

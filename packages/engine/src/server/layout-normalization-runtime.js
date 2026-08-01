@@ -44,6 +44,9 @@ function createLayoutNormalizationRuntime({
       hiddenGlobals: Array.isArray(state.hiddenGlobals)
         ? [...new Set(state.hiddenGlobals.map((id) => normalizeFlowId(id, "")).filter(Boolean))]
         : null,
+      hiddenLayers: Array.isArray(state.hiddenLayers)
+        ? [...new Set(state.hiddenLayers.map((id) => normalizeFlowId(id, "")).filter(Boolean))]
+        : [],
       elements: Array.isArray(state.elements)
         ? state.elements.map((element, elementIndex) => normalizeLayoutElement(element, elementIndex)).filter(Boolean)
         : []

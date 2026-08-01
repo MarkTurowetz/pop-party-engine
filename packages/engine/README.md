@@ -197,6 +197,11 @@ receives only JSON-safe values and applies them through the engine Art renderer.
 Controller selectors additionally receive the authenticated `viewer` snapshot;
 their view model is produced only in that controller's private response and is
 never included in Stage broadcasts.
+Controller renderers can target a named persistent Controller Layout layer with
+`target: { layoutElementId, layoutScope: "layer", layoutLayerId }`. Plugin inputs
+can declare `controller.submitted: { layoutStateId, bindings }` to move only the
+submitting recipient to a distinct authored confirmation layout while other
+recipients remain on the active input.
 Plugins cannot bind position, dimensions, layout scale, or arbitrary CSS; those
 remain owned by Stage/Controller Layout and Art Manager content.
 

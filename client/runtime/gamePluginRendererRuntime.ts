@@ -2,7 +2,7 @@ type Dict = Record<string, unknown>;
 type PluginRendererManifest = {
   id: string;
   surface: "stage" | "controller";
-  target: { layoutElementId: string; layoutScope: "moment" | "global" };
+  target: { layoutElementId: string; layoutScope: "moment" | "global" | "layer"; layoutLayerId?: string };
   bindings: Array<{
     id: string;
     kind: "text" | "component";
@@ -66,7 +66,10 @@ function surfaceElement(
   }
   const source = scope === "global"
     ? ((runtime.globalControllerLayout as (() => Dict))?.()?.elements as Dict[]) || []
-    : ((runtime.controllerLayoutState as ((id: string) => Dict))?.(String(runtime.currentControllerLayoutStateId || ""))?.elements as Dict[]) || [];
+    : scope === "layer"
+      ? ((((runtime.controllerLayouts as Dict | undefined)?.layers as Dict[]) || [])
+          .find((layer) => String(layer.id || "") === String(manifest.target.layoutLayerId || ""))?.elements as Dict[]) || []
+      : ((runtime.controllerLayoutState as ((id: string) => Dict))?.(String(runtime.currentControllerLayoutStateId || ""))?.elements as Dict[]) || [];
   return source.find((element) => String(element.id || "") === id)
     || (runtime.controllerLayoutElementForId as ((elementId: string) => Dict | null))?.(id)
     || null;
@@ -84,9 +87,15 @@ export function renderGamePluginSurface(
     if (manifest.surface !== surface) continue;
     const element = surfaceElement(surface, manifest, runtime);
     if (!element) continue;
+    const targetScope = manifest.target.layoutScope === "layer"
+      ? `layer:${manifest.target.layoutLayerId || ""}`
+      : manifest.target.layoutScope;
     const target = surface === "stage"
       ? (runtime.stageLayoutTargetElement as ((item: Dict) => HTMLElement | null))?.(element)
-      : (runtime.controllerLayoutTargetElement as ((item: Dict) => HTMLElement | null))?.(element);
+      : (runtime.controllerLayoutTargetByElementId as ((id: string, scope?: string) => HTMLElement | null))?.(
+          String(element.id || ""),
+          targetScope
+        ) || (runtime.controllerLayoutTargetElement as ((item: Dict, scope?: string) => HTMLElement | null))?.(element, targetScope);
     if (!target) continue;
     const model = viewModels[manifest.id];
     const textOverrides: Dict = {};

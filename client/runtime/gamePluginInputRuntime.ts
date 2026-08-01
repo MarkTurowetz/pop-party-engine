@@ -15,7 +15,10 @@ type InputBinding = {
 type InputManifest = {
   id: string;
   submission: Array<{ id: string; type: "choice" | "integer"; min?: number; max?: number; optionsSource?: string }>;
-  controller: { bindings: InputBinding[] };
+  controller: {
+    bindings: InputBinding[];
+    submitted?: { layoutStateId: string; bindings: InputBinding[] };
+  };
 };
 
 function propertyPathValue(root: unknown, path: string): unknown {
@@ -54,6 +57,7 @@ export function createGamePluginInputView(options: {
   const values = new Map<string, unknown>();
   const submitHandlers = new WeakMap<HTMLElement, () => void>();
   let visitKey = "";
+  let submitting = false;
 
   function runtime(): Dict {
     return globalThis as typeof globalThis & Dict;
@@ -159,7 +163,7 @@ export function createGamePluginInputView(options: {
       field.max = String(definition?.max ?? "");
       field.step = "1";
       field.inputMode = "numeric";
-      field.disabled = input.submitted === true;
+      field.disabled = input.submitted === true || submitting;
       if (!values.has(fieldId)) values.set(fieldId, integerInitialValue(binding, definition, model));
       const value = values.get(fieldId);
       const visibleValue = value === undefined ? "" : String(value);
@@ -177,7 +181,7 @@ export function createGamePluginInputView(options: {
     button.type = "button";
     button.className = "game-plugin-input-control game-plugin-action-button";
     button.dataset.gamePluginInputBinding = binding.id;
-    button.disabled = input.submitted === true;
+    button.disabled = input.submitted === true || submitting;
     submitHandlers.set(button, submitNow);
     if (binding.kind === "choice") {
       const submission = (input.manifest as InputManifest).submission.find((field) => field.id === binding.field);
@@ -224,6 +228,7 @@ export function createGamePluginInputView(options: {
     const nextVisitKey = `${input.gameSessionId}:${input.actionId}:${input.visitId}`;
     if (nextVisitKey !== visitKey) {
       values.clear();
+      submitting = false;
       visitKey = nextVisitKey;
     }
     const withManifest = { ...input, manifest };
@@ -241,21 +246,37 @@ export function createGamePluginInputView(options: {
       () => {},
       { preferRequestedState: true }
     );
+    const activeBindings = input.submitted === true && manifest.controller.submitted
+      ? manifest.controller.submitted.bindings
+      : manifest.controller.bindings;
+    const activeBindingIds = new Set(activeBindings.map((binding) => binding.id));
+    document.querySelectorAll<HTMLElement>("[data-game-plugin-input-binding]").forEach((control) => {
+      if (!activeBindingIds.has(control.dataset.gamePluginInputBinding || "")) control.remove();
+    });
     const submitNow = () => {
+      if (input.submitted === true || submitting) return;
+      submitting = true;
+      document.querySelectorAll<HTMLInputElement | HTMLButtonElement>("[data-game-plugin-input-binding]")
+        .forEach((control) => { control.disabled = true; });
       const payload = Object.fromEntries(manifest.submission.map((field) => [field.id, values.get(field.id)]));
       void options.submit(String(input.actionId), Number(input.visitId || 0), payload, submissionId())
         .then((result) => {
           const nextLobby = (result as Dict | null)?.lobby;
           if (nextLobby) options.renderState(nextLobby as Dict);
+          else submitting = false;
+        })
+        .catch(() => {
+          submitting = false;
         });
     };
-    for (const binding of manifest.controller.bindings) addControl(binding, withManifest, model, submitNow);
+    for (const binding of activeBindings) addControl(binding, withManifest, model, submitNow);
     return true;
   }
 
   function reset(): void {
     values.clear();
     visitKey = "";
+    submitting = false;
     document.querySelectorAll("[data-game-plugin-input-binding]").forEach((node) => node.remove());
   }
 

@@ -47,4 +47,36 @@ describe("game plugin renderer runtime", () => {
       { actionId: "fixture.draw", type: "fixture.draw", runner: "serverEffect" }
     ]);
   });
+
+  it("targets a named persistent controller layer through its explicit scope", () => {
+    const layerDocument = {
+      getElementById: () => ({ textContent: JSON.stringify({ gamePlugin: { renderers: [{
+        id: "fixture.context",
+        surface: "controller",
+        target: { layoutElementId: "round-context", layoutScope: "layer", layoutLayerId: "game-context" },
+        bindings: [{ id: "text", kind: "text", source: "label", targetComponentId: "text" }]
+      }] } }) })
+    } as unknown as Document;
+    const element = { id: "round-context", kind: "art", artCompositionId: "round-context" };
+    const target = { dataset: { controllerLayoutVisibilityKey: "layer:game-context:round-context" } } as unknown as HTMLElement;
+    const controllerLayoutTargetByElementId = vi.fn(() => target);
+    const renderControllerArtInstance = vi.fn();
+    Object.assign(globalThis, {
+      controllerLayouts: { layers: [{ id: "game-context", elements: [element] }] },
+      controllerLayoutTargetByElementId,
+      renderControllerArtInstance
+    });
+
+    renderGamePluginSurface("controller", {
+      gamePlugin: { viewModels: { "fixture.context": { label: "Round 4" } } }
+    }, layerDocument);
+
+    expect(controllerLayoutTargetByElementId).toHaveBeenCalledWith("round-context", "layer:game-context");
+    expect(renderControllerArtInstance).toHaveBeenCalledWith(
+      element,
+      target,
+      "layer:game-context:round-context",
+      { textOverrides: { text: "Round 4" }, componentOverrides: {} }
+    );
+  });
 });

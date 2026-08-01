@@ -80,7 +80,13 @@ function fixturePlugin() {
             { id: "right", kind: "choice", layoutElementId: "right", field: "side", optionIndex: 1 },
             { id: "amount", kind: "integer", layoutElementId: "amount", field: "amount" },
             { id: "submit", kind: "submit", layoutElementId: "submit" }
-          ]
+          ],
+          submitted: {
+            layoutStateId: "fixture-wager-confirmed",
+            bindings: [
+              { id: "confirmedTarget", kind: "text", layoutElementId: "confirmation", source: "target", targetComponentId: "target-text" }
+            ]
+          }
         },
         completion: "allRecipients",
         disconnect: "completeRemaining",
@@ -109,6 +115,10 @@ function fixturePlugin() {
       };
       registry.stageRenderers("fixture.stageCounter", renderer);
       registry.controllerRenderers("fixture.controllerCounter", renderer);
+      registry.controllerRenderers("fixture.layerCounter", {
+        ...renderer,
+        target: { layoutElementId: "draw-counter", layoutScope: "layer", layoutLayerId: "game-context" }
+      });
     }
   });
 }
@@ -255,13 +265,19 @@ describe("game plugin ABI", () => {
 
     expect(runtime.manifests).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "fixture.stageCounter", surface: "stage" }),
-      expect.objectContaining({ id: "fixture.controllerCounter", surface: "controller" })
+      expect.objectContaining({ id: "fixture.controllerCounter", surface: "controller" }),
+      expect.objectContaining({
+        id: "fixture.layerCounter",
+        surface: "controller",
+        target: expect.objectContaining({ layoutScope: "layer", layoutLayerId: "game-context" })
+      })
     ]));
     expect(runtime.viewModels(room)).toEqual({ "fixture.stageCounter": { label: "3" } });
     room.players.set("p1", { id: "p1", name: "Player", active: true });
     expect(runtime.viewModels(room, "p1")).toMatchObject({
       "fixture.stageCounter": { label: "3" },
-      "fixture.controllerCounter": { label: "3" }
+      "fixture.controllerCounter": { label: "3" },
+      "fixture.layerCounter": { label: "3" }
     });
   });
 
@@ -341,6 +357,19 @@ describe("game plugin ABI", () => {
       actionId: "wager", visitId: wagerVisit, gameSessionId: 2, submissionId: "w1",
       payload: { side: "over", amount: 50 }
     })).toMatchObject({ status: 200 });
+    expect(runtime.payloadForViewer(room, action, "p1")).toMatchObject({
+      submitted: true,
+      layoutStateId: "fixture-wager-confirmed",
+      viewModel: { target: 12 }
+    });
+    expect(runtime.payloadForViewer(room, action, "p2")).toMatchObject({
+      submitted: false,
+      layoutStateId: "fixture-private-wager",
+      viewModel: { target: 29 }
+    });
+    expect(runtime.manifests.find((manifest) => manifest.id === "fixture.privateWager").controller.submitted)
+      .toMatchObject({ layoutStateId: "fixture-wager-confirmed", bindings: [{ id: "confirmedTarget" }] });
+    expect(broadcastLobby).toHaveBeenCalled();
     expect(runtime.submit(room, "p1", {
       actionId: "wager", visitId: wagerVisit, gameSessionId: 2, submissionId: "w1",
       payload: { side: "over", amount: 50 }
