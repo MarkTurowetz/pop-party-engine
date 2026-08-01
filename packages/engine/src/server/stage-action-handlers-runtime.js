@@ -4,6 +4,7 @@ function createStageActionHandlersRuntime({
   applyRoomActionEffects,
   broadcastLobby,
   completeCurrentAction,
+  controllerViewerPlayerId = () => "",
   currentRoomAction,
   emitInputFlowEvent,
   getExistingRoom,
@@ -79,7 +80,8 @@ function createStageActionHandlersRuntime({
       return;
     }
     const advanced = emitInputFlowEvent(room, eventType);
-    sendJson(res, 200, { ok: true, advanced, lobby: lobbyPayload(room) });
+    const viewerPlayerId = controllerViewerPlayerId(req, room, payload);
+    sendJson(res, 200, { ok: true, advanced, lobby: lobbyPayload(room, viewerPlayerId) });
   }
 
   async function handleCompleteAction(req, res) {

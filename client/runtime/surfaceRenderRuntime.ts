@@ -49,3 +49,8 @@ export function semanticSurfaceRevision(payload: Record<string, unknown>): numbe
   if (Number.isFinite(surfaceRevision) && surfaceRevision >= 0) return surfaceRevision;
   return Number(payload.revision);
 }
+
+export function surfacePayloadMatches(payload: Record<string, unknown>, expectedSurface: "stage" | "controller"): boolean {
+  const surface = String(payload.surface || "");
+  return !surface || surface === expectedSurface;
+}
