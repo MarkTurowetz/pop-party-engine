@@ -178,6 +178,46 @@ describe("game plugin ABI", () => {
     }))).toThrow(/integer submission field/);
   });
 
+  it("validates authored tap and hold submission values against the declared input schema", () => {
+    const pluginWithBinding = (binding) => defineGamePlugin({
+      namespace: "gesture",
+      register(registry) {
+        registry.inputs("gesture.choice", {
+          name: "Gesture Choice",
+          fields: [{ key: "answersSubmittedTargetActionId", label: "After", control: "actionTarget" }],
+          submission: [
+            { id: "choice", type: "choice", optionsSource: "options" },
+            { id: "mode", type: "choice", optionsSource: "modes" },
+            { id: "amount", type: "integer", min: 1, max: 5 }
+          ],
+          controller: { layoutStateId: "gesture", bindings: [binding] },
+          recipients: () => [],
+          view: () => ({}),
+          submit() {}
+        });
+      }
+    });
+
+    expect(() => createGamePluginRegistry().install(pluginWithBinding({
+      id: "choice", kind: "choice", layoutElementId: "choice", field: "choice", optionIndex: 0,
+      autoSubmit: true,
+      submitValues: { mode: "tap", amount: 2 },
+      holdSubmit: { seconds: 1.5, submitValues: { mode: "hold", amount: 4 } }
+    }))).not.toThrow();
+    expect(() => createGamePluginRegistry().install(pluginWithBinding({
+      id: "choice", kind: "choice", layoutElementId: "choice", field: "choice", optionIndex: 0,
+      holdSubmit: { seconds: 0, submitValues: { mode: "hold" } }
+    }))).toThrow(/positive seconds/);
+    expect(() => createGamePluginRegistry().install(pluginWithBinding({
+      id: "choice", kind: "choice", layoutElementId: "choice", field: "choice", optionIndex: 0,
+      autoSubmit: true, submitValues: { undeclared: "value" }
+    }))).toThrow(/undeclared submission field/);
+    expect(() => createGamePluginRegistry().install(pluginWithBinding({
+      id: "choice", kind: "choice", layoutElementId: "choice", field: "choice", optionIndex: 0,
+      autoSubmit: true, submitValues: { amount: 9 }
+    }))).toThrow(/outside its declared bounds/);
+  });
+
   it("adds namespaced action metadata, normalization, public serialization, and stage completion", () => {
     const registrations = createGamePluginRegistry().install(fixturePlugin()).actions;
     const definitions = createPluginFlowActionDefinitions(registrations);
@@ -237,6 +277,13 @@ describe("game plugin ABI", () => {
     expect(room.gamePluginState.fixture).toMatchObject({ draws: 2, actorWasVip: true });
     expect(room.flowVariables.cardsDrawn).toBe(2);
     expect(broadcastLobby).toHaveBeenCalledWith(room);
+
+    broadcastLobby.mockClear();
+    room.revision = 10;
+    executor.execute(room, action);
+    room.revision = 11;
+    await Promise.resolve();
+    expect(broadcastLobby).not.toHaveBeenCalled();
 
     const randomSample = room.gamePluginState.fixture.randomSample;
     room.gamePluginState = {};

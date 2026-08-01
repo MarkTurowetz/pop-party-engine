@@ -813,6 +813,12 @@ function setControllerPluginInputChoiceState(target: El | null, selected: boolea
   return renderer?.stopAtAll?.(selected ? "Selected" : "Default", { instant: true }) || 0;
 }
 
+function setControllerPluginInputHoldingState(target: El | null, holding: boolean, selected = false): number {
+  if (!target) return 0;
+  const renderer = artRendererForLayoutHost(target);
+  return renderer?.stopAtAll?.(holding ? "Holding" : selected ? "Selected" : "Default", { instant: true }) || 0;
+}
+
 function controllerLayoutElementForId(elementId: string): Dict | null {
   const normalized = normalizeTextTargetId(elementId);
   const stateElements = (controllerLayoutState(currentControllerLayoutStateId)?.elements as Dict[]) || [];
@@ -1461,6 +1467,7 @@ const PartyGameLayoutText = {
   playControllerButtonInteraction,
   setControllerButtonDisabledState,
   setControllerPluginInputChoiceState,
+  setControllerPluginInputHoldingState,
   setControllerPlayerBannerArt,
   setControllerText: setControllerLayoutText,
   setControllerTextShown: setControllerLayoutTextShown,
@@ -1485,7 +1492,7 @@ Object.assign(w(), {
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   disposeControllerButtonArt, setControllerButtonLifecycleState,
-  playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPluginInputChoiceState, setControllerPlayerBannerArt,
+  playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPluginInputChoiceState, setControllerPluginInputHoldingState, setControllerPlayerBannerArt,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,
   stageLayoutGameObjectTargets, stageLayoutGameObjectVisibilityKey, stageLayoutGameObjectVisibilityOverrides, stageLayoutRegistryKeyForElement, stageLayoutState, stageLayoutStateForPhase,

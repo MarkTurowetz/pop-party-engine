@@ -101,6 +101,7 @@ module.exports = Object.freeze([{
     execute(context, action) {
       context.state.count = Number(context.state.count || 0) + Number(action.amount || 0);
       context.outputs.set("count", context.state.count);
+      context.broadcast.request();
     }
   }
 }]);
@@ -171,6 +172,57 @@ module.exports = Object.freeze([
       submit(context, payload) {
         context.state.wagers ||= {};
         context.state.wagers[context.actor.id] = payload;
+      }
+    }
+  },
+  {
+    id: "generated-fixture.gestureChoice",
+    value: {
+      name: "Gesture Choice",
+      fields: [
+        { key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" },
+        { key: "optionCount", label: "Option Count", control: "integer", min: 2, max: 4, default: 2 }
+      ],
+      submission: [
+        { id: "choice", type: "choice", optionsSource: "options" },
+        { id: "mode", type: "choice", optionsSource: "modes" }
+      ],
+      controller: {
+        layoutStateId: "fixture-plugin-input",
+        bindings: [
+          { id: "gestureAlpha", kind: "choice", layoutElementId: "fixture-hit-button", field: "choice", optionIndex: 0, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" } } },
+          { id: "gestureBeta", kind: "choice", layoutElementId: "fixture-stay-button", field: "choice", optionIndex: 1, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" } } },
+          { id: "gestureGamma", kind: "choice", layoutElementId: "fixture-extra-button-three", field: "choice", optionIndex: 2, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" } } },
+          { id: "gestureDelta", kind: "choice", layoutElementId: "fixture-extra-button-four", field: "choice", optionIndex: 3, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" } } }
+        ],
+        submitted: {
+          layoutStateId: "fixture-gesture-confirmed",
+          bindings: [
+            { id: "confirmedViewer", kind: "text", layoutElementId: "fixture-gesture-confirmation", source: "viewerName", targetComponentId: "author-heading" },
+            { id: "confirmedPrompt", kind: "text", layoutElementId: "fixture-gesture-confirmation", source: "prompt", targetComponentId: "answer-text" },
+            { id: "confirmedDetail", kind: "text", layoutElementId: "fixture-gesture-confirmation", source: "detail", targetComponentId: "vote-count" }
+          ]
+        }
+      },
+      recipients(context) { return context.players.map((player) => player.id); },
+      view(context, action) {
+        const allOptions = [
+          { id: "alpha", label: "Alpha" },
+          { id: "beta", label: "Beta" },
+          { id: "gamma", label: "Gamma" },
+          { id: "delta", label: "Delta" }
+        ];
+        return {
+          viewerName: context.viewer.name,
+          prompt: "Private prompt for " + context.viewer.name,
+          detail: "Detail " + context.viewer.id,
+          options: allOptions.slice(0, Number(action.optionCount || 2)),
+          modes: [{ id: "tap", label: "Tap" }, { id: "hold", label: "Hold" }]
+        };
+      },
+      submit(context, payload) {
+        context.state.gestures ||= {};
+        context.state.gestures[context.actor.id] = payload;
       }
     }
   }
@@ -279,6 +331,48 @@ module.exports = Object.freeze([{
             autoFitText: false,
             fontFamily: "",
             fontColor: "#17131f"
+          },
+          {
+            id: "fixture-extra-button-three",
+            name: "Fixture Extra Button Three",
+            selector: "",
+            kind: "art",
+            artCompositionId: "controller-choice-option",
+            hidden: false,
+            locked: false,
+            x: 195,
+            y: 610,
+            width: 300,
+            height: 80,
+            scale: 1,
+            rotation: 0,
+            defaultAnimationState: "On",
+            defaultText: "",
+            fontSize: 32,
+            autoFitText: false,
+            fontFamily: "",
+            fontColor: "#17131f"
+          },
+          {
+            id: "fixture-extra-button-four",
+            name: "Fixture Extra Button Four",
+            selector: "",
+            kind: "art",
+            artCompositionId: "controller-choice-option",
+            hidden: false,
+            locked: false,
+            x: 195,
+            y: 720,
+            width: 300,
+            height: 80,
+            scale: 1,
+            rotation: 0,
+            defaultAnimationState: "On",
+            defaultText: "",
+            fontSize: 32,
+            autoFitText: false,
+            fontFamily: "",
+            fontColor: "#17131f"
           }
         ]
       };
@@ -303,6 +397,33 @@ module.exports = Object.freeze([{
           rotation: 0,
           defaultAnimationState: "On",
           defaultText: "Wager confirmed",
+          fontSize: 32,
+          autoFitText: false,
+          fontFamily: "",
+          fontColor: "#17131f"
+        }]
+      };
+      const gestureConfirmedLayout = {
+        id: "fixture-gesture-confirmed",
+        name: "Fixture Gesture Confirmed",
+        hiddenGlobals: [],
+        hiddenLayers: [],
+        elements: [{
+          id: "fixture-gesture-confirmation",
+          name: "Gesture Confirmation",
+          selector: "",
+          kind: "art",
+          artCompositionId: "voting-card",
+          hidden: false,
+          locked: false,
+          x: 195,
+          y: 420,
+          width: 350,
+          height: 300,
+          scale: 1,
+          rotation: 0,
+          defaultAnimationState: "On",
+          defaultText: "Gesture confirmed",
           fontSize: 32,
           autoFitText: false,
           fontFamily: "",
@@ -342,9 +463,10 @@ module.exports = Object.freeze([{
           persistentContextLayer
         ],
         states: [
-          ...controllerLayoutsPayload.layouts.states.filter((state) => ![customInputLayout.id, wagerConfirmedLayout.id].includes(state.id)),
+          ...controllerLayoutsPayload.layouts.states.filter((state) => ![customInputLayout.id, wagerConfirmedLayout.id, gestureConfirmedLayout.id].includes(state.id)),
           customInputLayout,
-          wagerConfirmedLayout
+          wagerConfirmedLayout,
+          gestureConfirmedLayout
         ]
       };
       const controllerLayoutSaveResponse = await fetch(first.startup.localUrl + "/api/controller-layouts", {
@@ -559,6 +681,161 @@ module.exports = Object.freeze([{
           payload: { choice: "hit" }
         })
       })).json();
+      const submitPluginInputResponse = async (joined, lobby, payload, id) => {
+        const response = await fetch(first.startup.localUrl + "/api/game-plugin-input", {
+          method: "POST",
+          headers: playerHeaders(joined),
+          body: JSON.stringify({
+            stageCode: "PLUG",
+            playerId: joined.player.id,
+            gameSessionId: lobby.gameSessionId,
+            actionId: lobby.gamePlugin.input.actionId,
+            visitId: lobby.gamePlugin.input.visitId,
+            submissionId: id,
+            payload
+          })
+        });
+        return { status: response.status, body: await response.json() };
+      };
+      const gestureLobby = {
+        ...fixtureLobby,
+        entryTargetActionId: "fixture-gesture-tap",
+        actions: [
+          {
+            id: "fixture-gesture-tap",
+            name: "Gesture Tap",
+            type: "generated-fixture.gestureChoice",
+            optionCount: 2,
+            answersSubmittedTargetActionId: "fixture-gesture-hold",
+            timing: { mode: "E+", seconds: 0 },
+            subActions: []
+          },
+          {
+            id: "fixture-gesture-hold",
+            name: "Gesture Hold",
+            type: "generated-fixture.gestureChoice",
+            optionCount: 4,
+            answersSubmittedTargetActionId: "fixture-gesture-done",
+            timing: { mode: "E+", seconds: 0 },
+            subActions: []
+          },
+          { id: "fixture-gesture-done", name: "Gestures Done", type: "presentText", text: "Done", timing: { mode: "E+", seconds: 0 }, subActions: [], nextTargetActionId: "none" }
+        ]
+      };
+      const gestureFlow = {
+        ...flowPayload.flow,
+        states: flowPayload.flow.states.map((state) => state.id === "lobby" ? gestureLobby : state)
+      };
+      await fetch(first.startup.localUrl + "/api/stage/PLUG/test-config", {
+        method: "POST",
+        headers: stageHeaders,
+        body: JSON.stringify({ flow: gestureFlow })
+      });
+      const oneGestureTapLobby = await heartbeat(one);
+      const twoGestureTapLobby = await heartbeat(two);
+      let gestureBrowserSubmissionCount = 0;
+      controllerPage.on("request", (request) => {
+        if (request.url().endsWith("/api/game-plugin-input") && request.method() === "POST") gestureBrowserSubmissionCount += 1;
+      });
+      await controllerPage.waitForFunction(() => (
+        window.controllerState?.lobby?.gamePlugin?.input?.actionId === "fixture-gesture-tap"
+        && document.querySelectorAll("[data-game-plugin-input-option]").length === 2
+        && document.querySelectorAll("[data-game-plugin-input-unavailable='true']").length === 2
+      ), null, { timeout: 15_000 });
+      const gestureTwoSlotState = await controllerPage.evaluate(() => ({
+        controls: document.querySelectorAll("[data-game-plugin-input-option]").length,
+        unavailableHosts: document.querySelectorAll("[data-game-plugin-input-unavailable='true']").length
+      }));
+      const tapResponsePromise = controllerPage.waitForResponse((response) => (
+        response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
+      ));
+      await controllerPage.locator('[data-game-plugin-input-binding="gestureAlpha"]').click();
+      const tapBrowserResponse = await tapResponsePromise;
+      const tapBrowserRequest = JSON.parse(tapBrowserResponse.request().postData() || "{}");
+      await controllerPage.waitForFunction(() => (
+        window.controllerState?.lobby?.gamePlugin?.input?.submitted === true
+        && window.controllerState?.lobby?.gamePlugin?.input?.layoutStateId === "fixture-gesture-confirmed"
+      ), null, { timeout: 15_000 });
+      const gestureSubmittedBeforeHeartbeat = await controllerPage.evaluate(() => {
+        const host = document.querySelector('[data-controller-layout-element-id="fixture-gesture-confirmation"]');
+        window.__fixtureGestureConfirmationHost = host;
+        window.__fixtureGestureConfirmationRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(host);
+        const text = (componentId) => host?.querySelector('[data-art-component-id="' + componentId + '"]')?.textContent?.trim();
+        return {
+          viewer: text("author-heading"),
+          prompt: text("answer-text"),
+          detail: text("vote-count"),
+          rendererPresent: Boolean(window.__fixtureGestureConfirmationRenderer)
+        };
+      });
+      await controllerPage.waitForTimeout(1_100);
+      const gestureSubmittedAfterHeartbeat = await controllerPage.evaluate(() => {
+        const host = document.querySelector('[data-controller-layout-element-id="fixture-gesture-confirmation"]');
+        const text = (componentId) => host?.querySelector('[data-art-component-id="' + componentId + '"]')?.textContent?.trim();
+        return {
+          hostRetained: window.__fixtureGestureConfirmationHost === host,
+          rendererRetained: window.__fixtureGestureConfirmationRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(host),
+          viewer: text("author-heading"),
+          prompt: text("answer-text"),
+          detail: text("vote-count")
+        };
+      });
+      const secondTapSubmit = await submitPluginInputResponse(two, twoGestureTapLobby, { choice: "beta", mode: "tap" }, "gesture-tap-two");
+      const oneGestureHoldLobby = await heartbeat(one);
+      const twoGestureHoldLobby = await heartbeat(two);
+      await controllerPage.waitForFunction(() => (
+        window.controllerState?.lobby?.gamePlugin?.input?.actionId === "fixture-gesture-hold"
+        && document.querySelectorAll("[data-game-plugin-input-option]").length === 4
+        && document.querySelectorAll("[data-game-plugin-input-unavailable='true']").length === 0
+      ), null, { timeout: 15_000 });
+      const gestureFourSlotState = await controllerPage.evaluate(() => ({
+        controls: document.querySelectorAll("[data-game-plugin-input-option]").length,
+        unavailableHosts: document.querySelectorAll("[data-game-plugin-input-unavailable='true']").length
+      }));
+      const staleGestureResponse = await submitPluginInputResponse(one, oneGestureTapLobby, { choice: "alpha", mode: "tap" }, "gesture-stale-one");
+      const invalidGestureResponse = await submitPluginInputResponse(two, twoGestureHoldLobby, { choice: "beta", mode: "forged" }, "gesture-invalid-two");
+      const gestureButton = controllerPage.locator('[data-game-plugin-input-binding="gestureAlpha"]');
+      await gestureButton.dispatchEvent("pointerdown", { pointerId: 91, pointerType: "touch", button: 0, isPrimary: true });
+      await gestureButton.dispatchEvent("pointercancel", { pointerId: 91, pointerType: "touch", button: 0, isPrimary: true });
+      await controllerPage.waitForTimeout(1_600);
+      const gestureCancellationState = {
+        ...(await controllerPage.evaluate(() => ({
+        holding: document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]')?.dataset.gamePluginInputHolding,
+        selected: document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]')?.getAttribute("aria-pressed")
+        }))),
+        submissions: gestureBrowserSubmissionCount
+      };
+      await gestureButton.evaluate((button) => { window.__fixtureHeldGestureButton = button; });
+      const holdResponsePromise = controllerPage.waitForResponse((response) => (
+        response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
+      ));
+      await gestureButton.hover();
+      await controllerPage.mouse.down();
+      await controllerPage.waitForTimeout(1_100);
+      const gestureHoldHeartbeatState = await controllerPage.evaluate(() => ({
+        retained: window.__fixtureHeldGestureButton === document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]'),
+        holding: window.__fixtureHeldGestureButton?.dataset.gamePluginInputHolding,
+        ariaBusy: window.__fixtureHeldGestureButton?.getAttribute("aria-busy")
+      }));
+      const holdBrowserResponse = await holdResponsePromise;
+      await controllerPage.mouse.up();
+      const holdBrowserRequest = JSON.parse(holdBrowserResponse.request().postData() || "{}");
+      await controllerPage.waitForFunction(() => (
+        window.controllerState?.lobby?.gamePlugin?.input?.submitted === true
+        && window.controllerState?.lobby?.gamePlugin?.input?.layoutStateId === "fixture-gesture-confirmed"
+      ), null, { timeout: 15_000 });
+      const secondHoldSubmit = await submitPluginInputResponse(two, twoGestureHoldLobby, { choice: "delta", mode: "hold" }, "gesture-hold-two");
+      const gestureBrowserSubmissionCountAfterHold = gestureBrowserSubmissionCount;
+      const transitionBurstActions = Array.from({ length: 24 }, (_, index) => ({
+        id: "fixture-transition-burst-" + index,
+        name: "Transition Burst " + index,
+        type: "generated-fixture.increment",
+        amount: 1,
+        resultVariable: "transitionBurstCount",
+        timing: { mode: "E+", seconds: 0 },
+        subActions: [],
+        nextTargetActionId: index === 23 ? "fixture-input-hit" : "fixture-transition-burst-" + (index + 1)
+      }));
       const wagerLobby = {
         ...fixtureLobby,
         entryTargetActionId: "fixture-private-wager",
@@ -567,10 +844,11 @@ module.exports = Object.freeze([{
             id: "fixture-private-wager",
             name: "Private Wager",
             type: "generated-fixture.privateWager",
-            answersSubmittedTargetActionId: "fixture-input-hit",
+            answersSubmittedTargetActionId: "fixture-transition-burst-0",
             timing: { mode: "E+", seconds: 0 },
             subActions: []
           },
+          ...transitionBurstActions,
           { id: "fixture-input-hit", name: "Wagers Done", type: "presentText", text: "Done", timing: { mode: "E+", seconds: 0 }, subActions: [], nextTargetActionId: "none" }
         ]
       };
@@ -677,37 +955,54 @@ module.exports = Object.freeze([{
         animationTime: Number(window.__fixturePersistentAnimation?.currentTime || 0),
         animationState: window.__fixturePersistentAnimation?.playState
       }));
-      const submitPluginInput = async (joined, lobby, payload, id) => (await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
-        method: "POST",
-        headers: playerHeaders(joined),
-        body: JSON.stringify({
-          stageCode: "PLUG",
-          playerId: joined.player.id,
-          gameSessionId: lobby.gameSessionId,
-          actionId: lobby.gamePlugin.input.actionId,
-          visitId: lobby.gamePlugin.input.visitId,
-          submissionId: id,
-          payload
-        })
-      })).json());
       const duplicateWagerSubmit = await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
         method: "POST",
         headers: playerHeaders(one),
         body: JSON.stringify(browserWagerRequest)
       })).json();
-      const secondWagerSubmit = await submitPluginInput(two, twoWagerLobby, { side: "under", amount: 22 }, "wager-two");
+      await controllerPage.evaluate(() => {
+        window.__fixtureTransitionFrameGaps = [];
+        window.__fixtureTransitionFrameStop = false;
+        let previous = performance.now();
+        const observe = (now) => {
+          window.__fixtureTransitionFrameGaps.push(now - previous);
+          previous = now;
+          if (!window.__fixtureTransitionFrameStop) requestAnimationFrame(observe);
+        };
+        requestAnimationFrame(observe);
+      });
+      await controllerPage.waitForTimeout(50);
+      const secondWagerSubmit = await submitPluginInputResponse(two, twoWagerLobby, { side: "under", amount: 22 }, "wager-two");
+      let burstCompletionLobby = secondWagerSubmit.body?.lobby;
+      for (let index = 0; index < transitionBurstActions.length; index += 1) {
+        const response = await fetch(first.startup.localUrl + "/api/complete-action", {
+          method: "POST",
+          headers: stageHeaders,
+          body: JSON.stringify({
+            stageCode: "PLUG",
+            actionId: burstCompletionLobby?.action?.id,
+            source: "callback"
+          })
+        });
+        burstCompletionLobby = (await response.json()).lobby;
+      }
       await controllerPage.waitForFunction(() => window.controllerState?.lobby?.action?.id === "fixture-input-hit", null, { timeout: 15_000 });
-      const transitionedControllerIdentity = await controllerPage.evaluate(() => ({
-        persistentHostRetained: window.__fixturePersistentHost === document.querySelector('[data-controller-layout-scope="layer:fixture-persistent-context"][data-controller-layout-element-id="fixture-persistent-pulse"]'),
-        persistentArtRetained: window.__fixturePersistentArtLayer === window.__fixturePersistentHost?.querySelector(":scope > .controller-widget-art-layer"),
-        persistentRendererRetained: window.__fixturePersistentRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixturePersistentHost),
-        globalHostRetained: window.__fixtureGlobalHost === document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]'),
-        globalRendererRetained: window.__fixtureGlobalRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixtureGlobalHost),
-        originalGlobalConnected: window.__fixtureGlobalHost?.isConnected === true,
-        globalCandidates: document.querySelectorAll('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]').length,
-        animationTime: Number(window.__fixturePersistentAnimation?.currentTime || 0),
-        animationState: window.__fixturePersistentAnimation?.playState
-      }));
+      const transitionedControllerIdentity = await controllerPage.evaluate(() => {
+        window.__fixtureTransitionFrameStop = true;
+        return {
+          persistentHostRetained: window.__fixturePersistentHost === document.querySelector('[data-controller-layout-scope="layer:fixture-persistent-context"][data-controller-layout-element-id="fixture-persistent-pulse"]'),
+          persistentArtRetained: window.__fixturePersistentArtLayer === window.__fixturePersistentHost?.querySelector(":scope > .controller-widget-art-layer"),
+          persistentRendererRetained: window.__fixturePersistentRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixturePersistentHost),
+          globalHostRetained: window.__fixtureGlobalHost === document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]'),
+          globalRendererRetained: window.__fixtureGlobalRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixtureGlobalHost),
+          originalGlobalConnected: window.__fixtureGlobalHost?.isConnected === true,
+          globalCandidates: document.querySelectorAll('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]').length,
+          animationTime: Number(window.__fixturePersistentAnimation?.currentTime || 0),
+          animationState: window.__fixturePersistentAnimation?.playState,
+          maxFrameGap: Math.max(...(window.__fixtureTransitionFrameGaps || [0])),
+          measuredFrames: window.__fixtureTransitionFrameGaps?.length || 0
+        };
+      });
       const constantsResponse = await fetch(first.startup.localUrl + "/api/game-constants");
       const constantsPayload = await constantsResponse.json();
       constantsPayload.constants.gameTitle = "Generated Fixture Edited";
@@ -791,6 +1086,27 @@ module.exports = Object.freeze([{
         waitingPlayerInputHidden: twoInputLobby.gamePlugin?.input == null,
         inputBranchSelected: turnSubmit.lobby?.lastDecisionTrace?.selectedBranch,
         inputBranchedAction: turnSubmit.lobby?.action?.id,
+        gestureTwoSlotState,
+        gestureFourSlotState,
+        gestureSubmittedBeforeHeartbeat,
+        gestureSubmittedAfterHeartbeat,
+        gesturePersonalizedTextCorrect: gestureSubmittedBeforeHeartbeat.viewer === "ONE"
+          && gestureSubmittedBeforeHeartbeat.prompt === "PRIVATE PROMPT FOR ONE"
+          && gestureSubmittedBeforeHeartbeat.detail === ("Detail " + one.player.id).toUpperCase()
+          && gestureSubmittedAfterHeartbeat.viewer === gestureSubmittedBeforeHeartbeat.viewer
+          && gestureSubmittedAfterHeartbeat.prompt === gestureSubmittedBeforeHeartbeat.prompt
+          && gestureSubmittedAfterHeartbeat.detail === gestureSubmittedBeforeHeartbeat.detail,
+        gestureCancellationState,
+        gestureHoldHeartbeatState,
+        tapBrowserPayload: tapBrowserRequest.payload,
+        holdBrowserPayload: holdBrowserRequest.payload,
+        gestureBrowserSubmissionCount: gestureBrowserSubmissionCountAfterHold,
+        gestureSecondTapStatus: secondTapSubmit.status,
+        gestureSecondTapAction: secondTapSubmit.body?.lobby?.action?.id,
+        gestureStaleStatus: staleGestureResponse.status,
+        gestureInvalidStatus: invalidGestureResponse.status,
+        gestureSecondHoldStatus: secondHoldSubmit.status,
+        gestureSecondHoldAction: secondHoldSubmit.body?.lobby?.action?.id,
         privateWagerTargets: [
           oneWagerLobby.gamePlugin?.input?.viewModel?.target,
           twoWagerLobby.gamePlugin?.input?.viewModel?.target
@@ -807,7 +1123,7 @@ module.exports = Object.freeze([{
         browserWagerPayload: browserWagerRequest.payload,
         firstWagerWaited: firstWagerSubmit.lobby?.action?.id === "fixture-private-wager",
         duplicateWagerIgnored: duplicateWagerSubmit.duplicate === true,
-        wagerCompletionAction: secondWagerSubmit.lobby?.action?.id,
+        wagerCompletionAction: burstCompletionLobby?.action?.id,
         secondFlowActionType: secondFlow.flow.states
           .find((state) => state.id === "lobby")?.actions
           .find((action) => action.id === "fixture-increment")?.type,
@@ -847,6 +1163,29 @@ module.exports = Object.freeze([{
     || !development.waitingPlayerInputHidden
     || development.inputBranchSelected !== "input-hit"
     || development.inputBranchedAction !== "fixture-input-hit"
+    || development.gestureTwoSlotState?.controls !== 2
+    || development.gestureTwoSlotState?.unavailableHosts !== 2
+    || development.gestureFourSlotState?.controls !== 4
+    || development.gestureFourSlotState?.unavailableHosts !== 0
+    || !development.gestureSubmittedBeforeHeartbeat?.rendererPresent
+    || !development.gestureSubmittedAfterHeartbeat?.hostRetained
+    || !development.gestureSubmittedAfterHeartbeat?.rendererRetained
+    || !development.gesturePersonalizedTextCorrect
+    || JSON.stringify(development.tapBrowserPayload) !== JSON.stringify({ choice: "alpha", mode: "tap" })
+    || JSON.stringify(development.holdBrowserPayload) !== JSON.stringify({ choice: "alpha", mode: "hold" })
+    || development.gestureCancellationState?.submissions !== 1
+    || development.gestureCancellationState?.holding !== "false"
+    || development.gestureCancellationState?.selected !== "false"
+    || !development.gestureHoldHeartbeatState?.retained
+    || development.gestureHoldHeartbeatState?.holding !== "true"
+    || development.gestureHoldHeartbeatState?.ariaBusy !== "true"
+    || development.gestureBrowserSubmissionCount !== 2
+    || development.gestureSecondTapStatus !== 200
+    || development.gestureSecondTapAction !== "fixture-gesture-hold"
+    || development.gestureStaleStatus !== 409
+    || development.gestureInvalidStatus !== 422
+    || development.gestureSecondHoldStatus !== 200
+    || development.gestureSecondHoldAction !== "fixture-gesture-done"
     || JSON.stringify(development.privateWagerTargets) !== JSON.stringify([10, 20])
     || development.wagerInitialState?.value !== "7"
     || !(development.wagerInitialState?.fontSize > 0)
@@ -888,6 +1227,8 @@ module.exports = Object.freeze([{
     || !development.transitionedControllerIdentity?.globalRendererRetained
     || development.transitionedControllerIdentity?.animationState !== "running"
     || !(development.transitionedControllerIdentity?.animationTime >= development.submittedControllerState?.animationTime)
+    || development.transitionedControllerIdentity?.measuredFrames < 2
+    || development.transitionedControllerIdentity?.maxFrameGap >= 250
     || !development.firstWagerWaited
     || !development.duplicateWagerIgnored
     || development.wagerCompletionAction !== "fixture-input-hit"

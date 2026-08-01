@@ -205,6 +205,22 @@ function validateInputRegistration(id, value) {
     throw new Error(`Input "${id}" controller requires bindings`);
   }
   const submissionById = new Map(value.submission.map((field) => [String(field.id), field]));
+  function validateSubmitValues(submitValues, label) {
+    assertPlainObject(submitValues, `Input "${id}" ${label}`);
+    for (const [fieldId, submittedValue] of Object.entries(submitValues)) {
+      const field = submissionById.get(fieldId);
+      if (!field) throw new Error(`Input "${id}" ${label} references undeclared submission field "${fieldId}"`);
+      if (field.type === "choice" && !["string", "number"].includes(typeof submittedValue)) {
+        throw new Error(`Input "${id}" ${label} choice field "${fieldId}" requires a string or number value`);
+      }
+      if (field.type === "integer") {
+        const number = Number(submittedValue);
+        if (!Number.isInteger(number) || number < Number(field.min) || number > Number(field.max)) {
+          throw new Error(`Input "${id}" ${label} integer field "${fieldId}" is outside its declared bounds`);
+        }
+      }
+    }
+  }
   function validateControllerBindings(bindings, label, { requireSubmissionTrigger = false } = {}) {
     if (!Array.isArray(bindings)) throw new Error(`Input "${id}" ${label} requires bindings`);
     const bindingIds = new Set();
@@ -233,7 +249,15 @@ function validateInputRegistration(id, value) {
         if (!Number.isInteger(Number(binding.optionIndex)) || Number(binding.optionIndex) < 0) {
           throw new Error(`Input "${id}" choice binding "${bindingId}" requires a non-negative optionIndex`);
         }
-        if (binding.autoSubmit === true) hasSubmissionTrigger = true;
+        if (binding.submitValues !== undefined) validateSubmitValues(binding.submitValues, `binding "${bindingId}" submitValues`);
+        if (binding.holdSubmit !== undefined) {
+          assertPlainObject(binding.holdSubmit, `Input "${id}" binding "${bindingId}" holdSubmit`);
+          if (!Number.isFinite(Number(binding.holdSubmit.seconds)) || Number(binding.holdSubmit.seconds) <= 0) {
+            throw new Error(`Input "${id}" binding "${bindingId}" holdSubmit requires positive seconds`);
+          }
+          validateSubmitValues(binding.holdSubmit.submitValues, `binding "${bindingId}" holdSubmit submitValues`);
+        }
+        if (binding.autoSubmit === true || binding.holdSubmit !== undefined) hasSubmissionTrigger = true;
       }
       if (binding.kind === "integer") {
         const submissionField = submissionById.get(String(binding.field || ""));
