@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1266",
+  "version": "1.0.17.1267",
   "baseVersion": "1.0.17",
-  "buildNumber": 1266,
-  "commit": "cb852047",
-  "branch": "codex/release-engine-1.3.37",
-  "generatedAt": "2026-08-02T21:05:39.938Z"
+  "buildNumber": 1267,
+  "commit": "c22a2bfd",
+  "branch": "codex/stabilize-stage-performance-gate",
+  "generatedAt": "2026-08-02T21:17:15.078Z"
 }
