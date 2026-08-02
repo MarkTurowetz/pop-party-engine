@@ -120,6 +120,32 @@ function FlowNodeMinimap({
         height={mmH}
         style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
       >
+        <defs>
+          <marker
+            id={MINIMAP_WIRE_ARROW_ID}
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            markerUnits="userSpaceOnUse"
+            orient="auto"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 Z" fill="#38bdf8" />
+          </marker>
+          <marker
+            id={MINIMAP_WIRE_HIGHLIGHT_ARROW_ID}
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            markerUnits="userSpaceOnUse"
+            orient="auto"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 Z" fill="#ff4fa3" />
+          </marker>
+        </defs>
         <g transform={`translate(${MINIMAP_INSET} ${MINIMAP_INSET})`}>
           {wires.map((wire) => {
             return (
@@ -132,6 +158,8 @@ function FlowNodeMinimap({
                 strokeLinecap="round"
                 strokeWidth={wire.highlighted ? 3 : 2}
                 opacity={wire.highlighted ? 0.95 : 0.72}
+                markerEnd={`url(#${wire.highlighted ? MINIMAP_WIRE_HIGHLIGHT_ARROW_ID : MINIMAP_WIRE_ARROW_ID})`}
+                data-wire-destination-arrow="true"
               />
             );
           })}
@@ -303,6 +331,15 @@ interface WirePath {
   route: ConnectionRoute;
 }
 
+interface BackwardCorridorReservation {
+  x: number;
+  top: number;
+  bottom: number;
+  labelY: number;
+  labelWidth: number;
+  labelHeight: number;
+}
+
 export interface FlowPoint {
   x: number;
   y: number;
@@ -322,6 +359,12 @@ export interface ConnectionRoute {
   labelX: number;
   labelY: number;
   bounds: FlowBounds;
+  corridor?: {
+    side: "left" | "right";
+    x: number;
+    top: number;
+    bottom: number;
+  };
 }
 
 export interface FlowGraphGeometry {
@@ -337,7 +380,13 @@ const WORLD_MIN_WIDTH = 1600;
 const WORLD_MIN_HEIGHT = 920;
 const WORLD_TRAILING_PADDING = 160;
 const WORLD_NEGATIVE_EDGE_PADDING = 32;
-const WIRE_BOUNDS_CLEARANCE = 4;
+const WIRE_BOUNDS_CLEARANCE = 8;
+const BACKWARD_CORRIDOR_MIN_GAP = 48;
+const BACKWARD_CORRIDOR_LABEL_GAP = 12;
+const MAIN_WIRE_ARROW_ID = "flow-wire-destination-arrow";
+const MAIN_WIRE_HIGHLIGHT_ARROW_ID = "flow-wire-highlight-destination-arrow";
+const MINIMAP_WIRE_ARROW_ID = "flow-minimap-wire-destination-arrow";
+const MINIMAP_WIRE_HIGHLIGHT_ARROW_ID = "flow-minimap-wire-highlight-destination-arrow";
 
 function boundsFromPoints(points: FlowPoint[]): FlowBounds {
   return {
@@ -447,7 +496,8 @@ function routeUpwardOrthogonal(
   sourcePoint: { x: number; y: number },
   from: FlowGraphNode,
   to: FlowGraphNode,
-  nodes: FlowGraphNode[]
+  nodes: FlowGraphNode[],
+  reservedCorridors: BackwardCorridorReservation[] = []
 ): ConnectionRoute {
   const targetCenterX = to.x + to.width / 2;
   const targetY = to.y + to.height / 2;
@@ -475,7 +525,44 @@ function routeUpwardOrthogonal(
   // for explicit/custom points or future routes that legitimately go negative.
   const useLeftSide = preferredLeft ? leftCorridorAccessible : false;
   const targetX = useLeftSide ? to.x : to.x + to.width;
-  const corridorX = useLeftSide ? leftBound : rightBound;
+  const labelY = (dropY + targetY) / 2;
+  const currentLabel = wireLabelBoundsDimensions(
+    connection.label,
+    connection.labelKind || "default"
+  ) || { width: 0, height: 0 };
+  let corridorX = useLeftSide ? leftBound : rightBound;
+  const direction = useLeftSide ? -1 : 1;
+  for (const reserved of reservedCorridors) {
+    if (!verticalRangesOverlap(routeTop, routeBottom, reserved.top, reserved.bottom)) continue;
+    const labelsOverlapVertically = verticalRangesOverlap(
+      labelY - currentLabel.height / 2,
+      labelY + currentLabel.height / 2,
+      reserved.labelY - reserved.labelHeight / 2,
+      reserved.labelY + reserved.labelHeight / 2
+    );
+    const reservedLineCrossesCurrentLabel = verticalRangesOverlap(
+      labelY - currentLabel.height / 2,
+      labelY + currentLabel.height / 2,
+      reserved.top,
+      reserved.bottom
+    );
+    const currentLineCrossesReservedLabel = verticalRangesOverlap(
+      reserved.labelY - reserved.labelHeight / 2,
+      reserved.labelY + reserved.labelHeight / 2,
+      routeTop,
+      routeBottom
+    );
+    const requiredGap = Math.max(
+      BACKWARD_CORRIDOR_MIN_GAP,
+      reservedLineCrossesCurrentLabel ? currentLabel.width / 2 + BACKWARD_CORRIDOR_LABEL_GAP : 0,
+      currentLineCrossesReservedLabel ? reserved.labelWidth / 2 + BACKWARD_CORRIDOR_LABEL_GAP : 0,
+      labelsOverlapVertically
+        ? currentLabel.width / 2 + reserved.labelWidth / 2 + BACKWARD_CORRIDOR_LABEL_GAP
+        : 0
+    );
+    if (Math.abs(corridorX - reserved.x) >= requiredGap) continue;
+    corridorX = reserved.x + direction * requiredGap;
+  }
   const points = [
     sourcePoint,
     { x: sourcePoint.x, y: dropY },
@@ -488,11 +575,33 @@ function routeUpwardOrthogonal(
     points,
     d: "",
     labelX: corridorX,
-    labelY: (dropY + targetY) / 2,
-    bounds: boundsFromPoints(points)
+    labelY,
+    bounds: boundsFromPoints(points),
+    corridor: {
+      side: useLeftSide ? ("left" as const) : ("right" as const),
+      x: corridorX,
+      top: routeTop,
+      bottom: routeBottom
+    }
   };
   route.d = connectionRoutePath(route);
   return route;
+}
+
+function buildConnectionRouteWithCorridors(
+  connection: FlowGraphConnection,
+  from: FlowGraphNode,
+  to: FlowGraphNode,
+  nodes: FlowGraphNode[],
+  reservedCorridors: BackwardCorridorReservation[]
+): ConnectionRoute {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const sourcePoint = connectionSourcePoint(connection, from, byId);
+  const targetPoint = connectionTargetPoint(connection, to);
+  if (targetPoint.y < sourcePoint.y) {
+    return routeUpwardOrthogonal(connection, sourcePoint, from, to, nodes, reservedCorridors);
+  }
+  return routeCurve(sourcePoint, targetPoint);
 }
 
 export function buildConnectionRoute(
@@ -501,13 +610,7 @@ export function buildConnectionRoute(
   to: FlowGraphNode,
   nodes: FlowGraphNode[]
 ): ConnectionRoute {
-  const byId = new Map(nodes.map((node) => [node.id, node]));
-  const sourcePoint = connectionSourcePoint(connection, from, byId);
-  const targetPoint = connectionTargetPoint(connection, to);
-  if (targetPoint.y < sourcePoint.y) {
-    return routeUpwardOrthogonal(connection, sourcePoint, from, to, nodes);
-  }
-  return routeCurve(sourcePoint, targetPoint);
+  return buildConnectionRouteWithCorridors(connection, from, to, nodes, []);
 }
 
 function connectionIsVisible(connection: FlowGraphConnection, selectedIds: Set<string>): boolean {
@@ -623,6 +726,7 @@ export function buildFlowGraphGeometry(
 ): FlowGraphGeometry {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const routes = new Map<string, ConnectionRoute>();
+  const reservedCorridors: BackwardCorridorReservation[] = [];
   let contentBounds: FlowBounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
   for (const node of nodes) {
     contentBounds = unionBounds(contentBounds, {
@@ -636,8 +740,25 @@ export function buildFlowGraphGeometry(
     const from = byId.get(connection.from);
     const to = byId.get(connection.to);
     if (!from || !to) continue;
-    const route = buildConnectionRoute(connection, from, to, nodes);
+    const route = buildConnectionRouteWithCorridors(connection, from, to, nodes, reservedCorridors);
     routes.set(connection.id, route);
+    if (route.corridor) {
+      const label = wireLabelBoundsDimensions(
+        connection.label,
+        connection.labelKind || "default"
+      ) || {
+        width: 0,
+        height: 0
+      };
+      reservedCorridors.push({
+        x: route.corridor.x,
+        top: route.corridor.top,
+        bottom: route.corridor.bottom,
+        labelY: route.labelY,
+        labelWidth: label.width,
+        labelHeight: label.height
+      });
+    }
     contentBounds = unionBounds(contentBounds, routeRenderedBounds(route, connection));
   }
   const originX = contentBounds.minX < 0 ? contentBounds.minX - WORLD_NEGATIVE_EDGE_PADDING : 0;
@@ -1142,11 +1263,39 @@ export function FlowNodeCanvas({
                   overflow: "visible"
                 }}
               >
+                <defs>
+                  <marker
+                    id={MAIN_WIRE_ARROW_ID}
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="10"
+                    markerHeight="10"
+                    markerUnits="userSpaceOnUse"
+                    orient="auto"
+                  >
+                    <path d="M 0 0 L 10 5 L 0 10 Z" fill={WIRE_COLOR} />
+                  </marker>
+                  <marker
+                    id={MAIN_WIRE_HIGHLIGHT_ARROW_ID}
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="12"
+                    markerHeight="12"
+                    markerUnits="userSpaceOnUse"
+                    orient="auto"
+                  >
+                    <path d="M 0 0 L 10 5 L 0 10 Z" fill={WIRE_HIGHLIGHT_COLOR} />
+                  </marker>
+                </defs>
                 {wires.map((wire) => (
                   <g
                     key={wire.id}
                     data-wire-id={wire.id}
                     data-wire-highlighted={wire.highlighted ? "true" : undefined}
+                    data-wire-route-kind={wire.route.kind}
+                    data-wire-corridor-x={wire.route.corridor?.x}
                   >
                     <path
                       d={wire.d}
@@ -1155,6 +1304,8 @@ export function FlowNodeCanvas({
                       strokeWidth={wire.highlighted ? 5 : 3.5}
                       strokeLinecap="round"
                       opacity={wire.highlighted ? 1 : 0.9}
+                      markerEnd={`url(#${wire.highlighted ? MAIN_WIRE_HIGHLIGHT_ARROW_ID : MAIN_WIRE_ARROW_ID})`}
+                      data-wire-destination-arrow="true"
                     />
                     <WireLabel wire={wire} />
                   </g>
