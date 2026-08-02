@@ -48,6 +48,7 @@ export interface LayoutEditorProps {
   initialMode?: "stage" | "controller";
   surface?: string;
   gamePluginInputs?: GamePluginInputManifest[];
+  gamePluginRenderers?: GamePluginRendererManifest[];
 }
 
 interface GamePluginChoiceCollectionBinding {
@@ -61,6 +62,15 @@ interface GamePluginInputManifest {
     bindings?: GamePluginChoiceCollectionBinding[];
     submitted?: { bindings?: GamePluginChoiceCollectionBinding[] };
   };
+}
+
+interface GamePluginRendererManifest {
+  surface?: "stage" | "controller";
+  target?: { layoutElementId?: string };
+  bindings?: Array<{
+    kind?: string;
+    item?: { artCompositionId?: string };
+  }>;
 }
 
 function choiceCollectionBindingForElement(
@@ -78,6 +88,15 @@ function choiceCollectionBindingForElement(
     if (binding) return binding;
   }
   return null;
+}
+
+function rendererCollectionCompositionForElement(
+  renderers: GamePluginRendererManifest[],
+  surface: "stage" | "controller",
+  elementId: string
+): string {
+  const renderer = renderers.find((candidate) => candidate.surface === surface && candidate.target?.layoutElementId === elementId);
+  return String(renderer?.bindings?.find((binding) => binding.kind === "collection")?.item?.artCompositionId || "");
 }
 
 function get(element: LayoutElement, key: string): unknown {
@@ -168,7 +187,8 @@ export function LayoutEditor({
   controllerController,
   initialMode = "stage",
   surface = "layout",
-  gamePluginInputs = []
+  gamePluginInputs = [],
+  gamePluginRenderers = []
 }: LayoutEditorProps) {
   const [mode, setMode] = useState<"stage" | "controller">(initialMode);
   const [controllerPreviewTagsByGroup, setControllerPreviewTagsByGroup] = useState<
@@ -319,15 +339,18 @@ export function LayoutEditor({
     const compositionId = layoutElementArtCompositionId(element);
     const composition = compositionId ? compositionById.get(compositionId) : null;
     const isText = element.kind === "text" || compositionId === "layout-text-field";
-    const isCollection = mode === "controller" && element.kind === "collection";
+    const isCollection = element.kind === "collection";
     const collectionBinding = isCollection
       ? choiceCollectionBindingForElement(gamePluginInputs, element.id)
       : null;
-    const collectionCompositionCandidate = collectionBinding
-      ? compositionById.get(collectionBinding.item.artCompositionId) || null
+    const rendererCollectionCompositionId = isCollection
+      ? rendererCollectionCompositionForElement(gamePluginRenderers, mode, element.id)
+      : "";
+    const collectionCompositionCandidate = collectionBinding || rendererCollectionCompositionId
+      ? compositionById.get(collectionBinding?.item.artCompositionId || rendererCollectionCompositionId) || null
       : null;
     const collectionComposition = collectionCompositionCandidate
-      && String(collectionCompositionCandidate.surface || "").toLowerCase() === "controller"
+      && String(collectionCompositionCandidate.surface || "").toLowerCase() === mode
       && String(collectionCompositionCandidate.compositionKind || "gameObject").toLowerCase() === "gameobject"
       ? collectionCompositionCandidate
       : null;
@@ -536,15 +559,13 @@ export function LayoutEditor({
       <button type="button" data-layout-add-text onClick={() => controller.addTextElement()}>
         Add Text
       </button>
-      {mode === "controller" ? (
-        <button
-          type="button"
-          data-layout-add-choice-collection
-          onClick={() => controller.addChoiceCollection()}
-        >
-          Add Choice Collection
-        </button>
-      ) : null}
+      <button
+        type="button"
+        data-layout-add-choice-collection
+        onClick={() => controller.addChoiceCollection()}
+      >
+        Add Collection
+      </button>
       <button
         type="button"
         data-layout-add-game-object
@@ -1030,7 +1051,7 @@ function LayoutElementInspector({
   const commit = (patch: Partial<LayoutElement>) => controller.updateElement(element.id, patch);
   const isText =
     element.kind === "text" || get(element, "artCompositionId") === "layout-text-field";
-  const isCollection = mode === "controller" && element.kind === "collection";
+  const isCollection = element.kind === "collection";
   const defaultDimensions = artCompositionDefaultDimensions(artComposition);
   return (
     <section
@@ -1122,7 +1143,7 @@ function LayoutElementInspector({
       ) : null}
       {isCollection ? (
         <fieldset data-layout-choice-collection-fields>
-          <legend>Dynamic choice collection</legend>
+          <legend>Dynamic renderer collection</legend>
           <label className="flow-react-field" data-layout-field="collectionDirection">
             <span>Direction</span>
             <select

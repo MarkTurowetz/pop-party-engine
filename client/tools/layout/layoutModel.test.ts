@@ -152,6 +152,35 @@ describe("controller layout initial state", () => {
     });
   });
 
+  it("serializes Stage renderer collection geometry", () => {
+    const source = stageLayouts();
+    source.global.elements.push({
+      id: "cards",
+      kind: "collection",
+      x: 960,
+      y: 540,
+      width: 900,
+      height: 420,
+      collectionDirection: "horizontal",
+      collectionGap: 20,
+      collectionDistribution: "center",
+      collectionAlignment: "center",
+      collectionPadding: 10,
+      collectionOverflow: "hidden",
+      zIndex: 4
+    });
+    expect(serializeLayoutsForSave(source, "stage").global.elements[1]).toMatchObject({
+      kind: "collection",
+      collectionDirection: "horizontal",
+      collectionGap: 20,
+      collectionDistribution: "center",
+      collectionAlignment: "center",
+      collectionPadding: 10,
+      collectionOverflow: "hidden",
+      zIndex: 4
+    });
+  });
+
   it("serializes the stage background layer separately from normal content", () => {
     expect(
       serializeLayoutsForSave(stageLayouts("BACKGROUND"), "stage").global.elements[0].layoutLayer

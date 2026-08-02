@@ -9,6 +9,7 @@
 import "./layoutGameObjectRuntime"; // ensure PartyGameLayoutGameObjects is installed first
 import { controllerLayoutCandidateIds } from "../../shared/controller-layout-states";
 import { choiceCollectionLayoutStyle } from "./controllerChoiceCollectionLayout";
+import { clearGamePluginRendererCollectionHost } from "./gamePluginRendererRuntime";
 import { avatarTimelineLabelForShape } from "./stagePlayerRoster";
 import { runtimeSemanticCompositionId } from "./semanticRoleRuntime";
 
@@ -441,6 +442,7 @@ function clearControllerLayoutTargets(retainedTokens: Set<string> = new Set()): 
       continue;
     }
     if (target.classList.contains("dynamic-controller-choice-collection")) {
+      clearGamePluginRendererCollectionHost("controller", target);
       clearControllerChoiceCollection(target);
       target.remove();
       continue;
@@ -541,7 +543,7 @@ function applyControllerElementLayout(element: Dict, scopeOrGlobal: boolean | st
   if (element.kind === "text") {
     applyControllerLayoutTextProperties(target, element);
   } else if (element.kind === "collection") {
-    target.classList.add("controller-choice-collection");
+    target.classList.add("controller-choice-collection", "layout-renderer-collection");
     Object.assign(target.style, choiceCollectionLayoutStyle(element));
   } else if (isControllerLayoutArtElement(element)) {
     target.classList.add("controller-widget-art-host", "has-controller-widget-art");
@@ -1127,8 +1129,11 @@ function clearStageLayoutTargets(retainedTokens: Set<string> = new Set()): void 
     if (elementId) {
       deactivateLayoutEntity(stageLayoutEntityForElementId(elementId, target));
     }
-    target.classList.remove("stage-layout-target", "stage-global-layout-target", "stage-background-layout-target", "stage-layout-hidden", "stage-layout-visual-update", "stage-layout-visual-instant", "stage-layout-transition-suppressed");
-    for (const prop of ["--stage-layout-x", "--stage-layout-y", "--stage-layout-w", "--stage-layout-h", "--stage-layout-scale", "--stage-layout-rotation", "--stage-object-visible-scale", "--stage-text-color", "--stage-text-font-size", "color", "font-size"]) {
+    if (target.classList.contains("stage-renderer-collection")) {
+      clearGamePluginRendererCollectionHost("stage", target);
+    }
+    target.classList.remove("stage-layout-target", "stage-global-layout-target", "stage-background-layout-target", "stage-layout-hidden", "stage-layout-visual-update", "stage-layout-visual-instant", "stage-layout-transition-suppressed", "stage-renderer-collection", "layout-renderer-collection");
+    for (const prop of ["--stage-layout-x", "--stage-layout-y", "--stage-layout-w", "--stage-layout-h", "--stage-layout-scale", "--stage-layout-rotation", "--stage-object-visible-scale", "--stage-text-color", "--stage-text-font-size", "color", "font-size", "z-index"]) {
       target.style.removeProperty(prop);
     }
     delete target.dataset.stageLayoutElementId;
@@ -1225,9 +1230,15 @@ function applyStageElementLayout(element: Dict, isGlobal: boolean, shouldInitial
   target.dataset.stageLayoutArtCompositionId = (element.artCompositionId as string) || "";
   target.dataset.stageLayoutVisibilityKey = entity.visibilityKey as string;
   applyLayoutElementBoxStyles(target, element, "stage");
+  if (element.kind === "collection") {
+    target.style.setProperty("z-index", String(Number(element.zIndex || (isGlobal ? 7 : 5))), "important");
+  }
   if (element.kind === "text") {
     applyStageLayoutTextProperties(target, element);
     registerStageLayoutTextTarget(element, target, isGlobal);
+  } else if (element.kind === "collection") {
+    target.classList.add("stage-renderer-collection", "layout-renderer-collection");
+    Object.assign(target.style, choiceCollectionLayoutStyle(element));
   } else if (isDynamicStageArtInstance(element)) {
     attachRenderedLayoutArtEntity(
       entity,
@@ -1348,7 +1359,7 @@ function stageLayoutTargetElement(element: Dict): El | null {
 }
 
 function isDynamicStageArtInstance(element: Dict | null): boolean {
-  return Boolean(element?.artCompositionId && !element.selector);
+  return Boolean((element?.artCompositionId || element?.kind === "collection") && !element.selector);
 }
 
 function getOrCreateStageArtInstance(element: Dict): El | null {

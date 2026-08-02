@@ -374,6 +374,60 @@ describe("game plugin ABI", () => {
     });
   });
 
+  it("publishes recursive keyed collection manifests and rejects duplicate dynamic keys", () => {
+    const plugin = defineGamePlugin({
+      namespace: "cards",
+      register(registry) {
+        registry.stageRenderers("cards.hand", {
+          name: "Hand",
+          target: { layoutElementId: "hand" },
+          bindings: [{
+            id: "rows",
+            kind: "collection",
+            source: "rows",
+            item: {
+              keySource: "id",
+              artCompositionId: "hand-row",
+              bindings: [{
+                id: "cards",
+                kind: "collection",
+                source: "cards",
+                targetComponentId: "cards-slot",
+                item: {
+                  keySource: "id",
+                  artCompositionId: "card",
+                  bindings: [
+                    { id: "label", kind: "text", source: "label", targetComponentId: "label" },
+                    { id: "state", kind: "state", source: "state", playback: "play" }
+                  ]
+                }
+              }]
+            }
+          }],
+          select: (context) => context.state.hand
+        });
+      }
+    });
+    const registrations = createGamePluginRegistry().install(plugin);
+    const runtime = createGameRendererRuntime({ stageRenderers: registrations.stageRenderers });
+    const room = {
+      phase: "play",
+      gamePluginState: { cards: { hand: { rows: [{ id: "r1", cards: [{ id: "c1", label: "7", state: "Choosing Start" }] }] } } },
+      flowVariables: {},
+      players: new Map()
+    };
+
+    expect(runtime.manifests[0].bindings[0]).toMatchObject({
+      kind: "collection",
+      item: { keySource: "id", artCompositionId: "hand-row", bindings: [expect.objectContaining({ kind: "collection" })] }
+    });
+    expect(runtime.viewModels(room)["cards.hand"].rows[0].cards[0].id).toBe("c1");
+
+    room.gamePluginState.cards.hand.rows[0].cards.push({ id: "c1", label: "duplicate" });
+    expect(runtime.viewModels(room)["cards.hand"]).toBeNull();
+    expect(room.runtimeFault).toMatchObject({ code: "GAME_PLUGIN_RENDERER_FAILED" });
+  });
+
   it("runs authenticated current-player and private per-player input barriers", async () => {
     const registrations = createGamePluginRegistry().install(fixturePlugin()).inputs;
     expect(pluginFlowActionTypes(registrations)[0]).toMatchObject({ category: "input", primaryOnly: true });

@@ -1,16 +1,28 @@
+import {
+  choiceCollectionItemDimensions,
+  choiceCollectionLayoutStyle
+} from "./controllerChoiceCollectionLayout";
+
 type Dict = Record<string, unknown>;
+type RendererBinding = {
+  id: string;
+  kind: "collection" | "component" | "state" | "text";
+  source: string;
+  targetComponentId?: string;
+  property?: string;
+  playback?: "play" | "stop";
+  fallback?: unknown;
+  item?: {
+    keySource: string;
+    artCompositionId: string;
+    bindings: RendererBinding[];
+  };
+};
 type PluginRendererManifest = {
   id: string;
   surface: "stage" | "controller";
   target: { layoutElementId: string; layoutScope: "moment" | "global" | "layer"; layoutLayerId?: string };
-  bindings: Array<{
-    id: string;
-    kind: "text" | "component";
-    source: string;
-    targetComponentId: string;
-    property?: string;
-    fallback?: unknown;
-  }>;
+  bindings: RendererBinding[];
 };
 
 interface RuntimeConfig {
@@ -29,6 +41,8 @@ const SAFE_COMPONENT_PROPERTIES = new Set([
   "rotation",
   "scale"
 ]);
+const collectionStateByRoot = new WeakMap<HTMLElement, { manifestId: string; surface: "stage" | "controller" }>();
+const lifecycleStateByItem = new WeakMap<HTMLElement, Map<string, string>>();
 
 function runtimeConfig(documentRef: Document | undefined): RuntimeConfig {
   const node = documentRef?.getElementById("pop-party-runtime-config");
@@ -47,6 +61,213 @@ function propertyPathValue(root: unknown, path: string): unknown {
     current = (current as Dict)[segment];
   }
   return current;
+}
+
+function compositionForSurface(surface: "stage" | "controller", compositionId: string, runtime: Dict): Dict | null {
+  const composition = (((runtime.artCompositions as Dict[]) || [])).find((candidate) => String(candidate.id || "") === compositionId) || null;
+  if (!composition) return null;
+  return String(composition.surface || "").toLowerCase() === surface
+    && String(composition.compositionKind || "gameObject").toLowerCase() === "gameobject"
+    ? composition
+    : null;
+}
+
+function componentInComposition(composition: Dict | null, componentId: string, runtime: Dict, visited = new Set<string>()): Dict | null {
+  if (!composition || !componentId) return null;
+  const compositionId = String(composition.id || "");
+  if (compositionId && visited.has(compositionId)) return null;
+  const nextVisited = new Set(visited);
+  if (compositionId) nextVisited.add(compositionId);
+  const visit = (components: Dict[]): Dict | null => {
+    for (const component of components) {
+      if ([component.id, component.instanceLabel, component.name].some((value) => String(value || "") === componentId)) return component;
+      const nested = visit((component.children as Dict[]) || []);
+      if (nested) return nested;
+      if (String(component.kind || "").toLowerCase() === "reference") {
+        const referenced = (((runtime.artCompositions as Dict[]) || [])).find((candidate) => String(candidate.id || "") === String(component.artCompositionId || "")) || null;
+        const match = componentInComposition(referenced, componentId, runtime, nextVisited);
+        if (match) return match;
+      }
+    }
+    return null;
+  };
+  return visit((composition.components as Dict[]) || []);
+}
+
+function collectionLayoutFromArtContainer(component: Dict): Dict {
+  return {
+    width: Number(component.width || 1),
+    height: Number(component.height || 1),
+    collectionDirection: String(component.childDistribution || "horizontal").toLowerCase() === "vertical" ? "vertical" : "horizontal",
+    collectionDistribution: "start",
+    collectionAlignment: "center",
+    collectionGap: 0,
+    collectionPadding: 0,
+    collectionOverflow: "visible"
+  };
+}
+
+function rendererForSurface(surface: "stage" | "controller", runtime: Dict) {
+  return surface === "stage"
+    ? runtime.renderStageArtInstance as ((item: Dict, host: HTMLElement, key: string, options: Dict) => unknown)
+    : runtime.renderControllerArtInstance as ((item: Dict, host: HTMLElement, key: string, options: Dict) => unknown);
+}
+
+function clearRendererItem(surface: "stage" | "controller", item: HTMLElement, runtime: Dict): void {
+  const nodes = [item, ...Array.from(item.querySelectorAll<HTMLElement>("[data-game-plugin-renderer-key]"))];
+  for (const node of nodes.reverse()) {
+    const key = node.dataset.gamePluginRendererKey || "";
+    if (!key) continue;
+    const clear = surface === "stage"
+      ? runtime.clearStageArtInstanceRenderer as ((id: string, host: HTMLElement) => void)
+      : runtime.clearControllerArtInstanceRenderer as ((id: string, host: HTMLElement) => void);
+    clear?.(key, node);
+  }
+  item.remove();
+}
+
+export function clearGamePluginRendererCollectionHost(
+  surface: "stage" | "controller",
+  host: HTMLElement
+): void {
+  const runtime = globalThis as typeof globalThis & Dict;
+  for (const child of Array.from(host.querySelectorAll<HTMLElement>(":scope > [data-game-plugin-renderer-collection-item='true']"))) {
+    clearRendererItem(surface, child, runtime);
+  }
+  collectionStateByRoot.delete(host);
+}
+
+function bindingOverrides(bindings: RendererBinding[], model: unknown): { textOverrides: Dict; componentOverrides: Dict } {
+  const textOverrides: Dict = {};
+  const componentOverrides: Dict = {};
+  for (const binding of bindings) {
+    if (binding.kind !== "text" && binding.kind !== "component") continue;
+    const selected = propertyPathValue(model, binding.source);
+    const value = selected === undefined ? binding.fallback : selected;
+    if (binding.kind === "text" && binding.targetComponentId) {
+      textOverrides[binding.targetComponentId] = String(value ?? "");
+    } else if (binding.targetComponentId && binding.property && SAFE_COMPONENT_PROPERTIES.has(binding.property)) {
+      const existing = (componentOverrides[binding.targetComponentId] as Dict | undefined) || {};
+      componentOverrides[binding.targetComponentId] = { ...existing, [binding.property]: value };
+    }
+  }
+  return { textOverrides, componentOverrides };
+}
+
+function applyLifecycleBindings(bindings: RendererBinding[], model: unknown, itemHost: HTMLElement, renderer: unknown): void {
+  const player = renderer as {
+    playAll?: (state: string, options?: Dict) => number;
+    stopAtAll?: (state: string, options?: Dict) => number;
+    playComponent?: (id: string, state: string, options?: Dict) => number;
+    stopAtComponent?: (id: string, state: string, options?: Dict) => number;
+  } | null;
+  if (!player) return;
+  const previous = lifecycleStateByItem.get(itemHost) || new Map<string, string>();
+  for (const binding of bindings.filter((candidate) => candidate.kind === "state")) {
+    const selected = propertyPathValue(model, binding.source);
+    const state = String(selected === undefined ? binding.fallback ?? "" : selected).trim();
+    if (!state || previous.get(binding.id) === state) continue;
+    previous.set(binding.id, state);
+    itemHost.dataset.gamePluginRendererState = state;
+    const stop = binding.playback === "stop";
+    if (binding.targetComponentId) {
+      (stop ? player.stopAtComponent : player.playComponent)?.call(player, binding.targetComponentId, state, { instant: stop });
+    } else {
+      (stop ? player.stopAtAll : player.playAll)?.call(player, state, { instant: stop });
+    }
+  }
+  lifecycleStateByItem.set(itemHost, previous);
+}
+
+function reconcileRendererCollection(options: {
+  surface: "stage" | "controller";
+  manifestId: string;
+  binding: RendererBinding;
+  model: unknown;
+  host: HTMLElement;
+  layout: Dict;
+  runtime: Dict;
+  path: string;
+}): void {
+  const { surface, manifestId, binding, model, host, layout, runtime, path } = options;
+  const definition = binding.item;
+  if (!definition) return;
+  Object.assign(host.style, choiceCollectionLayoutStyle(layout));
+  host.classList.add("game-plugin-renderer-collection", `${surface}-renderer-collection`);
+  const selected = propertyPathValue(model, binding.source);
+  const items = (selected === undefined ? binding.fallback : selected) as unknown;
+  const models = Array.isArray(items) ? items.filter((item): item is Dict => Boolean(item && typeof item === "object" && !Array.isArray(item))) : [];
+  const keys = models.map((item) => String(propertyPathValue(item, definition.keySource) ?? ""));
+  if (keys.some((key) => !key) || new Set(keys).size !== keys.length) {
+    for (const child of Array.from(host.querySelectorAll<HTMLElement>(":scope > [data-game-plugin-renderer-collection-item='true']"))) clearRendererItem(surface, child, runtime);
+    host.dataset.gamePluginRendererCollectionInvalid = "true";
+    return;
+  }
+  delete host.dataset.gamePluginRendererCollectionInvalid;
+  const existing = new Map(Array.from(host.querySelectorAll<HTMLElement>(":scope > [data-game-plugin-renderer-collection-item='true']"))
+    .map((node) => [node.dataset.gamePluginRendererItemKey || "", node]));
+  const composition = compositionForSurface(surface, definition.artCompositionId, runtime);
+  if (!composition) return;
+  const dimensions = choiceCollectionItemDimensions(layout, composition, models.length);
+  const active = new Set(keys);
+  for (const [key, node] of existing) if (!active.has(key)) clearRendererItem(surface, node, runtime);
+  const render = rendererForSurface(surface, runtime);
+  for (let index = 0; index < models.length; index += 1) {
+    const itemModel = models[index];
+    const itemKey = keys[index];
+    let itemHost = existing.get(itemKey);
+    if (!itemHost || !itemHost.isConnected) {
+      itemHost = document.createElement("div");
+      itemHost.className = `game-plugin-renderer-collection-item ${surface}-widget-art-host`;
+      itemHost.dataset.gamePluginRendererCollectionItem = "true";
+      itemHost.dataset.gamePluginRendererItemKey = itemKey;
+    }
+    itemHost.style.position = "relative";
+    itemHost.style.width = `${dimensions.width}px`;
+    itemHost.style.height = `${dimensions.height}px`;
+    itemHost.style.flex = "0 0 auto";
+    itemHost.style.minWidth = "0";
+    host.appendChild(itemHost);
+    const rendererKey = `plugin-renderer:${surface}:${manifestId}:${path}:${itemKey}`;
+    itemHost.dataset.gamePluginRendererKey = rendererKey;
+    const overrides = bindingOverrides(definition.bindings, itemModel);
+    const renderer = render?.({
+      id: rendererKey,
+      kind: "art",
+      artCompositionId: definition.artCompositionId,
+      width: dimensions.width,
+      height: dimensions.height,
+      scale: 1,
+      defaultAnimationState: ""
+    }, itemHost, rendererKey, overrides);
+    applyLifecycleBindings(definition.bindings, itemModel, itemHost, renderer);
+    for (const nested of definition.bindings.filter((candidate) => candidate.kind === "collection" && candidate.targetComponentId)) {
+      const component = componentInComposition(composition, String(nested.targetComponentId), runtime);
+      const target = itemHost.querySelector<HTMLElement>(`[data-art-component-id="${CSS.escape(String(component?.id || nested.targetComponentId))}"]`);
+      if (!component || String(component.kind || "").toLowerCase() !== "container" || !target) continue;
+      let nestedHost = target.querySelector<HTMLElement>(`:scope > [data-game-plugin-renderer-nested-collection="${CSS.escape(nested.id)}"]`);
+      if (!nestedHost) {
+        nestedHost = document.createElement("div");
+        nestedHost.dataset.gamePluginRendererNestedCollection = nested.id;
+        nestedHost.style.position = "absolute";
+        nestedHost.style.inset = "0";
+        nestedHost.style.width = "100%";
+        nestedHost.style.height = "100%";
+        nestedHost.style.zIndex = "1";
+        target.appendChild(nestedHost);
+      }
+      reconcileRendererCollection({
+        surface,
+        manifestId,
+        binding: nested,
+        model: itemModel,
+        host: nestedHost,
+        layout: collectionLayoutFromArtContainer(component),
+        runtime,
+        path: `${path}:${itemKey}:${nested.id}`
+      });
+    }
+  }
 }
 
 function surfaceElement(
@@ -98,26 +319,30 @@ export function renderGamePluginSurface(
         ) || (runtime.controllerLayoutTargetElement as ((item: Dict, scope?: string) => HTMLElement | null))?.(element, targetScope);
     if (!target) continue;
     const model = viewModels[manifest.id];
-    const textOverrides: Dict = {};
-    const componentOverrides: Dict = {};
-    for (const binding of manifest.bindings) {
-      const selected = propertyPathValue(model, binding.source);
-      const value = selected === undefined ? binding.fallback : selected;
-      if (binding.kind === "text") {
-        textOverrides[binding.targetComponentId] = String(value ?? "");
-        continue;
-      }
-      if (!binding.property || !SAFE_COMPONENT_PROPERTIES.has(binding.property)) continue;
-      const existing = (componentOverrides[binding.targetComponentId] as Dict | undefined) || {};
-      componentOverrides[binding.targetComponentId] = { ...existing, [binding.property]: value };
+    const collectionBinding = manifest.bindings.find((binding) => binding.kind === "collection");
+    if (collectionBinding) {
+      collectionStateByRoot.set(target, { manifestId: manifest.id, surface });
+      reconcileRendererCollection({
+        surface,
+        manifestId: manifest.id,
+        binding: collectionBinding,
+        model,
+        host: target,
+        layout: element,
+        runtime,
+        path: collectionBinding.id
+      });
+      continue;
     }
+    const { textOverrides, componentOverrides } = bindingOverrides(manifest.bindings, model);
     const render = surface === "stage"
       ? runtime.renderStageArtInstance as ((item: Dict, host: HTMLElement, key: string, options: Dict) => unknown)
       : runtime.renderControllerArtInstance as ((item: Dict, host: HTMLElement, key: string, options: Dict) => unknown);
     const key = surface === "stage"
       ? String(target.dataset.stageLayoutVisibilityKey || element.id || manifest.id)
       : String(target.dataset.controllerLayoutVisibilityKey || element.id || manifest.id);
-    render?.(element, target, key, { textOverrides, componentOverrides });
+    const renderer = render?.(element, target, key, { textOverrides, componentOverrides });
+    applyLifecycleBindings(manifest.bindings, model, target, renderer);
   }
 }
 

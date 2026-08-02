@@ -6,6 +6,7 @@ const path = require("path");
 const { createRequire } = require("module");
 const { execFileSync } = require("child_process");
 const { createLocalContentBundleProvider } = require("@pop-party/engine/content/local");
+const { refreshLocalContentBundle } = require("../packages/engine/src/server/local-content-bundle-writer");
 
 const root = path.resolve(__dirname, "..");
 const packageRoot = path.join(root, "packages", "create-game");
@@ -72,7 +73,7 @@ try {
   if (JSON.stringify(generatedManifest).includes("file:") || JSON.stringify(generatedManifest).includes("workspace:")) {
     throw new Error("Generated game contains a local dependency reference");
   }
-  const generatedSnapshot = createLocalContentBundleProvider({ root: path.join(targetRoot, "content") }).loadPublishedRevision();
+  let generatedSnapshot = createLocalContentBundleProvider({ root: path.join(targetRoot, "content") }).loadPublishedRevision();
   if (generatedSnapshot.manifest.gameId !== "generated-fixture") throw new Error("Packed generator did not create an independently identified bundle");
   const enginePackOutput = JSON.parse(execFileSync("npm", ["pack", enginePackageRoot, "--json", "--pack-destination", fixtureRoot], {
     cwd: root,
@@ -288,14 +289,104 @@ module.exports = Object.freeze([{
   }
 }]);
 `;
-  fs.writeFileSync(
-    path.join(targetRoot, "src", "stage", "index.js"),
-    generatedRenderer("generated-fixture.stageCounter", "stagecodebadge", "badge-code")
-  );
+  fs.writeFileSync(path.join(targetRoot, "src", "stage", "index.js"), `"use strict";
+const cardBindings = [
+  { id: "label", kind: "text", source: "label", targetComponentId: "label" },
+  { id: "state", kind: "state", source: "state", playback: "play" }
+];
+function cards(count) {
+  const base = [
+    { id: "a", label: "ALPHA", state: count > 0 ? "Choosing End" : "Choosing Start" },
+    { id: "b", label: "BETA", state: "On" },
+    { id: "c", label: "GAMMA", state: "On" }
+  ];
+  if (count > 0) base.push({ id: "d", label: "DELTA", state: "Choosing Start" });
+  return count % 2 ? base.slice().reverse() : base;
+}
+module.exports = Object.freeze([
+  {
+    id: "generated-fixture.stageCounter",
+    value: {
+      name: "Fixture Counter",
+      target: { layoutElementId: "stagecodebadge", layoutScope: "global" },
+      bindings: [{ id: "count", kind: "text", source: "label", targetComponentId: "badge-code", fallback: "0" }],
+      select(context) { return { label: String(context.state.count || 0) }; }
+    }
+  },
+  {
+    id: "generated-fixture.stageHandRows",
+    value: {
+      name: "Fixture Nested Hand",
+      target: { layoutElementId: "fixture-hand-rows", layoutScope: "global" },
+      bindings: [{
+        id: "rows", kind: "collection", source: "rows",
+        item: {
+          keySource: "id", artCompositionId: "fixture-hand-row", bindings: [{
+            id: "cards", kind: "collection", source: "cards", targetComponentId: "cards-slot",
+            item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings }
+          }]
+        }
+      }],
+      select(context) {
+        const count = Number(context.state.count || 0);
+        const all = cards(count);
+        return { rows: [
+          { id: "top", cards: all.filter((card) => card.id !== "c") },
+          { id: "bottom", cards: all.filter((card) => card.id === "c") }
+        ] };
+      }
+    }
+  },
+  {
+    id: "generated-fixture.stageFlatCards",
+    value: {
+      name: "Fixture Flat Hand",
+      target: { layoutElementId: "fixture-flat-cards", layoutScope: "global" },
+      bindings: [{ id: "cards", kind: "collection", source: "cards", item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings } }],
+      select(context) { return { cards: cards(Number(context.state.count || 0)) }; }
+    }
+  }
+]);
+`);
   fs.writeFileSync(
     path.join(targetRoot, "src", "controller", "index.js"),
     generatedRenderer("generated-fixture.controllerCounter", "controllerglobalactionmessage", "layout-text-field-text/layout-text")
   );
+  const stageLayoutPath = path.join(targetRoot, "content", "layouts", "stage.json");
+  const stageLayouts = JSON.parse(fs.readFileSync(stageLayoutPath, "utf8"));
+  stageLayouts.global.elements.push(
+    {
+      id: "fixture-hand-rows", name: "Fixture Nested Hand", selector: "", kind: "collection", artCompositionId: "",
+      hidden: false, locked: false, x: 560, y: 420, width: 700, height: 360, scale: 1, rotation: 0,
+      collectionDirection: "vertical", collectionGap: 20, collectionDistribution: "center", collectionAlignment: "center",
+      collectionPadding: 12, collectionOverflow: "hidden", zIndex: 30
+    },
+    {
+      id: "fixture-flat-cards", name: "Fixture Flat Hand", selector: "", kind: "collection", artCompositionId: "",
+      hidden: false, locked: false, x: 1360, y: 420, width: 700, height: 180, scale: 1, rotation: 0,
+      collectionDirection: "horizontal", collectionGap: 18, collectionDistribution: "center", collectionAlignment: "center",
+      collectionPadding: 10, collectionOverflow: "visible", zIndex: 31
+    }
+  );
+  fs.writeFileSync(stageLayoutPath, `${JSON.stringify(stageLayouts, null, 2)}\n`);
+  const artManifestPath = path.join(targetRoot, "content", "art", "manifest.json");
+  const artManifest = JSON.parse(fs.readFileSync(artManifestPath, "utf8"));
+  artManifest.compositions["fixture-card"] = {
+    name: "Fixture Card", surface: "stage", compositionKind: "gameObject", isCustom: true,
+    canvas: { width: 100, height: 140 },
+    components: [
+      { id: "card", name: "Card", kind: "shape", x: 50, y: 70, width: 96, height: 136, fillColor: "#fffdf4", defaultAnimationState: "On" },
+      { id: "label", name: "Label", kind: "text", x: 50, y: 70, width: 86, height: 50, defaultText: "CARD", fontSize: 18, fontColor: "#17131f", defaultAnimationState: "On" }
+    ]
+  };
+  artManifest.compositions["fixture-hand-row"] = {
+    name: "Fixture Hand Row", surface: "stage", compositionKind: "gameObject", isCustom: true,
+    canvas: { width: 640, height: 150 },
+    components: [{ id: "cards-slot", name: "Cards Slot", kind: "container", childDistribution: "horizontal", x: 320, y: 75, width: 620, height: 145, fillColor: "transparent", defaultAnimationState: "On", children: [] }]
+  };
+  fs.writeFileSync(artManifestPath, `${JSON.stringify(artManifest, null, 2)}\n`);
+  refreshLocalContentBundle(path.join(targetRoot, "content"), { trackLineage: false });
+  generatedSnapshot = createLocalContentBundleProvider({ root: path.join(targetRoot, "content") }).loadPublishedRevision();
   const developmentSmoke = execFileSync(process.execPath, ["-e", `
     const fs = require("node:fs");
     const { startDevelopmentApplication } = require("@pop-party/engine/tooling");
@@ -551,6 +642,88 @@ module.exports = Object.freeze([{
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ layouts: controllerLayouts })
       });
+      const collectionRoomResponse = await fetch(first.startup.localUrl + "/api/stage/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ stageCode: "RCOL" })
+      });
+      const collectionRoom = await collectionRoomResponse.json();
+      const collectionLobbyState = {
+        id: "lobby",
+        name: "Renderer Collection Fixture",
+        entryTargetActionId: "collection-wait",
+        actions: [
+          { id: "collection-wait", name: "Inspect Initial Collection", type: "presentText", text: "Initial", timing: { mode: "E+", seconds: 0 }, subActions: [], nextTargetActionId: "collection-increment" },
+          { id: "collection-increment", name: "Reconcile Collection", type: "generated-fixture.increment", amount: 1, resultVariable: "collectionCount", timing: { mode: "E+", seconds: 0 }, subActions: [], nextTargetActionId: "collection-done" },
+          { id: "collection-done", name: "Inspect Reconciled Collection", type: "presentText", text: "Done", timing: { mode: "E+", seconds: 0 }, subActions: [], nextTargetActionId: "none" }
+        ]
+      };
+      const collectionFlow = {
+        ...flowPayload.flow,
+        states: flowPayload.flow.states.map((state) => state.id === "lobby" ? collectionLobbyState : state)
+      };
+      await fetch(first.startup.localUrl + "/api/stage/RCOL/test-config", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-stage-capability": collectionRoom.stageCapability },
+        body: JSON.stringify({ flow: collectionFlow })
+      });
+      const collectionStagePage = await browser.newPage();
+      await collectionStagePage.goto(first.startup.localUrl + "/stage?stage=RCOL", { waitUntil: "load" });
+      await collectionStagePage.waitForFunction(() => (
+        document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] > [data-game-plugin-renderer-collection-item="true"]').length === 3
+        && document.querySelectorAll('[data-stage-layout-element-id="fixture-hand-rows"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
+        && document.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] [data-game-plugin-renderer-collection-item="true"]').length === 3
+      ), null, { timeout: 15_000 });
+      const collectionIdentityBefore = await collectionStagePage.evaluate(() => {
+        const flat = document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"]');
+        const rows = document.querySelector('[data-stage-layout-element-id="fixture-hand-rows"]');
+        const flatA = flat?.querySelector('[data-game-plugin-renderer-item-key="a"]');
+        const topRow = rows?.querySelector('[data-game-plugin-renderer-item-key="top"]');
+        const nestedA = topRow?.querySelector('[data-game-plugin-renderer-item-key="a"]');
+        window.__fixtureFlatA = flatA;
+        window.__fixtureFlatARenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(flatA);
+        window.__fixtureTopRow = topRow;
+        window.__fixtureNestedA = nestedA;
+        window.__fixtureNestedARenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(nestedA);
+        return {
+          flatOrder: Array.from(flat?.children || []).map((item) => item.dataset.gamePluginRendererItemKey),
+          flatCount: flat?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length,
+          rowCount: rows?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length,
+          nestedCount: rows?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] [data-game-plugin-renderer-collection-item="true"]').length,
+          initialState: flatA?.dataset.gamePluginRendererState,
+          flatGap: flat ? getComputedStyle(flat).gap : "",
+          rowsDirection: rows ? getComputedStyle(rows).flexDirection : ""
+        };
+      });
+      await fetch(first.startup.localUrl + "/api/complete-action", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-stage-capability": collectionRoom.stageCapability },
+        body: JSON.stringify({ stageCode: "RCOL", actionId: "collection-wait", source: "callback" })
+      });
+      await collectionStagePage.waitForFunction(() => (
+        window.currentStageState?.action?.id === "collection-done"
+        && document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] > [data-game-plugin-renderer-collection-item="true"]').length === 4
+      ), null, { timeout: 15_000 });
+      const collectionReconcileState = await collectionStagePage.evaluate(() => {
+        const flat = document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"]');
+        const rows = document.querySelector('[data-stage-layout-element-id="fixture-hand-rows"]');
+        const flatA = flat?.querySelector('[data-game-plugin-renderer-item-key="a"]');
+        const topRow = rows?.querySelector('[data-game-plugin-renderer-item-key="top"]');
+        const nestedA = topRow?.querySelector('[data-game-plugin-renderer-item-key="a"]');
+        return {
+          flatOrder: Array.from(flat?.children || []).map((item) => item.dataset.gamePluginRendererItemKey),
+          flatCount: flat?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length,
+          nestedCount: rows?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] [data-game-plugin-renderer-collection-item="true"]').length,
+          flatRetained: flatA === window.__fixtureFlatA,
+          flatRendererRetained: window.__fixtureFlatARenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(flatA),
+          rowRetained: topRow === window.__fixtureTopRow,
+          nestedRetained: nestedA === window.__fixtureNestedA,
+          nestedRendererRetained: window.__fixtureNestedARenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(nestedA),
+          changedState: flatA?.dataset.gamePluginRendererState,
+          addedLabel: flat?.querySelector('[data-game-plugin-renderer-item-key="d"] [data-art-component-id="label"]')?.textContent?.trim()
+        };
+      });
+      await collectionStagePage.close();
       const vipRoomResponse = await fetch(first.startup.localUrl + "/api/stage/rooms", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1582,6 +1755,7 @@ module.exports = Object.freeze([{
       const secondConstants = await (await fetch(second.startup.localUrl + "/api/game-constants")).json();
       const secondFlow = await (await fetch(second.startup.localUrl + "/api/game-flow")).json();
       const secondControllerLayouts = await (await fetch(second.startup.localUrl + "/api/controller-layouts")).json();
+      const secondStageLayouts = await (await fetch(second.startup.localUrl + "/api/stage-layouts")).json();
       const restartedBrowser = await chromium.launch({ headless: true });
       const restartedControllerPage = await restartedBrowser.newPage();
       const restartedRoomResponse = await fetch(second.startup.localUrl + "/api/stage/rooms", {
@@ -1628,9 +1802,17 @@ module.exports = Object.freeze([{
             && state.elements.some((element) => element.id === "fixture-target-collection"
               && element.kind === "collection"
               && element.collectionOverflow === "auto")),
+        rendererCollectionRestarted: secondStageLayouts.layouts.global.elements
+          .some((element) => element.id === "fixture-hand-rows"
+            && element.kind === "collection"
+            && element.collectionDirection === "vertical"),
+        collectionIdentityBefore,
+        collectionReconcileState,
         persistentLayerReloaded: secondControllerLayouts.layouts.layers
           ?.some((layer) => layer.id === "fixture-persistent-context" && layer.zIndex === 150),
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
+          && stageHtml.includes("generated-fixture.stageHandRows")
+          && stageHtml.includes("generated-fixture.stageFlatCards")
           && controllerHtml.includes("generated-fixture.controllerCounter"),
         pluginViewModel: configuredLobby.gamePlugin?.viewModels?.["generated-fixture.stageCounter"]?.label,
         vipControllerJourney,
@@ -1728,6 +1910,23 @@ module.exports = Object.freeze([{
     || development.controllerLayoutSaveStatus !== 200
     || !development.customControllerLayoutReloaded
     || !development.dynamicControllerLayoutReloaded
+    || !development.rendererCollectionRestarted
+    || development.collectionIdentityBefore?.flatCount !== 3
+    || development.collectionIdentityBefore?.rowCount !== 2
+    || development.collectionIdentityBefore?.nestedCount !== 3
+    || development.collectionIdentityBefore?.initialState !== "Choosing Start"
+    || development.collectionIdentityBefore?.flatGap !== "18px"
+    || development.collectionIdentityBefore?.rowsDirection !== "column"
+    || development.collectionReconcileState?.flatCount !== 4
+    || development.collectionReconcileState?.nestedCount !== 4
+    || JSON.stringify(development.collectionReconcileState?.flatOrder) !== JSON.stringify(["d", "c", "b", "a"])
+    || !development.collectionReconcileState?.flatRetained
+    || !development.collectionReconcileState?.flatRendererRetained
+    || !development.collectionReconcileState?.rowRetained
+    || !development.collectionReconcileState?.nestedRetained
+    || !development.collectionReconcileState?.nestedRendererRetained
+    || development.collectionReconcileState?.changedState !== "Choosing End"
+    || development.collectionReconcileState?.addedLabel !== "DELTA"
     || !development.persistentLayerReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"

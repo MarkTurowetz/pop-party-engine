@@ -64,14 +64,25 @@ export interface GameActionRegistration<TState extends Record<string, unknown> =
   execute(context: GameActionExecutionContext<TState>, action: Readonly<Record<string, unknown>>): void;
 }
 
-export interface GameRendererBinding {
+export type GameRendererValueBinding =
+  | { id: string; kind: "text"; source: string; targetComponentId: string; fallback?: unknown }
+  | { id: string; kind: "component"; source: string; targetComponentId: string; property: "defaultText" | "fill" | "imageTint" | "isShown" | "opacity" | "rotation" | "scale"; fallback?: unknown }
+  | { id: string; kind: "state"; source: string; targetComponentId?: string; playback?: "play" | "stop"; fallback?: unknown };
+
+export interface GameRendererCollectionBinding {
   id: string;
-  kind: "text" | "component";
+  kind: "collection";
   source: string;
-  targetComponentId: string;
-  property?: "defaultText" | "fill" | "imageTint" | "isShown" | "opacity" | "rotation" | "scale";
-  fallback?: unknown;
+  targetComponentId?: string;
+  fallback?: readonly unknown[];
+  item: {
+    keySource: string;
+    artCompositionId: string;
+    bindings: GameRendererBinding[];
+  };
 }
+
+export type GameRendererBinding = GameRendererValueBinding | GameRendererCollectionBinding;
 
 export interface GameRendererSelectionContext<TState extends Record<string, unknown> = Record<string, unknown>> {
   readonly namespace: string;

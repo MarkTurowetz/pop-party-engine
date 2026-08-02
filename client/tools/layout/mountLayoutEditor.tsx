@@ -100,11 +100,18 @@ export async function mountLayoutEditor(
       submitted?: { bindings?: Array<{ kind: "choiceCollection"; layoutElementId: string; item: { artCompositionId: string; targetComponentId: string } }> };
     };
   }> = [];
+  let gamePluginRenderers: Array<{
+    surface?: "stage" | "controller";
+    target?: { layoutElementId?: string };
+    bindings?: Array<{ kind?: string; item?: { artCompositionId?: string } }>;
+  }> = [];
   try {
     const config = JSON.parse(doc.getElementById("pop-party-runtime-config")?.textContent || "{}");
     gamePluginInputs = Array.isArray(config?.gamePlugin?.inputs) ? config.gamePlugin.inputs : [];
+    gamePluginRenderers = Array.isArray(config?.gamePlugin?.renderers) ? config.gamePlugin.renderers : [];
   } catch {
     gamePluginInputs = [];
+    gamePluginRenderers = [];
   }
   const render = () => {
     root.render(
@@ -118,6 +125,7 @@ export async function mountLayoutEditor(
         initialMode={requestedMode}
         surface={options.surface}
         gamePluginInputs={gamePluginInputs}
+        gamePluginRenderers={gamePluginRenderers}
       />
     );
   };

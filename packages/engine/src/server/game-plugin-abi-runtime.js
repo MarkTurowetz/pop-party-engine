@@ -22,6 +22,21 @@ function cloneJson(value, fallback = null) {
   }
 }
 
+function assertJsonValue(value, label, seen = new Set()) {
+  if (value === undefined || typeof value === "function" || typeof value === "symbol" || typeof value === "bigint") {
+    throw new Error(`${label} must be JSON-safe`);
+  }
+  if (value === null || typeof value !== "object") return;
+  if (seen.has(value)) throw new Error(`${label} must not contain circular references`);
+  seen.add(value);
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertJsonValue(item, `${label}[${index}]`, seen));
+  } else {
+    for (const [key, item] of Object.entries(value)) assertJsonValue(item, `${label}.${key}`, seen);
+  }
+  seen.delete(value);
+}
+
 function normalizePluginField(field, value, context = {}) {
   const fallback = cloneJson(field.default, field.control === "boolean" ? false : field.control === "number" || field.control === "integer" ? 0 : "");
   if (field.control === "boolean") return value === undefined ? fallback === true : value === true;
@@ -270,6 +285,25 @@ function createGameActionExecutor({
   return Object.freeze({ execute, has: (type) => registrationById.has(type) });
 }
 
+function rendererBindingManifest(binding) {
+  return Object.freeze({
+    id: String(binding.id),
+    kind: binding.kind,
+    source: String(binding.source),
+    ...(binding.targetComponentId ? { targetComponentId: String(binding.targetComponentId) } : {}),
+    ...(binding.kind === "component" ? { property: binding.property } : {}),
+    ...(binding.kind === "state" ? { playback: String(binding.playback || "play") } : {}),
+    ...(binding.kind === "collection" ? {
+      item: Object.freeze({
+        keySource: String(binding.item.keySource),
+        artCompositionId: String(binding.item.artCompositionId),
+        bindings: Object.freeze(binding.item.bindings.map(rendererBindingManifest))
+      })
+    } : {}),
+    ...("fallback" in binding ? { fallback: cloneJson(binding.fallback) } : {})
+  });
+}
+
 function rendererManifest(registration, surface) {
   const value = registration.value;
   return Object.freeze({
@@ -281,15 +315,37 @@ function rendererManifest(registration, surface) {
       layoutScope: String(value.target.layoutScope || "moment"),
       layoutLayerId: String(value.target.layoutLayerId || "")
     }),
-    bindings: Object.freeze(value.bindings.map((binding) => Object.freeze({
-      id: String(binding.id),
-      kind: binding.kind,
-      source: String(binding.source),
-      targetComponentId: String(binding.targetComponentId),
-      ...(binding.kind === "component" ? { property: binding.property } : {}),
-      ...("fallback" in binding ? { fallback: cloneJson(binding.fallback) } : {})
-    })))
+    bindings: Object.freeze(value.bindings.map(rendererBindingManifest))
   });
+}
+
+function rendererPathValue(root, path) {
+  let current = root;
+  for (const segment of String(path || "").split(".").filter(Boolean)) {
+    if (!current || typeof current !== "object" || Array.isArray(current)) return undefined;
+    current = current[segment];
+  }
+  return current;
+}
+
+function assertRendererCollectionModel(bindings, model, path = "model") {
+  for (const binding of bindings) {
+    if (binding.kind !== "collection") continue;
+    const selected = rendererPathValue(model, binding.source);
+    const value = selected === undefined ? binding.fallback : selected;
+    if (!Array.isArray(value)) throw new Error(`${path}.${binding.source} must be an array`);
+    const keys = new Set();
+    for (let index = 0; index < value.length; index += 1) {
+      const item = value[index];
+      if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error(`${path}.${binding.source}[${index}] must be an object`);
+      const key = rendererPathValue(item, binding.item.keySource);
+      if (typeof key !== "string" && typeof key !== "number") throw new Error(`${path}.${binding.source}[${index}] requires a string or number key`);
+      const normalizedKey = String(key);
+      if (!normalizedKey || keys.has(normalizedKey)) throw new Error(`${path}.${binding.source} contains an empty or duplicate item key "${normalizedKey}"`);
+      keys.add(normalizedKey);
+      assertRendererCollectionModel(binding.item.bindings, item, `${path}.${binding.source}[${normalizedKey}]`);
+    }
+  }
 }
 
 function createGameRendererRuntime({ stageRenderers = [], controllerRenderers = [], activePlayers } = {}) {
@@ -322,7 +378,10 @@ function createGameRendererRuntime({ stageRenderers = [], controllerRenderers = 
         flowStateId: String(room.flowStateId || room.phase || "")
       });
       try {
-        result[registration.id] = cloneJson(registration.value.select(context), null);
+        const selected = registration.value.select(context);
+        assertJsonValue(selected, `Game renderer "${registration.id}" view model`);
+        assertRendererCollectionModel(registration.value.bindings, selected);
+        result[registration.id] = cloneJson(selected, null);
       } catch (error) {
         createRuntimeFault(room, {
           code: "GAME_PLUGIN_RENDERER_FAILED",

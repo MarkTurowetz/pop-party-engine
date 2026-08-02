@@ -248,6 +248,16 @@ concepts into focused modules.
     removed items are disabled and marked stale before their renderer is disposed. Collection
     geometry is authored in Layout, and the Layout preview renders the same item Game Object and
     long-label override through the shared geometry rules. Fixed `choice` bindings remain valid.
+  - Stage and Controller renderer registrations may use a recursive `collection` binding. The
+    root targets a same-surface Tools-authored Layout collection; every item instantiates a
+    same-surface Art Manager Game Object by a semantic `keySource`. Nested bindings target an
+    authored Art `container`, whose child distribution supplies the nested direction. Text,
+    component, and lifecycle-state bindings are applied to each private item model through the
+    existing Art tree renderer. Keyed reorder/growth/shrink retains unchanged DOM, renderer,
+    timeline, and nested-host identity. Readiness rejects invalid layout/composition/component
+    references, while dynamic duplicate keys or non-JSON-safe models fault that projection before
+    publication. Stage collection updates remain within the Stage projection's frame-coalesced
+    renderer slice; Controller-private projections do not invalidate Stage.
   - Controller Layout supports named persistent layers in addition to Global and the active state.
     Each layer has a normalized ID and explicit z-index, remains mounted across active-state visits,
     and can be hidden per state without clearing its DOM node, Art renderer, or timeline. Runtime

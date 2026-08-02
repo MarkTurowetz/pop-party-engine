@@ -114,7 +114,7 @@ describe("createLayoutController", () => {
     expect(controller.getState().layouts.states[0].elements).toHaveLength(3);
   });
 
-  it("authors a Controller-only dynamic choice collection with undo/redo", () => {
+  it("authors a reusable Controller renderer collection with undo/redo", () => {
     const controller = createLayoutController({
       initialLayouts: layouts(),
       mode: "controller",
@@ -137,14 +137,20 @@ describe("createLayoutController", () => {
     expect(controller.getState().layouts.states[0].elements).toHaveLength(2);
   });
 
-  it("rejects dynamic choice collections on Stage layouts", () => {
+  it("authors renderer collections on Stage layouts", () => {
     const controller = createLayoutController({
       initialLayouts: layouts(),
       mode: "stage",
       api: fakeApi()
     });
-    expect(controller.addChoiceCollection()).toBeNull();
-    expect(controller.getState().error).toMatch(/Controller Layouts/);
+    expect(controller.addChoiceCollection()).toBe("choice-collection");
+    expect(controller.getState().layouts.global.elements[0]).toMatchObject({
+      id: "choice-collection",
+      name: "Renderer Collection",
+      kind: "collection",
+      width: 900,
+      height: 420
+    });
   });
 
   it("rejects prefabs and Game Objects from the other layout surface", () => {

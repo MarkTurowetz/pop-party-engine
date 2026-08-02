@@ -157,4 +157,43 @@ describe("game readiness runtime", () => {
       snapshot
     })).rejects.toMatchObject({ code: "ACTIVE_RELEASE_GAME_BUILD_MISMATCH" });
   });
+
+  it("validates nested renderer collection layout, composition, and container references at readiness", async () => {
+    const { game, release, snapshot } = fixture({
+      game: {
+        registrations: {
+          validators: [],
+          stageRenderers: [{
+            id: "fixture.hand",
+            value: {
+              target: { layoutElementId: "hand", layoutScope: "moment" },
+              bindings: [{
+                id: "rows", kind: "collection", source: "rows",
+                item: {
+                  keySource: "id", artCompositionId: "row", bindings: [{
+                    id: "cards", kind: "collection", source: "cards", targetComponentId: "slot",
+                    item: { keySource: "id", artCompositionId: "card", bindings: [{ id: "label", kind: "text", source: "label", targetComponentId: "label" }] }
+                  }]
+                }
+              }]
+            }
+          }],
+          controllerRenderers: []
+        }
+      }
+    });
+    const gameData = {
+      defaultStageLayouts: { states: [{ id: "play", elements: [{ id: "hand", kind: "collection" }] }] },
+      defaultControllerLayouts: { states: [] },
+      defaultArtCompositions: [
+        { id: "row", surface: "stage", compositionKind: "gameObject", components: [{ id: "slot", kind: "container" }] },
+        { id: "card", surface: "stage", compositionKind: "gameObject", components: [{ id: "label", kind: "text" }] }
+      ]
+    };
+    const validateRelease = createGameReleaseValidator({ gameDefinition: game, engineVersion: "1.0.0" });
+    await expect(validateRelease({ gameData, release, snapshot })).resolves.toMatchObject({ release: { contentRevision: "content-1" } });
+
+    gameData.defaultArtCompositions[0].components[0].kind = "shape";
+    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_NESTED_COLLECTION_TARGET_INVALID" });
+  });
 });
