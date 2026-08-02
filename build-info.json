@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1263",
+  "version": "1.0.17.1264",
   "baseVersion": "1.0.17",
-  "buildNumber": 1263,
-  "commit": "9ddbc297",
+  "buildNumber": 1264,
+  "commit": "bf79401e",
   "branch": "codex/roster-item-renderer-extension",
-  "generatedAt": "2026-08-02T20:52:01.282Z"
+  "generatedAt": "2026-08-02T20:57:03.824Z"
 }

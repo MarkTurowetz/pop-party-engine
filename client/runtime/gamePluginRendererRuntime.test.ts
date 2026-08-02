@@ -111,15 +111,19 @@ describe("game plugin renderer runtime", () => {
       player: { id: "p1" }
     }));
 
-    renderGamePluginSurface("stage", {
+    const lobby = {
       players: [{ id: "p1" }],
       gamePlugin: { viewModels: { "fixture.roster": { players: [{ playerId: "p1", score: 42, state: "On" }] } } }
-    }, rosterDocument, { playerRosterRenderer: { applyRendererExtension } });
+    };
+    renderGamePluginSurface("stage", lobby, rosterDocument, { playerRosterRenderer: { applyRendererExtension } });
+    renderGamePluginSurface("stage", lobby, rosterDocument, { playerRosterRenderer: { applyRendererExtension } });
 
-    expect(applyRendererExtension).toHaveBeenCalledWith("fixture.roster", "p1", {
+    expect(applyRendererExtension).toHaveBeenCalledTimes(2);
+    expect(applyRendererExtension).toHaveBeenLastCalledWith("fixture.roster", "p1", {
       textOverrides: { "game-score": "42" },
       componentOverrides: {}
     });
     expect(playComponent).toHaveBeenCalledWith("game-tableau", "On", { instant: false });
+    expect(tile.toggleAttribute).toHaveBeenCalledTimes(1);
   });
 });

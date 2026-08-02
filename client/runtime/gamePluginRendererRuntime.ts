@@ -53,6 +53,7 @@ const SAFE_COMPONENT_PROPERTIES = new Set([
 ]);
 const collectionStateByRoot = new WeakMap<HTMLElement, { manifestId: string; surface: "stage" | "controller" }>();
 const lifecycleStateByItem = new WeakMap<HTMLElement, Map<string, string>>();
+const rosterManifestSignaturesByTile = new WeakMap<HTMLElement, Map<string, string>>();
 
 function runtimeConfig(documentRef: Document | undefined): RuntimeConfig {
   const node = documentRef?.getElementById("pop-party-runtime-config");
@@ -350,6 +351,14 @@ function renderRosterItemManifest(
     const overrides = bindingOverrides(manifest.bindings, itemModel);
     const item = rosterRenderer.applyRendererExtension(manifest.id, playerId, overrides);
     if (!item) continue;
+    let manifestSignatures = rosterManifestSignaturesByTile.get(item.tile);
+    if (!manifestSignatures) {
+      manifestSignatures = new Map();
+      rosterManifestSignaturesByTile.set(item.tile, manifestSignatures);
+    }
+    const signature = JSON.stringify({ invalid, itemModel });
+    if (manifestSignatures.get(manifest.id) === signature) continue;
+    manifestSignatures.set(manifest.id, signature);
     item.tile.dataset.gamePluginRosterRenderer = manifest.id;
     item.tile.toggleAttribute("data-game-plugin-roster-renderer-invalid", invalid);
     applyLifecycleBindings(manifest.bindings, itemModel, item.host, item.renderer, manifest.id);
