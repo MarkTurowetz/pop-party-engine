@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1268",
+  "version": "1.0.17.1269",
   "baseVersion": "1.0.17",
-  "buildNumber": 1268,
-  "commit": "bda09c20",
-  "branch": "codex/roster-anchor-nested-autofit",
-  "generatedAt": "2026-08-02T23:15:05.567Z"
+  "buildNumber": 1269,
+  "commit": "90c3a7a0",
+  "branch": "codex/release-engine-1.3.38",
+  "generatedAt": "2026-08-02T23:19:31.871Z"
 }
