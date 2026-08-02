@@ -740,6 +740,26 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
     expect(playComponent).not.toHaveBeenCalled();
   });
 
+  it("skips root Art reconciliation when a roster extension override is unchanged", () => {
+    const roster = PartyGamePlayerRoster.createRenderer({});
+    const tile = {} as HTMLElement;
+    const item = {
+      tile,
+      host: {} as HTMLElement,
+      renderer: { render: vi.fn() },
+      composition: { id: "player-widget", components: [] },
+      player: { id: "p1" }
+    };
+    vi.spyOn(roster, "rosterItemForPlayer").mockReturnValue(item);
+    const sync = vi.spyOn(roster, "syncPlayerObject").mockReturnValue(0);
+
+    roster.applyRendererExtension("fixture.roster", "p1", { textOverrides: { score: "10" }, componentOverrides: {} });
+    roster.applyRendererExtension("fixture.roster", "p1", { textOverrides: { score: "10" }, componentOverrides: {} });
+    roster.applyRendererExtension("fixture.roster", "p1", { textOverrides: { score: "11" }, componentOverrides: {} });
+
+    expect(sync).toHaveBeenCalledTimes(2);
+  });
+
   it("prepares answer content before playing the nested MC without attaching the parent timeline", () => {
     const order: string[] = [];
     const composition = {

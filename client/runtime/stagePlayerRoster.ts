@@ -300,6 +300,7 @@ class PlayerRosterRenderer {
   tileRenderers = new WeakMap<El, TreeRenderer>();
   tilePlayers = new WeakMap<El, Dict>();
   tileRendererExtensions = new WeakMap<El, Map<string, RendererOverrides>>();
+  tileRendererExtensionSignatures = new WeakMap<El, Map<string, string>>();
   pointPopupRenderers = new WeakMap<El, TreeRenderer>();
   resizeObserver: ResizeObserver | null = null;
   renderedAnswersShown = false;
@@ -415,7 +416,15 @@ class PlayerRosterRenderer {
       extensions = new Map();
       this.tileRendererExtensions.set(item.tile, extensions);
     }
+    let signatures = this.tileRendererExtensionSignatures.get(item.tile);
+    if (!signatures) {
+      signatures = new Map();
+      this.tileRendererExtensionSignatures.set(item.tile, signatures);
+    }
+    const signature = JSON.stringify(overrides);
+    if (signatures.get(manifestId) === signature) return item;
     extensions.set(manifestId, overrides);
+    signatures.set(manifestId, signature);
     this.syncPlayerObject(item.tile, item.player, { instant: true });
     return this.rosterItemForPlayer(playerId);
   }
