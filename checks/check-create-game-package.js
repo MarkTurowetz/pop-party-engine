@@ -372,7 +372,7 @@ module.exports = Object.freeze([
         }
       ],
       select(context) {
-        const count = Number(context.state.count || 0);
+        const count = Number(context.flow.collectionCount || 0);
         const all = cards(count);
         const rosterCards = count > 0
           ? [all.find((card) => card.id === "a"), all.find((card) => card.id === "d"), all.find((card) => card.id === "b")].filter(Boolean)
