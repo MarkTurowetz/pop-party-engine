@@ -3,6 +3,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
+  type ReactNode,
   useMemo
 } from "react";
 import type { ArtAsset, ArtComponent, ArtComposition } from "../../types/game-data";
@@ -51,6 +52,10 @@ export interface ArtPreviewRendererProps {
   showHandles?: boolean;
   textOverride?: ArtTextOverride;
   textOverrides?: Record<string, ArtTextOverride | string | undefined>;
+  renderComponentOverlay?: (
+    component: ArtComponent,
+    scopedTargetId: string
+  ) => ReactNode;
 }
 
 type ArtTextOverrideInput = ArtTextOverride | string | undefined | null;
@@ -384,6 +389,7 @@ export function ArtPreviewRenderer(props: ArtPreviewRendererProps): ReactElement
         {(component.children || []).map((child, index) =>
           renderComponent(child, { index, total: component.children?.length || 1, interactive, referencePath, targetPath, contentOpacity })
         )}
+        {props.renderComponentOverlay?.(component, scopedTargetId)}
         {chromeVisible ? <div className="art-canvas-component-chrome" style={chromeStyle} /> : null}
         {selected && interactive && props.showHandles !== false ? (
           <>

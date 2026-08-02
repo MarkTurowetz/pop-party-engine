@@ -9,10 +9,7 @@ import {
 } from "react";
 import type { ArtAsset, ArtComposition, LayoutElement } from "../../types/game-data";
 import { gameTextHtml } from "../../runtime/gameTextMarkup";
-import {
-  choiceCollectionItemDimensions,
-  choiceCollectionLayoutStyle
-} from "../../runtime/controllerChoiceCollectionLayout";
+import { choiceCollectionLayoutStyle } from "../../runtime/controllerChoiceCollectionLayout";
 import { gameTextFontOptions, normalizeGameTextFontFamily } from "../../textFonts";
 import {
   ArtPreviewRenderer,
@@ -38,6 +35,17 @@ import {
   layoutViewTags
 } from "./layoutTags";
 import { useLayoutEditor } from "./useLayoutEditor";
+import {
+  choiceCollectionBindingForElement,
+  LayoutCollectionPreview,
+  rendererCollectionBindingForElement,
+  type GamePluginInputManifest,
+  type GamePluginRendererManifest
+} from "./LayoutCollectionPreview";
+import {
+  LayoutElementPreviewErrorBoundary,
+  LayoutElementPreviewRender
+} from "./LayoutElementPreviewErrorBoundary";
 
 export interface LayoutEditorProps {
   artAssets?: ArtAsset[];
@@ -49,54 +57,6 @@ export interface LayoutEditorProps {
   surface?: string;
   gamePluginInputs?: GamePluginInputManifest[];
   gamePluginRenderers?: GamePluginRendererManifest[];
-}
-
-interface GamePluginChoiceCollectionBinding {
-  kind: "choiceCollection";
-  layoutElementId: string;
-  item: { artCompositionId: string; targetComponentId: string };
-}
-
-interface GamePluginInputManifest {
-  controller?: {
-    bindings?: GamePluginChoiceCollectionBinding[];
-    submitted?: { bindings?: GamePluginChoiceCollectionBinding[] };
-  };
-}
-
-interface GamePluginRendererManifest {
-  surface?: "stage" | "controller";
-  target?: { layoutElementId?: string };
-  bindings?: Array<{
-    kind?: string;
-    item?: { artCompositionId?: string };
-  }>;
-}
-
-function choiceCollectionBindingForElement(
-  inputs: GamePluginInputManifest[],
-  elementId: string
-): GamePluginChoiceCollectionBinding | null {
-  for (const input of inputs) {
-    const bindings = [
-      ...(input.controller?.bindings || []),
-      ...(input.controller?.submitted?.bindings || [])
-    ];
-    const binding = bindings.find((candidate) =>
-      candidate.kind === "choiceCollection" && candidate.layoutElementId === elementId
-    );
-    if (binding) return binding;
-  }
-  return null;
-}
-
-function rendererCollectionCompositionForElement(
-  renderers: GamePluginRendererManifest[],
-  surface: "stage" | "controller",
-  elementId: string
-): string {
-  const renderer = renderers.find((candidate) => candidate.surface === surface && candidate.target?.layoutElementId === elementId);
-  return String(renderer?.bindings?.find((binding) => binding.kind === "collection")?.item?.artCompositionId || "");
 }
 
 function get(element: LayoutElement, key: string): unknown {
@@ -177,6 +137,26 @@ function artCompositionDefaultDimensions(
   const height = Number(composition?.canvas?.height || 0);
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
   return { width, height };
+}
+
+function layoutElementPreviewFallbackStyle(
+  element: LayoutElement,
+  index: number,
+  total: number
+): CSSProperties {
+  const width = Math.max(1, Number(get(element, "width") || 1));
+  const height = Math.max(1, Number(get(element, "height") || 1));
+  const x = Number(get(element, "x") || 0);
+  const y = Number(get(element, "y") || 0);
+  return {
+    position: "absolute",
+    left: x - width / 2,
+    top: y - height / 2,
+    width,
+    height,
+    zIndex: get(element, "layoutLayer") === "background" ? 0 : Math.max(1, total - index),
+    pointerEvents: "auto"
+  };
 }
 
 export function LayoutEditor({
@@ -343,16 +323,8 @@ export function LayoutEditor({
     const collectionBinding = isCollection
       ? choiceCollectionBindingForElement(gamePluginInputs, element.id)
       : null;
-    const rendererCollectionCompositionId = isCollection
-      ? rendererCollectionCompositionForElement(gamePluginRenderers, mode, element.id)
-      : "";
-    const collectionCompositionCandidate = collectionBinding || rendererCollectionCompositionId
-      ? compositionById.get(collectionBinding?.item.artCompositionId || rendererCollectionCompositionId) || null
-      : null;
-    const collectionComposition = collectionCompositionCandidate
-      && String(collectionCompositionCandidate.surface || "").toLowerCase() === mode
-      && String(collectionCompositionCandidate.compositionKind || "gameObject").toLowerCase() === "gameobject"
-      ? collectionCompositionCandidate
+    const rendererCollectionBinding = isCollection
+      ? rendererCollectionBindingForElement(gamePluginRenderers, mode, element.id)
       : null;
     const textValue = String(get(element, "defaultText") || "");
     const fontFamily = normalizeGameTextFontFamily(get(element, "fontFamily"));
@@ -391,6 +363,7 @@ export function LayoutEditor({
         data-layout-art-composition={composition ? composition.id : undefined}
         data-layout-element-hidden={hidden ? "true" : "false"}
         data-layout-element-locked={locked ? "true" : "false"}
+        data-layout-renderer-collection-preview={rendererCollectionBinding ? "true" : undefined}
         aria-current={selected ? "true" : undefined}
         style={style}
         onDoubleClick={
@@ -438,62 +411,14 @@ export function LayoutEditor({
             />
           </div>
         ) : isCollection ? (
-          ["Option", "A realistic long private option label", "Option"].map((label, previewIndex) => {
-            const itemDimensions = collectionComposition
-              ? choiceCollectionItemDimensions(
-                  element as Record<string, unknown>,
-                  collectionComposition as unknown as Record<string, unknown>,
-                  3
-                )
-              : { width: element.collectionDirection === "horizontal" ? 96 : width, height: 72 };
-            const itemCanvas = collectionComposition?.canvas || itemDimensions;
-            return (
-            <div
-              data-layout-choice-collection-preview-item
-              key={`${element.id}-preview-${previewIndex}`}
-              style={{
-                position: "relative",
-                boxSizing: "border-box",
-                flex: "0 0 auto",
-                width: itemDimensions.width,
-                height: itemDimensions.height,
-                minWidth: 0,
-                display: "grid",
-                placeItems: "center",
-                padding: collectionComposition ? 0 : 8,
-                border: collectionComposition ? 0 : "1px dashed rgba(255,255,255,0.55)",
-                borderRadius: 12,
-                overflow: "visible",
-                textAlign: "center",
-                fontSize: 14,
-                lineHeight: 1.1,
-                pointerEvents: "none"
-              }}
-            >
-              {collectionComposition ? (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    width: Number(itemCanvas.width || itemDimensions.width),
-                    height: Number(itemCanvas.height || itemDimensions.height),
-                    transform: `scale(${itemDimensions.width / Math.max(1, Number(itemCanvas.width || 1))}, ${itemDimensions.height / Math.max(1, Number(itemCanvas.height || 1))})`,
-                    transformOrigin: "top left"
-                  }}
-                >
-                  <ArtPreviewRenderer
-                    assetUrlById={assetUrlById}
-                    components={collectionComposition.components || []}
-                    compositionById={compositionById}
-                    interactive={false}
-                    showHandles={false}
-                    textOverrides={{ [collectionBinding!.item.targetComponentId]: label }}
-                  />
-                </div>
-              ) : label}
-            </div>
-            );
-          })
+          <LayoutCollectionPreview
+            assetUrlById={assetUrlById}
+            choiceBinding={collectionBinding}
+            compositionById={compositionById}
+            element={element}
+            rendererBinding={rendererCollectionBinding}
+            surface={mode}
+          />
         ) : (
           <span
             dangerouslySetInnerHTML={isText ? { __html: gameTextHtml(textValue) } : undefined}
@@ -1004,9 +929,23 @@ export function LayoutEditor({
                 height: canvasHeight
               }}
             >
-              {previewElements.map((element, index) =>
-                renderElement(element, index, previewElements.length || 1)
-              )}
+              {previewElements.map((element, index) => (
+                <LayoutElementPreviewErrorBoundary
+                  elementId={element.id}
+                  elementName={element.name}
+                  fallbackStyle={layoutElementPreviewFallbackStyle(
+                    element,
+                    index,
+                    previewElements.length || 1
+                  )}
+                  key={element.id}
+                  resetKey={`${mode}:${selectedGroupId}:${element.id}`}
+                >
+                  <LayoutElementPreviewRender
+                    render={() => renderElement(element, index, previewElements.length || 1)}
+                  />
+                </LayoutElementPreviewErrorBoundary>
+              ))}
             </div>
           </div>
         </section>

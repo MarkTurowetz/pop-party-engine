@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1258",
+  "version": "1.0.17.1259",
   "baseVersion": "1.0.17",
-  "buildNumber": 1258,
-  "commit": "cb7ea4e5",
-  "branch": "codex/stabilize-timer-lifecycle-gate",
-  "generatedAt": "2026-08-02T11:43:49.957Z"
+  "buildNumber": 1259,
+  "commit": "3f335aa8",
+  "branch": "codex/layout-renderer-collection-preview",
+  "generatedAt": "2026-08-02T19:07:45.751Z"
 }

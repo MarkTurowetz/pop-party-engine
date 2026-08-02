@@ -291,7 +291,7 @@ module.exports = Object.freeze([{
 `;
   fs.writeFileSync(path.join(targetRoot, "src", "stage", "index.js"), `"use strict";
 const cardBindings = [
-  { id: "label", kind: "text", source: "label", targetComponentId: "label" },
+  { id: "label", kind: "text", source: "label", targetComponentId: "label", fallback: "PREVIEW CARD" },
   { id: "state", kind: "state", source: "state", playback: "play" }
 ];
 function cards(count) {
@@ -348,6 +348,35 @@ module.exports = Object.freeze([
       bindings: [{ id: "cards", kind: "collection", source: "cards", item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings } }],
       select(context) { return { cards: cards(Number(context.state.count || 0)) }; }
     }
+  },
+  {
+    id: "generated-fixture.stageHandRowsPreview",
+    value: {
+      name: "Fixture Nested Hand Preview",
+      target: { layoutElementId: "fixture-preview-hand-rows", layoutScope: "moment" },
+      bindings: [{
+        id: "rows", kind: "collection", source: "rows",
+        item: {
+          keySource: "id", artCompositionId: "fixture-hand-row", bindings: [
+            { id: "rowState", kind: "state", source: "state", playback: "stop" },
+            {
+              id: "cards", kind: "collection", source: "cards", targetComponentId: "cards-slot",
+              item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings }
+            }
+          ]
+        }
+      }],
+      select() { return { rows: [] }; }
+    }
+  },
+  {
+    id: "generated-fixture.stageFlatCardsPreview",
+    value: {
+      name: "Fixture Flat Hand Preview",
+      target: { layoutElementId: "fixture-preview-flat-cards", layoutScope: "moment" },
+      bindings: [{ id: "cards", kind: "collection", source: "cards", item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings } }],
+      select() { return { cards: [] }; }
+    }
   }
 ]);
 `);
@@ -357,7 +386,7 @@ module.exports = Object.freeze([
   );
   const stageLayoutPath = path.join(targetRoot, "content", "layouts", "stage.json");
   const stageLayouts = JSON.parse(fs.readFileSync(stageLayoutPath, "utf8"));
-  stageLayouts.global.elements.push(
+  const rendererCollectionLayoutElements = [
     {
       id: "fixture-hand-rows", name: "Fixture Nested Hand", selector: "", kind: "collection", artCompositionId: "",
       hidden: false, locked: false, x: 560, y: 420, width: 700, height: 360, scale: 1, rotation: 0,
@@ -370,7 +399,16 @@ module.exports = Object.freeze([
       collectionDirection: "horizontal", collectionGap: 18, collectionDistribution: "center", collectionAlignment: "center",
       collectionPadding: 10, collectionOverflow: "visible", zIndex: 31
     }
-  );
+  ];
+  stageLayouts.global.elements.push(...structuredClone(rendererCollectionLayoutElements));
+  stageLayouts.states.push({
+    id: "fixture-renderer-preview",
+    name: "Fixture Renderer Preview",
+    elements: structuredClone(rendererCollectionLayoutElements).map((element) => ({
+      ...element,
+      id: element.id === "fixture-hand-rows" ? "fixture-preview-hand-rows" : "fixture-preview-flat-cards"
+    }))
+  });
   fs.writeFileSync(stageLayoutPath, `${JSON.stringify(stageLayouts, null, 2)}\n`);
   const artManifestPath = path.join(targetRoot, "content", "art", "manifest.json");
   const artManifest = JSON.parse(fs.readFileSync(artManifestPath, "utf8"));
@@ -668,6 +706,96 @@ module.exports = Object.freeze([
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ layouts: controllerLayouts })
+      });
+      const toolsPageErrors = [];
+      const toolsPage = await browser.newPage();
+      toolsPage.on("pageerror", (error) => toolsPageErrors.push(error.message));
+      await toolsPage.goto(first.startup.localUrl + "/tools", { waitUntil: "load" });
+      await toolsPage.locator('[data-tool-target="layout"]').click();
+      await toolsPage.locator('[data-layout-group-select="fixture-renderer-preview"]').click();
+      try {
+        await toolsPage.waitForFunction(() => (
+          document.querySelector('[data-tool-workspace="layout"]')
+          && document.querySelector('[data-layout-react-component="state-list"]')
+          && document.querySelectorAll('[data-layout-renderer-collection-preview="true"]').length === 2
+          && document.querySelectorAll('[data-layout-renderer-collection-preview-item]').length >= 9
+          && document.querySelector('[data-layout-renderer-nested-collection-preview="cards"]')
+          && document.body.textContent.includes("PREVIEW CARD")
+        ), null, { timeout: 15_000 });
+      } catch (error) {
+        const diagnostic = await toolsPage.evaluate(() => ({
+          bodyText: document.body.innerText.slice(0, 1000),
+          currentGroups: Array.from(document.querySelectorAll('[data-layout-group-select]')).map((element) => ({
+            id: element.getAttribute("data-layout-group-select"),
+            current: element.getAttribute("aria-current")
+          })),
+          rendererHosts: document.querySelectorAll('[data-layout-renderer-collection-preview="true"]').length,
+          rendererItems: document.querySelectorAll('[data-layout-renderer-collection-preview-item]').length,
+          nestedHosts: document.querySelectorAll('[data-layout-renderer-nested-collection-preview]').length,
+          previewErrors: Array.from(document.querySelectorAll('[data-layout-element-preview-error]')).map((element) => element.textContent),
+          pageErrors: window.__layoutToolPageErrors || []
+        }));
+        throw new Error("Layout renderer collection preview did not remain usable: " + JSON.stringify(diagnostic), { cause: error });
+      }
+      const layoutToolRendererPreview = await toolsPage.evaluate(() => ({
+        workspaceVisible: Boolean(document.querySelector('[data-tool-workspace="layout"]')),
+        sidebarVisible: Boolean(document.querySelector('[data-layout-react-component="state-list"]')),
+        rendererHosts: document.querySelectorAll('[data-layout-renderer-collection-preview="true"]').length,
+        rendererItems: document.querySelectorAll('[data-layout-renderer-collection-preview-item]').length,
+        nestedHosts: document.querySelectorAll('[data-layout-renderer-nested-collection-preview="cards"]').length,
+        previewText: document.body.textContent.includes("PREVIEW CARD"),
+        previewErrors: document.querySelectorAll('[data-layout-element-preview-error]').length
+      }));
+      await toolsPage.locator('[data-layout-group-select="global"]').click();
+      await toolsPage.waitForFunction(() => (
+        document.querySelector('[data-layout-group-select="global"]')?.getAttribute("aria-current") === "true"
+        && document.querySelector('[data-layout-react-component="state-list"]')
+      ));
+      await toolsPage.locator('[data-tool-target="controller-layout"]').click();
+      await toolsPage.locator('[data-layout-group-select="fixture-dynamic-targets"]').click();
+      await toolsPage.waitForFunction(() => (
+        document.querySelectorAll('[data-layout-choice-collection-preview-item]').length === 3
+        && document.body.textContent.includes("A realistic long private option label")
+        && document.querySelector('[data-layout-react-component="state-list"]')
+      ), null, { timeout: 15_000 });
+      const controllerChoiceCollectionPreview = await toolsPage.evaluate(() => ({
+        items: document.querySelectorAll('[data-layout-choice-collection-preview-item]').length,
+        longLabel: document.body.textContent.includes("A realistic long private option label"),
+        sidebarVisible: Boolean(document.querySelector('[data-layout-react-component="state-list"]'))
+      }));
+      await toolsPage.close();
+
+      const boundaryPage = await browser.newPage();
+      await boundaryPage.route("**/api/art-assets", async (route) => {
+        const response = await route.fetch();
+        const payload = await response.json();
+        const fixtureCard = payload.compositions?.find((composition) => composition.id === "fixture-card");
+        if (fixtureCard) fixtureCard.components = [null];
+        await route.fulfill({ response, json: payload });
+      });
+      await boundaryPage.goto(first.startup.localUrl + "/tools", { waitUntil: "load" });
+      await boundaryPage.locator('[data-tool-target="layout"]').click();
+      await boundaryPage.locator('[data-layout-group-select="fixture-renderer-preview"]').click();
+      await boundaryPage.waitForSelector('[data-layout-element-preview-error="fixture-preview-flat-cards"]', { timeout: 15_000 });
+      const layoutToolErrorRecovery = await boundaryPage.evaluate(() => ({
+        diagnosticVisible: Boolean(document.querySelector('[data-layout-element-preview-error="fixture-preview-flat-cards"]')),
+        sidebarVisible: Boolean(document.querySelector('[data-layout-react-component="state-list"]')),
+        globalSelectable: Boolean(document.querySelector('[data-layout-group-select="global"]')),
+        alternateSelectable: Boolean(document.querySelector('[data-layout-group-select="lobby"]'))
+      }));
+      await boundaryPage.locator('[data-layout-group-select="lobby"]').click();
+      await boundaryPage.waitForFunction(() => (
+        document.querySelector('[data-layout-group-select="lobby"]')?.getAttribute("aria-current") === "true"
+        && !document.querySelector('[data-layout-element-preview-error]')
+      ));
+      await boundaryPage.close();
+
+      const stageLayoutsResponse = await fetch(first.startup.localUrl + "/api/stage-layouts");
+      const stageLayoutsPayload = await stageLayoutsResponse.json();
+      const stageLayoutSaveResponse = await fetch(first.startup.localUrl + "/api/stage-layouts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ layouts: stageLayoutsPayload.layouts })
       });
       const collectionRoomResponse = await fetch(first.startup.localUrl + "/api/stage/rooms", {
         method: "POST",
@@ -1914,6 +2042,11 @@ module.exports = Object.freeze([
         flowSaveStatus: flowSaveResponse.status,
         flowSaveError: flowSavePayload.error,
         controllerLayoutSaveStatus: controllerLayoutSaveResponse.status,
+        stageLayoutSaveStatus: stageLayoutSaveResponse.status,
+        toolsPageErrors,
+        layoutToolRendererPreview,
+        controllerChoiceCollectionPreview,
+        layoutToolErrorRecovery,
         customControllerLayoutReloaded: secondControllerLayouts.layouts.states
           .some((state) => state.id === "fixture-plugin-input"
             && state.elements.some((element) => element.id === "fixture-hit-button")),
@@ -2028,6 +2161,22 @@ module.exports = Object.freeze([
     || !development.pluginInputVisible
     || development.flowSaveStatus !== 200
     || development.controllerLayoutSaveStatus !== 200
+    || development.stageLayoutSaveStatus !== 200
+    || development.toolsPageErrors?.length !== 0
+    || !development.layoutToolRendererPreview?.workspaceVisible
+    || !development.layoutToolRendererPreview?.sidebarVisible
+    || development.layoutToolRendererPreview?.rendererHosts !== 2
+    || development.layoutToolRendererPreview?.rendererItems < 9
+    || development.layoutToolRendererPreview?.nestedHosts < 3
+    || !development.layoutToolRendererPreview?.previewText
+    || development.layoutToolRendererPreview?.previewErrors !== 0
+    || development.controllerChoiceCollectionPreview?.items !== 3
+    || !development.controllerChoiceCollectionPreview?.longLabel
+    || !development.controllerChoiceCollectionPreview?.sidebarVisible
+    || !development.layoutToolErrorRecovery?.diagnosticVisible
+    || !development.layoutToolErrorRecovery?.sidebarVisible
+    || !development.layoutToolErrorRecovery?.globalSelectable
+    || !development.layoutToolErrorRecovery?.alternateSelectable
     || !development.customControllerLayoutReloaded
     || !development.dynamicControllerLayoutReloaded
     || !development.rendererCollectionRestarted
