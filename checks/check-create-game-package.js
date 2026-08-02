@@ -321,18 +321,21 @@ module.exports = Object.freeze([
       bindings: [{
         id: "rows", kind: "collection", source: "rows",
         item: {
-          keySource: "id", artCompositionId: "fixture-hand-row", bindings: [{
-            id: "cards", kind: "collection", source: "cards", targetComponentId: "cards-slot",
-            item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings }
-          }]
+          keySource: "id", artCompositionId: "fixture-hand-row", bindings: [
+            { id: "rowState", kind: "state", source: "state", playback: "stop" },
+            {
+              id: "cards", kind: "collection", source: "cards", targetComponentId: "cards-slot",
+              item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings }
+            }
+          ]
         }
       }],
       select(context) {
         const count = Number(context.state.count || 0);
         const all = cards(count);
         return { rows: [
-          { id: "top", cards: all.filter((card) => card.id !== "c") },
-          { id: "bottom", cards: all.filter((card) => card.id === "c") }
+          { id: "top", state: "On", cards: all.filter((card) => card.id !== "c") },
+          { id: "bottom", state: "On", cards: all.filter((card) => card.id === "c") }
         ] };
       }
     }
@@ -371,9 +374,32 @@ module.exports = Object.freeze([
   fs.writeFileSync(stageLayoutPath, `${JSON.stringify(stageLayouts, null, 2)}\n`);
   const artManifestPath = path.join(targetRoot, "content", "art", "manifest.json");
   const artManifest = JSON.parse(fs.readFileSync(artManifestPath, "utf8"));
+  const fixtureVisibleTimeline = {
+    fps: 30,
+    frameCount: 4,
+    labels: [
+      { name: "Off", frame: 0 },
+      { name: "On", frame: 1 },
+      { name: "Choosing Start", frame: 2 },
+      { name: "Choosing End", frame: 3 }
+    ],
+    commandFrames: [0, 1, 2, 3],
+    commands: [
+      { id: "fixture-hide", frame: 0, type: "setVisible", target: "false" },
+      { id: "fixture-stop-off", frame: 0, type: "stop" },
+      { id: "fixture-show", frame: 1, type: "setVisible", target: "true" },
+      { id: "fixture-stop-on", frame: 1, type: "stop" },
+      { id: "fixture-choosing-start", frame: 2, type: "setVisible", target: "true" },
+      { id: "fixture-stop-choosing-start", frame: 2, type: "stop" },
+      { id: "fixture-choosing-end", frame: 3, type: "setVisible", target: "true" },
+      { id: "fixture-stop-choosing-end", frame: 3, type: "stop" }
+    ],
+    tracks: []
+  };
   artManifest.compositions["fixture-card"] = {
     name: "Fixture Card", surface: "stage", compositionKind: "gameObject", isCustom: true,
     canvas: { width: 100, height: 140 },
+    timeline: fixtureVisibleTimeline,
     components: [
       { id: "card", name: "Card", kind: "shape", x: 50, y: 70, width: 96, height: 136, fillColor: "#fffdf4", defaultAnimationState: "On" },
       { id: "label", name: "Label", kind: "text", x: 50, y: 70, width: 86, height: 50, defaultText: "CARD", fontSize: 18, fontColor: "#17131f", defaultAnimationState: "On" }
@@ -382,6 +408,7 @@ module.exports = Object.freeze([
   artManifest.compositions["fixture-hand-row"] = {
     name: "Fixture Hand Row", surface: "stage", compositionKind: "gameObject", isCustom: true,
     canvas: { width: 640, height: 150 },
+    timeline: fixtureVisibleTimeline,
     components: [{ id: "cards-slot", name: "Cards Slot", kind: "container", childDistribution: "horizontal", x: 320, y: 75, width: 620, height: 145, fillColor: "transparent", defaultAnimationState: "On", children: [] }]
   };
   fs.writeFileSync(artManifestPath, `${JSON.stringify(artManifest, null, 2)}\n`);
@@ -670,16 +697,71 @@ module.exports = Object.freeze([
       const collectionStagePage = await browser.newPage();
       await collectionStagePage.goto(first.startup.localUrl + "/stage?stage=RCOL", { waitUntil: "load" });
       await collectionStagePage.waitForFunction(() => (
-        document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] > [data-game-plugin-renderer-collection-item="true"]').length === 3
+        window.currentStageState?.action?.id === "collection-wait"
+        && document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] > [data-game-plugin-renderer-collection-item="true"]').length === 3
         && document.querySelectorAll('[data-stage-layout-element-id="fixture-hand-rows"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
         && document.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] [data-game-plugin-renderer-collection-item="true"]').length === 3
       ), null, { timeout: 15_000 });
+      await collectionStagePage.evaluate(() => {
+        for (const elementId of ["fixture-hand-rows", "fixture-flat-cards"]) {
+          window.setStageLayoutGameObjectShownForAction?.({
+            commandSource: "flow-action",
+            targetLayoutElementId: elementId,
+            targetLayoutScope: "global",
+            targetLayoutSurface: "stage",
+            isShown: true,
+            instant: true
+          });
+        }
+      });
+      try {
+        await collectionStagePage.waitForFunction(() => (
+          getComputedStyle(document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"]')).display === "flex"
+          && getComputedStyle(document.querySelector('[data-stage-layout-element-id="fixture-hand-rows"]')).display === "flex"
+          && document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-art-component-id="card"]')?.getBoundingClientRect().width > 0
+          && document.querySelector('[data-stage-layout-element-id="fixture-hand-rows"] [data-art-component-id="card"]')?.getBoundingClientRect().width > 0
+        ), null, { timeout: 15_000 });
+      } catch (error) {
+        const diagnostic = await collectionStagePage.evaluate(() => Array.from(document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"], [data-stage-layout-element-id="fixture-hand-rows"]')).map((host) => ({
+          id: host.dataset.stageLayoutElementId,
+          classes: host.className,
+          display: getComputedStyle(host).display,
+          state: host.dataset.visualState,
+          items: host.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length
+        })));
+        throw new Error("Renderer collection fixture did not become visible: " + JSON.stringify(diagnostic), { cause: error });
+      }
       const collectionIdentityBefore = await collectionStagePage.evaluate(() => {
         const flat = document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"]');
         const rows = document.querySelector('[data-stage-layout-element-id="fixture-hand-rows"]');
         const flatA = flat?.querySelector('[data-game-plugin-renderer-item-key="a"]');
         const topRow = rows?.querySelector('[data-game-plugin-renderer-item-key="top"]');
         const nestedA = topRow?.querySelector('[data-game-plugin-renderer-item-key="a"]');
+        const flatCard = flatA?.querySelector('[data-art-component-id="card"]');
+        const nestedCard = nestedA?.querySelector('[data-art-component-id="card"]');
+        const visibility = (element) => {
+          const rect = element?.getBoundingClientRect();
+          const style = element ? getComputedStyle(element) : null;
+          return {
+            display: style?.display || "",
+            visibility: style?.visibility || "",
+            opacity: Number(style?.opacity || 0),
+            width: Number(rect?.width || 0),
+            height: Number(rect?.height || 0)
+          };
+        };
+        const fallbackHost = document.createElement("div");
+        fallbackHost.className = "stage-widget-art-host has-stage-widget-art";
+        fallbackHost.style.position = "fixed";
+        fallbackHost.style.left = "-10000px";
+        const fallback = document.createElement("div");
+        const artLayer = document.createElement("div");
+        artLayer.className = "stage-widget-art-layer";
+        fallbackHost.append(fallback, artLayer);
+        document.body.appendChild(fallbackHost);
+        const fallbackHidden = getComputedStyle(fallback).display === "none";
+        const artLayerVisible = getComputedStyle(artLayer).display !== "none";
+        fallbackHost.remove();
         window.__fixtureFlatA = flatA;
         window.__fixtureFlatARenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(flatA);
         window.__fixtureTopRow = topRow;
@@ -692,7 +774,23 @@ module.exports = Object.freeze([
           nestedCount: rows?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] [data-game-plugin-renderer-collection-item="true"]').length,
           initialState: flatA?.dataset.gamePluginRendererState,
           flatGap: flat ? getComputedStyle(flat).gap : "",
-          rowsDirection: rows ? getComputedStyle(rows).flexDirection : ""
+          rowsDirection: rows ? getComputedStyle(rows).flexDirection : "",
+          flatHostIsStructural: Boolean(flat
+            && flat.classList.contains("dynamic-stage-renderer-collection")
+            && !flat.classList.contains("stage-widget-art-host")
+            && !flat.classList.contains("has-stage-widget-art")),
+          rowsHostIsStructural: Boolean(rows
+            && rows.classList.contains("dynamic-stage-renderer-collection")
+            && !rows.classList.contains("stage-widget-art-host")
+            && !rows.classList.contains("has-stage-widget-art")),
+          flatHostDisplay: flat ? getComputedStyle(flat).display : "",
+          rowsHostDisplay: rows ? getComputedStyle(rows).display : "",
+          flatItemVisibility: visibility(flatA),
+          nestedItemVisibility: visibility(nestedA),
+          flatCardVisibility: visibility(flatCard),
+          nestedCardVisibility: visibility(nestedCard),
+          fallbackHidden,
+          artLayerVisible
         };
       });
       await fetch(first.startup.localUrl + "/api/complete-action", {
@@ -710,6 +808,14 @@ module.exports = Object.freeze([
         const flatA = flat?.querySelector('[data-game-plugin-renderer-item-key="a"]');
         const topRow = rows?.querySelector('[data-game-plugin-renderer-item-key="top"]');
         const nestedA = topRow?.querySelector('[data-game-plugin-renderer-item-key="a"]');
+        const flatCard = flatA?.querySelector('[data-art-component-id="card"]');
+        const nestedCard = nestedA?.querySelector('[data-art-component-id="card"]');
+        const visibleRect = (element) => {
+          const rect = element?.getBoundingClientRect();
+          const style = element ? getComputedStyle(element) : null;
+          return Boolean(rect && rect.width > 0 && rect.height > 0
+            && style?.display !== "none" && style?.visibility !== "hidden" && Number(style?.opacity || 0) > 0);
+        };
         return {
           flatOrder: Array.from(flat?.children || []).map((item) => item.dataset.gamePluginRendererItemKey),
           flatCount: flat?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length,
@@ -720,7 +826,11 @@ module.exports = Object.freeze([
           nestedRetained: nestedA === window.__fixtureNestedA,
           nestedRendererRetained: window.__fixtureNestedARenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(nestedA),
           changedState: flatA?.dataset.gamePluginRendererState,
-          addedLabel: flat?.querySelector('[data-game-plugin-renderer-item-key="d"] [data-art-component-id="label"]')?.textContent?.trim()
+          addedLabel: flat?.querySelector('[data-game-plugin-renderer-item-key="d"] [data-art-component-id="label"]')?.textContent?.trim(),
+          flatItemVisible: visibleRect(flatA),
+          nestedItemVisible: visibleRect(nestedA),
+          flatCardVisible: visibleRect(flatCard),
+          nestedCardVisible: visibleRect(nestedCard)
         };
       });
       await collectionStagePage.close();
@@ -1410,6 +1520,8 @@ module.exports = Object.freeze([
         const artLayer = retained?.querySelector(":scope > .controller-widget-art-layer");
         const buttonRect = retained?.getBoundingClientRect();
         const artRect = artLayer?.getBoundingClientRect();
+        const containerRect = container?.getBoundingClientRect();
+        const containerStyle = container ? getComputedStyle(container) : null;
         return {
           count: buttons.length,
           order: buttons.map((button) => button.dataset.gamePluginInputOption),
@@ -1428,6 +1540,14 @@ module.exports = Object.freeze([
           gap: container ? getComputedStyle(container).gap : "",
           padding: container ? getComputedStyle(container).padding : "",
           zIndex: container ? getComputedStyle(container).zIndex : "",
+          structuralHost: Boolean(container
+            && container.classList.contains("dynamic-controller-choice-collection")
+            && !container.classList.contains("controller-widget-art-host")
+            && !container.classList.contains("has-controller-widget-art")),
+          visibleHost: Boolean(containerRect && containerRect.width > 0 && containerRect.height > 0
+            && containerStyle?.display !== "none" && containerStyle?.visibility !== "hidden"),
+          visibleItem: Boolean(buttonRect && buttonRect.width > 0 && buttonRect.height > 0
+            && getComputedStyle(retained).display !== "none" && getComputedStyle(retained).visibility !== "hidden"),
           matchingBounds: Boolean(buttonRect && artRect
             && Math.abs(buttonRect.left - artRect.left) < 1
             && Math.abs(buttonRect.top - artRect.top) < 1
@@ -1917,6 +2037,32 @@ module.exports = Object.freeze([
     || development.collectionIdentityBefore?.initialState !== "Choosing Start"
     || development.collectionIdentityBefore?.flatGap !== "18px"
     || development.collectionIdentityBefore?.rowsDirection !== "column"
+    || !development.collectionIdentityBefore?.flatHostIsStructural
+    || !development.collectionIdentityBefore?.rowsHostIsStructural
+    || development.collectionIdentityBefore?.flatHostDisplay !== "flex"
+    || development.collectionIdentityBefore?.rowsHostDisplay !== "flex"
+    || development.collectionIdentityBefore?.flatItemVisibility?.display === "none"
+    || development.collectionIdentityBefore?.flatItemVisibility?.visibility === "hidden"
+    || development.collectionIdentityBefore?.flatItemVisibility?.opacity <= 0
+    || development.collectionIdentityBefore?.flatItemVisibility?.width <= 0
+    || development.collectionIdentityBefore?.flatItemVisibility?.height <= 0
+    || development.collectionIdentityBefore?.nestedItemVisibility?.display === "none"
+    || development.collectionIdentityBefore?.nestedItemVisibility?.visibility === "hidden"
+    || development.collectionIdentityBefore?.nestedItemVisibility?.opacity <= 0
+    || development.collectionIdentityBefore?.nestedItemVisibility?.width <= 0
+    || development.collectionIdentityBefore?.nestedItemVisibility?.height <= 0
+    || development.collectionIdentityBefore?.flatCardVisibility?.display === "none"
+    || development.collectionIdentityBefore?.flatCardVisibility?.visibility === "hidden"
+    || development.collectionIdentityBefore?.flatCardVisibility?.opacity <= 0
+    || development.collectionIdentityBefore?.flatCardVisibility?.width <= 0
+    || development.collectionIdentityBefore?.flatCardVisibility?.height <= 0
+    || development.collectionIdentityBefore?.nestedCardVisibility?.display === "none"
+    || development.collectionIdentityBefore?.nestedCardVisibility?.visibility === "hidden"
+    || development.collectionIdentityBefore?.nestedCardVisibility?.opacity <= 0
+    || development.collectionIdentityBefore?.nestedCardVisibility?.width <= 0
+    || development.collectionIdentityBefore?.nestedCardVisibility?.height <= 0
+    || !development.collectionIdentityBefore?.fallbackHidden
+    || !development.collectionIdentityBefore?.artLayerVisible
     || development.collectionReconcileState?.flatCount !== 4
     || development.collectionReconcileState?.nestedCount !== 4
     || JSON.stringify(development.collectionReconcileState?.flatOrder) !== JSON.stringify(["d", "c", "b", "a"])
@@ -1927,6 +2073,10 @@ module.exports = Object.freeze([
     || !development.collectionReconcileState?.nestedRendererRetained
     || development.collectionReconcileState?.changedState !== "Choosing End"
     || development.collectionReconcileState?.addedLabel !== "DELTA"
+    || !development.collectionReconcileState?.flatItemVisible
+    || !development.collectionReconcileState?.nestedItemVisible
+    || !development.collectionReconcileState?.flatCardVisible
+    || !development.collectionReconcileState?.nestedCardVisible
     || !development.persistentLayerReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"
@@ -2002,6 +2152,9 @@ module.exports = Object.freeze([
     || development.dynamicReconcileState?.gap !== "12px"
     || development.dynamicReconcileState?.padding !== "10px"
     || development.dynamicReconcileState?.zIndex !== "325"
+    || !development.dynamicReconcileState?.structuralHost
+    || !development.dynamicReconcileState?.visibleHost
+    || !development.dynamicReconcileState?.visibleItem
     || !development.dynamicReconcileState?.matchingBounds
     || development.dynamicStaleSubmissionCount !== 0
     || JSON.stringify(development.dynamicSubmitPayload) !== JSON.stringify({ targetPlayerId: development.dynamicIdentityBefore?.retainedOption })
@@ -2081,6 +2234,7 @@ module.exports = Object.freeze([
   if (!fs.existsSync(path.join(targetRoot, ".pop-party", "content", "content-bundle.json"))) {
     throw new Error("Generated game development workspace was not created inside the game");
   }
+  console.log(`Renderer collection browser evidence: flat ${development.collectionIdentityBefore.flatCardVisibility.width.toFixed(1)}x${development.collectionIdentityBefore.flatCardVisibility.height.toFixed(1)}, nested ${development.collectionIdentityBefore.nestedCardVisibility.width.toFixed(1)}x${development.collectionIdentityBefore.nestedCardVisibility.height.toFixed(1)}, fallback hidden ${development.collectionIdentityBefore.fallbackHidden}.`);
   console.log(`Stage projection browser evidence: private applies ${development.stageBeforePartialSubmission.applyCount}->${development.stageAfterPartialSubmission.applyCount}, public burst max frame gap ${development.stageAfterTransitionBurst.maxFrameGap.toFixed(1)}ms, max apply ${development.stageAfterTransitionBurst.maxApplyDuration.toFixed(1)}ms, layout reflows ${development.stageAfterTransitionBurst.layoutApplyCount}.`);
   console.log(`Controller projection browser evidence: start ${development.vipControllerJourney.startSurface}, Next ${development.vipControllerJourney.advanceSurfaces.join("/")}, crafting choices ${development.vipControllerJourney.craftingChoice.optionCount}.`);
   const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });

@@ -43,7 +43,7 @@ const NO_OVERRIDE = Symbol("no-override");
 const normalizeUiColor = (value: unknown): string => w().normalizeUiColor?.(value) || "";
 const lgo = w().PartyGameLayoutGameObjects!;
 const {
-  activeDynamicLayoutArtInstanceIds,
+  activeDynamicLayoutInstanceIds,
   artRendererForLayoutHost,
   activateLayoutEntity,
   applyLayoutElementBoxStyles,
@@ -54,6 +54,7 @@ const {
   createPlacedLayoutGameObjectTargetResolver,
   deactivateLayoutEntity,
   finishLayoutElementTargetApplication,
+  getOrCreateDynamicLayoutInstanceHost,
   initializeLayoutEntity,
   layoutElementTargetMatchesSelector,
   layoutElementVisibilityKey,
@@ -1031,7 +1032,7 @@ function isDynamicControllerArtInstance(element: Dict | null): boolean {
 }
 
 function activeControllerArtInstanceIds(state: Dict): Set<string> {
-  const ids = activeDynamicLayoutArtInstanceIds(state, globalControllerLayout(), isDynamicControllerArtInstance);
+  const ids = activeDynamicLayoutInstanceIds(state, globalControllerLayout(), isDynamicControllerArtInstance);
   for (const element of (globalControllerLayout().elements as Dict[]) || []) {
     if (isDynamicControllerArtInstance(element)) ids.add(String(element.id || ""));
   }
@@ -1090,15 +1091,31 @@ function allStageLayoutSelectors(): Set<string> {
 
 const stageArtInstanceRenderers = new Map();
 const stageDynamicArtInstances = createDynamicLayoutArtInstanceApi({
-  root: () => w().stageBoard, selector: ".dynamic-stage-art-instance", className: "dynamic-stage-art-instance stage-widget-art-host has-stage-widget-art", renderers: stageArtInstanceRenderers, layerClassName: "stage-widget-art-layer", missingDatasetKey: "stageLayoutArtMissing"
+  root: () => w().stageBoard, selector: ".dynamic-stage-art-instance", className: "dynamic-stage-layout-instance dynamic-stage-art-instance stage-widget-art-host has-stage-widget-art", renderers: stageArtInstanceRenderers, layerClassName: "stage-widget-art-layer", missingDatasetKey: "stageLayoutArtMissing"
 });
 
 function activeStageArtInstanceIds(state: Dict): Set<string> {
-  return activeDynamicLayoutArtInstanceIds(state, globalStageLayout(), isDynamicStageArtInstance);
+  return activeDynamicLayoutInstanceIds(state, globalStageLayout(), isDynamicStageArtInstance);
 }
 
 function removeInactiveStageArtInstances(activeIds: Set<string>): void {
   stageDynamicArtInstances.removeInactive(activeIds, stageLayoutGameObjectRegistry());
+}
+
+function activeStageRendererCollectionIds(state: Dict): Set<string> {
+  return activeDynamicLayoutInstanceIds(state, globalStageLayout(), isDynamicStageRendererCollection);
+}
+
+function removeInactiveStageRendererCollections(activeIds: Set<string>): void {
+  const root = w().stageBoard;
+  if (!root) return;
+  for (const node of Array.from(root.querySelectorAll<El>(".dynamic-stage-renderer-collection[data-layout-element-id]"))) {
+    const elementId = node.dataset.layoutElementId || "";
+    if (activeIds.has(elementId)) continue;
+    clearGamePluginRendererCollectionHost("stage", node);
+    (stageLayoutGameObjectRegistry() as { remove?: (id: string) => void } | null)?.remove?.(elementId);
+    node.remove();
+  }
 }
 
 function stageLayoutTargetToken(target: El): string {
@@ -1153,6 +1170,7 @@ function applyStageLayoutForPhase(phase: string): void {
   clearStageLayoutTargets(retainedTokens);
   w().currentStageLayoutStateId = state.id as string;
   removeInactiveStageArtInstances(activeStageArtInstanceIds(state));
+  removeInactiveStageRendererCollections(activeStageRendererCollectionIds(state));
   const canvas = w().stageLayouts.canvas || { width: 1920, height: 1080 };
   const stageRect = stageScreen.getBoundingClientRect();
   const fitScale = Math.min(stageRect.width / canvas.width!, stageRect.height / canvas.height!);
@@ -1263,7 +1281,7 @@ const registerStageLayoutEntity = createPlacedLayoutEntityRegistrar({
   registryKeyFor: stageLayoutGameObjectVisibilityKey,
   visibilityKeyFor: stageLayoutGameObjectVisibilityKey,
   isArt: (layoutElement: Dict | null) => layoutElement?.kind === "art" && Boolean(layoutElement?.artCompositionId),
-  isDynamic: isDynamicStageArtInstance
+  isDynamic: isDynamicStageLayoutInstance
 });
 
 function applyStageLayoutGameObjectVisibilityOverride(entity: Dict): void {
@@ -1276,7 +1294,7 @@ function applyStageLayoutArtVisibilityOverride(entity: Dict): void {
 
 function stageLayoutTargetByElementId(elementId: string, scope = ""): El | null {
   return layoutTargetByElementId({
-    root: w().stageBoard, elementId, layoutAttribute: "data-stage-layout-element-id", dynamicSelector: ".dynamic-stage-art-instance", globalClass: "stage-global-layout-target", scope
+    root: w().stageBoard, elementId, layoutAttribute: "data-stage-layout-element-id", dynamicSelector: ".dynamic-stage-layout-instance", globalClass: "stage-global-layout-target", scope
   });
 }
 
@@ -1307,7 +1325,7 @@ const stageLayoutGameObjectTargets = createPlacedLayoutGameObjectTargetResolver(
   registry: stageLayoutGameObjectRegistry, targetByElementId: stageLayoutTargetByElementId, visibilityKeyForTarget: stageLayoutElementVisibilityKey, registryKeyFor: stageLayoutRegistryKeyForElement,
   visibilityOverrides: stageLayoutGameObjectVisibilityOverrides, hiddenClass: "stage-layout-visual-hidden", exitingClass: "stage-layout-visual-exiting",
   isGameObjectArtTarget: (t: El) => Boolean(t.dataset.stageLayoutArtCompositionId),
-  isDynamicTarget: (t: El) => t.classList.contains("dynamic-stage-art-instance"),
+  isDynamicTarget: (t: El) => t.classList.contains("dynamic-stage-layout-instance"),
   isGlobalTarget: (t: El) => t.classList.contains("stage-global-layout-target")
 });
 
@@ -1347,6 +1365,7 @@ function playStageLayoutGameObjectAnimationForAction(action: Dict, options: Dict
 
 function stageLayoutTargetElement(element: Dict): El | null {
   const stageBoard = w().stageBoard;
+  if (isDynamicStageRendererCollection(element)) return getOrCreateStageRendererCollection(element);
   if (isDynamicStageArtInstance(element)) return getOrCreateStageArtInstance(element);
   if (element.kind !== "text") return stageBoard.querySelector(element.selector as string);
   const dynamicId = dynamicStageTextElementId(element);
@@ -1359,7 +1378,24 @@ function stageLayoutTargetElement(element: Dict): El | null {
 }
 
 function isDynamicStageArtInstance(element: Dict | null): boolean {
-  return Boolean((element?.artCompositionId || element?.kind === "collection") && !element.selector);
+  return Boolean(element?.artCompositionId && !element.selector);
+}
+
+function isDynamicStageRendererCollection(element: Dict | null): boolean {
+  return Boolean(element?.kind === "collection" && !element.selector);
+}
+
+function isDynamicStageLayoutInstance(element: Dict | null): boolean {
+  return isDynamicStageArtInstance(element) || isDynamicStageRendererCollection(element);
+}
+
+function getOrCreateStageRendererCollection(element: Dict): El | null {
+  return getOrCreateDynamicLayoutInstanceHost(
+    element,
+    w().stageBoard,
+    ".dynamic-stage-renderer-collection",
+    "dynamic-stage-layout-instance dynamic-stage-renderer-collection"
+  );
 }
 
 function getOrCreateStageArtInstance(element: Dict): El | null {
@@ -1531,17 +1567,17 @@ w().PartyGameLayoutText = PartyGameLayoutText as never;
 // Install every top-level name on window so the still-legacy stage-runtime.js (which
 // reads them as bare globals) keeps resolving them — replicating the classic script.
 Object.assign(w(), {
-  activeControllerArtInstanceIds, activeStageArtInstanceIds, allControllerLayoutSelectors, allStageLayoutSelectors,
+  activeControllerArtInstanceIds, activeStageArtInstanceIds, activeStageRendererCollectionIds, allControllerLayoutSelectors, allStageLayoutSelectors,
   applyControllerElementLayout, applyControllerLayoutArtVisibilityOverride, applyControllerLayoutForPhase, applyControllerLayoutGameObjectVisibilityOverride, applyControllerLayoutTextProperties,
   applyStageElementLayout, applyStageLayoutArtVisibilityOverride, applyStageLayoutForPhase, applyStageLayoutGameObjectVisibilityOverride, applyStageLayoutTextProperties,
   clearControllerArtInstanceRenderer, clearControllerLayoutTargets, clearStageArtInstanceRenderer, clearStageLayoutTargets,
   compactLayoutTextId, controllerArtInstanceRenderers, controllerDynamicArtInstances, controllerLayoutComputedFontSize, controllerLayoutElementForId, controllerLayoutElementForTarget,
   controllerLayoutElementVisibilityKey, controllerLayoutEntityForElementId, controllerLayoutGameObjectRegistry, controllerLayoutGameObjectTargets, controllerLayoutRegistryKeyForElement,
   controllerLayoutLayers, controllerLayoutState, controllerLayoutStateForPhase, controllerLayoutTargetByElementId, controllerLayoutTargetElement, controllerLayoutVisibilityKey, controllerLayoutVisibilityOverrides,
-  createLayoutGameObjectRegistry, dynamicStageTextElementId, getOrCreateControllerArtInstance, getOrCreateDynamicStageTextElement, getOrCreateStageArtInstance,
-  globalControllerLayout, globalStageLayout, isDynamicControllerArtInstance, isDynamicStageArtInstance, isLayoutTextArtElement,
+  createLayoutGameObjectRegistry, dynamicStageTextElementId, getOrCreateControllerArtInstance, getOrCreateDynamicStageTextElement, getOrCreateStageArtInstance, getOrCreateStageRendererCollection,
+  globalControllerLayout, globalStageLayout, isDynamicControllerArtInstance, isDynamicStageArtInstance, isDynamicStageRendererCollection, isLayoutTextArtElement,
   layoutDefaultText, layoutTextArtRenderOptions, layoutTextDefault, loadControllerLayouts, loadStageLayouts, normalizeTextTargetId,
-  registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances, initializeStageMomentLayout, resetStageMomentLayout,
+  registerControllerLayoutEntity, registerStageLayoutEntity, registerStageLayoutTextTarget, removeInactiveControllerArtInstances, removeInactiveStageArtInstances, removeInactiveStageRendererCollections, initializeStageMomentLayout, resetStageMomentLayout,
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   disposeControllerButtonArt, setControllerButtonLifecycleState,

@@ -456,6 +456,10 @@ concepts into focused modules.
   flow action may play its lifecycle timeline.
 - Dynamic layout art entities should carry their `ArtObjectTreeRenderer` on the same
   registered GameObject entity that owns the placed instance host.
+- Dynamic renderer-collection containers are structural layout hosts, never Art hosts. Their
+  keyed item children each own an independent Stage/Controller Art host and renderer. This keeps
+  the legacy Art-host fallback-hiding rule scoped to fallback markup instead of hiding collection
+  items, including recursively nested collections.
 - Layout art entities expose their renderer to the placed GameObject so an authorized flow action
   can address the exact placed instance and receive that instance's callback.
 - Art Manager compositions carry a `surface` field (`stage` by default, `controller`

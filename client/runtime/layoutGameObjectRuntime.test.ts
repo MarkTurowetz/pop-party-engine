@@ -130,6 +130,7 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
 
   it("exposes the layout game-object helpers", () => {
     expect(PartyGameLayoutGameObjects.activeDynamicLayoutArtInstanceIds).toBeTypeOf("function");
+    expect(PartyGameLayoutGameObjects.activeDynamicLayoutInstanceIds).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.createPlacedLayoutGameObjectTargetResolver).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.initializeLayoutEntity).toBeTypeOf("function");
     expect(PartyGameLayoutGameObjects.playLayoutEntityAnimationForAction).toBeTypeOf("function");

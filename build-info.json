@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1255",
+  "version": "1.0.17.1256",
   "baseVersion": "1.0.17",
-  "buildNumber": 1255,
-  "commit": "c689fd9a",
-  "branch": "codex/release-engine-1.3.34",
-  "generatedAt": "2026-08-02T10:14:45.439Z"
+  "buildNumber": 1256,
+  "commit": "d2fa1102",
+  "branch": "codex/collection-host-visibility",
+  "generatedAt": "2026-08-02T11:27:37.046Z"
 }
