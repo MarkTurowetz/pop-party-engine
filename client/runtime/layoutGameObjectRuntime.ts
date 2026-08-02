@@ -49,7 +49,7 @@ function artRendererForLayoutHost(host: El | null): TreeRenderer | null {
   return layoutArtRendererByHost.get(rendererHost) || layoutArtRendererByHost.get(host) || null;
 }
 
-function getOrCreateLayoutArtInstance(element: Dict | null, root: El | null, selector: string, className: string): El | null {
+function getOrCreateDynamicLayoutInstanceHost(element: Dict | null, root: El | null, selector: string, className: string): El | null {
   const id = String(element?.id || "");
   if (!id || !root) return null;
   let host = root.querySelector(`${selector}[data-layout-element-id="${CSS.escape(id)}"]`) as El | null;
@@ -227,7 +227,7 @@ function createDynamicLayoutArtInstanceApi(options: Dict = {}) {
   const root = () => (typeof options.root === "function" ? (options.root as () => El)() : (options.root as El));
   const api = {
     getOrCreate(element: Dict) {
-      return getOrCreateLayoutArtInstance(element, root(), options.selector as string, options.className as string);
+      return getOrCreateDynamicLayoutInstanceHost(element, root(), options.selector as string, options.className as string);
     },
     render(element: Dict, host: El, rendererKey = "", renderOptions: Dict = {}) {
       return renderLayoutArtInstance(element, host, {
@@ -249,7 +249,7 @@ function createDynamicLayoutArtInstanceApi(options: Dict = {}) {
   return api;
 }
 
-function activeDynamicLayoutArtInstanceIds(state: Dict | null, globalLayout: Dict | null, isDynamicInstance: (el: Dict) => boolean): Set<string> {
+function activeDynamicLayoutInstanceIds(state: Dict | null, globalLayout: Dict | null, isDynamicInstance: (el: Dict) => boolean): Set<string> {
   const ids = new Set<string>();
   for (const element of (state?.elements as Dict[]) || []) {
     if (isDynamicInstance(element)) ids.add(element.id as string);
@@ -261,6 +261,10 @@ function activeDynamicLayoutArtInstanceIds(state: Dict | null, globalLayout: Dic
   }
   return ids;
 }
+
+// Compatibility name for existing browser/runtime consumers. Dynamic structural
+// hosts share the generic collector without becoming Art hosts.
+const activeDynamicLayoutArtInstanceIds = activeDynamicLayoutInstanceIds;
 
 function beginLayoutElementTargetApplication(target: El | null, options: Dict = {}): boolean {
   if (!target) return false;
@@ -681,6 +685,7 @@ function playLayoutEntityAnimationForAction(action: Dict, options: Dict = {}): u
 
 export const PartyGameLayoutGameObjects = {
   activeDynamicLayoutArtInstanceIds,
+  activeDynamicLayoutInstanceIds,
   artRendererForLayoutHost,
   activateLayoutEntity,
   deactivateLayoutEntity,
@@ -692,6 +697,7 @@ export const PartyGameLayoutGameObjects = {
   createPlacedLayoutEntityRegistrar,
   createPlacedLayoutGameObjectTargetResolver,
   finishLayoutElementTargetApplication,
+  getOrCreateDynamicLayoutInstanceHost,
   initializeLayoutEntity,
   normalizeLayoutPlacementScope,
   layoutElementTargetMatchesSelector,
