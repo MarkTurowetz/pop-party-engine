@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1254",
+  "version": "1.0.17.1255",
   "baseVersion": "1.0.17",
-  "buildNumber": 1254,
-  "commit": "d78e21e6",
-  "branch": "codex/renderer-collections",
-  "generatedAt": "2026-08-02T10:09:40.288Z"
+  "buildNumber": 1255,
+  "commit": "c689fd9a",
+  "branch": "codex/release-engine-1.3.34",
+  "generatedAt": "2026-08-02T10:14:45.439Z"
 }
