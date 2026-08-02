@@ -508,6 +508,15 @@ async function main() {
 
     const timerResult = await page.evaluate(async () => {
       const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+      const waitForFrameAfter = async (readFrame, firstFrame, timeout = 500) => {
+        const startedAt = performance.now();
+        let currentFrame = readFrame();
+        while (!(currentFrame > firstFrame) && performance.now() - startedAt < timeout) {
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          currentFrame = readFrame();
+        }
+        return currentFrame;
+      };
       const element = document.createElement("div");
       element.className = "crafting-timer stage-layout-target stage-layout-visual-hidden";
       element.dataset.visualVisible = "false";
@@ -554,8 +563,10 @@ async function main() {
       });
       const appearStartedAt = performance.now();
       const appearCompletion = new Promise((resolve) => gameObject.playVisibility(true, { complete: resolve }));
-      await sleep(120);
-      const appearMidFrame = renderer?.rootTimelinePlayer?.currentFrame;
+      const appearMidFrame = await waitForFrameAfter(
+        () => renderer?.rootTimelinePlayer?.currentFrame,
+        2
+      );
       controller.render({ shown: true, running: false, durationMs: 30000, remainingMs: 30000 });
       const appearFrameAfterReconcile = renderer?.rootTimelinePlayer?.currentFrame;
       await Promise.race([
@@ -569,8 +580,10 @@ async function main() {
       controller.prepareShownForAction({ isShown: false }, { actionKey: "timer-action" });
       const disappearStartedAt = performance.now();
       const disappearCompletion = new Promise((resolve) => gameObject.playVisibility(false, { complete: resolve }));
-      await sleep(120);
-      const disappearMidFrame = renderer?.rootTimelinePlayer?.currentFrame;
+      const disappearMidFrame = await waitForFrameAfter(
+        () => renderer?.rootTimelinePlayer?.currentFrame,
+        17
+      );
       controller.render({ shown: false, running: false, durationMs: 30000, remainingMs: 30000 });
       const disappearFrameAfterReconcile = renderer?.rootTimelinePlayer?.currentFrame;
       const disappearCompleted = await Promise.race([
