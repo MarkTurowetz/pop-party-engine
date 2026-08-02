@@ -24,6 +24,9 @@ Treat the current authored Voting Card Answer Text → Voting Card Answer → Vo
 Own content, styling, geometry, and semantic variants here.
 
 - Put text and its optional background on separate layers, with text above the background in the layer stack.
+- Treat every background, backplate, full-widget fill, and decorative shape that functions as a
+  background as the lowest visual layer in its owning prefab. In the Art Manager's top-first
+  component list, this means every functional background belongs after every foreground component.
 - Use stopped, first-letter-capitalized state labels such as `Default`, `Correct`, and `Incorrect`.
 - Use `stop()` on state frames so the timeline cannot fall through.
 - Omit lifecycle visibility commands such as `visible = false`; the animated parent owns visibility.
@@ -78,10 +81,15 @@ For the voting card, put a horizontal voter container directly in `Voting Card W
 
 Treat the Art Manager layer list as a visual stack: layers nearer the top render above layers beneath them.
 
+- Enforce one invariant at every composition level: functional background elements are always at
+  the bottom of their owning layer stack. If a prefab has several background elements, keep all of
+  them below every foreground element and order only that background subgroup as the design needs.
+- Apply the invariant recursively. A nested child must keep its own backplate at its bottom, and a
+  background-bearing child must remain below sibling overlays in the parent composition.
 - In a base prefab, place foreground information such as text and icons above filled backgrounds and backplates.
 - In a compound widget, place small overlays such as `author`, `voteCount`, badges, and status indicators above children whose rendered content includes a large opaque background.
 - Judge stacking by the child's complete rendered footprint, including nested shapes. A child named `answer` may still function as the card backplate when its base prefab contains a large filled background.
-- For the current voting-card structure, use `author` and `voteCount` above the background-bearing `answer` child unless the authored design explicitly requires another order.
+- For the current voting-card structure, use `author` and `voteCount` above the background-bearing `answer` child.
 - Do not rely on creation or insertion order. Review the nested preview with every intended child visible and reorder layers until no background obscures information.
 
 ## Avoid the state-animation cross product
@@ -133,6 +141,8 @@ Treat a component's timeline-resolved properties as its authoritative runtime ge
 7. Wire runtime code to dynamic data, semantic state selection, and explicit lifecycle calls.
 8. Resolve runtime anchors and hitboxes from the active stopped timeline state, with base values as property-level fallbacks only.
 9. Verify nested previews, frame-zero bounds, layer order, distribution/reflow, timeline commands, and runtime transitions.
+10. Fail the widget review if any functional background is not bottommost in its owning prefab or
+    if any background-bearing child sits above a sibling foreground overlay.
 
 ## Validation checklist
 
@@ -145,6 +155,8 @@ Treat a component's timeline-resolved properties as its authoritative runtime ge
 - Confirm `Appear`, `Update`, and `Disappear` finish at authored stop frames.
 - Confirm compound `On` does not reveal children that remain `Off`.
 - Confirm foreground text, icons, counts, author labels, and badges remain visible when every intended background is shown.
+- Confirm every functional background is last among visual components in its owning top-first Art
+  Manager stack, including inside nested referenced compositions.
 - Confirm large filled children are below the smaller overlays they could otherwise cover.
 - Confirm data-driven text and fill colors target labeled base components without competing with lifecycle animation properties.
 - Confirm a dynamic container positions its children without runtime-authored per-item coordinates.
@@ -163,6 +175,8 @@ Treat a component's timeline-resolved properties as its authoritative runtime ge
 - Hiding a base state prefab that should be controlled by its wrapper.
 - Revealing all compound children implicitly from the top-level `On` state.
 - Placing an opaque background-bearing child above text, counts, author labels, or other information it can obscure.
+- Leaving a background or backplate anywhere except the lowest visual depth of its owning prefab,
+  even when the current preview happens not to overlap foreground content.
 - Assuming creation order produces the correct visual stack without checking the fully composed preview.
 - Hard-coding positions for repeated runtime items that belong in a distribution container.
 - Animating the whole collection when each spawned item must appear or disappear independently.
