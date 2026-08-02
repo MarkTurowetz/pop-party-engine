@@ -186,7 +186,12 @@ function layoutTextArtRenderOptions(element: Dict | null, textOverride: unknown 
     : { [layoutTextArtLegacyComponentPath()]: text, [layoutTextArtComponentId]: text };
   return {
     textOverrides,
-    textStyle: { componentId, fontSize: Number(element?.fontSize || 58), fontColor: normalizeUiColor(element?.fontColor) || "#ffffff" }
+    textStyle: {
+      componentId,
+      fontSize: Number(element?.fontSize || 58),
+      fontColor: normalizeUiColor(element?.fontColor) || "#ffffff",
+      autoFitText: element?.autoFitText !== false
+    }
   };
 }
 

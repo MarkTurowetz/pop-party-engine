@@ -33,6 +33,13 @@ function reportAuthoringError(error: unknown): void {
   }));
 }
 
+function reportAuthoringRecovery(state: "required" | "recovered"): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("pop-party-authoring-recovery", {
+    detail: { state }
+  }));
+}
+
 export async function flushAllSessionDraftPublishers(): Promise<void> {
   await Promise.all([...activePublishers].map(({ flush }) => flush()));
 }
@@ -61,8 +68,11 @@ export async function checkpointSessionDraftPublishers<T>(
     return await checkpoint();
   } catch (error) {
     if (!isRecoveredAuthoringSession(error)) throw error;
+    reportAuthoringRecovery("required");
     await republishAllSessionDraftPublishers();
-    return checkpoint();
+    const recovered = await checkpoint();
+    reportAuthoringRecovery("recovered");
+    return recovered;
   }
 }
 

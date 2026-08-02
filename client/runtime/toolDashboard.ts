@@ -169,7 +169,10 @@ async function saveAllTools(): Promise<void> {
     (activeElement as HTMLElement).blur();
   }
   const dirtyTools = TOOL_METADATA.filter((tool) => isToolDirty(tool.id));
-  if (!dirtyTools.length) {
+  // A recovered server session can lose every server-side draft while the
+  // authoritative browser editors still report clean. Workspace Save must run
+  // so registered publishers can republish those models before checkpointing.
+  if (!dirtyTools.length && !workspaceActions) {
     updateGlobalSaveButton();
     return;
   }
@@ -313,6 +316,20 @@ function setupToolDashboard(): void {
       setGlobalSaveStatus(
         event.detail?.message || "The working bundle is invalid.",
         "error"
+      );
+    }) as EventListener);
+    window.addEventListener?.("pop-party-authoring-recovery", ((event: CustomEvent<{ state?: string }>) => {
+      const recovering = event.detail?.state === "required";
+      const globalSaveButton = saveButton();
+      if (globalSaveButton && !savingAllTools) {
+        globalSaveButton.textContent = recovering ? "Recover Browser Work" : "Save All";
+      }
+      if (globalSaveButton) globalSaveButton.dataset.authoringRecovery = recovering ? "required" : "recovered";
+      setGlobalSaveStatus(
+        recovering
+          ? "Server restarted · republishing the browser's Art, Layout, and Flow models…"
+          : "Browser work recovered and preserved.",
+        "info"
       );
     }) as EventListener);
     dashboardEventsInstalled = true;

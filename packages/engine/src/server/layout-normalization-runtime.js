@@ -67,7 +67,9 @@ function createLayoutNormalizationRuntime({
     const shouldPromoteTextToArt = isLayoutTextArtElementId(id) || isLayoutTextArtSelector(selector);
     const kind = widgetArtCompositionId || shouldPromoteTextToArt ? "art" : inferLayoutElementKind(element.kind, selector);
     const artCompositionId = normalizeFlowId(element.artCompositionId, "") || widgetArtCompositionId || (shouldPromoteTextToArt ? layoutTextArtCompositionId : "");
-    const textDefaultsEnabled = kind === "text" || shouldPromoteTextToArt;
+    const textDefaultsEnabled = kind === "text"
+      || shouldPromoteTextToArt
+      || (kind === "art" && artCompositionId === normalizeFlowId(layoutTextArtCompositionId, ""));
     const defaultAnimationState = normalizeLayoutDefaultAnimationState(element.defaultAnimationState)
       || normalizeLayoutDefaultAnimationState(defaultAnimationStateForElement({
         controllerWidgetArtCompositionId: controllerWidgetCompositionId,

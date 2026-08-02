@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1267",
+  "version": "1.0.17.1268",
   "baseVersion": "1.0.17",
-  "buildNumber": 1267,
-  "commit": "c22a2bfd",
-  "branch": "codex/stabilize-stage-performance-gate",
-  "generatedAt": "2026-08-02T21:17:15.078Z"
+  "buildNumber": 1268,
+  "commit": "bda09c20",
+  "branch": "codex/roster-anchor-nested-autofit",
+  "generatedAt": "2026-08-02T23:15:05.567Z"
 }

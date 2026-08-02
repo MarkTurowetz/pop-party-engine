@@ -128,7 +128,19 @@ function validateRosterRendererContract({ registration, compositions, semanticRo
   if (!composition || String(composition.surface || "").toLowerCase() !== "stage") {
     readinessFailure("PLUGIN_RENDERER_ROSTER_COMPOSITION_INVALID", `Renderer "${registration.id}" roster target does not resolve to a Stage Art composition`, { rendererId: registration.id, role, compositionId });
   }
-  const reserved = new Set(coreSemanticRoleDefinitions[role]?.requiredInstanceLabels || []);
+  const rosterAnchorLabel = "playerRosterAnchor";
+  const rosterAnchors = (composition.components || []).filter((component) => String(component?.instanceLabel || "").trim() === rosterAnchorLabel);
+  if (rosterAnchors.length !== 1 || String(rosterAnchors[0]?.kind || "").toLowerCase() !== "container") {
+    readinessFailure(
+      "PLUGIN_RENDERER_ROSTER_ANCHOR_INVALID",
+      `Renderer "${registration.id}" requires exactly one top-level Player Widget container labeled "${rosterAnchorLabel}"`,
+      { rendererId: registration.id, role, compositionId, anchorCount: rosterAnchors.length }
+    );
+  }
+  const reserved = new Set([
+    ...(coreSemanticRoleDefinitions[role]?.requiredInstanceLabels || []),
+    rosterAnchorLabel
+  ]);
   for (const binding of registration.value.bindings || []) {
     const targetId = String(binding.targetComponentId || "");
     const match = artComponentMatchForId(composition.components, targetId, compositions, new Set([compositionId]));

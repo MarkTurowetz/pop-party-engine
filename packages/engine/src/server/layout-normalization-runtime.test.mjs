@@ -11,6 +11,7 @@ function runtime() {
     cleanLayoutText: (value) => String(value || ""),
     defaultCanvas: { width: 390, height: 844 },
     inferLayoutElementKind: (kind) => String(kind || "").toLowerCase() === "collection" ? "collection" : "art",
+    layoutTextArtCompositionId: "layout-text-field",
     normalizeColor: (value) => String(value || ""),
     normalizeFlowId: (value, fallback) => String(value || fallback || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
     normalizeLayoutNumber: (value, fallback, min, max) => Math.max(min, Math.min(max, Number.isFinite(Number(value)) ? Number(value) : fallback))
@@ -18,6 +19,25 @@ function runtime() {
 }
 
 describe("layout collection normalization", () => {
+  it("preserves text and auto-fit authority for a Layout Text Field Art instance", () => {
+    expect(runtime().normalizeLayoutElement({
+      id: "custom-instructions",
+      kind: "art",
+      artCompositionId: "layout-text-field",
+      defaultText: "A long authored instruction",
+      fontSize: 58,
+      autoFitText: true,
+      fontColor: "#ffffff"
+    }, 0)).toEqual(expect.objectContaining({
+      kind: "art",
+      artCompositionId: "layout-text-field",
+      defaultText: "A long authored instruction",
+      fontSize: 58,
+      autoFitText: true,
+      fontColor: "#ffffff"
+    }));
+  });
+
   it("preserves canonical collection geometry and removes selector/art ownership", () => {
     expect(runtime().normalizeLayoutElement({
       id: "Private Options",

@@ -439,6 +439,10 @@ module.exports = Object.freeze([
     }
   ];
   stageLayouts.global.elements.push(...structuredClone(rendererCollectionLayoutElements));
+  const introLayoutTextField = stageLayouts.states
+    .find((state) => state.id === "intro")?.elements
+    .find((element) => element.id === "layout-text-field-instance-1");
+  if (introLayoutTextField) introLayoutTextField.autoFitText = true;
   stageLayouts.states.push({
     id: "fixture-renderer-preview",
     name: "Fixture Renderer Preview",
@@ -450,6 +454,10 @@ module.exports = Object.freeze([
   fs.writeFileSync(stageLayoutPath, `${JSON.stringify(stageLayouts, null, 2)}\n`);
   const artManifestPath = path.join(targetRoot, "content", "art", "manifest.json");
   const artManifest = JSON.parse(fs.readFileSync(artManifestPath, "utf8"));
+  const nestedLayoutTextComposition = artManifest.compositions["prefab-layout-text-field-text"];
+  const nestedLayoutTextComponent = nestedLayoutTextComposition?.components
+    ?.find((component) => component.id === "text" || component.instanceLabel === "text");
+  if (nestedLayoutTextComponent) nestedLayoutTextComponent.autoFitText = true;
   const fixtureVisibleTimeline = {
     fps: 30,
     frameCount: 4,
@@ -496,13 +504,27 @@ module.exports = Object.freeze([
       { id: "fixture-roster-rows", name: "Fixture Roster Rows", kind: "container", childDistribution: "vertical", x: 150, y: 105, width: 280, height: 150, fillColor: "transparent", defaultAnimationState: "On", children: [] }
     ]
   };
-  artManifest.compositions["prefab-player-widget-mc"].components.push({
+  const playerWidgetComposition = artManifest.compositions["prefab-player-widget-mc"];
+  playerWidgetComposition.canvas.height = 620;
+  playerWidgetComposition.components.push({
+    id: "fixture-player-roster-anchor",
+    name: "Player Roster Anchor",
+    instanceLabel: "playerRosterAnchor",
+    kind: "container",
+    x: 150,
+    y: 185,
+    width: 300,
+    height: 370,
+    fillColor: "transparent",
+    children: []
+  });
+  playerWidgetComposition.components.push({
     id: "fixture-roster-extension-ref",
     name: "Fixture Roster Extension",
     instanceLabel: "fixtureRosterExtension",
     kind: "reference",
     x: 150,
-    y: 95,
+    y: 515,
     scale: 0.5,
     rotation: 0,
     opacity: 1,
@@ -854,6 +876,10 @@ module.exports = Object.freeze([
 
       const stageLayoutsResponse = await fetch(first.startup.localUrl + "/api/stage-layouts");
       const stageLayoutsPayload = await stageLayoutsResponse.json();
+      const runtimeIntroTextField = stageLayoutsPayload.layouts.states
+        .find((state) => state.id === "intro")?.elements
+        .find((element) => element.id === "layout-text-field-instance-1");
+      if (runtimeIntroTextField) runtimeIntroTextField.autoFitText = true;
       const stageLayoutSaveResponse = await fetch(first.startup.localUrl + "/api/stage-layouts", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1017,6 +1043,12 @@ module.exports = Object.freeze([
         window.__fixtureRosterFirstRow = firstRow;
         window.__fixtureRosterFirstCard = firstCard;
         window.__fixtureRosterFirstCardRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(firstCard);
+        const rosterHostRect = document.querySelector('#playerLobby')?.getBoundingClientRect();
+        const firstTileRect = firstTile?.getBoundingClientRect();
+        const canvasWidth = Number(firstTile?.dataset.playerObjectWidth || 1);
+        const canvasHeight = Number(firstTile?.dataset.playerObjectHeight || 1);
+        const anchorX = Number(firstTile?.dataset.playerRosterAnchorX || canvasWidth / 2);
+        const anchorY = Number(firstTile?.dataset.playerRosterAnchorY || canvasHeight / 2);
         return {
           tiles: document.querySelectorAll('#playerLobby > .player-tile[data-player-id]').length,
           duplicateLayoutTableaus: document.querySelectorAll('[data-stage-layout-element-id*="tableau" i]').length,
@@ -1026,7 +1058,16 @@ module.exports = Object.freeze([
           firstCards: firstRow?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] > [data-game-plugin-renderer-collection-item="true"]').length,
           rosterRendererPresent: Boolean(window.__fixtureRosterFirstRenderer),
           nestedRendererPresent: Boolean(window.__fixtureRosterFirstCardRenderer),
-          firstNeedsInput: firstTile?.dataset.playerNeedsInput
+          firstNeedsInput: firstTile?.dataset.playerNeedsInput,
+          anchorExplicit: firstTile?.dataset.playerRosterAnchorExplicit,
+          anchorCenterDelta: {
+            x: firstTileRect && rosterHostRect
+              ? firstTileRect.left + (anchorX / canvasWidth) * firstTileRect.width - (rosterHostRect.left + rosterHostRect.width / 2)
+              : null,
+            y: firstTileRect && rosterHostRect
+              ? firstTileRect.top + (anchorY / canvasHeight) * firstTileRect.height - (rosterHostRect.top + rosterHostRect.height / 2)
+              : null
+          }
         };
       }, { firstPlayerId: collectionPlayerOne.player.id, secondPlayerId: collectionPlayerTwo.player.id });
       await fetch(first.startup.localUrl + "/api/complete-action", {
@@ -1096,6 +1137,7 @@ module.exports = Object.freeze([
       });
       const vipRoom = await vipRoomResponse.json();
       const sourceLobbyState = flowPayload.flow.states.find((state) => state.id === "lobby");
+      const nestedAutoFitText = "HIT OR STAY — TEST THE COMPLETE NESTED PRESENT TEXT CONTRACT ACROSS A REAL AUTHORED LAYOUT FIELD WITHOUT CLIPPING ANY OF THESE WORDS";
       const vipControllerFlow = {
         ...flowPayload.flow,
         states: [
@@ -1114,7 +1156,7 @@ module.exports = Object.freeze([
                 timing: { mode: "E+", seconds: 0 },
                 nextTargetActionId: "vip-intro-end",
                 stageClickTargetActionId: "vip-intro-end",
-                text: "VIP advances this authored step",
+                text: nestedAutoFitText,
                 textTarget: "layout-text-field-instance-1",
                 isShown: true,
                 instant: true,
@@ -1232,6 +1274,25 @@ module.exports = Object.freeze([
         }));
         throw new Error("VIP Controller did not receive the first Next action: " + JSON.stringify({ controllerDiagnostic, stageDiagnostic }), { cause: error });
       }
+      await vipStagePage.waitForFunction((expected) => Array.from(document.querySelectorAll(
+        '[data-stage-layout-element-id="layout-text-field-instance-1"] .art-runtime-object-label'
+      )).some((label) => label.getAttribute('aria-label') === expected), nestedAutoFitText, { timeout: 15_000 });
+      const nestedAutoFitResult = await vipStagePage.evaluate((expected) => {
+        const label = Array.from(document.querySelectorAll(
+          '[data-stage-layout-element-id="layout-text-field-instance-1"] .art-runtime-object-label'
+        )).find((candidate) => candidate.getAttribute('aria-label') === expected);
+        const style = label ? getComputedStyle(label) : null;
+        return {
+          exactText: label?.getAttribute('aria-label'),
+          domText: label?.textContent?.trim(),
+          fontSize: Number.parseFloat(style?.fontSize || "0"),
+          clientWidth: label?.clientWidth || 0,
+          clientHeight: label?.clientHeight || 0,
+          scrollWidth: label?.scrollWidth || 0,
+          scrollHeight: label?.scrollHeight || 0,
+          autoFitSource: label?.dataset.textFitSource
+        };
+      }, nestedAutoFitText);
       const vipFirstNextState = await vipControllerPage.evaluate(() => ({
         actionId: document.querySelector('[data-option-id="global.next"]')?.dataset.actionId,
         phase: window.controllerState?.lobby?.phase,
@@ -2122,10 +2183,18 @@ module.exports = Object.freeze([
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ constants: constantsPayload.constants })
       });
+      const persistedInputFlow = structuredClone(inputFlow);
+      const persistedNestedAction = persistedInputFlow.states
+        .find((state) => state.id === "intro")?.actions
+        .find((action) => action.type === "presentText");
+      if (persistedNestedAction) {
+        persistedNestedAction.text = nestedAutoFitText;
+        persistedNestedAction.textTarget = "layout-text-field-instance-1";
+      }
       const flowSaveResponse = await fetch(first.startup.localUrl + "/api/game-flow", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ flow: inputFlow })
+        body: JSON.stringify({ flow: persistedInputFlow })
       });
       const flowSavePayload = await flowSaveResponse.json();
       const savedRevision = JSON.parse(fs.readFileSync(".pop-party/content/content-bundle.json", "utf8")).rootHash;
@@ -2163,6 +2232,122 @@ module.exports = Object.freeze([
         hostSelected: document.querySelector('[data-game-plugin-input-binding="left"]')?.parentElement?.dataset.gamePluginInputSelected
       }));
       await restartedBrowser.close();
+      await second.runtime.stop();
+
+      const recoveryFirst = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
+      const recoveryBrowser = await chromium.launch({ headless: true });
+      const recoveryToolsPage = await recoveryBrowser.newPage();
+      const recoveryPageErrors = [];
+      const recoveredDraftMessages = [];
+      let recoveryRequired = false;
+      let recoverySecondUrl = "";
+      let recoveryCheckpointAttempts = 0;
+      recoveryToolsPage.on("pageerror", (error) => recoveryPageErrors.push(error.message));
+      await recoveryToolsPage.route("**/api/tool-drafts", async (route) => {
+        recoveredDraftMessages.push(JSON.parse(route.request().postData() || "{}"));
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+      });
+      await recoveryToolsPage.route("**/api/authoring/workspace/**", async (route) => {
+        const pathname = new URL(route.request().url()).pathname;
+        const responseBase = {
+          ok: true,
+          active: true,
+          sessionId: "packed-browser-recovery",
+          baselineRevision: "published-before-restart",
+          localCheckpointRevision: "published-before-restart",
+          workingRevision: "published-before-restart",
+          gitSynced: true,
+          leaseMs: 60_000,
+          release: { contentRevision: "published-before-restart", releaseRevision: "release-before-restart" }
+        };
+        if (pathname.endsWith("/checkpoint")) {
+          recoveryCheckpointAttempts += 1;
+          if (recoveryRequired) {
+            recoveryRequired = false;
+            await route.fulfill({
+              status: 409,
+              contentType: "application/json",
+              body: JSON.stringify({ error: "Republish browser drafts", errorCode: "AUTHORING_SESSION_RECOVERY_REQUIRED" })
+            });
+            return;
+          }
+          const constantsDraft = [...recoveredDraftMessages].reverse().find((message) => message.constants)?.constants;
+          if (constantsDraft && recoverySecondUrl) {
+            await fetch(recoverySecondUrl + "/api/game-constants", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ constants: constantsDraft })
+            });
+          }
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ...responseBase,
+              workingRevision: "browser-recovered",
+              checkpoint: {
+                schemaVersion: 1,
+                gameId: "generated-fixture",
+                workingRevision: "browser-recovered",
+                gitContentRevision: "published-before-restart",
+                gitReleaseRevision: "release-before-restart",
+                savedAt: new Date().toISOString(),
+                manifest: {},
+                files: {}
+              }
+            })
+          });
+          return;
+        }
+        if (pathname.endsWith("/save")) {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ...responseBase,
+              workingRevision: "browser-recovered",
+              syncedRevision: "browser-recovered",
+              result: { contentRevision: "browser-recovered", release: { contentRevision: "browser-recovered", releaseRevision: "release-recovered" } }
+            })
+          });
+          return;
+        }
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(responseBase) });
+      });
+      await recoveryToolsPage.goto(recoveryFirst.startup.localUrl + "/tools", { waitUntil: "load" });
+      await recoveryToolsPage.waitForFunction(() => document.querySelector('#globalSaveStatus')?.textContent?.includes("Git is up to date"), null, { timeout: 15_000 });
+      await recoveryToolsPage.locator('[data-tool-target="constants"]').click();
+      const recoveredBrowserTitle = "Generated Fixture Recovered From Browser";
+      const recoveryTitleInput = recoveryToolsPage.locator('[data-constants-field-input="gameTitle"]');
+      await recoveryTitleInput.fill(recoveredBrowserTitle);
+      await recoveryTitleInput.press("Enter");
+      await recoveryToolsPage.waitForFunction(() => document.querySelector('[data-constants-editor-status]')?.textContent?.includes("Unsaved"));
+      await recoveryToolsPage.waitForTimeout(150);
+      const recoveryPort = Number(new URL(recoveryFirst.startup.localUrl).port);
+      await recoveryFirst.runtime.stop();
+      const recoverySecond = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: recoveryPort });
+      recoverySecondUrl = recoverySecond.startup.localUrl;
+      recoveryRequired = true;
+      await (await fetch(recoverySecond.startup.localUrl + "/health")).json();
+      await recoveryToolsPage.locator('#globalSyncButton').click();
+      await recoveryToolsPage.waitForFunction((expected) => (
+        document.querySelector('[data-constants-editor-status]')?.textContent?.includes("Saved")
+        && document.querySelector('#globalSyncButton')?.textContent === "Sync Now"
+        && !document.querySelector('#globalSyncButton')?.disabled
+        && document.querySelector('[data-constants-field-input="gameTitle"]')?.value === expected
+      ), recoveredBrowserTitle, { timeout: 20_000 });
+      const recoveredConstants = await (await fetch(recoverySecond.startup.localUrl + "/api/game-constants")).json();
+      const authoringRecovery = await recoveryToolsPage.evaluate(() => ({
+        browserTitle: document.querySelector('[data-constants-field-input="gameTitle"]')?.value,
+        clean: document.querySelector('[data-constants-editor-status]')?.textContent?.includes("Saved"),
+        recoveryState: document.querySelector('#globalSaveButton')?.dataset.authoringRecovery || "",
+        status: document.querySelector('#globalSaveStatus')?.textContent || "",
+        workspacePresent: Boolean(document.querySelector('[data-constants-react-shell="react"]'))
+      }));
+      authoringRecovery.checkpointAttempts = recoveryCheckpointAttempts;
+      authoringRecovery.constantsDraftPublishes = recoveredDraftMessages.filter((message) => message.constants).length;
+      await recoveryBrowser.close();
+      await recoverySecond.runtime.stop();
       const result = {
         firstRevision: first.development.revision,
         healthRevision: firstHealth.release.contentRevision,
@@ -2170,6 +2355,10 @@ module.exports = Object.freeze([
         savedRevision,
         secondRevision: second.development.revision,
         secondGameTitle: secondConstants.constants.gameTitle,
+        recoveredServerTitle: recoveredConstants.constants.gameTitle,
+        recoveredBrowserTitle,
+        authoringRecovery,
+        recoveryPageErrors,
         pluginActionVisible: Boolean(pluginActionMeta && pluginActionMeta.fields.some((field) => field.key === "amount")),
         pluginInputVisible: Boolean(pluginInputMeta && pluginInputMeta.fields.some((field) => field.key === "resultVariable")),
         flowSaveStatus: flowSaveResponse.status,
@@ -2192,6 +2381,14 @@ module.exports = Object.freeze([
           .some((element) => element.id === "fixture-hand-rows"
             && element.kind === "collection"
             && element.collectionDirection === "vertical"),
+        nestedAutoFitLayoutReloaded: secondStageLayouts.layouts.states
+          .find((state) => state.id === "intro")?.elements
+          .some((element) => element.id === "layout-text-field-instance-1" && element.autoFitText === true),
+        nestedPresentTextReloaded: secondFlow.flow.states
+          .find((state) => state.id === "intro")?.actions
+          .some((action) => action.type === "presentText"
+            && action.textTarget === "layout-text-field-instance-1"
+            && action.text === nestedAutoFitText),
         collectionIdentityBefore,
         collectionReconcileState,
         rosterIdentityBefore,
@@ -2205,6 +2402,7 @@ module.exports = Object.freeze([
           && controllerHtml.includes("generated-fixture.controllerCounter"),
         pluginViewModel: configuredLobby.gamePlugin?.viewModels?.["generated-fixture.stageCounter"]?.label,
         vipControllerJourney,
+        nestedAutoFitResult,
         configuredAction: configuredLobby.action?.id,
         configuredFault: configuredLobby.runtimeFault,
         branchSelected: completedLobby.lastDecisionTrace?.selectedBranch,
@@ -2282,7 +2480,6 @@ module.exports = Object.freeze([
         seededFirst: first.development.seeded,
         seededSecond: second.development.seeded
       };
-      await second.runtime.stop();
       process.stdout.write(JSON.stringify(result));
     })().catch((error) => { console.error(error); process.exit(1); });
   `], { cwd: targetRoot, encoding: "utf8" });
@@ -2293,6 +2490,14 @@ module.exports = Object.freeze([
     || development.savedRevision === development.firstRevision
     || development.secondRevision !== development.savedRevision
     || development.secondGameTitle !== "Generated Fixture Edited"
+    || development.recoveredServerTitle !== development.recoveredBrowserTitle
+    || development.authoringRecovery?.browserTitle !== development.recoveredBrowserTitle
+    || !development.authoringRecovery?.clean
+    || development.authoringRecovery?.recoveryState !== "recovered"
+    || !development.authoringRecovery?.workspacePresent
+    || development.authoringRecovery?.checkpointAttempts !== 2
+    || development.authoringRecovery?.constantsDraftPublishes < 2
+    || development.recoveryPageErrors?.length !== 0
     || !development.pluginActionVisible
     || !development.pluginInputVisible
     || development.flowSaveStatus !== 200
@@ -2316,6 +2521,8 @@ module.exports = Object.freeze([
     || !development.customControllerLayoutReloaded
     || !development.dynamicControllerLayoutReloaded
     || !development.rendererCollectionRestarted
+    || !development.nestedAutoFitLayoutReloaded
+    || !development.nestedPresentTextReloaded
     || development.collectionIdentityBefore?.flatCount !== 3
     || development.collectionIdentityBefore?.rowCount !== 2
     || development.collectionIdentityBefore?.nestedCount !== 3
@@ -2370,6 +2577,8 @@ module.exports = Object.freeze([
     || development.rosterIdentityBefore?.firstCards !== 2
     || !development.rosterIdentityBefore?.rosterRendererPresent
     || !development.rosterIdentityBefore?.nestedRendererPresent
+    || development.rosterIdentityBefore?.anchorExplicit !== "true"
+    || Math.abs(Number(development.rosterIdentityBefore?.anchorCenterDelta?.y)) > 1.5
     || !development.rosterReconcileState?.tileRetained
     || !development.rosterReconcileState?.rosterRendererRetained
     || !development.rosterReconcileState?.rowRetained
@@ -2394,6 +2603,14 @@ module.exports = Object.freeze([
     || development.vipControllerJourney?.craftingChoice?.viewStateId !== "choiceInput"
     || development.vipControllerJourney?.craftingChoice?.phase !== "crafting-game-state"
     || development.vipControllerJourney?.craftingChoice?.optionCount < 2
+    || development.nestedAutoFitResult?.exactText !== development.nestedAutoFitResult?.autoFitSource
+    || development.nestedAutoFitResult?.exactText !== development.nestedAutoFitResult?.domText
+    || development.nestedAutoFitResult?.fontSize <= 0
+    || development.nestedAutoFitResult?.fontSize >= 58
+    || development.nestedAutoFitResult?.clientWidth <= 0
+    || development.nestedAutoFitResult?.clientHeight <= 0
+    || development.nestedAutoFitResult?.scrollWidth > development.nestedAutoFitResult?.clientWidth + 1
+    || development.nestedAutoFitResult?.scrollHeight > development.nestedAutoFitResult?.clientHeight + 1
     || development.branchSelected !== "branch-hit"
     || development.branchedAction !== "fixture-hit"
     || development.inputTransitionAction !== "fixture-turn-choice"

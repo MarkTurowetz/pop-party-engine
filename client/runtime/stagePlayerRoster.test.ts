@@ -6,6 +6,7 @@ import {
   playerAnswerBubbleRuntimeState,
   playerAnswerBubbleStateLabel,
   playerNameRuntimeText,
+  playerRosterAnchorGeometry,
   runtimeAnswerBubbleComposition,
   runtimeAvatarsComposition,
   runtimePlayerAvatarMcComposition,
@@ -29,6 +30,23 @@ beforeEach(() => {
 });
 
 describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
+  it("preserves the legacy canvas anchor and uses an explicit roster identity anchor for extended widgets", () => {
+    expect(playerRosterAnchorGeometry({ canvas: { width: 300, height: 370 }, components: [] })).toEqual({
+      x: 150,
+      y: 185,
+      width: 300,
+      height: 370,
+      explicit: false
+    });
+    expect(playerRosterAnchorGeometry({
+      canvas: { width: 300, height: 620 },
+      components: [
+        { id: "extra", kind: "reference", x: 150, y: 100 },
+        { id: "anchor", kind: "container", instanceLabel: "playerRosterAnchor", x: 150, y: 435, width: 300, height: 370 }
+      ]
+    })).toEqual({ x: 150, y: 435, width: 300, height: 370, explicit: true });
+  });
+
   it("converts the authored player anchor center into unclipped roster overlay coordinates", () => {
     expect(pointPopupOverlayPosition(
       { left: 225, top: 75, width: 50, height: 20 },
@@ -178,6 +196,30 @@ describe("PartyGamePlayerRoster (ported player-roster-renderer)", () => {
       ["500px", "100px"],
       ["825px", "100px"]
     ]);
+  });
+
+  it("keeps an extended widget's authored identity footprint on the roster center", () => {
+    const style = { left: "", top: "", getPropertyValue: () => "" };
+    const tile = {
+      dataset: {
+        playerId: "a",
+        playerObjectWidth: "300",
+        playerObjectHeight: "620",
+        playerObjectScale: "1",
+        playerRosterAnchorX: "150",
+        playerRosterAnchorY: "435",
+        playerRosterAnchorWidth: "300",
+        playerRosterAnchorHeight: "370"
+      },
+      style
+    };
+    const host = { clientWidth: 1000, clientHeight: 200, querySelectorAll: () => [tile] };
+
+    PartyGamePlayerRoster.createRenderer({ host }).layoutTiles();
+
+    expect([style.left, style.top]).toEqual(["500px", "-25px"]);
+    // The anchor center is at 100px even though the outer 620px canvas is not.
+    expect(Number.parseFloat(style.top) + (435 - 620 / 2)).toBe(100);
   });
 
   it("builds answer bubble runtime state from the displayed player answer", () => {
