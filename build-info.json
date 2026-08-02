@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1253",
+  "version": "1.0.17.1254",
   "baseVersion": "1.0.17",
-  "buildNumber": 1253,
-  "commit": "c2e1baf0",
-  "branch": "codex/flow-wire-corridors-arrows",
-  "generatedAt": "2026-08-02T07:15:48.117Z"
+  "buildNumber": 1254,
+  "commit": "d78e21e6",
+  "branch": "codex/renderer-collections",
+  "generatedAt": "2026-08-02T10:09:40.288Z"
 }

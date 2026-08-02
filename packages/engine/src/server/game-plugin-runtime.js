@@ -24,7 +24,7 @@ const INPUT_BINDING_KINDS = new Set(["choice", "choiceCollection", "integer", "s
 const INPUT_COMPLETION_POLICIES = new Set(["allRecipients", "anyRecipient", "manual"]);
 const INPUT_DISCONNECT_POLICIES = new Set(["wait", "completeRemaining", "fault"]);
 const INPUT_TIMEOUT_POLICIES = new Set(["wait", "complete", "fault"]);
-const RENDERER_BINDING_KINDS = new Set(["component", "text"]);
+const RENDERER_BINDING_KINDS = new Set(["collection", "component", "state", "text"]);
 const RENDERER_COMPONENT_PROPERTIES = new Set([
   "defaultText",
   "fill",
@@ -313,6 +313,51 @@ function validateInputRegistration(id, value) {
   }
 }
 
+function validateRendererBinding(rendererId, binding, bindingIds, context = {}) {
+  assertPlainObject(binding, `Renderer "${rendererId}" binding`);
+  const bindingId = String(binding.id || "").trim();
+  if (!ACTION_OUTPUT_ID_PATTERN.test(bindingId) || bindingIds.has(bindingId)) {
+    throw new Error(`Renderer "${rendererId}" has an invalid or duplicate binding id: ${bindingId || "(missing)"}`);
+  }
+  bindingIds.add(bindingId);
+  if (!RENDERER_BINDING_KINDS.has(binding.kind)) {
+    throw new Error(`Renderer "${rendererId}" binding "${bindingId}" has unsupported kind "${String(binding.kind || "")}"`);
+  }
+  if (!String(binding.source || "").trim()) {
+    throw new Error(`Renderer "${rendererId}" binding "${bindingId}" requires source`);
+  }
+  if (binding.kind === "collection") {
+    if (context.nested === true && !String(binding.targetComponentId || "").trim()) {
+      throw new Error(`Renderer "${rendererId}" nested collection binding "${bindingId}" requires targetComponentId`);
+    }
+    assertPlainObject(binding.item, `Renderer "${rendererId}" collection binding "${bindingId}" item`);
+    if (!String(binding.item.keySource || "").trim() || !String(binding.item.artCompositionId || "").trim()) {
+      throw new Error(`Renderer "${rendererId}" collection binding "${bindingId}" item requires keySource and artCompositionId`);
+    }
+    if (!Array.isArray(binding.item.bindings)) {
+      throw new Error(`Renderer "${rendererId}" collection binding "${bindingId}" item requires bindings`);
+    }
+    const childIds = new Set();
+    for (const child of binding.item.bindings) {
+      validateRendererBinding(rendererId, child, childIds, { nested: true });
+    }
+    return;
+  }
+  if ((binding.kind === "text" || binding.kind === "component") && !String(binding.targetComponentId || "").trim()) {
+    throw new Error(`Renderer "${rendererId}" binding "${bindingId}" requires targetComponentId`);
+  }
+  if (binding.kind === "component" && !RENDERER_COMPONENT_PROPERTIES.has(binding.property)) {
+    throw new Error(`Renderer "${rendererId}" binding "${bindingId}" has unsupported component property "${String(binding.property || "")}"`);
+  }
+  if (binding.kind === "state") {
+    const playback = String(binding.playback || "play");
+    if (!new Set(["play", "stop"]).has(playback)) {
+      throw new Error(`Renderer "${rendererId}" state binding "${bindingId}" has unsupported playback "${playback}"`);
+    }
+  }
+  if ("fallback" in binding) assertJsonValue(binding.fallback, `Renderer "${rendererId}" binding "${bindingId}" fallback`);
+}
+
 function validateRendererRegistration(kind, id, value) {
   assertPlainObject(value, `${kind} registration "${id}"`);
   if (!String(value.name || "").trim()) throw new Error(`Renderer "${id}" requires a name`);
@@ -331,22 +376,7 @@ function validateRendererRegistration(kind, id, value) {
   }
   const bindingIds = new Set();
   for (const binding of value.bindings) {
-    assertPlainObject(binding, `Renderer "${id}" binding`);
-    const bindingId = String(binding.id || "").trim();
-    if (!ACTION_OUTPUT_ID_PATTERN.test(bindingId) || bindingIds.has(bindingId)) {
-      throw new Error(`Renderer "${id}" has an invalid or duplicate binding id: ${bindingId || "(missing)"}`);
-    }
-    bindingIds.add(bindingId);
-    if (!RENDERER_BINDING_KINDS.has(binding.kind)) {
-      throw new Error(`Renderer "${id}" binding "${bindingId}" has unsupported kind "${String(binding.kind || "")}"`);
-    }
-    if (!String(binding.source || "").trim() || !String(binding.targetComponentId || "").trim()) {
-      throw new Error(`Renderer "${id}" binding "${bindingId}" requires source and targetComponentId`);
-    }
-    if (binding.kind === "component" && !RENDERER_COMPONENT_PROPERTIES.has(binding.property)) {
-      throw new Error(`Renderer "${id}" binding "${bindingId}" has unsupported component property "${String(binding.property || "")}"`);
-    }
-    if ("fallback" in binding) assertJsonValue(binding.fallback, `Renderer "${id}" binding "${bindingId}" fallback`);
+    validateRendererBinding(id, binding, bindingIds, { nested: false });
   }
 }
 

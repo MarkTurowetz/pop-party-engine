@@ -55,6 +55,73 @@ function assertExpectedSemanticRoles(expectedRoles, actualRoles) {
   }
 }
 
+function layoutElementsForRenderer(gameData, surface, target = {}) {
+  const layouts = surface === "stage" ? gameData.defaultStageLayouts : gameData.defaultControllerLayouts;
+  if (!layouts) return [];
+  const scope = String(target.layoutScope || "moment");
+  if (scope === "global") return layouts.global?.elements || [];
+  if (scope === "layer") {
+    return (layouts.layers || []).find((layer) => String(layer.id || "") === String(target.layoutLayerId || ""))?.elements || [];
+  }
+  return (layouts.states || []).flatMap((state) => state.elements || []);
+}
+
+function artComponentForId(components, componentId, compositions, visited = new Set()) {
+  for (const component of components || []) {
+    if ([component.id, component.instanceLabel, component.name].some((value) => String(value || "") === componentId)) return component;
+    const nested = artComponentForId(component.children, componentId, compositions, visited);
+    if (nested) return nested;
+    const referenceId = String(component.artCompositionId || "");
+    if (String(component.kind || "").toLowerCase() !== "reference" || !referenceId || visited.has(referenceId)) continue;
+    const referenced = compositions.get(referenceId);
+    if (!referenced) continue;
+    const match = artComponentForId(referenced.components, componentId, compositions, new Set([...visited, referenceId]));
+    if (match) return match;
+  }
+  return null;
+}
+
+function validateRendererItemContract({ registration, binding, surface, compositions }) {
+  const compositionId = String(binding.item?.artCompositionId || "");
+  const composition = compositions.get(compositionId);
+  if (!composition || String(composition.surface || "").toLowerCase() !== surface || String(composition.compositionKind || "gameObject").toLowerCase() !== "gameobject") {
+    readinessFailure("PLUGIN_RENDERER_COLLECTION_COMPOSITION_INVALID", `Renderer "${registration.id}" collection references an unknown or wrong-surface Game Object`, { rendererId: registration.id, compositionId, surface });
+  }
+  for (const child of binding.item.bindings || []) {
+    const targetId = String(child.targetComponentId || "");
+    const target = targetId ? artComponentForId(composition.components, targetId, compositions, new Set([compositionId])) : null;
+    if ((child.kind === "text" || child.kind === "component") && !target) {
+      readinessFailure("PLUGIN_RENDERER_COLLECTION_COMPONENT_INVALID", `Renderer "${registration.id}" collection binding targets an unknown Art component`, { rendererId: registration.id, compositionId, targetComponentId: targetId });
+    }
+    if (child.kind === "collection") {
+      if (!target || String(target.kind || "").toLowerCase() !== "container") {
+        readinessFailure("PLUGIN_RENDERER_NESTED_COLLECTION_TARGET_INVALID", `Renderer "${registration.id}" nested collection must target an Art Manager container`, { rendererId: registration.id, compositionId, targetComponentId: targetId });
+      }
+      validateRendererItemContract({ registration, binding: child, surface, compositions });
+    }
+  }
+}
+
+function validateRendererContentContracts(game, gameData) {
+  const compositions = new Map((gameData.defaultArtCompositions || []).map((composition) => [String(composition.id || ""), composition]));
+  for (const [kind, surface] of [["stageRenderers", "stage"], ["controllerRenderers", "controller"]]) {
+    for (const registration of game.registrations?.[kind] || []) {
+      const collections = (registration.value.bindings || []).filter((binding) => binding.kind === "collection");
+      if (!collections.length) continue;
+      const candidates = layoutElementsForRenderer(gameData, surface, registration.value.target);
+      const targetId = String(registration.value.target.layoutElementId || "");
+      const target = candidates.find((element) => String(element.id || "") === targetId);
+      if (!target || String(target.kind || "").toLowerCase() !== "collection") {
+        readinessFailure("PLUGIN_RENDERER_COLLECTION_TARGET_INVALID", `Renderer "${registration.id}" collection must target a same-surface Layout collection`, { rendererId: registration.id, targetId, surface });
+      }
+      if (collections.length !== 1 || (registration.value.bindings || []).length !== 1) {
+        readinessFailure("PLUGIN_RENDERER_COLLECTION_ROOT_INVALID", `Renderer "${registration.id}" collection target requires exactly one root collection binding`, { rendererId: registration.id });
+      }
+      validateRendererItemContract({ registration, binding: collections[0], surface, compositions });
+    }
+  }
+}
+
 function createGameReleaseValidator(options = {}) {
   const game = options.gameDefinition;
   if (!game || typeof game !== "object") throw new Error("Game release validation requires a defined game");
@@ -76,6 +143,7 @@ function createGameReleaseValidator(options = {}) {
     if (!gameData || typeof gameData !== "object") readinessFailure("BUNDLE_GAME_DATA_INVALID", "Active content did not materialize complete game runtime data");
     const semanticRoles = semanticRolesFrom(snapshot);
     assertExpectedSemanticRoles(game.semanticRoles, semanticRoles);
+    validateRendererContentContracts(game, gameData);
     for (const registration of game.registrations?.validators || []) {
       if (typeof registration.value !== "function") readinessFailure("PLUGIN_VALIDATOR_INVALID", "Game validator registration is not callable", { id: registration.id });
       const validation = await registration.value({ game, gameData, release, semanticRoles, snapshot });

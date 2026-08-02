@@ -237,6 +237,37 @@ recipients remain on the active input.
 Plugins cannot bind position, dimensions, layout scale, or arbitrary CSS; those
 remain owned by Stage/Controller Layout and Art Manager content.
 
+A renderer may instead populate a Tools-authored Layout collection with keyed
+Art Manager Game Objects. Nested collection bindings target an authored
+`container` component inside the parent item:
+
+```js
+bindings: [{
+  id: "rows", kind: "collection", source: "rows",
+  item: {
+    keySource: "id", artCompositionId: "hand-row", bindings: [{
+      id: "cards", kind: "collection", source: "cards", targetComponentId: "cards-slot",
+      item: {
+        keySource: "id", artCompositionId: "card",
+        bindings: [
+          { id: "label", kind: "text", source: "label", targetComponentId: "label" },
+          { id: "state", kind: "state", source: "lifecycleState", playback: "play" }
+        ]
+      }
+    }]
+  }
+}]
+```
+
+Keys are semantic strings or numbers, never array positions. Reorder, growth,
+and shrink preserve unchanged DOM, Art renderer, nested collection, and timeline
+identity. Layout owns the outer direction, gap, alignment, padding, overflow,
+size, and z-order; an Art container's authored child distribution owns its
+nested direction. Collection schemas, layout targets, composition surfaces, and
+component references fail readiness validation. Dynamic non-JSON values and
+empty or duplicate keys fail the affected projection closed with a runtime
+fault before the browser receives a partial collection.
+
 `pop-party migrate` loads the active immutable snapshot and follows only the
 game plugin's explicit, one-level-at-a-time migration registrations. The default
 operation is a read-only preview. `--output <new-directory>` writes an isolated

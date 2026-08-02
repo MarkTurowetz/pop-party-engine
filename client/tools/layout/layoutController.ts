@@ -205,11 +205,6 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
         selectedElementIds = new Set([element.id]);
       }),
     addChoiceCollection: () => {
-      if (mode !== "controller") {
-        error = "Dynamic choice collections are available only on Controller Layouts.";
-        emit();
-        return null;
-      }
       const target = group();
       if (!target) return null;
       const elementId = uniqueLayoutAuthoringId(
@@ -220,7 +215,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       recordMutation(() => {
         const element: LayoutElement = {
           id: elementId,
-          name: "Choice Collection",
+          name: "Renderer Collection",
           selector: "",
           kind: "collection",
           artCompositionId: "",
@@ -228,12 +223,12 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
           locked: false,
           x: Number(layouts.canvas?.width || 390) / 2,
           y: Number(layouts.canvas?.height || 844) / 2,
-          width: 330,
-          height: 500,
+          width: mode === "controller" ? 330 : 900,
+          height: mode === "controller" ? 500 : 420,
           scale: 1,
           rotation: 0,
           tags: [],
-          defaultAnimationState: "On",
+          defaultAnimationState: mode === "controller" ? "On" : "",
           collectionDirection: "vertical",
           collectionGap: 16,
           collectionDistribution: "start",

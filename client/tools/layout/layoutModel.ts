@@ -115,7 +115,7 @@ function serializeElement(raw: LayoutElement, mode: LayoutMode): LayoutElement {
     fontFamily: isText ? normalizeGameTextFontFamily(element.fontFamily) : "",
     fontColor: isText ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
   } as LayoutElement;
-  if (mode === "controller" && kind === "collection") {
+  if (kind === "collection") {
     serialized.collectionDirection = element.collectionDirection === "horizontal" ? "horizontal" : "vertical";
     serialized.collectionGap = num(element.collectionGap, 16);
     serialized.collectionDistribution = ["start", "center", "end", "space-between", "space-around", "space-evenly"]
