@@ -327,7 +327,7 @@ function validateRendererBinding(rendererId, binding, bindingIds, context = {}) 
     throw new Error(`Renderer "${rendererId}" binding "${bindingId}" requires source`);
   }
   if (binding.kind === "collection") {
-    if (context.nested === true && !String(binding.targetComponentId || "").trim()) {
+    if ((context.nested === true || context.requireTarget === true) && !String(binding.targetComponentId || "").trim()) {
       throw new Error(`Renderer "${rendererId}" nested collection binding "${bindingId}" requires targetComponentId`);
     }
     assertPlainObject(binding.item, `Renderer "${rendererId}" collection binding "${bindingId}" item`);
@@ -350,6 +350,9 @@ function validateRendererBinding(rendererId, binding, bindingIds, context = {}) 
     throw new Error(`Renderer "${rendererId}" binding "${bindingId}" has unsupported component property "${String(binding.property || "")}"`);
   }
   if (binding.kind === "state") {
+    if (context.requireTarget === true && !String(binding.targetComponentId || "").trim()) {
+      throw new Error(`Renderer "${rendererId}" state binding "${bindingId}" requires targetComponentId`);
+    }
     const playback = String(binding.playback || "play");
     if (!new Set(["play", "stop"]).has(playback)) {
       throw new Error(`Renderer "${rendererId}" state binding "${bindingId}" has unsupported playback "${playback}"`);
@@ -362,13 +365,26 @@ function validateRendererRegistration(kind, id, value) {
   assertPlainObject(value, `${kind} registration "${id}"`);
   if (!String(value.name || "").trim()) throw new Error(`Renderer "${id}" requires a name`);
   assertPlainObject(value.target, `Renderer "${id}" target`);
-  if (!String(value.target.layoutElementId || "").trim()) {
-    throw new Error(`Renderer "${id}" target requires layoutElementId`);
-  }
-  const scope = String(value.target.layoutScope || "moment");
-  if (!["global", "layer", "moment"].includes(scope)) throw new Error(`Renderer "${id}" has unsupported layoutScope "${scope}"`);
-  if (scope === "layer" && !LAYOUT_LAYER_ID_PATTERN.test(String(value.target.layoutLayerId || "").trim())) {
-    throw new Error(`Renderer "${id}" targeting a persistent layer requires a normalized layoutLayerId`);
+  const targetKind = String(value.target.kind || "layout");
+  if (targetKind === "rosterItem") {
+    if (kind !== "stageRenderers") throw new Error(`Renderer "${id}" rosterItem targets are Stage-only`);
+    if (String(value.target.semanticRole || "") !== "engine.stage.playerIdentityWidget") {
+      throw new Error(`Renderer "${id}" rosterItem target requires semanticRole "engine.stage.playerIdentityWidget"`);
+    }
+    if (!String(value.target.source || "").trim() || !String(value.target.playerIdSource || "").trim()) {
+      throw new Error(`Renderer "${id}" rosterItem target requires source and playerIdSource`);
+    }
+  } else if (targetKind === "layout") {
+    if (!String(value.target.layoutElementId || "").trim()) {
+      throw new Error(`Renderer "${id}" target requires layoutElementId`);
+    }
+    const scope = String(value.target.layoutScope || "moment");
+    if (!["global", "layer", "moment"].includes(scope)) throw new Error(`Renderer "${id}" has unsupported layoutScope "${scope}"`);
+    if (scope === "layer" && !LAYOUT_LAYER_ID_PATTERN.test(String(value.target.layoutLayerId || "").trim())) {
+      throw new Error(`Renderer "${id}" targeting a persistent layer requires a normalized layoutLayerId`);
+    }
+  } else {
+    throw new Error(`Renderer "${id}" has unsupported target kind "${targetKind}"`);
   }
   if (typeof value.select !== "function") throw new Error(`Renderer "${id}" requires a select function`);
   if (!Array.isArray(value.bindings) || value.bindings.length === 0) {
@@ -376,7 +392,7 @@ function validateRendererRegistration(kind, id, value) {
   }
   const bindingIds = new Set();
   for (const binding of value.bindings) {
-    validateRendererBinding(id, binding, bindingIds, { nested: false });
+    validateRendererBinding(id, binding, bindingIds, { nested: false, requireTarget: targetKind === "rosterItem" });
   }
 }
 

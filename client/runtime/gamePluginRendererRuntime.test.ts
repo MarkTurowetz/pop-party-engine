@@ -79,4 +79,51 @@ describe("game plugin renderer runtime", () => {
       { textOverrides: { text: "Round 4" }, componentOverrides: {} }
     );
   });
+
+  it("binds a public per-player model onto the existing Stage roster item", () => {
+    const rosterDocument = {
+      getElementById: () => ({ textContent: JSON.stringify({ gamePlugin: { renderers: [{
+        id: "fixture.roster",
+        surface: "stage",
+        target: {
+          kind: "rosterItem",
+          semanticRole: "engine.stage.playerIdentityWidget",
+          source: "players",
+          playerIdSource: "playerId"
+        },
+        bindings: [
+          { id: "score", kind: "text", source: "score", targetComponentId: "game-score" },
+          { id: "state", kind: "state", source: "state", targetComponentId: "game-tableau" }
+        ]
+      }] } }) })
+    } as unknown as Document;
+    const playComponent = vi.fn();
+    const tile = {
+      dataset: {},
+      toggleAttribute: vi.fn()
+    } as unknown as HTMLElement;
+    const host = { dataset: {}, querySelector: vi.fn(() => null) } as unknown as HTMLElement;
+    const applyRendererExtension = vi.fn(() => ({
+      tile,
+      host,
+      renderer: { playComponent },
+      composition: { id: "player-widget", components: [] },
+      player: { id: "p1" }
+    }));
+
+    const lobby = {
+      players: [{ id: "p1" }],
+      gamePlugin: { viewModels: { "fixture.roster": { players: [{ playerId: "p1", score: 42, state: "On" }] } } }
+    };
+    renderGamePluginSurface("stage", lobby, rosterDocument, { playerRosterRenderer: { applyRendererExtension } });
+    renderGamePluginSurface("stage", lobby, rosterDocument, { playerRosterRenderer: { applyRendererExtension } });
+
+    expect(applyRendererExtension).toHaveBeenCalledTimes(2);
+    expect(applyRendererExtension).toHaveBeenLastCalledWith("fixture.roster", "p1", {
+      textOverrides: { "game-score": "42" },
+      componentOverrides: {}
+    });
+    expect(playComponent).toHaveBeenCalledWith("game-tableau", "On", { instant: false });
+    expect(tile.toggleAttribute).toHaveBeenCalledTimes(1);
+  });
 });

@@ -182,7 +182,10 @@ function stageDebugPanel(): Dict | null {
 
 const PartyGameStageDebugRuntime = {
   showGameObjectWarning: (details: Dict) => (stageDebugPanel() as { showGameObjectWarning?: (d: Dict) => void } | null)?.showGameObjectWarning?.(details),
-  showArtAssetWarning: (details: Dict) => (stageDebugPanel() as { showGameObjectWarning?: (d: Dict) => void } | null)?.showGameObjectWarning?.(details)
+  showArtAssetWarning: (details: Dict) => (stageDebugPanel() as { showGameObjectWarning?: (d: Dict) => void } | null)?.showGameObjectWarning?.(details),
+  playerRosterItemForId: (playerId: string) => (
+    playerRosterRenderer() as { rosterItemForPlayer?: (id: string) => Dict | null } | null
+  )?.rosterItemForPlayer?.(playerId) || null
 };
 w().PartyGameStageDebugRuntime = PartyGameStageDebugRuntime;
 
@@ -808,11 +811,12 @@ function applyStageState(lobby: Dict, options: Dict = {}): void {
     renderStageWidgetBinding("presentationClickPrompt");
   }
 
-  if (changed("roster", {
+  const rosterChanged = changed("roster", {
     players,
     playersShown: lobby.playersShown,
     liveAnswerPreviewType: (lobby.textInput as Dict | null)?.type
-  })) {
+  });
+  if (rosterChanged) {
     renderStagePlayers(players, {
       // Voice capture owns a live answer preview: the temporary T and the final
       // transcript update the current Player Answer Bubble MC while this input is active.
@@ -871,8 +875,9 @@ function applyStageState(lobby: Dict, options: Dict = {}): void {
     }
   }
 
-  if (changed("gamePlugin", (lobby.gamePlugin as Dict | null)?.viewModels || {})) {
-    renderGamePluginSurface("stage", lobby);
+  const gamePluginChanged = changed("gamePlugin", (lobby.gamePlugin as Dict | null)?.viewModels || {});
+  if (gamePluginChanged || rosterChanged) {
+    renderGamePluginSurface("stage", lobby, document, { playerRosterRenderer: playerRosterRenderer() });
   }
 
   const durationMs = Math.max(0, (globalThis.performance?.now?.() || Date.now()) - startedAt);

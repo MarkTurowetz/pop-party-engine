@@ -178,22 +178,37 @@ export interface GameInputRegistration<TState extends Record<string, unknown> = 
   submit(context: GameInputSubmitContext<TState>, payload: Readonly<Record<string, string | number>>, action: Readonly<Record<string, unknown>>): void;
 }
 
+export interface GameLayoutRendererTarget {
+  kind?: "layout";
+  layoutElementId: string;
+  layoutScope?: "moment" | "global" | "layer";
+  layoutLayerId?: string;
+}
+
+export interface GameRosterItemRendererTarget {
+  kind: "rosterItem";
+  semanticRole: "engine.stage.playerIdentityWidget";
+  source: string;
+  playerIdSource: string;
+}
+
 export interface GameRendererRegistration<TState extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
-  target: {
-    layoutElementId: string;
-    layoutScope?: "moment" | "global" | "layer";
-    layoutLayerId?: string;
-  };
+  target: GameLayoutRendererTarget | GameRosterItemRendererTarget;
   bindings: GameRendererBinding[];
   select(context: GameRendererSelectionContext<TState>): unknown;
+}
+
+export interface GameControllerRendererRegistration<TState extends Record<string, unknown> = Record<string, unknown>>
+  extends Omit<GameRendererRegistration<TState>, "target"> {
+  target: GameLayoutRendererTarget;
 }
 
 export interface GamePluginRegistryApi {
   actions(id: string, value: GameActionRegistration): void;
   inputs(id: string, value: GameInputRegistration): void;
   stageRenderers(id: string, value: GameRendererRegistration): void;
-  controllerRenderers(id: string, value: GameRendererRegistration): void;
+  controllerRenderers(id: string, value: GameControllerRendererRegistration): void;
   stateSchemas(id: string, value: unknown): void;
   validators(id: string, value: unknown): void;
   migrations(id: string, value: unknown): void;

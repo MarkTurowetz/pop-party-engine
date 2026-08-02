@@ -331,7 +331,7 @@ module.exports = Object.freeze([
         }
       }],
       select(context) {
-        const count = Number(context.state.count || 0);
+        const count = Number(context.flow.collectionCount || 0);
         const all = cards(count);
         return { rows: [
           { id: "top", state: "On", cards: all.filter((card) => card.id !== "c") },
@@ -346,7 +346,45 @@ module.exports = Object.freeze([
       name: "Fixture Flat Hand",
       target: { layoutElementId: "fixture-flat-cards", layoutScope: "global" },
       bindings: [{ id: "cards", kind: "collection", source: "cards", item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings } }],
-      select(context) { return { cards: cards(Number(context.state.count || 0)) }; }
+      select(context) { return { cards: cards(Number(context.flow.collectionCount || 0)) }; }
+    }
+  },
+  {
+    id: "generated-fixture.rosterTableaus",
+    value: {
+      name: "Fixture Existing Roster Extensions",
+      target: {
+        kind: "rosterItem",
+        semanticRole: "engine.stage.playerIdentityWidget",
+        source: "players",
+        playerIdSource: "playerId"
+      },
+      bindings: [
+        { id: "score", kind: "text", source: "score", targetComponentId: "fixture-roster-score" },
+        {
+          id: "rows", kind: "collection", source: "rows", targetComponentId: "fixture-roster-rows",
+          item: {
+            keySource: "id", artCompositionId: "fixture-hand-row", bindings: [{
+              id: "cards", kind: "collection", source: "cards", targetComponentId: "cards-slot",
+              item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings }
+            }]
+          }
+        }
+      ],
+      select(context) {
+        const count = Number(context.flow.collectionCount || 0);
+        const all = cards(count);
+        const rosterCards = count > 0
+          ? [all.find((card) => card.id === "a"), all.find((card) => card.id === "d"), all.find((card) => card.id === "b")].filter(Boolean)
+          : [all.find((card) => card.id === "a"), all.find((card) => card.id === "b")].filter(Boolean);
+        return {
+          players: context.players.map((player, index) => ({
+            playerId: player.id,
+            score: String((index + 1) * 10 + count),
+            rows: [{ id: "main", cards: rosterCards }]
+          }))
+        };
+      }
     }
   },
   {
@@ -449,6 +487,30 @@ module.exports = Object.freeze([
     timeline: fixtureVisibleTimeline,
     components: [{ id: "cards-slot", name: "Cards Slot", kind: "container", childDistribution: "horizontal", x: 320, y: 75, width: 620, height: 145, fillColor: "transparent", defaultAnimationState: "On", children: [] }]
   };
+  artManifest.compositions["fixture-roster-extension"] = {
+    name: "Fixture Roster Extension", surface: "stage", compositionKind: "gameObject", isCustom: true,
+    canvas: { width: 300, height: 190 },
+    timeline: fixtureVisibleTimeline,
+    components: [
+      { id: "fixture-roster-score", name: "Fixture Roster Score", kind: "text", x: 150, y: 18, width: 120, height: 28, defaultText: "0", fontSize: 20, fontColor: "#17131f", defaultAnimationState: "On" },
+      { id: "fixture-roster-rows", name: "Fixture Roster Rows", kind: "container", childDistribution: "vertical", x: 150, y: 105, width: 280, height: 150, fillColor: "transparent", defaultAnimationState: "On", children: [] }
+    ]
+  };
+  artManifest.compositions["prefab-player-widget-mc"].components.push({
+    id: "fixture-roster-extension-ref",
+    name: "Fixture Roster Extension",
+    instanceLabel: "fixtureRosterExtension",
+    kind: "reference",
+    x: 150,
+    y: 95,
+    scale: 0.5,
+    rotation: 0,
+    opacity: 1,
+    visible: true,
+    defaultAnimationState: "On",
+    artCompositionId: "fixture-roster-extension",
+    referenceSizeMode: "intrinsic"
+  });
   fs.writeFileSync(artManifestPath, `${JSON.stringify(artManifest, null, 2)}\n`);
   refreshLocalContentBundle(path.join(targetRoot, "content"), { trackLineage: false });
   generatedSnapshot = createLocalContentBundleProvider({ root: path.join(targetRoot, "content") }).loadPublishedRevision();
@@ -803,6 +865,14 @@ module.exports = Object.freeze([
         body: JSON.stringify({ stageCode: "RCOL" })
       });
       const collectionRoom = await collectionRoomResponse.json();
+      const collectionControllerOne = await browser.newPage();
+      await collectionControllerOne.goto(first.startup.localUrl + "/controller?stage=RCOL&name=Roster%20One&join=1", { waitUntil: "load" });
+      await collectionControllerOne.waitForFunction(() => Boolean(window.controllerState?.player?.id), null, { timeout: 15_000 });
+      const collectionPlayerOne = await collectionControllerOne.evaluate(() => ({ player: window.controllerState.player }));
+      const collectionControllerTwo = await browser.newPage();
+      await collectionControllerTwo.goto(first.startup.localUrl + "/controller?stage=RCOL&name=Roster%20Two&join=1", { waitUntil: "load" });
+      await collectionControllerTwo.waitForFunction(() => Boolean(window.controllerState?.player?.id), null, { timeout: 15_000 });
+      const collectionPlayerTwo = await collectionControllerTwo.evaluate(() => ({ player: window.controllerState.player }));
       const collectionLobbyState = {
         id: "lobby",
         name: "Renderer Collection Fixture",
@@ -824,12 +894,28 @@ module.exports = Object.freeze([
       });
       const collectionStagePage = await browser.newPage();
       await collectionStagePage.goto(first.startup.localUrl + "/stage?stage=RCOL", { waitUntil: "load" });
-      await collectionStagePage.waitForFunction(() => (
-        window.currentStageState?.action?.id === "collection-wait"
-        && document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] > [data-game-plugin-renderer-collection-item="true"]').length === 3
-        && document.querySelectorAll('[data-stage-layout-element-id="fixture-hand-rows"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
-        && document.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] [data-game-plugin-renderer-collection-item="true"]').length === 3
-      ), null, { timeout: 15_000 });
+      try {
+        await collectionStagePage.waitForFunction(() => (
+          window.currentStageState?.action?.id === "collection-wait"
+          && document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] > [data-game-plugin-renderer-collection-item="true"]').length === 3
+          && document.querySelectorAll('[data-stage-layout-element-id="fixture-hand-rows"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
+          && document.querySelectorAll('[data-stage-layout-element-id="fixture-hand-rows"] [data-game-plugin-renderer-nested-collection="cards"] [data-game-plugin-renderer-collection-item="true"]').length === 3
+          && document.querySelectorAll('#playerLobby > .player-tile[data-player-id]').length === 2
+          && document.querySelectorAll('[data-game-plugin-roster-collection="generated-fixture.rosterTableaus:rows"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
+        ), null, { timeout: 15_000 });
+      } catch (error) {
+        const diagnostic = await collectionStagePage.evaluate(() => ({
+          action: window.currentStageState?.action?.id,
+          fault: window.currentStageState?.runtimeFault,
+          rosterModel: window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.rosterTableaus"],
+          runtimeConfig: JSON.parse(document.getElementById("pop-party-runtime-config")?.textContent || "{}").gamePlugin?.renderers?.find((item) => item.id === "generated-fixture.rosterTableaus"),
+          tiles: document.querySelectorAll('#playerLobby > .player-tile[data-player-id]').length,
+          rosterHosts: document.querySelectorAll('[data-game-plugin-roster-collection]').length,
+          rosterItems: document.querySelectorAll('[data-game-plugin-roster-collection] > [data-game-plugin-renderer-collection-item="true"]').length,
+          playerHtml: document.querySelector('#playerLobby')?.innerHTML.slice(0, 4000)
+        }));
+        throw new Error("Roster renderer extension fixture did not reconcile: " + JSON.stringify(diagnostic), { cause: error });
+      }
       await collectionStagePage.evaluate(() => {
         for (const elementId of ["fixture-hand-rows", "fixture-flat-cards"]) {
           window.setStageLayoutGameObjectShownForAction?.({
@@ -921,6 +1007,28 @@ module.exports = Object.freeze([
           artLayerVisible
         };
       });
+      const rosterIdentityBefore = await collectionStagePage.evaluate(({ firstPlayerId, secondPlayerId }) => {
+        const firstTile = document.querySelector('#playerLobby > .player-tile[data-player-id="' + CSS.escape(firstPlayerId) + '"]');
+        const secondTile = document.querySelector('#playerLobby > .player-tile[data-player-id="' + CSS.escape(secondPlayerId) + '"]');
+        const firstRow = firstTile?.querySelector('[data-game-plugin-roster-collection="generated-fixture.rosterTableaus:rows"] > [data-game-plugin-renderer-item-key="main"]');
+        const firstCard = firstRow?.querySelector('[data-game-plugin-renderer-item-key="a"]');
+        window.__fixtureRosterFirstTile = firstTile;
+        window.__fixtureRosterFirstRenderer = window.PartyGameStageDebugRuntime?.playerRosterItemForId?.(firstPlayerId)?.renderer;
+        window.__fixtureRosterFirstRow = firstRow;
+        window.__fixtureRosterFirstCard = firstCard;
+        window.__fixtureRosterFirstCardRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(firstCard);
+        return {
+          tiles: document.querySelectorAll('#playerLobby > .player-tile[data-player-id]').length,
+          duplicateLayoutTableaus: document.querySelectorAll('[data-stage-layout-element-id*="tableau" i]').length,
+          firstScore: firstTile?.querySelector('[data-art-component-id="fixture-roster-score"]')?.textContent?.trim(),
+          secondScore: secondTile?.querySelector('[data-art-component-id="fixture-roster-score"]')?.textContent?.trim(),
+          firstRows: firstTile?.querySelectorAll('[data-game-plugin-roster-collection="generated-fixture.rosterTableaus:rows"] > [data-game-plugin-renderer-collection-item="true"]').length,
+          firstCards: firstRow?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] > [data-game-plugin-renderer-collection-item="true"]').length,
+          rosterRendererPresent: Boolean(window.__fixtureRosterFirstRenderer),
+          nestedRendererPresent: Boolean(window.__fixtureRosterFirstCardRenderer),
+          firstNeedsInput: firstTile?.dataset.playerNeedsInput
+        };
+      }, { firstPlayerId: collectionPlayerOne.player.id, secondPlayerId: collectionPlayerTwo.player.id });
       await fetch(first.startup.localUrl + "/api/complete-action", {
         method: "POST",
         headers: { "content-type": "application/json", "x-stage-capability": collectionRoom.stageCapability },
@@ -961,7 +1069,26 @@ module.exports = Object.freeze([
           nestedCardVisible: visibleRect(nestedCard)
         };
       });
+      const rosterReconcileState = await collectionStagePage.evaluate((firstPlayerId) => {
+        const firstTile = document.querySelector('#playerLobby > .player-tile[data-player-id="' + CSS.escape(firstPlayerId) + '"]');
+        const firstRow = firstTile?.querySelector('[data-game-plugin-roster-collection="generated-fixture.rosterTableaus:rows"] > [data-game-plugin-renderer-item-key="main"]');
+        const cards = Array.from(firstRow?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] > [data-game-plugin-renderer-collection-item="true"]') || []);
+        const retainedCard = firstRow?.querySelector('[data-game-plugin-renderer-item-key="a"]');
+        return {
+          tileRetained: firstTile === window.__fixtureRosterFirstTile,
+          rosterRendererRetained: window.__fixtureRosterFirstRenderer === window.PartyGameStageDebugRuntime?.playerRosterItemForId?.(firstPlayerId)?.renderer,
+          rowRetained: firstRow === window.__fixtureRosterFirstRow,
+          cardRetained: retainedCard === window.__fixtureRosterFirstCard,
+          cardRendererRetained: window.__fixtureRosterFirstCardRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(retainedCard),
+          cardCount: cards.length,
+          cardOrder: cards.map((card) => card.dataset.gamePluginRendererItemKey),
+          score: firstTile?.querySelector('[data-art-component-id="fixture-roster-score"]')?.textContent?.trim(),
+          tiles: document.querySelectorAll('#playerLobby > .player-tile[data-player-id]').length
+        };
+      }, collectionPlayerOne.player.id);
       await collectionStagePage.close();
+      await collectionControllerOne.close();
+      await collectionControllerTwo.close();
       const vipRoomResponse = await fetch(first.startup.localUrl + "/api/stage/rooms", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1692,7 +1819,8 @@ module.exports = Object.freeze([
       await dynamicStagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-dynamic-targets", null, { timeout: 15_000 });
       const dynamicStageBefore = await dynamicStagePage.evaluate(() => ({
         applies: window.__popPartyStageMetrics?.applyCount,
-        surfaceRevision: window.currentStageState?.surfaceRevision
+        surfaceRevision: window.currentStageState?.surfaceRevision,
+        needsInput: Object.fromEntries((window.currentStageState?.players || []).map((player) => [player.id, player.needsInput]))
       }));
       const dynamicSubmitResponsePromise = controllerPage.waitForResponse((response) => (
         response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
@@ -1703,7 +1831,9 @@ module.exports = Object.freeze([
       await dynamicStagePage.waitForTimeout(150);
       const dynamicStageAfterPartial = await dynamicStagePage.evaluate(() => ({
         applies: window.__popPartyStageMetrics?.applyCount,
-        surfaceRevision: window.currentStageState?.surfaceRevision
+        surfaceRevision: window.currentStageState?.surfaceRevision,
+        appliedSlices: window.__popPartyStageMetrics?.lastAppliedSlices,
+        needsInput: Object.fromEntries((window.currentStageState?.players || []).map((player) => [player.id, player.needsInput]))
       }));
       const dynamicSecondResponsePromise = secondControllerPage.waitForResponse((response) => (
         response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
@@ -1882,7 +2012,8 @@ module.exports = Object.freeze([
           surfaceRevision: window.currentStageState?.surfaceRevision,
           layoutApplyCount: window.__fixtureStageLayoutApplyCount,
           animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
-          rendererPresent: Boolean(window.__fixtureStageRenderer)
+          rendererPresent: Boolean(window.__fixtureStageRenderer),
+          needsInput: Object.fromEntries((window.currentStageState?.players || []).map((player) => [player.id, player.needsInput]))
         };
       });
       const browserSubmitResponse = controllerPage.waitForResponse((response) => (
@@ -1920,6 +2051,8 @@ module.exports = Object.freeze([
         rendererRetained: window.__fixtureStageRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixtureStageHost),
         animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
         animationState: window.__fixtureStageAnimation?.playState,
+        appliedSlices: window.__popPartyStageMetrics?.lastAppliedSlices,
+        needsInput: Object.fromEntries((window.currentStageState?.players || []).map((player) => [player.id, player.needsInput])),
         changedProjectionKeys: Array.from(new Set([
           ...Object.keys(window.__fixtureStageProjectionBefore || {}),
           ...Object.keys(window.currentStageState || {})
@@ -2061,11 +2194,14 @@ module.exports = Object.freeze([
             && element.collectionDirection === "vertical"),
         collectionIdentityBefore,
         collectionReconcileState,
+        rosterIdentityBefore,
+        rosterReconcileState,
         persistentLayerReloaded: secondControllerLayouts.layouts.layers
           ?.some((layer) => layer.id === "fixture-persistent-context" && layer.zIndex === 150),
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
           && stageHtml.includes("generated-fixture.stageHandRows")
           && stageHtml.includes("generated-fixture.stageFlatCards")
+          && stageHtml.includes("generated-fixture.rosterTableaus")
           && controllerHtml.includes("generated-fixture.controllerCounter"),
         pluginViewModel: configuredLobby.gamePlugin?.viewModels?.["generated-fixture.stageCounter"]?.label,
         vipControllerJourney,
@@ -2226,6 +2362,23 @@ module.exports = Object.freeze([
     || !development.collectionReconcileState?.nestedItemVisible
     || !development.collectionReconcileState?.flatCardVisible
     || !development.collectionReconcileState?.nestedCardVisible
+    || development.rosterIdentityBefore?.tiles !== 2
+    || development.rosterIdentityBefore?.duplicateLayoutTableaus !== 0
+    || development.rosterIdentityBefore?.firstScore !== "10"
+    || development.rosterIdentityBefore?.secondScore !== "20"
+    || development.rosterIdentityBefore?.firstRows !== 1
+    || development.rosterIdentityBefore?.firstCards !== 2
+    || !development.rosterIdentityBefore?.rosterRendererPresent
+    || !development.rosterIdentityBefore?.nestedRendererPresent
+    || !development.rosterReconcileState?.tileRetained
+    || !development.rosterReconcileState?.rosterRendererRetained
+    || !development.rosterReconcileState?.rowRetained
+    || !development.rosterReconcileState?.cardRetained
+    || !development.rosterReconcileState?.cardRendererRetained
+    || development.rosterReconcileState?.cardCount !== 3
+    || JSON.stringify(development.rosterReconcileState?.cardOrder) !== JSON.stringify(["a", "d", "b"])
+    || development.rosterReconcileState?.score !== "11"
+    || development.rosterReconcileState?.tiles !== 2
     || !development.persistentLayerReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"
@@ -2307,8 +2460,11 @@ module.exports = Object.freeze([
     || !development.dynamicReconcileState?.matchingBounds
     || development.dynamicStaleSubmissionCount !== 0
     || JSON.stringify(development.dynamicSubmitPayload) !== JSON.stringify({ targetPlayerId: development.dynamicIdentityBefore?.retainedOption })
-    || development.dynamicStageAfterPartial?.applies !== development.dynamicStageBefore?.applies
-    || development.dynamicStageAfterPartial?.surfaceRevision !== development.dynamicStageBefore?.surfaceRevision
+    || !(development.dynamicStageAfterPartial?.applies > development.dynamicStageBefore?.applies)
+    || !(development.dynamicStageAfterPartial?.surfaceRevision > development.dynamicStageBefore?.surfaceRevision)
+    || JSON.stringify(development.dynamicStageAfterPartial?.appliedSlices) !== JSON.stringify(["roster"])
+    || Object.values(development.dynamicStageBefore?.needsInput || {}).filter(Boolean).length !== 2
+    || Object.values(development.dynamicStageAfterPartial?.needsInput || {}).filter(Boolean).length !== 1
     || development.dynamicBarrierAction !== "fixture-dynamic-done"
     || JSON.stringify(development.privateWagerTargets) !== JSON.stringify([10, 20])
     || development.wagerInitialState?.value !== "7"
@@ -2345,10 +2501,13 @@ module.exports = Object.freeze([
     || development.submittedControllerState?.animationState !== "running"
     || !(development.submittedControllerState?.animationTime > development.persistentIdentityBefore?.animationTime)
     || !development.stageBeforePartialSubmission?.rendererPresent
-    || development.stageAfterPartialSubmission?.applyCount !== development.stageBeforePartialSubmission?.applyCount
-    || development.stageAfterPartialSubmission?.roomRevision !== development.stageBeforePartialSubmission?.roomRevision
-    || development.stageAfterPartialSubmission?.surfaceRevision !== development.stageBeforePartialSubmission?.surfaceRevision
+    || !(development.stageAfterPartialSubmission?.applyCount > development.stageBeforePartialSubmission?.applyCount)
+    || !(development.stageAfterPartialSubmission?.roomRevision > development.stageBeforePartialSubmission?.roomRevision)
+    || !(development.stageAfterPartialSubmission?.surfaceRevision > development.stageBeforePartialSubmission?.surfaceRevision)
     || development.stageAfterPartialSubmission?.layoutApplyCount !== development.stageBeforePartialSubmission?.layoutApplyCount
+    || JSON.stringify(development.stageAfterPartialSubmission?.appliedSlices) !== JSON.stringify(["roster"])
+    || Object.values(development.stageBeforePartialSubmission?.needsInput || {}).filter(Boolean).length !== 2
+    || Object.values(development.stageAfterPartialSubmission?.needsInput || {}).filter(Boolean).length !== 1
     || !development.stageAfterPartialSubmission?.hostRetained
     || !development.stageAfterPartialSubmission?.rendererRetained
     || development.stageAfterPartialSubmission?.animationState !== "running"

@@ -306,17 +306,50 @@ function rendererBindingManifest(binding) {
 
 function rendererManifest(registration, surface) {
   const value = registration.value;
+  const targetKind = String(value.target.kind || "layout");
   return Object.freeze({
     id: registration.id,
     name: String(value.name),
     surface,
-    target: Object.freeze({
-      layoutElementId: String(value.target.layoutElementId),
-      layoutScope: String(value.target.layoutScope || "moment"),
-      layoutLayerId: String(value.target.layoutLayerId || "")
-    }),
+    target: targetKind === "rosterItem"
+      ? Object.freeze({
+          kind: "rosterItem",
+          semanticRole: String(value.target.semanticRole),
+          source: String(value.target.source),
+          playerIdSource: String(value.target.playerIdSource)
+        })
+      : Object.freeze({
+          kind: "layout",
+          layoutElementId: String(value.target.layoutElementId),
+          layoutScope: String(value.target.layoutScope || "moment"),
+          layoutLayerId: String(value.target.layoutLayerId || "")
+        }),
     bindings: Object.freeze(value.bindings.map(rendererBindingManifest))
   });
+}
+
+function assertRendererRosterModel(registration, model, players) {
+  if (String(registration.value.target.kind || "layout") !== "rosterItem") return;
+  const target = registration.value.target;
+  const selected = rendererPathValue(model, target.source);
+  if (!Array.isArray(selected)) throw new Error(`model.${target.source} must be an array`);
+  const publicPlayerIds = new Set(players.map((player) => String(player.id || "")));
+  const playerIds = new Set();
+  for (let index = 0; index < selected.length; index += 1) {
+    const item = selected[index];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`model.${target.source}[${index}] must be an object`);
+    }
+    const playerId = String(rendererPathValue(item, target.playerIdSource) ?? "").trim();
+    if (!playerId || playerIds.has(playerId)) {
+      throw new Error(`model.${target.source} contains an empty or duplicate player id "${playerId}"`);
+    }
+    if (!publicPlayerIds.has(playerId)) {
+      throw new Error(`model.${target.source} contains foreign player id "${playerId}"`);
+    }
+    playerIds.add(playerId);
+    assertRendererCollectionModel(registration.value.bindings, item, `model.${target.source}[${playerId}]`);
+  }
 }
 
 function rendererPathValue(root, path) {
@@ -380,7 +413,10 @@ function createGameRendererRuntime({ stageRenderers = [], controllerRenderers = 
       try {
         const selected = registration.value.select(context);
         assertJsonValue(selected, `Game renderer "${registration.id}" view model`);
-        assertRendererCollectionModel(registration.value.bindings, selected);
+        assertRendererRosterModel(registration, selected, players);
+        if (String(registration.value.target.kind || "layout") !== "rosterItem") {
+          assertRendererCollectionModel(registration.value.bindings, selected);
+        }
         result[registration.id] = cloneJson(selected, null);
       } catch (error) {
         createRuntimeFault(room, {

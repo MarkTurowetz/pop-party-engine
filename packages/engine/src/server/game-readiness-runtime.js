@@ -1,6 +1,7 @@
 "use strict";
 
 const {
+  coreSemanticRoleDefinitions,
   normalizeSemanticRoleMap,
   semanticRoleTargetKey,
   validateSemanticRoleDocument
@@ -81,6 +82,24 @@ function artComponentForId(components, componentId, compositions, visited = new 
   return null;
 }
 
+function artComponentMatchForId(components, componentId, compositions, visited = new Set(), root = null) {
+  for (const component of components || []) {
+    const anchor = root || component;
+    if ([component.id, component.instanceLabel, component.name].some((value) => String(value || "") === componentId)) {
+      return { component, root: anchor };
+    }
+    const nested = artComponentMatchForId(component.children, componentId, compositions, visited, anchor);
+    if (nested) return nested;
+    const referenceId = String(component.artCompositionId || "");
+    if (String(component.kind || "").toLowerCase() !== "reference" || !referenceId || visited.has(referenceId)) continue;
+    const referenced = compositions.get(referenceId);
+    if (!referenced) continue;
+    const match = artComponentMatchForId(referenced.components, componentId, compositions, new Set([...visited, referenceId]), anchor);
+    if (match) return match;
+  }
+  return null;
+}
+
 function validateRendererItemContract({ registration, binding, surface, compositions }) {
   const compositionId = String(binding.item?.artCompositionId || "");
   const composition = compositions.get(compositionId);
@@ -90,7 +109,7 @@ function validateRendererItemContract({ registration, binding, surface, composit
   for (const child of binding.item.bindings || []) {
     const targetId = String(child.targetComponentId || "");
     const target = targetId ? artComponentForId(composition.components, targetId, compositions, new Set([compositionId])) : null;
-    if ((child.kind === "text" || child.kind === "component") && !target) {
+    if ((child.kind === "text" || child.kind === "component" || (child.kind === "state" && targetId)) && !target) {
       readinessFailure("PLUGIN_RENDERER_COLLECTION_COMPONENT_INVALID", `Renderer "${registration.id}" collection binding targets an unknown Art component`, { rendererId: registration.id, compositionId, targetComponentId: targetId });
     }
     if (child.kind === "collection") {
@@ -102,10 +121,41 @@ function validateRendererItemContract({ registration, binding, surface, composit
   }
 }
 
-function validateRendererContentContracts(game, gameData) {
+function validateRosterRendererContract({ registration, compositions, semanticRoles }) {
+  const role = String(registration.value.target.semanticRole || "");
+  const compositionId = String(semanticRoles?.[role]?.compositionId || "");
+  const composition = compositions.get(compositionId);
+  if (!composition || String(composition.surface || "").toLowerCase() !== "stage") {
+    readinessFailure("PLUGIN_RENDERER_ROSTER_COMPOSITION_INVALID", `Renderer "${registration.id}" roster target does not resolve to a Stage Art composition`, { rendererId: registration.id, role, compositionId });
+  }
+  const reserved = new Set(coreSemanticRoleDefinitions[role]?.requiredInstanceLabels || []);
+  for (const binding of registration.value.bindings || []) {
+    const targetId = String(binding.targetComponentId || "");
+    const match = artComponentMatchForId(composition.components, targetId, compositions, new Set([compositionId]));
+    if (!match) {
+      readinessFailure("PLUGIN_RENDERER_ROSTER_COMPONENT_INVALID", `Renderer "${registration.id}" targets an unknown Player Widget Art component`, { rendererId: registration.id, role, compositionId, targetComponentId: targetId });
+    }
+    const rootLabel = String(match.root.instanceLabel || "");
+    if (reserved.has(rootLabel)) {
+      readinessFailure("PLUGIN_RENDERER_ROSTER_ENGINE_COMPONENT_RESERVED", `Renderer "${registration.id}" cannot bind an engine-owned Player Widget component`, { rendererId: registration.id, role, targetComponentId: targetId, reservedRoot: rootLabel });
+    }
+    if (binding.kind === "collection") {
+      if (String(match.component.kind || "").toLowerCase() !== "container") {
+        readinessFailure("PLUGIN_RENDERER_ROSTER_COLLECTION_TARGET_INVALID", `Renderer "${registration.id}" roster collection must target an Art Manager container`, { rendererId: registration.id, compositionId, targetComponentId: targetId });
+      }
+      validateRendererItemContract({ registration, binding, surface: "stage", compositions });
+    }
+  }
+}
+
+function validateRendererContentContracts(game, gameData, semanticRoles) {
   const compositions = new Map((gameData.defaultArtCompositions || []).map((composition) => [String(composition.id || ""), composition]));
   for (const [kind, surface] of [["stageRenderers", "stage"], ["controllerRenderers", "controller"]]) {
     for (const registration of game.registrations?.[kind] || []) {
+      if (String(registration.value.target.kind || "layout") === "rosterItem") {
+        validateRosterRendererContract({ registration, compositions, semanticRoles });
+        continue;
+      }
       const collections = (registration.value.bindings || []).filter((binding) => binding.kind === "collection");
       if (!collections.length) continue;
       const candidates = layoutElementsForRenderer(gameData, surface, registration.value.target);
@@ -143,7 +193,7 @@ function createGameReleaseValidator(options = {}) {
     if (!gameData || typeof gameData !== "object") readinessFailure("BUNDLE_GAME_DATA_INVALID", "Active content did not materialize complete game runtime data");
     const semanticRoles = semanticRolesFrom(snapshot);
     assertExpectedSemanticRoles(game.semanticRoles, semanticRoles);
-    validateRendererContentContracts(game, gameData);
+    validateRendererContentContracts(game, gameData, semanticRoles);
     for (const registration of game.registrations?.validators || []) {
       if (typeof registration.value !== "function") readinessFailure("PLUGIN_VALIDATOR_INVALID", "Game validator registration is not callable", { id: registration.id });
       const validation = await registration.value({ game, gameData, release, semanticRoles, snapshot });

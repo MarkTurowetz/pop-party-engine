@@ -33,6 +33,7 @@ interface TreeRenderer {
   viewForComponentId?: (componentId: string) => { element?: El } | null;
   dispose?: () => void;
 }
+type RendererOverrides = { textOverrides?: Dict; componentOverrides?: Dict };
 
 declare global {
   interface Window {
@@ -261,6 +262,32 @@ export function runtimeAvatarsComposition(composition: Dict, player: Dict): Dict
   return cloneArtComposition(composition, (component) => applyRuntimePlayerColor(component, color));
 }
 
+function cloneRendererExtensionComponent(component: Dict, options: RendererOverrides, compositionId = ""): Dict {
+  const targets = [component.id, component.instanceLabel, component.name]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const qualifiedTargets = [
+    ...targets.map((value) => compositionId ? `${compositionId}/${value}` : ""),
+    ...targets
+  ].filter(Boolean);
+  const componentOverrides = options.componentOverrides || {};
+  const componentKey = qualifiedTargets.find((value) => Object.prototype.hasOwnProperty.call(componentOverrides, value));
+  const componentOverride = componentKey && typeof componentOverrides[componentKey] === "object"
+    ? componentOverrides[componentKey] as Dict
+    : {};
+  const clone: Dict = {
+    ...component,
+    ...componentOverride,
+    children: ((component.children as Dict[]) || []).map((child) => cloneRendererExtensionComponent(child, options, compositionId))
+  };
+  const textOverrides = options.textOverrides || {};
+  const textKey = qualifiedTargets.find((value) => Object.prototype.hasOwnProperty.call(textOverrides, value));
+  if (["text", "badge"].includes(String(clone.kind || "").toLowerCase()) && textKey) {
+    clone.defaultText = String(textOverrides[textKey] ?? "");
+  }
+  return clone;
+}
+
 class PlayerRosterRenderer {
   host?: El;
   document: Document;
@@ -272,6 +299,8 @@ class PlayerRosterRenderer {
   tileGameObjects = new Map<string, GameObjectLike>();
   tileRenderers = new WeakMap<El, TreeRenderer>();
   tilePlayers = new WeakMap<El, Dict>();
+  tileRendererExtensions = new WeakMap<El, Map<string, RendererOverrides>>();
+  tileRendererExtensionSignatures = new WeakMap<El, Map<string, string>>();
   pointPopupRenderers = new WeakMap<El, TreeRenderer>();
   resizeObserver: ResizeObserver | null = null;
   renderedAnswersShown = false;
@@ -342,15 +371,62 @@ class PlayerRosterRenderer {
       if (!composition) return null;
       const player = this.tilePlayers.get(tile) || {};
       const color = String((player.avatar as Dict)?.color || "#22d3ee");
+      let resolved: Dict;
       if (id === "player-answer-bubble" || String(composition.name || "").trim().toLowerCase() === "player answer bubble") {
-        return runtimeAnswerBubbleComposition(composition, this.answerStateFor(player));
-      }
-      if (id === "player-name-widget") return runtimePlayerNameWidgetComposition(composition, player);
-      if (id === "player-vip-widget") return runtimePlayerVipWidgetComposition(composition);
-      if (id === this.roleCompositionId(PLAYER_AVATAR_ROLE)) return runtimePlayerAvatarMcComposition(composition, player);
-      if (id === "avatars") return runtimeAvatarsComposition(composition, player);
-      return cloneArtComposition(composition, (component) => applyRuntimePlayerColor(component, color));
+        resolved = runtimeAnswerBubbleComposition(composition, this.answerStateFor(player));
+      } else if (id === "player-name-widget") resolved = runtimePlayerNameWidgetComposition(composition, player);
+      else if (id === "player-vip-widget") resolved = runtimePlayerVipWidgetComposition(composition);
+      else if (id === this.roleCompositionId(PLAYER_AVATAR_ROLE)) resolved = runtimePlayerAvatarMcComposition(composition, player);
+      else if (id === "avatars") resolved = runtimeAvatarsComposition(composition, player);
+      else resolved = cloneArtComposition(composition, (component) => applyRuntimePlayerColor(component, color));
+      const extensions = this.rendererExtensionOverrides(tile);
+      return {
+        ...resolved,
+        components: ((resolved.components as Dict[]) || []).map((component) => cloneRendererExtensionComponent(component, extensions, id))
+      };
     };
+  }
+
+  rendererExtensionOverrides(tile: El): RendererOverrides {
+    const textOverrides: Dict = {};
+    const componentOverrides: Dict = {};
+    for (const extension of this.tileRendererExtensions.get(tile)?.values() || []) {
+      Object.assign(textOverrides, extension.textOverrides || {});
+      for (const [target, value] of Object.entries(extension.componentOverrides || {})) {
+        componentOverrides[target] = { ...((componentOverrides[target] as Dict | undefined) || {}), ...((value as Dict) || {}) };
+      }
+    }
+    return { textOverrides, componentOverrides };
+  }
+
+  rosterItemForPlayer(playerId: string): { tile: El; host: El; renderer: TreeRenderer; composition: Dict; player: Dict } | null {
+    const tile = this.host?.querySelector<El>(`:scope > .player-tile[data-player-id="${CSS.escape(playerId)}"]`) || null;
+    const host = tile?.querySelector<El>(":scope > .player-object-art-host") || null;
+    const player = tile ? this.tilePlayers.get(tile) : null;
+    const composition = player ? this.playerObjectCompositionFor(player) : null;
+    const renderer = tile ? this.rendererFor(tile) : null;
+    return tile && host && player && composition && renderer ? { tile, host, renderer, composition, player } : null;
+  }
+
+  applyRendererExtension(manifestId: string, playerId: string, overrides: RendererOverrides): ReturnType<PlayerRosterRenderer["rosterItemForPlayer"]> {
+    const item = this.rosterItemForPlayer(playerId);
+    if (!item) return null;
+    let extensions = this.tileRendererExtensions.get(item.tile);
+    if (!extensions) {
+      extensions = new Map();
+      this.tileRendererExtensions.set(item.tile, extensions);
+    }
+    let signatures = this.tileRendererExtensionSignatures.get(item.tile);
+    if (!signatures) {
+      signatures = new Map();
+      this.tileRendererExtensionSignatures.set(item.tile, signatures);
+    }
+    const signature = JSON.stringify(overrides);
+    if (signatures.get(manifestId) === signature) return item;
+    extensions.set(manifestId, overrides);
+    signatures.set(manifestId, signature);
+    this.syncPlayerObject(item.tile, item.player, { instant: true });
+    return this.rosterItemForPlayer(playerId);
   }
 
   rendererFor(tile: El): TreeRenderer | null {
@@ -402,7 +478,10 @@ class PlayerRosterRenderer {
     const previousAnswerText = tile.dataset.answerBubbleText || "";
     const previousAnswerCorrectness = tile.dataset.answerBubbleCorrectness || "";
 
-    renderer.render(runtimePlayerWidgetComponents(composition, player), canvas, {
+    const extensions = this.rendererExtensionOverrides(tile);
+    renderer.render(runtimePlayerWidgetComponents(composition, player).map((component) =>
+      cloneRendererExtensionComponent(component, extensions, String(composition.id || ""))
+    ), canvas, {
       instant: true
     });
 

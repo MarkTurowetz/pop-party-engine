@@ -428,6 +428,54 @@ describe("game plugin ABI", () => {
     expect(room.runtimeFault).toMatchObject({ code: "GAME_PLUGIN_RENDERER_FAILED" });
   });
 
+  it("publishes Stage roster-item extensions and rejects duplicate or foreign public player keys", () => {
+    const plugin = defineGamePlugin({
+      namespace: "roster",
+      register(registry) {
+        registry.stageRenderers("roster.tableau", {
+          name: "Roster tableau",
+          target: {
+            kind: "rosterItem",
+            semanticRole: "engine.stage.playerIdentityWidget",
+            source: "players",
+            playerIdSource: "playerId"
+          },
+          bindings: [
+            { id: "score", kind: "text", source: "score", targetComponentId: "gameScore" },
+            {
+              id: "rows", kind: "collection", source: "rows", targetComponentId: "gameRows",
+              item: { keySource: "id", artCompositionId: "game-row", bindings: [] }
+            }
+          ],
+          select: (context) => ({ players: context.state.players })
+        });
+      }
+    });
+    const registrations = createGamePluginRegistry().install(plugin);
+    const runtime = createGameRendererRuntime({ stageRenderers: registrations.stageRenderers });
+    const room = {
+      phase: "play",
+      gamePluginState: { roster: { players: [{ playerId: "p1", score: "12", rows: [] }] } },
+      flowVariables: {},
+      players: new Map([["p1", { id: "p1", name: "Ava", active: true }]])
+    };
+
+    expect(runtime.manifests[0].target).toEqual({
+      kind: "rosterItem",
+      semanticRole: "engine.stage.playerIdentityWidget",
+      source: "players",
+      playerIdSource: "playerId"
+    });
+    expect(runtime.viewModels(room)["roster.tableau"].players[0]).toMatchObject({ playerId: "p1", score: "12" });
+
+    room.gamePluginState.roster.players.push({ playerId: "p1", score: "duplicate", rows: [] });
+    expect(runtime.viewModels(room)["roster.tableau"]).toBeNull();
+    room.runtimeFault = null;
+    room.gamePluginState.roster.players = [{ playerId: "p2", score: "foreign", rows: [] }];
+    expect(runtime.viewModels(room)["roster.tableau"]).toBeNull();
+    expect(room.runtimeFault).toMatchObject({ code: "GAME_PLUGIN_RENDERER_FAILED" });
+  });
+
   it("runs authenticated current-player and private per-player input barriers", async () => {
     const registrations = createGamePluginRegistry().install(fixturePlugin()).inputs;
     expect(pluginFlowActionTypes(registrations)[0]).toMatchObject({ category: "input", primaryOnly: true });
