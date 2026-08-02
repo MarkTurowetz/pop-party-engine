@@ -331,7 +331,7 @@ module.exports = Object.freeze([
         }
       }],
       select(context) {
-        const count = Number(context.state.count || 0);
+        const count = Number(context.flow.collectionCount || 0);
         const all = cards(count);
         return { rows: [
           { id: "top", state: "On", cards: all.filter((card) => card.id !== "c") },
@@ -346,7 +346,7 @@ module.exports = Object.freeze([
       name: "Fixture Flat Hand",
       target: { layoutElementId: "fixture-flat-cards", layoutScope: "global" },
       bindings: [{ id: "cards", kind: "collection", source: "cards", item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings } }],
-      select(context) { return { cards: cards(Number(context.state.count || 0)) }; }
+      select(context) { return { cards: cards(Number(context.flow.collectionCount || 0)) }; }
     }
   },
   {
