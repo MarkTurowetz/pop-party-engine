@@ -196,4 +196,59 @@ describe("game readiness runtime", () => {
     gameData.defaultArtCompositions[0].components[0].kind = "shape";
     await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_NESTED_COLLECTION_TARGET_INVALID" });
   });
+
+  it("validates roster extensions against the Player Widget while reserving engine-owned subtrees", async () => {
+    const semantic = semanticFixture();
+    const playerWidgetId = semantic.roles["engine.stage.playerIdentityWidget"].compositionId;
+    const registration = {
+      id: "fixture.roster",
+      value: {
+        target: {
+          kind: "rosterItem",
+          semanticRole: "engine.stage.playerIdentityWidget",
+          source: "players",
+          playerIdSource: "playerId"
+        },
+        bindings: [
+          { id: "score", kind: "text", source: "score", targetComponentId: "game-score" },
+          {
+            id: "rows", kind: "collection", source: "rows", targetComponentId: "game-rows",
+            item: { keySource: "id", artCompositionId: "game-row", bindings: [] }
+          }
+        ]
+      }
+    };
+    const { game, release, snapshot } = fixture({
+      game: { registrations: { validators: [], stageRenderers: [registration], controllerRenderers: [] } }
+    });
+    const gameData = {
+      defaultStageLayouts: { states: [] },
+      defaultControllerLayouts: { states: [] },
+      defaultArtCompositions: [
+        {
+          id: playerWidgetId,
+          surface: "stage",
+          compositionKind: "prefab",
+          components: [
+            { id: "answer", instanceLabel: "playerAnswerBubbleMC", kind: "reference", artCompositionId: "answer" },
+            { id: "avatar", instanceLabel: "playerAvatarMC", kind: "reference", artCompositionId: "avatar" },
+            { id: "name", instanceLabel: "playerNameMC", kind: "reference", artCompositionId: "name" },
+            { id: "vip", instanceLabel: "vipMC", kind: "reference", artCompositionId: "vip" },
+            { id: "points", instanceLabel: "pointPopupContainer", kind: "container" },
+            { id: "game-score", kind: "text" },
+            { id: "game-rows", kind: "container" }
+          ]
+        },
+        { id: "game-row", surface: "stage", compositionKind: "gameObject", components: [] }
+      ]
+    };
+    const validateRelease = createGameReleaseValidator({ gameDefinition: game, engineVersion: "1.0.0" });
+
+    await expect(validateRelease({ gameData, release, snapshot })).resolves.toMatchObject({ release: { contentRevision: "content-1" } });
+    registration.value.bindings[0].targetComponentId = "playerAvatarMC";
+    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_ROSTER_ENGINE_COMPONENT_RESERVED" });
+    registration.value.bindings[0].targetComponentId = "game-score";
+    gameData.defaultArtCompositions[0].components.find((component) => component.id === "game-rows").kind = "shape";
+    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_ROSTER_COLLECTION_TARGET_INVALID" });
+  });
 });

@@ -265,6 +265,18 @@ concepts into focused modules.
     references, while dynamic duplicate keys or non-JSON-safe models fault that projection before
     publication. Stage collection updates remain within the Stage projection's frame-coalesced
     renderer slice; Controller-private projections do not invalidate Stage.
+  - A Stage renderer may instead target the existing player roster with
+    `target: { kind: "rosterItem", semanticRole: "engine.stage.playerIdentityWidget", source,
+    playerIdSource }`. The selected source is a public array keyed by player ID; each matching model
+    layers text, component, lifecycle-state, and recursive collection bindings onto that player's
+    existing Player Widget renderer. Readiness resolves targets through the authored Player Widget
+    composition and rejects bindings inside the engine-owned answer, avatar, name, VIP, and points
+    subtrees. Empty, duplicate, foreign, private, or non-JSON-safe player models fault closed.
+    Stable roster tiles, root renderers, animation timelines, and nested keyed items are reconciled
+    in place. Active game-plugin input recipients participate in the public `needsInput` signal, so
+    their existing avatar plays Choosing Start and, after submission, Choosing End; that deliberate
+    public roster change may apply only the Stage roster slice while unrelated Controller-private
+    transitions remain invisible to Stage.
   - Controller Layout supports named persistent layers in addition to Global and the active state.
     Each layer has a normalized ID and explicit z-index, remains mounted across active-state visits,
     and can be hidden per state without clearing its DOM node, Art renderer, or timeline. Runtime

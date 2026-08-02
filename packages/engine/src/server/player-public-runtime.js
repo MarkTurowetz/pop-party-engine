@@ -9,6 +9,7 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     const hasActiveChoiceInput = Boolean(room.choiceInputActionId) && room.choiceInputActionId === currentActionId;
     const hasActiveTextInput = Boolean(room.textInputActionId) && room.textInputActionId === currentActionId;
     const hasActiveMicrophoneAccess = Boolean(room.microphoneAccessActionId) && room.microphoneAccessActionId === currentActionId;
+    const hasActivePluginInput = Boolean(room.gamePluginInputActionId) && room.gamePluginInputActionId === currentActionId;
     const answer = hasActiveChoiceInput ? choiceAnswer : hasActiveTextInput ? textAnswer : null;
     const needsChoiceInput = hasActiveChoiceInput && (
       room.choiceInputMode === "continuous" || !choiceAnswer
@@ -23,6 +24,9 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     const needsMicrophoneAccess = hasActiveMicrophoneAccess
       && microphoneAccessIsForPlayer
       && room.microphoneAccessAnswers?.get(player.id)?.done !== true;
+    const needsPluginInput = hasActivePluginInput
+      && room.gamePluginInputRecipientIds?.has(player.id) === true
+      && !room.gamePluginInputSubmissions?.has(player.id);
     const serializeAnswer = (value) => value ? {
       optionIndex: value.optionIndex,
       originalOptionIndex: value.originalOptionIndex,
@@ -42,7 +46,7 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
       points: Number(player.points || 0),
       pendingPoints: Number(player.pendingPoints || 0),
       isVip: player.id === room.vipPlayerId,
-      needsInput: player.active === true && (needsChoiceInput || needsTextInput || needsMicrophoneAccess),
+      needsInput: player.active === true && (needsChoiceInput || needsTextInput || needsMicrophoneAccess || needsPluginInput),
       input: choiceInputPayload(room, currentAction, player),
       answer: serializeAnswer(answer),
       displayedAnswer: serializeAnswer(displayedAnswer)
