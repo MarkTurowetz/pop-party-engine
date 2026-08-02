@@ -100,6 +100,34 @@ const flipSevenBackEdge: FlowGraphConnection = {
   labelKind: "branch-no-match"
 };
 
+function overlappingBackEdges(): {
+  nodes: FlowGraphNode[];
+  connections: FlowGraphConnection[];
+} {
+  const target = { ...nodes()[1], id: "earlier-target", x: 500, y: 100 };
+  const sources = [700, 900, 1100].map((y, index) => ({
+    ...nodes()[0],
+    id: `later-source-${index + 1}`,
+    x: 300,
+    y,
+    selected: false
+  }));
+  return {
+    nodes: [
+      { ...nodes()[0], id: "left-edge-overlap", x: 0, y: 200, height: 1000, selected: false },
+      target,
+      ...sources
+    ],
+    connections: sources.map((source, index) => ({
+      id: `${source.id}->${target.id}`,
+      from: source.id,
+      to: target.id,
+      label: `Back ${index + 1}`,
+      labelKind: "branch-no-match" as const
+    }))
+  };
+}
+
 describe("FlowNodeCanvas", () => {
   it("places a command-dragged action beside its drop target", () => {
     const [source, target] = nodes();
@@ -143,6 +171,16 @@ describe("FlowNodeCanvas", () => {
     expect(markup).toContain('data-wire-label-kind="branch-code"');
     expect(markup).toContain("x &gt; 3");
     expect(markup).toContain(">C</text>");
+  });
+
+  it("renders a destination arrow on main-canvas and minimap connections", () => {
+    const markup = renderToStaticMarkup(
+      <FlowNodeCanvas depth="subroutine" nodes={nodes(true)} connections={[jumpConnection]} />
+    );
+
+    expect(markup).toContain('marker-end="url(#flow-wire-highlight-destination-arrow)"');
+    expect(markup).toContain('marker-end="url(#flow-minimap-wire-highlight-destination-arrow)"');
+    expect(markup.match(/data-wire-destination-arrow="true"/g)).toHaveLength(2);
   });
 
   it("renders node timing and value badges together", () => {
@@ -190,6 +228,19 @@ describe("FlowNodeCanvas", () => {
     expect(route.points[2].x).toBeGreaterThan(802);
     expect(route.points.at(-1)?.x).toBe(802);
     expect(route.bounds.minX).toBeGreaterThanOrEqual(302);
+  });
+
+  it("moves subsequent overlapping backward routes into distinct outward corridors", () => {
+    const fixture = overlappingBackEdges();
+    const geometry = buildFlowGraphGeometry(fixture.nodes, fixture.connections);
+    const corridorXs = fixture.connections.map(
+      (connection) => geometry.routes.get(connection.id)?.corridor?.x
+    );
+
+    expect(corridorXs.every((value) => typeof value === "number")).toBe(true);
+    expect(corridorXs[1]! - corridorXs[0]!).toBeGreaterThanOrEqual(48);
+    expect(corridorXs[2]! - corridorXs[1]!).toBeGreaterThanOrEqual(48);
+    expect(new Set(corridorXs).size).toBe(corridorXs.length);
   });
 
   it("keeps complete routes, labels, and stroke clearance inside normalized world bounds", () => {

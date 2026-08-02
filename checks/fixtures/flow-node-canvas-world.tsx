@@ -58,6 +58,32 @@ const initialNodes: FlowGraphNode[] = [
     selected: false
   },
   {
+    id: "opening-deal-complete-2",
+    kind: "action",
+    title: "Branch on Second Back Edge",
+    subtitle: "decision",
+    timing: "",
+    x: 302,
+    y: 5000,
+    width: 260,
+    height: 134,
+    className: "is-decision",
+    selected: false
+  },
+  {
+    id: "opening-deal-complete-3",
+    kind: "action",
+    title: "Branch on Third Back Edge",
+    subtitle: "decision",
+    timing: "",
+    x: 302,
+    y: 5214,
+    width: 260,
+    height: 134,
+    className: "is-decision",
+    selected: false
+  },
+  {
     id: "connect-source",
     kind: "action",
     title: "Connect Source",
@@ -91,6 +117,20 @@ const connections: FlowGraphConnection[] = [
     from: "opening-deal-complete",
     to: "draw-opening-card",
     label: "No Match",
+    labelKind: "branch-no-match"
+  },
+  {
+    id: "opening-deal-complete-2->draw-opening-card:no-match",
+    from: "opening-deal-complete-2",
+    to: "draw-opening-card",
+    label: "No Match 2",
+    labelKind: "branch-no-match"
+  },
+  {
+    id: "opening-deal-complete-3->draw-opening-card:no-match",
+    from: "opening-deal-complete-3",
+    to: "draw-opening-card",
+    label: "No Match 3",
     labelKind: "branch-no-match"
   },
   {

@@ -46,8 +46,27 @@ async function main() {
       const minimapPath = document.querySelector(
         '[data-minimap-wire-id="opening-deal-complete->draw-opening-card:no-match"]'
       );
+      const backwardIds = [
+        "opening-deal-complete->draw-opening-card:no-match",
+        "opening-deal-complete-2->draw-opening-card:no-match",
+        "opening-deal-complete-3->draw-opening-card:no-match"
+      ];
+      const backwardWires = backwardIds.map((id) =>
+        document.querySelector(`[data-wire-id="${id}"]`)
+      );
+      const backwardMinimapPaths = backwardIds.map((id) =>
+        document.querySelector(`[data-minimap-wire-id="${id}"]`)
+      );
+      const destinationMarker = document.querySelector("#flow-wire-destination-arrow");
       if (!graph || !svg || !path || !label || !minimapSvg || !minimapPath) {
         throw new Error("Flow canvas geometry elements did not render");
+      }
+      if (
+        backwardWires.some((wire) => !wire) ||
+        backwardMinimapPaths.some((wire) => !wire) ||
+        !destinationMarker
+      ) {
+        throw new Error("Backward corridor or destination-arrow elements did not render");
       }
       const pathBox = path.getBBox();
       const labelBox = label.getBBox();
@@ -75,7 +94,17 @@ async function main() {
           y: minimapPathRect.top - minimapRect.top,
           width: minimapPathRect.width,
           height: minimapPathRect.height
-        }
+        },
+        backwardCorridorXs: backwardWires.map((wire) =>
+          Number(wire.getAttribute("data-wire-corridor-x"))
+        ),
+        mainArrowMarkers: backwardWires.map(
+          (wire) => wire.querySelector("path")?.getAttribute("marker-end") || ""
+        ),
+        minimapArrowMarkers: backwardMinimapPaths.map(
+          (wire) => wire.getAttribute("marker-end") || ""
+        ),
+        destinationMarkerOrient: destinationMarker.getAttribute("orient")
       };
     });
 
@@ -117,6 +146,29 @@ async function main() {
       0,
       geometry.minimapHeight,
       "minimap wire bottom clipped"
+    );
+    assert.ok(
+      geometry.backwardCorridorXs[1] - geometry.backwardCorridorXs[0] >= 48 &&
+        geometry.backwardCorridorXs[2] - geometry.backwardCorridorXs[1] >= 48,
+      `backward corridors overlap: ${geometry.backwardCorridorXs.join(", ")}`
+    );
+    assert.equal(
+      new Set(geometry.backwardCorridorXs).size,
+      geometry.backwardCorridorXs.length,
+      "backward routes reused a vertical corridor"
+    );
+    assert.ok(
+      geometry.mainArrowMarkers.every((value) => value.includes("destination-arrow")),
+      "main-canvas connections are missing destination arrows"
+    );
+    assert.ok(
+      geometry.minimapArrowMarkers.every((value) => value.includes("destination-arrow")),
+      "minimap connections are missing destination arrows"
+    );
+    assert.equal(
+      geometry.destinationMarkerOrient,
+      "auto",
+      "destination arrow does not follow the connection direction"
     );
 
     async function navigateMinimapToLabel() {

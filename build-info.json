@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1252",
+  "version": "1.0.17.1253",
   "baseVersion": "1.0.17",
-  "buildNumber": 1252,
-  "commit": "6be9212b",
-  "branch": "codex/widget-background-build-skill",
-  "generatedAt": "2026-08-02T01:51:29.314Z"
+  "buildNumber": 1253,
+  "commit": "c2e1baf0",
+  "branch": "codex/flow-wire-corridors-arrows",
+  "generatedAt": "2026-08-02T07:15:48.117Z"
 }
