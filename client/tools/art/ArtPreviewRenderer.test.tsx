@@ -323,4 +323,31 @@ describe("ArtPreviewRenderer transform origins", () => {
 
     expect(markup).toContain("First<br /><strong>Second</strong>");
   });
+
+  it("renders scoped overlays inside collection target components", () => {
+    const container = {
+      id: "cards-slot",
+      kind: "container",
+      x: 150,
+      y: 60,
+      width: 280,
+      height: 100,
+      children: []
+    } as ArtComponent;
+    const markup = renderToStaticMarkup(
+      <ArtPreviewRenderer
+        components={[container]}
+        compositionById={new Map()}
+        interactive={false}
+        renderComponentOverlay={(component, scopedTargetId) =>
+          component.id === "cards-slot"
+            ? <span data-test-component-overlay={scopedTargetId}>Nested preview</span>
+            : null
+        }
+      />
+    );
+
+    expect(markup).toContain('data-test-component-overlay="cards-slot"');
+    expect(markup).toContain("Nested preview");
+  });
 });

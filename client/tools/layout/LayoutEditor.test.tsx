@@ -222,4 +222,219 @@ describe("LayoutEditor", () => {
     expect(markup).toContain('data-layout-element-tag="Phase One"');
     expect(markup).toContain('<option value="Off" selected="">Off</option>');
   });
+
+  it("previews flat and nested Stage renderer collections from their own manifests", () => {
+    const api = fakeApi();
+    const stageLayouts = layouts();
+    stageLayouts.states.push({
+      id: "renderer-preview",
+      name: "Renderer Preview",
+      elements: [
+        {
+          id: "flat-cards",
+          name: "Flat Cards",
+          kind: "collection",
+          x: 1250,
+          y: 260,
+          width: 540,
+          height: 160,
+          collectionDirection: "horizontal",
+          collectionAlignment: "center"
+        } as never,
+        {
+          id: "player-rows",
+          name: "Player Rows",
+          kind: "collection",
+          x: 700,
+          y: 600,
+          width: 700,
+          height: 380,
+          collectionDirection: "vertical",
+          collectionAlignment: "center"
+        } as never
+      ]
+    });
+    const stageController = createLayoutController({
+      initialLayouts: stageLayouts,
+      mode: "stage",
+      api
+    });
+    stageController.selectGroup("renderer-preview");
+    const controllerController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "controller",
+      api
+    });
+    const card = {
+      id: "preview-card",
+      name: "Preview Card",
+      surface: "stage",
+      compositionKind: "gameObject",
+      canvas: { width: 100, height: 140 },
+      components: [{
+        id: "label",
+        name: "Label",
+        kind: "text",
+        x: 50,
+        y: 70,
+        width: 80,
+        height: 40,
+        defaultText: "CARD"
+      }]
+    } as ArtComposition;
+    const row = {
+      id: "preview-row",
+      name: "Preview Row",
+      surface: "stage",
+      compositionKind: "gameObject",
+      canvas: { width: 600, height: 150 },
+      components: [{
+        id: "cards-slot",
+        name: "Cards Slot",
+        kind: "container",
+        childDistribution: "horizontal",
+        x: 300,
+        y: 75,
+        width: 580,
+        height: 140,
+        children: []
+      }]
+    } as ArtComposition;
+    const cardBindings = [
+      {
+        id: "label",
+        kind: "text",
+        source: "label",
+        targetComponentId: "label",
+        fallback: "PREVIEW CARD"
+      }
+    ];
+    const markup = renderToStaticMarkup(
+      <LayoutEditor
+        artCompositions={[card, row]}
+        stageController={stageController}
+        controllerController={controllerController}
+        gamePluginRenderers={[
+          {
+            id: "fixture.flat",
+            surface: "stage",
+            target: { layoutElementId: "flat-cards" },
+            bindings: [{
+              id: "cards",
+              kind: "collection",
+              source: "cards",
+              item: {
+                keySource: "id",
+                artCompositionId: "preview-card",
+                bindings: cardBindings
+              }
+            }]
+          },
+          {
+            id: "fixture.rows",
+            surface: "stage",
+            target: { layoutElementId: "player-rows" },
+            bindings: [{
+              id: "rows",
+              kind: "collection",
+              source: "rows",
+              item: {
+                keySource: "id",
+                artCompositionId: "preview-row",
+                bindings: [{
+                  id: "cards",
+                  kind: "collection",
+                  source: "cards",
+                  targetComponentId: "cards-slot",
+                  item: {
+                    keySource: "id",
+                    artCompositionId: "preview-card",
+                    bindings: cardBindings
+                  }
+                }]
+              }
+            }]
+          }
+        ]}
+      />
+    );
+
+    expect(markup.match(/data-layout-renderer-collection-preview="true"/g)).toHaveLength(2);
+    expect(markup).toContain('data-layout-renderer-nested-collection-preview="cards"');
+    expect(markup).toContain('data-layout-renderer-collection-preview-path="rows/preview-0/cards"');
+    expect(markup).toContain("PREVIEW CARD");
+    expect(markup).toContain('data-layout-react-component="state-list"');
+    expect(markup).not.toContain("data-layout-element-preview-error");
+  });
+
+  it("preserves Controller choiceCollection sample labels", () => {
+    const api = fakeApi();
+    const controllerLayouts = layouts();
+    controllerLayouts.states.push({
+      id: "dynamic-choice",
+      name: "Dynamic Choice",
+      elements: [{
+        id: "choice-host",
+        name: "Choice Host",
+        kind: "collection",
+        x: 195,
+        y: 420,
+        width: 330,
+        height: 400,
+        collectionDirection: "vertical",
+        collectionAlignment: "stretch"
+      } as never]
+    });
+    const controllerController = createLayoutController({
+      initialLayouts: controllerLayouts,
+      mode: "controller",
+      api
+    });
+    controllerController.selectGroup("dynamic-choice");
+    const stageController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api
+    });
+    const markup = renderToStaticMarkup(
+      <LayoutEditor
+        initialMode="controller"
+        artCompositions={[{
+          id: "choice-item",
+          name: "Choice Item",
+          surface: "controller",
+          compositionKind: "gameObject",
+          canvas: { width: 300, height: 80 },
+          components: [{
+            id: "label",
+            name: "Label",
+            kind: "text",
+            x: 150,
+            y: 40,
+            width: 260,
+            height: 50,
+            defaultText: "OPTION"
+          }]
+        } as ArtComposition]}
+        stageController={stageController}
+        controllerController={controllerController}
+        gamePluginInputs={[{
+          controller: {
+            bindings: [{
+              kind: "choiceCollection",
+              layoutElementId: "choice-host",
+              item: {
+                artCompositionId: "choice-item",
+                targetComponentId: "label"
+              }
+            }]
+          }
+        }]}
+      />
+    );
+
+    expect(markup.match(/data-layout-choice-collection-preview-item="true"/g)).toHaveLength(3);
+    expect(markup).toContain("A realistic long private option label");
+    expect(markup).not.toContain("data-layout-renderer-collection-preview-item");
+  });
 });

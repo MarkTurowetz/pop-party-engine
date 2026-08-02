@@ -188,6 +188,13 @@ concepts into focused modules.
     elements and uses the selected tag only to filter the authoring preview. Tags do not change the
     runtime `On`/`Off` initial-state contract or switch controller state until a future explicit
     runtime action adopts that responsibility.
+  - Layout collection previews have two explicit authoring sources. Controller `choiceCollection`
+    inputs render their three private-choice samples from the input binding, while Stage and
+    Controller renderer collections render composition, text/component fallback, and recursive
+    nested-collection samples from the renderer manifest. A renderer-owned collection never depends
+    on a Controller input binding. Each canvas element is wrapped in its own preview error boundary,
+    so malformed future preview data produces an element-scoped diagnostic while layout selection,
+    the sidebar, and the rest of the Tool remain usable.
   - Controller button visuals use four authored prefab layers: the lifecycle wrapper owns
     `Off`/`On`/`Appear`/`Update`/`Disappear`; its interaction child owns
     `Default`/`Down`/`Up`/`HoverIn`/`HoverOut`; the next child owns the stopped `Default` and

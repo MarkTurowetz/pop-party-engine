@@ -9,6 +9,10 @@ import {
 } from "../common/sessionDraftLifecycle";
 import { createLayoutController, type LayoutController } from "./layoutController";
 import { LayoutEditor } from "./LayoutEditor";
+import type {
+  GamePluginInputManifest,
+  GamePluginRendererManifest
+} from "./LayoutCollectionPreview";
 import type { LayoutMode } from "./layoutModel";
 
 export interface MountLayoutEditorOptions {
@@ -94,17 +98,8 @@ export async function mountLayoutEditor(
   let renderVersion = 0;
   let artAssets = loadedArt.assets || [];
   let artCompositions = loadedArt.compositions || [];
-  let gamePluginInputs: Array<{
-    controller?: {
-      bindings?: Array<{ kind: "choiceCollection"; layoutElementId: string; item: { artCompositionId: string; targetComponentId: string } }>;
-      submitted?: { bindings?: Array<{ kind: "choiceCollection"; layoutElementId: string; item: { artCompositionId: string; targetComponentId: string } }> };
-    };
-  }> = [];
-  let gamePluginRenderers: Array<{
-    surface?: "stage" | "controller";
-    target?: { layoutElementId?: string };
-    bindings?: Array<{ kind?: string; item?: { artCompositionId?: string } }>;
-  }> = [];
+  let gamePluginInputs: GamePluginInputManifest[] = [];
+  let gamePluginRenderers: GamePluginRendererManifest[] = [];
   try {
     const config = JSON.parse(doc.getElementById("pop-party-runtime-config")?.textContent || "{}");
     gamePluginInputs = Array.isArray(config?.gamePlugin?.inputs) ? config.gamePlugin.inputs : [];

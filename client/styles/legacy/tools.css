@@ -2636,6 +2636,29 @@ body.tool-dashboard-mode .layout-react-shell {
   cursor: default;
 }
 
+.layout-element-preview-error {
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  padding: 12px;
+  overflow: hidden;
+  border: 3px solid #b42318;
+  border-radius: 12px;
+  color: #5b1711;
+  background: rgba(255, 241, 240, 0.96);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.layout-element-preview-error strong,
+.layout-element-preview-error small {
+  overflow-wrap: anywhere;
+}
+
+.layout-element-preview-error button {
+  justify-self: center;
+}
+
 .layout-art-instance-canvas {
   --art-preview-current-color: #22d3ee;
 }
