@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1250",
+  "version": "1.0.17.1251",
   "baseVersion": "1.0.17",
-  "buildNumber": 1250,
-  "commit": "a0e9439f",
-  "branch": "codex/dynamic-controller-choice-collections-1.3.33",
-  "generatedAt": "2026-08-01T23:54:45.141Z"
+  "buildNumber": 1251,
+  "commit": "94aeb0a9",
+  "branch": "codex/release-engine-1.3.33",
+  "generatedAt": "2026-08-02T00:00:30.387Z"
 }
