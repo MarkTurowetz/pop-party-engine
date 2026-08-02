@@ -177,9 +177,25 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
     expect(nestedText).toMatchObject({
       defaultText: "Party Game Template",
       fontSize: 92,
-      fontColor: "#ffffff",
-      autoFitText: false
+      fontColor: "#ffffff"
     });
+    expect(nestedText.autoFitText).not.toBe(false);
+  });
+
+  it("lets either the Layout field or nested prefab explicitly disable auto-fit", () => {
+    const layoutOptOut = PartyGameLayoutGameObjects.cloneLayoutArtComponent(
+      { id: "text", kind: "text", autoFitText: true },
+      { textStyle: { componentId: "nested/text", fontSize: 58, autoFitText: false } },
+      "nested"
+    );
+    const prefabOptOut = PartyGameLayoutGameObjects.cloneLayoutArtComponent(
+      { id: "text", kind: "text", autoFitText: false },
+      { textStyle: { componentId: "nested/text", fontSize: 58, autoFitText: true } },
+      "nested"
+    );
+
+    expect(layoutOptOut.autoFitText).toBe(false);
+    expect(prefabOptOut.autoFitText).toBe(false);
   });
 
   it("applies data overrides to the deepest scoped component without replacing authored children", () => {

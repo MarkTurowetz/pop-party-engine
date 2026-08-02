@@ -86,13 +86,20 @@ installToolContextAdapter(toolsContext);
 const livePrototypeWorkspace = beginLivePrototypeWorkspace(toolsContext.api.client);
 void livePrototypeWorkspace.then((workspace) => {
   if (!workspace) return;
+  const checkpointBrowserModels = async () => {
+    const result = await checkpointSessionDraftPublishers(() => workspace.save());
+    acceptMountedWorkspaceSave();
+    return result;
+  };
   registerDashboardWorkspaceActions({
-    save: async () => {
-      await checkpointSessionDraftPublishers(() => workspace.save());
-      acceptMountedWorkspaceSave();
-      return true;
+    save: async () => Boolean(await checkpointBrowserModels()),
+    // Sync Now is also a data-preserving authoring checkpoint. This is
+    // essential after a server restart: the registered browser models must be
+    // republished before the recovered session can checkpoint and sync them.
+    sync: async () => {
+      await checkpointBrowserModels();
+      return workspace.syncNow();
     },
-    sync: () => workspace.syncNow(),
     restore: () => workspace.restoreFromGit(),
     subscribe: (listener) => workspace.subscribe(listener)
   });

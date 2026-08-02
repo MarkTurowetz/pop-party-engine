@@ -186,7 +186,12 @@ function cloneLayoutArtComponent(component: Dict, options: Dict = {}, compositio
   ) {
     clone.fontSize = textStyle.fontSize;
     clone.fontColor = textStyle.fontColor;
-    clone.autoFitText = false;
+    // Styling a bound Layout Text Field must not disable the nested prefab's
+    // authored fit contract. An explicit false on either authoring surface may
+    // opt out, while the default preserves auto-fit after runtime text lands.
+    if (Object.prototype.hasOwnProperty.call(textStyle, "autoFitText")) {
+      clone.autoFitText = clone.autoFitText !== false && textStyle.autoFitText !== false;
+    }
   }
   return clone;
 }

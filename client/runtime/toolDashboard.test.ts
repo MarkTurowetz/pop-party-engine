@@ -156,6 +156,27 @@ describe("toolDashboard Save All", () => {
     expect(harness.button.disabled).toBe(false);
   });
 
+  it("checkpoints the workspace when all tools are clean so server recovery cannot deadlock", async () => {
+    const harness = await createDashboardHarness();
+    const workspaceSave = vi.fn(async () => true);
+    harness.registerDashboardTool("flow", {
+      isDirty: () => false,
+      save: vi.fn(),
+      setup: vi.fn()
+    });
+    harness.registerDashboardWorkspaceActions({
+      save: workspaceSave,
+      sync: vi.fn(async () => true),
+      restore: vi.fn(async () => true)
+    });
+
+    harness.setupToolDashboard();
+    await harness.clickSaveAll();
+
+    expect(workspaceSave).toHaveBeenCalledTimes(1);
+    expect(harness.button.textContent).toBe("Save All");
+  });
+
   it("disables Save All only while saving dirty tools", async () => {
     const harness = await createDashboardHarness();
     let finishSave = () => {};

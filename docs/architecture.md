@@ -271,7 +271,13 @@ concepts into focused modules.
     layers text, component, lifecycle-state, and recursive collection bindings onto that player's
     existing Player Widget renderer. Readiness resolves targets through the authored Player Widget
     composition and rejects bindings inside the engine-owned answer, avatar, name, VIP, and points
-    subtrees. Empty, duplicate, foreign, private, or non-JSON-safe player models fault closed.
+    subtrees. An extended Player Widget must also author exactly one top-level Art container with
+    instance label `playerRosterAnchor`. Its center and bounds define the stable identity footprint
+    distributed inside the authored `playerlobby` Layout host, so adding game-owned content outside
+    that footprint cannot move the avatar/name/VIP block. The anchor is reserved from plugin
+    bindings and malformed or ambiguous anchors fault readiness; legacy Player Widgets without a
+    roster extension retain whole-canvas placement. Empty, duplicate, foreign, private, or
+    non-JSON-safe player models fault closed.
     Stable roster tiles, root renderers, animation timelines, and nested keyed items are reconciled
     in place. Active game-plugin input recipients participate in the public `needsInput` signal, so
     their existing avatar plays Choosing Start and, after submission, Choosing End; that deliberate

@@ -57,6 +57,7 @@ const PLAYER_AVATAR_BEHAVIORS_ID = "playerAvatarBehaviors";
 const PLAYER_NAME_MC_ID = "playerNameMC";
 const PLAYER_VIP_MC_ID = "vipMC";
 const AVATAR_FRAME_ID = "avatar";
+export const PLAYER_ROSTER_ANCHOR_INSTANCE_LABEL = "playerRosterAnchor";
 
 type RectLike = { left: number; top: number; width: number; height: number };
 
@@ -141,10 +142,51 @@ function elementDimension(element: El | undefined, dimension: "width" | "height"
 }
 
 function tileDistributionSize(tile: El): DistributedItemSize {
-  const width = Number(tile.dataset.playerObjectWidth || 0) || Number.parseFloat(tile.style.getPropertyValue("--player-object-width")) || 300;
-  const height = Number(tile.dataset.playerObjectHeight || 0) || Number.parseFloat(tile.style.getPropertyValue("--player-object-height")) || 300;
+  const width = Number(tile.dataset.playerRosterAnchorWidth || 0)
+    || Number(tile.dataset.playerObjectWidth || 0)
+    || Number.parseFloat(tile.style.getPropertyValue("--player-object-width"))
+    || 300;
+  const height = Number(tile.dataset.playerRosterAnchorHeight || 0)
+    || Number(tile.dataset.playerObjectHeight || 0)
+    || Number.parseFloat(tile.style.getPropertyValue("--player-object-height"))
+    || 300;
   const scale = Number(tile.dataset.playerObjectScale || 1) || 1;
   return { width, height, scale };
+}
+
+export interface PlayerRosterAnchorGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  explicit: boolean;
+}
+
+/**
+ * The roster distributes a stable authored identity footprint, not the outer
+ * Player Widget canvas. Legacy widgets without an extension anchor retain the
+ * original whole-canvas contract exactly.
+ */
+export function playerRosterAnchorGeometry(composition: Dict | null): PlayerRosterAnchorGeometry {
+  const canvas = (composition?.canvas as Dict) || {};
+  const canvasWidth = Math.max(1, Number(canvas.width || 300));
+  const canvasHeight = Math.max(1, Number(canvas.height || 300));
+  const anchors = ((composition?.components as Dict[]) || []).filter(
+    (component) => String(component?.instanceLabel || "").trim() === PLAYER_ROSTER_ANCHOR_INSTANCE_LABEL
+  );
+  const anchor = anchors.length === 1 && String(anchors[0]?.kind || "").trim().toLowerCase() === "container"
+    ? anchors[0]
+    : null;
+  if (!anchor) {
+    return { x: canvasWidth / 2, y: canvasHeight / 2, width: canvasWidth, height: canvasHeight, explicit: false };
+  }
+  return {
+    x: Number.isFinite(Number(anchor.x)) ? Number(anchor.x) : canvasWidth / 2,
+    y: Number.isFinite(Number(anchor.y)) ? Number(anchor.y) : canvasHeight / 2,
+    width: Math.max(1, Number(anchor.width || canvasWidth)),
+    height: Math.max(1, Number(anchor.height || canvasHeight)),
+    explicit: true
+  };
 }
 
 export interface PlayerAnswerBubbleRuntimeState {
@@ -470,6 +512,12 @@ class PlayerRosterRenderer {
     tile.dataset.playerObjectHeight = String(canvasHeight);
     tile.dataset.playerObjectScale = "1";
     tile.dataset.playerObjectCompositionId = String(composition.id || "");
+    const rosterAnchor = playerRosterAnchorGeometry(composition);
+    tile.dataset.playerRosterAnchorX = String(rosterAnchor.x);
+    tile.dataset.playerRosterAnchorY = String(rosterAnchor.y);
+    tile.dataset.playerRosterAnchorWidth = String(rosterAnchor.width);
+    tile.dataset.playerRosterAnchorHeight = String(rosterAnchor.height);
+    tile.dataset.playerRosterAnchorExplicit = rosterAnchor.explicit ? "true" : "false";
 
     const previousNeedsInput = tile.dataset.playerNeedsInput;
     const isInitialRender = previousNeedsInput === undefined;
@@ -676,8 +724,13 @@ class PlayerRosterRenderer {
     tiles.forEach((tile, index) => {
       const position = positions[index];
       if (!position) return;
-      tile.style.left = `${position.x}px`;
-      tile.style.top = `${position.y}px`;
+      const canvasWidth = Number(tile.dataset.playerObjectWidth || 0) || 300;
+      const canvasHeight = Number(tile.dataset.playerObjectHeight || 0) || 300;
+      const anchorX = Number(tile.dataset.playerRosterAnchorX || canvasWidth / 2);
+      const anchorY = Number(tile.dataset.playerRosterAnchorY || canvasHeight / 2);
+      const scale = Number(tile.dataset.playerObjectScale || 1) || 1;
+      tile.style.left = `${position.x + (canvasWidth / 2 - anchorX) * scale}px`;
+      tile.style.top = `${position.y + (canvasHeight / 2 - anchorY) * scale}px`;
     });
     this.positionPointPopups();
   }

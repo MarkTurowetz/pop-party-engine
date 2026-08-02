@@ -230,6 +230,7 @@ describe("game readiness runtime", () => {
           surface: "stage",
           compositionKind: "prefab",
           components: [
+            { id: "roster-anchor", instanceLabel: "playerRosterAnchor", kind: "container", x: 150, y: 185, width: 300, height: 370 },
             { id: "answer", instanceLabel: "playerAnswerBubbleMC", kind: "reference", artCompositionId: "answer" },
             { id: "avatar", instanceLabel: "playerAvatarMC", kind: "reference", artCompositionId: "avatar" },
             { id: "name", instanceLabel: "playerNameMC", kind: "reference", artCompositionId: "name" },
@@ -245,6 +246,9 @@ describe("game readiness runtime", () => {
     const validateRelease = createGameReleaseValidator({ gameDefinition: game, engineVersion: "1.0.0" });
 
     await expect(validateRelease({ gameData, release, snapshot })).resolves.toMatchObject({ release: { contentRevision: "content-1" } });
+    const anchor = gameData.defaultArtCompositions[0].components.shift();
+    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_ROSTER_ANCHOR_INVALID" });
+    gameData.defaultArtCompositions[0].components.unshift(anchor);
     registration.value.bindings[0].targetComponentId = "playerAvatarMC";
     await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_ROSTER_ENGINE_COMPONENT_RESERVED" });
     registration.value.bindings[0].targetComponentId = "game-score";
