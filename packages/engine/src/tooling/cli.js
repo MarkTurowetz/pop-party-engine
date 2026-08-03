@@ -126,7 +126,9 @@ async function startGameApplication(options = {}) {
     webRoot: options.webRoot,
     host: options.host,
     port: options.port,
-    onError: options.onError
+    onError: options.onError,
+    authoringMode: options.authoringMode,
+    sessionContentMode: options.sessionContentMode
   });
   const startup = await runtime.start();
   return Object.freeze({ ...loaded, runtime, startup });
@@ -142,6 +144,7 @@ async function startDevelopmentApplication(options = {}) {
     ...options,
     contentRoot: development.contentRoot,
     authoringRoot: development.contentRoot,
+    sessionContentMode: options.sessionContentMode || "latest-saved-authoring",
     environment: { POP_PARTY_CONTENT_ROOT: development.contentRoot }
   });
   return Object.freeze({ ...started, development });

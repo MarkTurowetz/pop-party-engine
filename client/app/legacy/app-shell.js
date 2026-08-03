@@ -55,7 +55,6 @@ const stageJoinQr = document.querySelector("#stageJoinQr");
 const stageJoinQrCanvas = document.querySelector("#stageJoinQrCanvas");
 const craftingTimer = document.querySelector("#craftingTimer");
 const stageDebugAction = document.querySelector("#stageDebugAction");
-const playerLobby = document.querySelector("#playerLobby");
 const joinPrompt = document.querySelector("#joinPrompt");
 const waitingStatus = document.querySelector("#waitingStatus");
 const startPopup = document.querySelector("#startPopup");
@@ -98,13 +97,8 @@ const stageCodeInput = document.querySelector("#stageCodeInput");
 const playerNameInput = document.querySelector("#playerNameInput");
 const controllerJoinButtonContainer = document.querySelector("#controllerJoinButtonContainer");
 const controllerPlayerName = "controllerPlayerName";
-const controllerAvatar = document.querySelector("#controllerAvatar");
-const controllerPlayerBanner = document.querySelector("#controllerPlayerBanner");
 const controllerMeta = "controllerMeta";
 const controllerLobbyButtonContainer = document.querySelector("#controllerLobbyButtonContainer");
-const avatarPicker = document.querySelector("#avatarPicker");
-const avatarPickerGrid = document.querySelector("#avatarPickerGrid");
-const avatarPickerDoneButton = document.querySelector("#avatarPickerDoneButton");
 const artAssetList = document.querySelector("#artAssetList");
 const artShell = document.querySelector(".art-shell");
 const artResizer = document.querySelector("#artResizer");
@@ -282,31 +276,8 @@ let currentStageLayoutStateId = "";
 let layoutHistoryManager = null;
 const runtimeTestChannel = "BroadcastChannel" in window ? new BroadcastChannel("party-game-template-runtime-test") : null;
 const artAssetUrls = new Map([
-  ["avatar-frame", "/art/default/avatar-frame.svg"],
-  ["avatar-rex", "/art/default/dino-rex.svg"],
-  ["avatar-stego", "/art/default/dino-stego.svg"],
-  ["avatar-trike", "/art/default/dino-trike.svg"],
-  ["avatar-raptor", "/art/default/dino-raptor.svg"],
-  ["avatar-bronto", "/art/default/dino-bronto.svg"],
-  ["avatar-ankylo", "/art/default/dino-ankylo.svg"],
   ["presentation-click-cursor", "/art/default/cursor-arrow.svg"]
 ]);
-const avatarAssetIds = {
-  rex: "avatar-rex",
-  stego: "avatar-stego",
-  trike: "avatar-trike",
-  raptor: "avatar-raptor",
-  bronto: "avatar-bronto",
-  ankylo: "avatar-ankylo"
-};
-const avatarComposites = [
-  { id: "avatar-composite-rex", name: "Player Avatar Rex", species: "rex", dinoAssetId: "avatar-rex" },
-  { id: "avatar-composite-stego", name: "Player Avatar Stego", species: "stego", dinoAssetId: "avatar-stego" },
-  { id: "avatar-composite-trike", name: "Player Avatar Trike", species: "trike", dinoAssetId: "avatar-trike" },
-  { id: "avatar-composite-raptor", name: "Player Avatar Raptor", species: "raptor", dinoAssetId: "avatar-raptor" },
-  { id: "avatar-composite-bronto", name: "Player Avatar Bronto", species: "bronto", dinoAssetId: "avatar-bronto" },
-  { id: "avatar-composite-ankylo", name: "Player Avatar Ankylo", species: "ankylo", dinoAssetId: "avatar-ankylo" }
-];
 
 
 
@@ -353,7 +324,6 @@ window.stageJoinQr = stageJoinQr;
 window.stageJoinQrCanvas = stageJoinQrCanvas;
 window.craftingTimer = craftingTimer;
 window.stageDebugAction = stageDebugAction;
-window.playerLobby = playerLobby;
 window.joinPrompt = joinPrompt;
 window.waitingStatus = waitingStatus;
 window.startPopup = startPopup;
@@ -396,13 +366,8 @@ window.stageCodeInput = stageCodeInput;
 window.playerNameInput = playerNameInput;
 window.controllerJoinButtonContainer = controllerJoinButtonContainer;
 window.controllerPlayerName = controllerPlayerName;
-window.controllerAvatar = controllerAvatar;
-window.controllerPlayerBanner = controllerPlayerBanner;
 window.controllerMeta = controllerMeta;
 window.controllerLobbyButtonContainer = controllerLobbyButtonContainer;
-window.avatarPicker = avatarPicker;
-window.avatarPickerGrid = avatarPickerGrid;
-window.avatarPickerDoneButton = avatarPickerDoneButton;
 window.artAssetList = artAssetList;
 window.artShell = artShell;
 window.artResizer = artResizer;
@@ -505,8 +470,6 @@ window.collapsedFlowActions = collapsedFlowActions;
 window.layoutPreviewHiddenElements = layoutPreviewHiddenElements;
 window.runtimeTestChannel = runtimeTestChannel;
 window.artAssetUrls = artAssetUrls;
-window.avatarAssetIds = avatarAssetIds;
-window.avatarComposites = avatarComposites;
 Object.defineProperty(window, "controllerState", { configurable: true, get: () => controllerState, set: (v) => { controllerState = v; } });
 Object.defineProperty(window, "lobbyPollTimer", { configurable: true, get: () => lobbyPollTimer, set: (v) => { lobbyPollTimer = v; } });
 Object.defineProperty(window, "stageCountdownTimer", { configurable: true, get: () => stageCountdownTimer, set: (v) => { stageCountdownTimer = v; } });

@@ -9,7 +9,7 @@ const { createContentSnapshot } = require("../packages/engine/src/server/content
 
 const EXPECTED = Object.freeze({
   laterToolStateCommit: "e471cafee62ebe0f61195a6591152388487b5fd9",
-  laterToolStateRevision: "2af49894b93a1435d888f49e5bcb64f575f1e7345c16dfce08bf02ca30b49453"
+  laterToolStateRevision: "d2117400c7a602e7b8fe1290c1c1ceac31788f40636fe24ba4e660167ddb8273"
 });
 
 function snapshotFromDirectory(root) {

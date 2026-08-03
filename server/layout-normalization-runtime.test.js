@@ -13,10 +13,8 @@ const semanticRoles = {
   "engine.stage.countdown": { compositionId: "countdown-popup" },
   "engine.stage.presentationAdvancePrompt": { compositionId: "presentation-click-prompt" },
   "engine.stage.layoutText": { compositionId: "layout-text-field" },
-  "engine.controller.avatarChoice": { compositionId: "controller-avatar-button" },
   "engine.controller.invalidSubmission": { compositionId: "controller-invalid-banner" },
   "engine.controller.submitControl": { compositionId: "controller-primary-button" },
-  "engine.controller.playerIdentity": { compositionId: "controller-player-banner" },
   "engine.controller.textInput": { compositionId: "controller-text-input-field" },
   "engine.controller.playerNameInput": { compositionId: "controller-player-name-field" },
   "engine.controller.stageCodeInput": { compositionId: "controller-stage-code-field" }

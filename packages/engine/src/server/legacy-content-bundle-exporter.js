@@ -136,7 +136,6 @@ function exportLegacyContentBundle(options) {
   writeBundleFile(outputRoot, "game-data/runtime.json", {
     schemaVersion: 1,
     artGroups: gameData.artGroups,
-    avatarShapes: gameData.avatarShapes,
     availableFlowTransitions: gameData.availableFlowTransitions
   }, records);
   writeBundleFile(outputRoot, "semantic-roles.json", { schemaVersion: 1, roles: gameDefinition.semanticRoles }, records);

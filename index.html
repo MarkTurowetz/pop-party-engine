@@ -64,7 +64,6 @@
       <div class="stage-debug-alert hidden" id="stageDebugAlert"></div>
       <footer class="stage-footer">
         <div class="join-prompt" id="joinPrompt">Join the Lobby at bit.ly/popcontroller</div>
-        <div class="player-lobby" id="playerLobby" aria-label="Joined players"></div>
       </footer>
     </div>
     <div class="pause-menu hidden" id="pauseMenu" aria-label="Pause menu">
@@ -78,7 +77,6 @@
 
   <section class="screen controller hidden" id="controllerScreen" aria-label="Party Game Template controller">
     <div class="controller-panel">
-      <div class="controller-player-banner controller-layout-hidden" id="controllerPlayerBanner"></div>
       <div id="joinState">
         <form class="join-form" id="joinForm">
           <label class="field-label controller-layout-hidden" id="stageCodeField">
@@ -92,14 +90,7 @@
       </div>
 
       <div class="controller-lobby hidden" id="controllerLobbyState" data-controller-view="lobby">
-        <button class="controller-avatar controller-layout-hidden" id="controllerAvatar" type="button" aria-label="Choose avatar"></button>
         <div class="controller-local-action-container controller-layout-hidden" id="controllerLobbyButtonContainer"></div>
-        <div class="avatar-picker hidden" id="avatarPicker" aria-label="Choose dinosaur avatar">
-          <div class="avatar-picker-panel">
-            <div class="avatar-picker-grid" id="avatarPickerGrid"></div>
-            <button class="secondary-button" id="avatarPickerDoneButton" type="button">Done</button>
-          </div>
-        </div>
       </div>
 
       <div class="controller-lobby hidden" id="controllerGlobalActionState" data-controller-view="global-action">

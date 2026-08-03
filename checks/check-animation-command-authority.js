@@ -41,26 +41,6 @@ function checkStageReconciliation() {
   ], "applyStageState reconciliation");
 }
 
-function checkPlayerExceptions() {
-  const source = read("client/runtime/stagePlayerRoster.ts");
-  const syncPlayer = section(source, "  syncPlayerObject(", "  syncAvatarComponent(");
-  assertAbsent(syncPlayer, [
-    "revealAnswerCorrectness(",
-    "setAnswerBubblesShown(",
-    "setShown("
-  ], "syncPlayerObject reconciliation");
-  assert(syncPlayer.includes("options.reconcileLiveAnswerPreview === true"), "answer lifecycle reconciliation must be limited to the active voice preview");
-  assert(syncPlayer.includes("updateOnContentChange: true"), "voice answer reconciliation must update the current authored bubble lifecycle");
-  assert(!syncPlayer.includes("complete:"), "voice answer reconciliation must remain fire-and-forget");
-
-  const choosing = section(source, "  syncAvatarBehaviorComponent(", "  syncAnswerBubbleComponent(");
-  const spawning = section(source, "  playSpawnedPlayerWidget(", "  syncTileGameObject(");
-  assert(!choosing.includes("complete"), "ChoosingStart/ChoosingEnd must remain fire-and-forget");
-  assert(!spawning.includes("complete"), "spawned player Appear commands must remain fire-and-forget");
-  assert(choosing.includes("return 0"), "choosing behavior must not expose animation timing");
-  assert(spawning.includes("return 0"), "spawn behavior must not expose animation timing");
-}
-
 function checkWidgetReconciliation() {
   const timerSource = read("client/runtime/stageVisualControllers.ts");
   const timerPrepare = section(timerSource, "  prepareShownForAction(", "  render(timer:");
@@ -167,7 +147,6 @@ function checkControllerAnimationAuthority() {
 
 try {
   checkStageReconciliation();
-  checkPlayerExceptions();
   checkWidgetReconciliation();
   checkLayoutAuthority();
   checkArtRuntimeCssAuthority();

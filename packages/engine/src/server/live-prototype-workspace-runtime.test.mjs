@@ -80,6 +80,41 @@ function fixture(options = {}) {
 }
 
 describe("live prototype workspace", () => {
+  it("publishes Art-only drafts as active-room hot reloads instead of gameplay resets", async () => {
+    const { drafts, initialSnapshot, installs, workspace } = fixture({ roomPhase: "active-play" });
+    await workspace.initialize();
+    const session = await workspace.begin();
+    const art = initialSnapshot.readJson("art/manifest.json");
+    const compositionId = Object.keys(art.compositions)[0];
+    drafts.artCompositions = [{
+      ...art.compositions[compositionId],
+      id: compositionId,
+      components: (art.compositions[compositionId].components || []).map((component, index) => (
+        index === 0 ? { ...component, y: 385 } : component
+      ))
+    }];
+
+    await workspace.applyDraft(session.sessionId);
+
+    expect(installs.at(-1).options).toMatchObject({ reset: false, hotReload: true });
+    expect(workspace.readWorkingSnapshot().readJson("art/manifest.json").compositions[compositionId]
+      .components[0].y).toBe(385);
+  });
+
+  it("keeps Flow/constants drafts on the gameplay reset boundary", async () => {
+    const { drafts, initialSnapshot, installs, workspace } = fixture({ roomPhase: "lobby" });
+    await workspace.initialize();
+    const session = await workspace.begin();
+    drafts.constants = {
+      ...initialSnapshot.readJson("constants.json"),
+      gameTitle: "Gameplay-affecting edit"
+    };
+
+    await workspace.applyDraft(session.sessionId);
+
+    expect(installs.at(-1).options).toMatchObject({ reset: true, hotReload: false });
+  });
+
   it("propagates valid unsaved changes, rejects invalid candidates, and discards to saved content", async () => {
     const { drafts, initialSnapshot, rooms, workspace } = fixture();
     await workspace.initialize();

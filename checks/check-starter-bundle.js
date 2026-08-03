@@ -38,30 +38,39 @@ function inventory(directory) {
 }
 
 try {
+  const presentationNeutralPaths = new Set([
+    "content-bundle.json",
+    "layouts/controller.json",
+    "layouts/stage.json",
+    "semantic-roles.json"
+  ]);
   const committedInventory = inventory(committedRoot)
-    .filter((record) => record.path !== "content-bundle.json");
+    .filter((record) => !presentationNeutralPaths.has(record.path));
   const referenceInventory = inventory(referenceRoot)
-    .filter((record) => record.path !== "content-bundle.json");
+    .filter((record) => !presentationNeutralPaths.has(record.path));
   if (JSON.stringify(committedInventory) !== JSON.stringify(referenceInventory)) {
-    throw new Error("Committed starter content bytes do not match the current reference snapshot");
+    throw new Error("Committed starter assets and gameplay content do not match the reusable reference snapshot");
   }
-  const referenceManifest = JSON.parse(
-    fs.readFileSync(path.join(referenceRoot, "content-bundle.json"), "utf8")
-  );
   const committedManifest = JSON.parse(
     fs.readFileSync(path.join(committedRoot, "content-bundle.json"), "utf8")
   );
-  const expectedStarterManifest = {
-    ...referenceManifest,
-    parentRevision: "",
-    publishedRevision: ""
-  };
-  if (JSON.stringify(committedManifest) !== JSON.stringify(expectedStarterManifest)) {
-    throw new Error("Committed starter manifest is not the reference manifest with publication metadata cleared");
+  if (committedManifest.parentRevision !== "" || committedManifest.publishedRevision !== "") {
+    throw new Error("Committed starter manifest must have publication metadata cleared");
   }
   const starterSnapshot = createLocalContentBundleProvider({ root: committedRoot }).loadPublishedRevision();
   const artManifest = JSON.parse(fs.readFileSync(path.join(committedRoot, "art", "manifest.json"), "utf8"));
   const notices = JSON.parse(fs.readFileSync(noticesPath, "utf8"));
+  const stageLayouts = JSON.parse(fs.readFileSync(path.join(committedRoot, "layouts", "stage.json"), "utf8"));
+  const controllerLayouts = JSON.parse(fs.readFileSync(path.join(committedRoot, "layouts", "controller.json"), "utf8"));
+  const starterElements = [
+    ...(stageLayouts.global?.elements || []),
+    ...(stageLayouts.states || []).flatMap((state) => state.elements || []),
+    ...(controllerLayouts.global?.elements || []),
+    ...(controllerLayouts.states || []).flatMap((state) => state.elements || [])
+  ];
+  if (starterElements.some((element) => /playerlobby|playerbanner|avatar/i.test(String(element.id || "")))) {
+    throw new Error("Presentation-neutral starter layouts must not instantiate copied player Art");
+  }
   if (notices.license !== "CC0-1.0") throw new Error("Starter asset inventory must declare CC0-1.0");
   const noticeByBlob = new Map((notices.assets || []).map((asset) => [asset.blobPath, asset]));
   const manifestBlobPaths = new Set((artManifest.assets || []).map((asset) => asset.blobPath));

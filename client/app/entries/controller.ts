@@ -17,7 +17,6 @@ import "../../runtime/controllerViewState";
 import "../../runtime/controllerTextRenderer";
 import "../../runtime/controllerHeartbeatRuntime";
 import "../../runtime/controllerSubmitApi";
-import "../../runtime/controllerAvatarView";
 import "../../runtime/controllerChoiceInputView";
 import "../../runtime/controllerTextInputView";
 import "../../runtime/controllerRecordingLifecycle";

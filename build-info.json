@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1269",
+  "version": "1.0.17.1270",
   "baseVersion": "1.0.17",
-  "buildNumber": 1269,
-  "commit": "90c3a7a0",
-  "branch": "codex/release-engine-1.3.38",
-  "generatedAt": "2026-08-02T23:19:31.871Z"
+  "buildNumber": 1270,
+  "commit": "d4e3a36a",
+  "branch": "codex/generic-player-presentation",
+  "generatedAt": "2026-08-03T03:19:42.374Z"
 }

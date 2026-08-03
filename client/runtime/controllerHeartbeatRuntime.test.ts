@@ -4,7 +4,6 @@ import { createControllerHeartbeatRuntime, type ControllerHeartbeatOptions } fro
 function options(): ControllerHeartbeatOptions {
   return {
     applyLayoutForPhase: vi.fn(),
-    closeAvatarPicker: vi.fn(),
     elements: { meta: {} as HTMLElement },
     getJoinButton: () => ({} as HTMLButtonElement),
     getControllerState: vi.fn(),
@@ -78,7 +77,6 @@ describe("createControllerHeartbeatRuntime (ported)", () => {
     await runtime.poll();
 
     expect(runtimeOptions.setControllerState).toHaveBeenCalledWith(null);
-    expect(runtimeOptions.closeAvatarPicker).toHaveBeenCalledWith({ commit: false });
     expect(runtimeOptions.hideViews).toHaveBeenCalledOnce();
     expect(runtimeOptions.showView).toHaveBeenCalledWith("join");
     expect(runtimeOptions.applyLayoutForPhase).toHaveBeenCalledWith("join");

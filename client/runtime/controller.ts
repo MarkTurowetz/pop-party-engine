@@ -7,7 +7,6 @@ import { createControllerModuleCache } from "./controllerModuleCache";
 import { renderGamePluginSurface } from "./gamePluginRendererRuntime";
 import { createGamePluginInputView } from "./gamePluginInputRuntime";
 import { createControllerViewState } from "./controllerViewState";
-import { createControllerAvatarView } from "./controllerAvatarView";
 import { createControllerVoiceInput, shouldDeferVoiceHeartbeat } from "./controllerVoiceInput";
 import { controllerViewVisitKey } from "./controllerViewVisit";
 import { createControllerMicrophoneAccessView } from "./controllerMicrophoneAccessView";
@@ -32,7 +31,6 @@ interface LayoutTextApi {
   disposeControllerButtonArt?: (target: HTMLElement) => void;
   setControllerButtonLifecycleState?: (target: HTMLElement, state: "Off" | "On") => void;
   setControllerButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => boolean;
-  setControllerPlayerBannerArt?: (target: HTMLElement, player: Dict) => void;
   setControllerText?: (target: TextTarget, value: unknown) => void;
   setControllerTextShown?: (target: string, isShown: boolean, options?: Dict) => void;
 }
@@ -66,11 +64,6 @@ declare global {
     controllerLobbyState?: HTMLElement;
     controllerMicAccessState?: HTMLElement;
     controllerTextState?: HTMLElement;
-    controllerAvatar?: HTMLElement;
-    controllerPlayerBanner?: HTMLElement;
-    avatarPicker?: HTMLElement;
-    avatarPickerGrid?: HTMLElement;
-    avatarPickerDoneButton?: HTMLElement;
     controllerChoiceGrid?: HTMLElement;
     controllerInvalidBanner?: HTMLElement;
     controllerTextInput?: HTMLInputElement;
@@ -228,36 +221,6 @@ function getControllerViewState() {
   );
 }
 
-function getControllerAvatarView() {
-  return controllerModules.get("avatarView", () =>
-    createControllerAvatarView({
-      avatarClass: w.avatarClass!,
-      avatarComposites: w.avatarComposites!,
-      avatarFrameImage: w.avatarFrameImage!,
-      avatarLabel: w.avatarLabel!,
-      dinoIcon: w.dinoIcon!,
-      elements: {
-        avatar: el(w.controllerAvatar),
-        banner: el(w.controllerPlayerBanner),
-        picker: el(w.avatarPicker),
-        pickerGrid: el(w.avatarPickerGrid)
-      },
-      getControllerState: () => w.controllerState,
-      playerAvatarArt: w.playerAvatarArt,
-      renderState: renderControllerState,
-      setBannerArt: (target, player) => w.PartyGameLayoutText?.setControllerPlayerBannerArt?.(target, player as Dict),
-      setControllerPlayer: (player) => {
-        if (w.controllerState) w.controllerState.player = player;
-      },
-      setMetaText: (value) => {
-        setControllerText(w.controllerMeta, value);
-      },
-      updateAvatar: (shape: string) =>
-        getControllerSubmitApi().updateAvatar(shape) as Promise<{ player?: Dict; lobby?: unknown }>
-    })
-  );
-}
-
 function getControllerVoiceInput() {
   return controllerModules.get("voiceInput", () =>
     createControllerVoiceInput({
@@ -358,7 +321,6 @@ function renderControllerGlobalMessage(lobby: Dict, message: string, options: Di
 function getControllerStateRuntime() {
   return controllerModules.get("stateRuntime", () =>
     createControllerStateRuntime({
-      closeAvatarPicker,
       getChoiceInputView: getControllerChoiceInputView,
       getGlobalActionView: getControllerGlobalActionView,
       getGamePluginInputView,
@@ -387,7 +349,6 @@ function getControllerHeartbeatRuntime() {
   return controllerModules.get("heartbeatRuntime", () =>
     createControllerHeartbeatRuntime({
       applyLayoutForPhase: applyControllerLayoutForPhase,
-      closeAvatarPicker,
       elements: { joinState: el(w.joinState), meta: el(w.controllerMeta) },
       getJoinButton,
       getControllerState: () => w.controllerState,
@@ -430,7 +391,6 @@ function getControllerLobbyView() {
       setButtonText: setControllerButtonText,
       setText: setControllerText,
       showView: (viewId: string) => getControllerViewState().show(viewId),
-      setAvatar: setControllerAvatar
     })
   );
 }
@@ -543,22 +503,6 @@ async function joinController(stageCode: string, playerName: string): Promise<Di
   return result;
 }
 
-function setControllerAvatar(player: Dict): void {
-  getControllerAvatarView().setAvatar(player);
-}
-
-function setControllerPlayerBanner(player: Dict): void {
-  getControllerAvatarView().setBanner(player);
-}
-
-function openAvatarPicker(): void {
-  getControllerAvatarView().open();
-}
-
-async function closeAvatarPicker({ commit = true }: { commit?: boolean } = {}): Promise<void> {
-  return getControllerAvatarView().close({ commit });
-}
-
 function hideControllerViews(): void {
   getControllerViewState().hideAll();
 }
@@ -635,15 +579,14 @@ function renderControllerState(lobbyInput: unknown): void {
   window.clearInterval(w.controllerCountdownTimer ?? undefined);
   const me = ((lobby.players as Dict[]) || []).find((player) => player.id === w.controllerState!.playerId);
   if (!me) {
-    closeAvatarPicker({ commit: false });
     w.controllerState.startToken = "";
     getControllerLobbyView().renderMissingPlayer();
     return;
   }
   w.controllerState.player = me;
-  setControllerPlayerBanner(me);
+  w.controllerScreen?.setAttribute("data-player-id", String(me.id || ""));
+  w.controllerScreen?.setAttribute("data-player-name", String(me.name || ""));
   w.controllerState.startToken = me.isVip ? lobby.startToken : "";
-  getControllerAvatarView().syncPendingShape(me);
 
   const controllerPhase = (lobby.phase as string) || "lobby";
   w.controllerState.phase = controllerPhase;
@@ -654,10 +597,6 @@ function renderControllerState(lobbyInput: unknown): void {
     if (lastControllerViewStateId === "textInput") getControllerTextInputView().reset();
   }
   lastControllerViewStateId = renderedState.id;
-  // Layout application can recreate the authored banner prefab. Player data
-  // must be injected after that lifecycle boundary so its default "PLAYER"
-  // text can never replace the current identity on refresh or a later visit.
-  setControllerPlayerBanner(me);
   renderGamePluginSurface("controller", lobby);
   w.controllerState.controllerViewStateId = renderedState.id;
   w.controllerCountdownTimer = renderedState.countdownTimer;
@@ -666,7 +605,6 @@ function renderControllerState(lobbyInput: unknown): void {
 function reloadControllerArtAssets(): void {
   w.loadArtAssets!()
     .then(() => {
-      if (w.controllerState?.player) setControllerAvatar(w.controllerState.player as Dict);
       if (w.controllerState?.lobby) renderControllerState(w.controllerState.lobby as Dict);
       else applyControllerLayoutForPhase((w.controllerState?.phase as string) || "join");
       const activeButton = getControllerLocalButtonRuntime().active();
@@ -751,12 +689,7 @@ async function setupController(): Promise<void> {
 
   createControllerActionBindings({
     applyLayoutForPhase: applyControllerLayoutForPhase,
-    closeAvatarPicker,
     elements: {
-      avatar: el(w.controllerAvatar),
-      avatarPicker: el(w.avatarPicker),
-      avatarPickerDoneButton: el(w.avatarPickerDoneButton),
-      avatarPickerPanel: el(w.avatarPicker?.querySelector(".avatar-picker-panel")),
       controllerScreen: el(w.controllerScreen),
       startButtonContainer: el(w.controllerLobbyButtonContainer)
     } as never,
@@ -764,7 +697,6 @@ async function setupController(): Promise<void> {
     getControllerState: () => w.controllerState,
     getSessionRuntime: getControllerSessionRuntime,
     getSubmitApi: getControllerSubmitApi as unknown as ControllerActionBindingsOptions["getSubmitApi"],
-    openAvatarPicker,
     origin: location.origin,
     renderState: renderControllerState,
     setMetaText: (value: string) => {

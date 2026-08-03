@@ -5,7 +5,6 @@ const { resolveControllerSubmissionConfirmation } = require("./controller-submis
 
 function createControllerStateRuntime(options) {
   const {
-    closeAvatarPicker,
     getChoiceInputView,
     getGlobalActionView,
     getGamePluginInputView = () => ({ render: () => false }),
@@ -123,7 +122,6 @@ function createControllerStateRuntime(options) {
     const context = { lobby, me, phase };
     for (const spec of stateSpecs) {
       if (!spec.matches(context)) continue;
-      closeAvatarPicker({ commit: false });
       const renderResult = spec.render(context);
       if (renderResult === false) continue;
       return {

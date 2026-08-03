@@ -5,7 +5,6 @@ export interface BundleGameData {
   readonly artOrganization: Readonly<Record<string, unknown>>;
   readonly availableFlowActionTypes: readonly unknown[];
   readonly availableFlowTransitions: readonly unknown[];
-  readonly avatarShapes: readonly string[];
   readonly defaultArtCompositions: readonly unknown[];
   readonly defaultControllerLayouts: Readonly<Record<string, unknown>>;
   readonly defaultGameConstants: Readonly<Record<string, unknown>>;

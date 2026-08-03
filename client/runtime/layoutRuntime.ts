@@ -10,7 +10,6 @@ import "./layoutGameObjectRuntime"; // ensure PartyGameLayoutGameObjects is inst
 import { controllerLayoutCandidateIds } from "../../shared/controller-layout-states";
 import { choiceCollectionLayoutStyle } from "./controllerChoiceCollectionLayout";
 import { clearGamePluginRendererCollectionHost } from "./gamePluginRendererRuntime";
-import { avatarTimelineLabelForShape } from "./stagePlayerRoster";
 import { runtimeSemanticCompositionId } from "./semanticRoleRuntime";
 
 type Dict = Record<string, unknown>;
@@ -94,15 +93,9 @@ const layoutTextArtNestedComponentPath = `${layoutTextArtNestedCompositionId}/${
 const layoutTextArtLegacyComponentPath = () => `${layoutTextArtCompositionId()}/${layoutTextArtComponentId}`;
 const controllerPrimaryButtonArtCompositionId = () => runtimeSemanticCompositionId("engine.controller.submitControl");
 const controllerChoiceOptionArtCompositionId = () => runtimeSemanticCompositionId("engine.controller.choiceControl");
-const controllerPlayerBannerArtCompositionId = () => runtimeSemanticCompositionId("engine.controller.playerIdentity");
-const controllerPlayerBannerAvatarComponentId = "player-avatar-mc";
-const controllerPlayerBannerNameComponentId = "player-name-mc";
-const controllerPlayerBannerNameTextPath = "player-name-widget/name-text";
 const controllerWidgetRoleIds: Record<string, string> = {
-  controlleravatar: "engine.controller.avatarChoice",
   controllerinvalidbanner: "engine.controller.invalidSubmission",
   controllermicaccessbutton: "engine.controller.submitControl",
-  controllerplayerbanner: "engine.controller.playerIdentity",
   controllertextinput: "engine.controller.textInput",
   controllertextsubmitbutton: "engine.controller.submitControl",
   controllervoicebutton: "engine.controller.submitControl",
@@ -141,7 +134,6 @@ function controllerWidgetTextComponentId(compositionId: unknown): string {
   const id = String(compositionId || "");
   if (id === controllerChoiceOptionArtCompositionId()) return "option-text";
   if (id === runtimeSemanticCompositionId("engine.controller.invalidSubmission")) return "invalid-text";
-  if (id === controllerPlayerBannerArtCompositionId()) return controllerPlayerBannerNameTextPath;
   if (id === runtimeSemanticCompositionId("engine.controller.playerNameInput")) return "field-value";
   if (id === controllerPrimaryButtonArtCompositionId()) return "button-text";
   if (id === runtimeSemanticCompositionId("engine.controller.stageCodeInput")) return "field-value";
@@ -227,36 +219,14 @@ function controllerLayoutArtDefaultText(element: Dict | null, host: El | null): 
   ].includes(compositionId)) return "";
   if (host?.dataset.textFitSource !== undefined) return host.dataset.textFitSource || "";
   if (compositionId === runtimeSemanticCompositionId("engine.controller.invalidSubmission")) return String(host?.textContent || "Your submission was invalid").trim();
-  if (compositionId === controllerPlayerBannerArtCompositionId()) return host?.dataset.controllerPlayerName || "Player";
   if (compositionId === controllerPrimaryButtonArtCompositionId()) return host?.dataset.controllerTextValue || String(host?.textContent || "").trim();
   return "";
 }
 
 function controllerLayoutArtRenderOptions(element: Dict | null, host: El | null): Dict {
   if (isLayoutTextArtElement(element)) return layoutTextArtRenderOptions(element, host?.dataset.textFitSource);
-  if (element?.artCompositionId === controllerPlayerBannerArtCompositionId()) {
-    return controllerPlayerBannerRenderOptions({
-      name: host?.dataset.controllerPlayerName,
-      avatar: { color: host?.dataset.controllerPlayerAvatarColor }
-    });
-  }
   const text = controllerLayoutArtDefaultText(element, host);
   return controllerWidgetTextRenderOptions(element?.artCompositionId, text);
-}
-
-function controllerPlayerBannerRenderOptions(player: Dict = {}): Dict {
-  const avatar = (player.avatar as Dict) || {};
-  const name = String(player.name || "Player");
-  const color = String(avatar.color || "#22d3ee");
-  return {
-    textOverrides: {
-      [controllerPlayerBannerNameTextPath]: name,
-      [`${controllerPlayerBannerArtCompositionId()}/banner-name`]: name
-    },
-    componentOverrides: {
-      "avatars/avatar": { imageTint: color }
-    }
-  };
 }
 
 function layoutTextDefault(element: Dict | null): string {
@@ -565,7 +535,6 @@ function applyControllerElementLayout(element: Dict, scopeOrGlobal: boolean | st
     if (!renderer) target.classList.add("controller-layout-hidden");
   }
   if (shouldActivate) activateLayoutEntity(entity, { visibilityOverrides: controllerLayoutVisibilityOverrides });
-  syncControllerPlayerBannerChildren(target);
   finishLayoutElementTargetApplication(target, isNewLayoutTarget, "controller-layout-transition-suppressed");
 }
 
@@ -933,39 +902,6 @@ function controllerLayoutArtKeepElements(host: El | null): El[] {
     host.querySelectorAll(":scope > input, :scope > textarea, :scope > select, :scope > .controller-widget-art-overlay, :scope > .game-plugin-input-control")
   ) as El[];
   return kept.filter((element) => element.parentElement === host);
-}
-
-function syncControllerPlayerBannerChildren(target: El | null): void {
-  if (!target || target.dataset.controllerLayoutArtCompositionId !== controllerPlayerBannerArtCompositionId()) return;
-  const renderer = artRendererForLayoutHost(target);
-  if (renderer) {
-    renderer.stopAtComponent?.(controllerPlayerBannerAvatarComponentId, "On", { instant: true });
-    renderer.stopAtComponent?.(controllerPlayerBannerNameComponentId, "On", { instant: true });
-    renderer.stopAtComponent?.("avatar", avatarTimelineLabelForShape(target.dataset.controllerPlayerAvatarShape), { instant: true });
-  }
-  // The avatar-shape timeline owns which sprite frame is visible and can
-  // restore that frame's authored `currentColor` tint. Re-apply the player's
-  // semantic color directly to the deepest sprite after stopping the timeline.
-  for (const avatarSprite of Array.from(target.querySelectorAll("[data-art-component-id='avatar']"))) {
-    (avatarSprite as El).style.setProperty("--component-sprite-tint", target.dataset.controllerPlayerAvatarColor || "#22d3ee");
-  }
-}
-
-function setControllerPlayerBannerArt(target: El | null, player: Dict = {}): void {
-  if (!target) return;
-  const avatar = (player.avatar as Dict) || {};
-  target.dataset.controllerPlayerName = String(player.name || "Player");
-  target.dataset.controllerPlayerAvatarShape = String(avatar.shape || "rex");
-  target.dataset.controllerPlayerAvatarColor = String(avatar.color || "#22d3ee");
-  target.style.setProperty("color", target.dataset.controllerPlayerAvatarColor);
-  const element = controllerLayoutElementForTarget(target);
-  if (element?.artCompositionId === controllerPlayerBannerArtCompositionId() && target.dataset.controllerLayoutVisibilityKey) {
-    renderControllerArtInstance(element, target, target.dataset.controllerLayoutVisibilityKey, {
-      ...controllerPlayerBannerRenderOptions(player),
-      keepElements: controllerLayoutArtKeepElements(target)
-    });
-  }
-  syncControllerPlayerBannerChildren(target);
 }
 
 function controllerLayoutScopeForElement(element: Dict): string {
@@ -1562,7 +1498,6 @@ const PartyGameLayoutText = {
   setControllerPluginInputChoiceState,
   setControllerPluginInputHoldingState,
   setControllerPluginInputCollectionState,
-  setControllerPlayerBannerArt,
   setControllerText: setControllerLayoutText,
   setControllerTextShown: setControllerLayoutTextShown,
   setStageText: setStageLayoutText
@@ -1586,7 +1521,7 @@ Object.assign(w(), {
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   disposeControllerButtonArt, setControllerButtonLifecycleState,
-  playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPluginInputChoiceState, setControllerPluginInputHoldingState, setControllerPlayerBannerArt,
+  playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPluginInputChoiceState, setControllerPluginInputHoldingState,
   setControllerPluginInputCollectionState,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,
@@ -1595,7 +1530,6 @@ Object.assign(w(), {
 });
 
 export {
-  controllerPlayerBannerRenderOptions,
   layoutTextArtRenderOptions,
   layoutTextArtUsesNestedPrefab,
   normalizedStageLayoutScope,

@@ -11,7 +11,6 @@ const REQUIRED_GAME_DATA_KEYS = Object.freeze([
   "artGroups",
   "availableFlowActionTypes",
   "availableFlowTransitions",
-  "avatarShapes",
   "defaultArtCompositions",
   "defaultControllerLayouts",
   "defaultGameConstants",

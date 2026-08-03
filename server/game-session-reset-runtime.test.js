@@ -9,7 +9,6 @@ describe("resetGameSessionState", () => {
     const player = {
       id: "p1",
       name: "Ava",
-      avatar: { shape: "rex", color: "blue" },
       points: 900,
       pendingPoints: 50,
       active: true,
@@ -18,7 +17,6 @@ describe("resetGameSessionState", () => {
     const disconnectedPlayer = {
       id: "p2",
       name: "Ben",
-      avatar: { shape: "stego", color: "green" },
       points: 100,
       pendingPoints: 10,
       active: false,
@@ -72,7 +70,7 @@ describe("resetGameSessionState", () => {
     expect(room.flowVariables).toEqual({});
     expect(room.G).toEqual({});
     expect(room.microphoneAccessGrantedPlayerIds.size).toBe(0);
-    expect(player).toMatchObject({ id: "p1", name: "Ava", avatar: { shape: "rex", color: "blue" }, points: 0, pendingPoints: 0 });
+    expect(player).toMatchObject({ id: "p1", name: "Ava", points: 0, pendingPoints: 0 });
     expect(player.gameSessionId).toBe(5);
     expect(disconnectedPlayer).toMatchObject({ points: 0, pendingPoints: 0, gameSessionId: 4 });
   });

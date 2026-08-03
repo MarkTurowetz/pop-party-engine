@@ -70,18 +70,18 @@
     },
     {
       "path": "game-data/runtime.json",
-      "sha256": "232a381a9d3fbd0e7b82935d029ed9cf66e9a802f3c4181b072acbec74f7f887",
-      "bytes": 905
+      "sha256": "8a97be2f5d791dd926ef45b848a71b00cee2c06a241f2d7aa50fc98b2fa9bec4",
+      "bytes": 802
     },
     {
       "path": "layouts/controller.json",
-      "sha256": "8d555a13251470764d3644ce9e9a4f4d55ab0007afd6a8bcbe8f4382060146e9",
-      "bytes": 45086
+      "sha256": "d4bc4c7b3d67343b1fa1530d23b8ba9a581088d9b1a08a30cf837321d0ead778",
+      "bytes": 43855
     },
     {
       "path": "layouts/stage.json",
-      "sha256": "95ff3a94d10ea2679162b9782486f2c6ad371ef150b4ebeb7bd7c45a5351203d",
-      "bytes": 20101
+      "sha256": "cd9b9c94a4bbb7fbc05984e440ad2ecab2607bfe338535fce10470ed4b243cd7",
+      "bytes": 19558
     },
     {
       "path": "prompts/prompts.json",
@@ -90,9 +90,9 @@
     },
     {
       "path": "semantic-roles.json",
-      "sha256": "f47cda5ab48cae4a292adf8e69c125864b3341fb4ac681a780e0171720424189",
-      "bytes": 2469
+      "sha256": "adc804d2d669d2a37eae4a93346e817c5633982bb4384b8263bb98c6a13462dd",
+      "bytes": 1662
     }
   ],
-  "rootHash": "2af49894b93a1435d888f49e5bcb64f575f1e7345c16dfce08bf02ca30b49453"
+  "rootHash": "f23796139d880d33b4b465aa8b23f136f157cc731111891151d967a3a4a2a378"
 }

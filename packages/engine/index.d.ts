@@ -34,7 +34,18 @@ export interface GameActionPlayer {
   readonly active: boolean;
   readonly isVip: boolean;
   readonly points: number;
-  readonly avatar: Readonly<Record<string, unknown>>;
+  readonly pendingPoints: number;
+  readonly needsInput: boolean;
+  readonly displayedAnswer: Readonly<{
+    readonly optionIndex?: number;
+    readonly originalOptionIndex?: number;
+    readonly text?: string;
+    readonly done: boolean;
+    readonly invalid: boolean;
+    readonly correct: boolean | null;
+    readonly hidden: boolean;
+    readonly nonce: number;
+  }> | null;
 }
 
 export interface GameActionExecutionContext<TState extends Record<string, unknown> = Record<string, unknown>> {
@@ -185,16 +196,9 @@ export interface GameLayoutRendererTarget {
   layoutLayerId?: string;
 }
 
-export interface GameRosterItemRendererTarget {
-  kind: "rosterItem";
-  semanticRole: "engine.stage.playerIdentityWidget";
-  source: string;
-  playerIdSource: string;
-}
-
 export interface GameRendererRegistration<TState extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
-  target: GameLayoutRendererTarget | GameRosterItemRendererTarget;
+  target: GameLayoutRendererTarget;
   bindings: GameRendererBinding[];
   select(context: GameRendererSelectionContext<TState>): unknown;
 }

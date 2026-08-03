@@ -190,7 +190,7 @@ async function main() {
             visitId: 1
           }
         },
-        player: { id: "p-banner", name: "BEN", avatar: { shape: "trike", color: "#ff4fa3" } }
+        player: { id: "p-banner", name: "BEN" }
       };
       const textView = window.createControllerTextInputView({
         applyLayoutForPhase: (phase, prepare) => {
@@ -236,10 +236,6 @@ async function main() {
         submitText() {}
       });
       textView.render(window.controllerState.lobby, window.controllerState.player);
-      window.PartyGameLayoutText.setControllerPlayerBannerArt(
-        document.querySelector("#controllerPlayerBanner"),
-        window.controllerState.player
-      );
     });
     await textInputPage.waitForFunction(() =>
       Boolean(document.querySelector("#controllerTextInput")?.closest("[data-controller-art-selector-host-for]"))
@@ -266,16 +262,7 @@ async function main() {
         submitHeight: submitRect?.height || 0,
         submitOpacity: submitStyle?.opacity || "missing",
         submitVisibility: submitStyle?.visibility || "missing",
-        submitWidth: submitRect?.width || 0,
-        playerBannerName: Array.from(document.querySelectorAll("#controllerPlayerBanner [data-art-component-id='name-text']"))
-          .map((element) => element.textContent.trim())
-          .find(Boolean) || "",
-        playerBannerAvatarTints: Array.from(document.querySelectorAll("#controllerPlayerBanner [data-art-component-id='avatar']"))
-          .map((element) => element.style.getPropertyValue("--component-sprite-tint")),
-        playerBannerCompositionId: document.querySelector("#controllerPlayerBanner")?.dataset.controllerLayoutArtCompositionId || "",
-        playerBannerLegacyLayers: document.querySelectorAll(
-          "#controllerPlayerBanner [data-art-component-id='banner-name'], #controllerPlayerBanner [data-art-component-id='banner-card']"
-        ).length
+        submitWidth: submitRect?.width || 0
       };
     });
     assert(textInputState.isWrapped, "Writing Moment textarea was not mounted in its authored widget host");
@@ -293,12 +280,6 @@ async function main() {
         && textInputState.submitHeight > 0,
       `Writing Moment Submit button is not visible: ${JSON.stringify(textInputState)}`
     );
-    assert(textInputState.playerBannerName === "BEN", `Player Banner rendered ${textInputState.playerBannerName || "no player name"}`);
-    assert(
-      textInputState.playerBannerAvatarTints.includes("#ff4fa3"),
-      `Player Banner used ${textInputState.playerBannerAvatarTints.join(", ") || "no avatar color"} in ${textInputState.playerBannerCompositionId || "no composition"}`
-    );
-    assert(textInputState.playerBannerLegacyLayers === 0, `Player Banner retained ${textInputState.playerBannerLegacyLayers} legacy art layers`);
     await textInputPage.locator("#controllerTextInput").fill("Interactive writing answer");
     assert(
       (await textInputPage.locator("#controllerTextInput").evaluate((input) => input.value)) === "Interactive writing answer",
@@ -382,9 +363,6 @@ async function main() {
     const startState = await page.evaluate(() => {
       const container = document.querySelector("#controllerLobbyButtonContainer");
       const button = container?.querySelector(":scope > #startGameButton");
-      const avatarComposition = document.querySelector("#controllerAvatar .player-avatar-art-composition");
-      const avatarMask = document.querySelector("#controllerAvatar .avatar-art-mask-image");
-      const avatarMaskRect = avatarMask?.getBoundingClientRect();
       const buttonRect = button?.getBoundingClientRect();
       const buttonStyle = button ? getComputedStyle(button) : null;
       const containerRect = container?.getBoundingClientRect();
@@ -426,11 +404,7 @@ async function main() {
         lobbyStateDisplay: lobbyStateStyle?.display || "missing",
         lobbyStateWidth: lobbyStateRect?.width || 0,
         lobbyStateHeight: lobbyStateRect?.height || 0,
-        text: button?.textContent.trim() || "",
-        avatarSource: avatarComposition?.getAttribute("data-player-avatar-source") || "",
-        avatarMaskWidth: avatarMaskRect?.width || 0,
-        avatarMaskHeight: avatarMaskRect?.height || 0,
-        avatarMaskColor: avatarMask ? getComputedStyle(avatarMask).backgroundColor : ""
+        text: button?.textContent.trim() || ""
       };
     });
     assert(startState.buttonCount === 1, `Lobby rendered ${startState.buttonCount} Start buttons`);
@@ -441,9 +415,6 @@ async function main() {
     assert(startState.buttonDisplay !== "none" && startState.buttonVisibility !== "hidden" && startState.buttonOpacity !== "0" && startState.buttonWidth > 0 && startState.buttonHeight > 0 && !startState.buttonHidden,
       `Start button is not visible: ${JSON.stringify(startState)}`);
     assert(startState.text === "START GAME", `unexpected Start button text: ${JSON.stringify(startState)}`);
-    assert(startState.avatarSource === "prefab-player-avatar-mc", `controller avatar used ${startState.avatarSource || "no shared Player Avatar MC"}`);
-    assert(startState.avatarMaskWidth > 40 && startState.avatarMaskHeight > 40, `controller avatar collapsed to ${startState.avatarMaskWidth}x${startState.avatarMaskHeight}`);
-    assert(startState.avatarMaskColor && startState.avatarMaskColor !== "rgba(0, 0, 0, 0)", "controller avatar sprite has no visible player color");
 
     await page.locator("#startGameButton").click();
     await page.waitForFunction(() => document.querySelector("#startGameButton")?.dataset.optionId === "lobby.cancelStart");

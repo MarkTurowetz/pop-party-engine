@@ -26,11 +26,6 @@ type PluginRendererManifest = {
     layoutElementId: string;
     layoutScope: "moment" | "global" | "layer";
     layoutLayerId?: string;
-  } | {
-    kind: "rosterItem";
-    semanticRole: "engine.stage.playerIdentityWidget";
-    source: string;
-    playerIdSource: string;
   };
   bindings: RendererBinding[];
 };
@@ -53,7 +48,6 @@ const SAFE_COMPONENT_PROPERTIES = new Set([
 ]);
 const collectionStateByRoot = new WeakMap<HTMLElement, { manifestId: string; surface: "stage" | "controller" }>();
 const lifecycleStateByItem = new WeakMap<HTMLElement, Map<string, string>>();
-const rosterManifestSignaturesByTile = new WeakMap<HTMLElement, Map<string, string>>();
 
 function runtimeConfig(documentRef: Document | undefined): RuntimeConfig {
   const node = documentRef?.getElementById("pop-party-runtime-config");
@@ -105,12 +99,17 @@ function componentInComposition(composition: Dict | null, componentId: string, r
   return visit((composition.components as Dict[]) || []);
 }
 
-function collectionLayoutFromArtContainer(component: Dict): Dict {
+export function collectionLayoutFromArtContainer(component: Dict): Dict {
+  const distributed = String(component.childDistribution || "horizontal").toLowerCase() !== "none";
   return {
     width: Number(component.width || 1),
     height: Number(component.height || 1),
     collectionDirection: String(component.childDistribution || "horizontal").toLowerCase() === "vertical" ? "vertical" : "horizontal",
-    collectionDistribution: "start",
+    // Art Manager distribution places one child at center and allocates the
+    // remaining space evenly around/between multiple children. CSS
+    // space-evenly is the same contract; forcing flex-start made runtime
+    // collections disagree with their authored preview.
+    collectionDistribution: distributed ? "space-evenly" : "start",
     collectionAlignment: "center",
     collectionGap: 0,
     collectionPadding: 0,
@@ -291,8 +290,7 @@ function surfaceElement(
   manifest: PluginRendererManifest,
   runtime: Dict
 ): Dict | null {
-  if (manifest.target.kind === "rosterItem") return null;
-  const layoutTarget = manifest.target as Extract<PluginRendererManifest["target"], { kind?: "layout" }>;
+  const layoutTarget = manifest.target;
   const id = layoutTarget.layoutElementId;
   const scope = layoutTarget.layoutScope || "moment";
   if (surface === "stage") {
@@ -314,88 +312,10 @@ function surfaceElement(
     || null;
 }
 
-type RosterRenderer = {
-  applyRendererExtension?: (
-    manifestId: string,
-    playerId: string,
-    overrides: { textOverrides: Dict; componentOverrides: Dict }
-  ) => { tile: HTMLElement; host: HTMLElement; renderer: unknown; composition: Dict; player: Dict } | null;
-};
-
-function renderRosterItemManifest(
-  manifest: PluginRendererManifest,
-  model: unknown,
-  lobby: Dict,
-  runtime: Dict,
-  rosterRenderer: RosterRenderer | null
-): void {
-  if (manifest.target.kind !== "rosterItem" || !rosterRenderer?.applyRendererExtension) return;
-  const selected = propertyPathValue(model, manifest.target.source);
-  const models = Array.isArray(selected)
-    ? selected.filter((item): item is Dict => Boolean(item && typeof item === "object" && !Array.isArray(item)))
-    : [];
-  const modelsByPlayerId = new Map<string, Dict>();
-  let invalid = false;
-  for (const item of models) {
-    const playerId = String(propertyPathValue(item, manifest.target.playerIdSource) ?? "").trim();
-    if (!playerId || modelsByPlayerId.has(playerId)) {
-      invalid = true;
-      break;
-    }
-    modelsByPlayerId.set(playerId, item);
-  }
-  const publicPlayerIds = new Set((((lobby.players as Dict[]) || [])).map((player) => String(player.id || "")));
-  if (Array.from(modelsByPlayerId.keys()).some((playerId) => !publicPlayerIds.has(playerId))) invalid = true;
-  for (const playerId of publicPlayerIds) {
-    const itemModel = invalid ? null : modelsByPlayerId.get(playerId) || null;
-    const overrides = bindingOverrides(manifest.bindings, itemModel);
-    const item = rosterRenderer.applyRendererExtension(manifest.id, playerId, overrides);
-    if (!item) continue;
-    let manifestSignatures = rosterManifestSignaturesByTile.get(item.tile);
-    if (!manifestSignatures) {
-      manifestSignatures = new Map();
-      rosterManifestSignaturesByTile.set(item.tile, manifestSignatures);
-    }
-    const signature = JSON.stringify({ invalid, itemModel });
-    if (manifestSignatures.get(manifest.id) === signature) continue;
-    manifestSignatures.set(manifest.id, signature);
-    item.tile.dataset.gamePluginRosterRenderer = manifest.id;
-    item.tile.toggleAttribute("data-game-plugin-roster-renderer-invalid", invalid);
-    applyLifecycleBindings(manifest.bindings, itemModel, item.host, item.renderer, manifest.id);
-    for (const collection of manifest.bindings.filter((binding) => binding.kind === "collection" && binding.targetComponentId)) {
-      const component = componentInComposition(item.composition, String(collection.targetComponentId), runtime);
-      const target = item.host.querySelector<HTMLElement>(`[data-art-component-id="${CSS.escape(String(component?.id || collection.targetComponentId))}"]`);
-      if (!component || String(component.kind || "").toLowerCase() !== "container" || !target) continue;
-      let collectionHost = target.querySelector<HTMLElement>(`:scope > [data-game-plugin-roster-collection="${CSS.escape(`${manifest.id}:${collection.id}`)}"]`);
-      if (!collectionHost) {
-        collectionHost = document.createElement("div");
-        collectionHost.dataset.gamePluginRosterCollection = `${manifest.id}:${collection.id}`;
-        collectionHost.style.position = "absolute";
-        collectionHost.style.inset = "0";
-        collectionHost.style.width = "100%";
-        collectionHost.style.height = "100%";
-        collectionHost.style.zIndex = "1";
-        target.appendChild(collectionHost);
-      }
-      reconcileRendererCollection({
-        surface: "stage",
-        manifestId: manifest.id,
-        binding: collection,
-        model: itemModel,
-        host: collectionHost,
-        layout: collectionLayoutFromArtContainer(component),
-        runtime,
-        path: `roster:${playerId}:${collection.id}`
-      });
-    }
-  }
-}
-
 export function renderGamePluginSurface(
   surface: "stage" | "controller",
   lobby: Dict,
-  documentRef: Document = document,
-  options: { playerRosterRenderer?: RosterRenderer | null } = {}
+  documentRef: Document = document
 ): void {
   const runtime = globalThis as typeof globalThis & Dict;
   const manifests = runtimeConfig(documentRef).gamePlugin?.renderers || [];
@@ -403,12 +323,7 @@ export function renderGamePluginSurface(
   for (const manifest of manifests) {
     if (manifest.surface !== surface) continue;
     const model = viewModels[manifest.id];
-    if (surface === "stage" && manifest.target.kind === "rosterItem") {
-      renderRosterItemManifest(manifest, model, lobby, runtime, options.playerRosterRenderer || null);
-      continue;
-    }
-    if (manifest.target.kind === "rosterItem") continue;
-    const layoutTarget = manifest.target as Extract<PluginRendererManifest["target"], { kind?: "layout" }>;
+    const layoutTarget = manifest.target;
     const element = surfaceElement(surface, manifest, runtime);
     if (!element) continue;
     const targetScope = layoutTarget.layoutScope === "layer"

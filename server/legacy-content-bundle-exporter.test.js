@@ -49,7 +49,6 @@ function fixture() {
       multipleChoicePrompts: [{ id: "one", prompt: "One?", options: ["Yes"], correctAnswerIndex: 0 }],
       artAssets: [{ id: "asset", name: "Asset", category: "Test", use: "Test", defaultFile: "asset.svg" }],
       artGroups: [],
-      avatarShapes: ["triangle"],
       availableFlowTransitions: []
     }
   };
@@ -80,7 +79,6 @@ describe("legacy content bundle exporter", () => {
 
     expect(snapshot.readJson("prompts/prompts.json").prompts).toHaveLength(1);
     expect(snapshot.readJson("constants.json").gameTitle).toBe("Example");
-    expect(snapshot.readJson("game-data/runtime.json").avatarShapes).toEqual(["triangle"]);
     expect(snapshot.readJson("semantic-roles.json").roles).toEqual({ "engine.background": "example.background" });
     expect(art.assets[0].blobPath).toMatch(/^blobs\/[a-f0-9]{64}\.svg$/);
     expect(snapshot.readBytes(art.assets[0].blobPath).toString()).toBe("<svg></svg>\n");

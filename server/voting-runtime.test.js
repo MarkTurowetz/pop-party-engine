@@ -15,7 +15,7 @@ function runtime() {
 describe("voting card preparation identity", () => {
   it("creates a fresh card identity every time answers are prepared", () => {
     const room = {
-      players: new Map([["p1", { id: "p1", name: "Ava", active: true, avatar: { shape: "rex", color: "pink" } }]]),
+      players: new Map([["p1", { id: "p1", name: "Ava", active: true }]]),
       playerAnswerRecords: { p1: { playerId: "p1", text: "FIRST", answeredAt: 10 } },
       votingAnswers: new Map()
     };

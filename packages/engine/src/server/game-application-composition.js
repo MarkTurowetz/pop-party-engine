@@ -286,7 +286,6 @@ const {
   artGroups,
   availableFlowActionTypes,
   availableFlowTransitions,
-  avatarShapes,
   defaultControllerLayouts,
   defaultGameConstants,
   defaultGameFlow,
@@ -418,18 +417,13 @@ const {
 
 const {
   activePlayers,
-  makeRandomAvatar,
-  normalizeAvatarShape,
-  randomArrayItem,
   selectVip
 } = createPlayerStateRuntime({
-  avatarShapes,
-  gameConstants,
-  normalizeColor,
   randomToken
 });
 const gameRendererRuntime = createGameRendererRuntime({
   activePlayers,
+  currentAction: (room) => _currentRoomActionFn?.(room) || null,
   stageRenderers: runtimeGameDefinition.registrations.stageRenderers,
   controllerRenderers: runtimeGameDefinition.registrations.controllerRenderers
 });
@@ -549,17 +543,21 @@ const {
 });
 
 async function broadcastArtAssetsChanged(payload) {
-  for (const room of rooms.values()) {
-    for (const client of room.stageClients) {
-      sendSse(client, "artAssetsChanged", payload);
-    }
-  }
   if (authoringSessionContent) {
     try {
       await authoringSessionContent.refresh();
+      for (const room of rooms.values()) {
+        authoringSessionContent.prepareLobbySession(room);
+        broadcastLobby(room);
+      }
     } catch (error) {
       // The saved authoring data remains durable. A new session will fail
       // closed with the same diagnostic instead of reusing the older cache.
+    }
+  }
+  for (const room of rooms.values()) {
+    for (const client of room.stageClients) {
+      sendSse(client, "artAssetsChanged", payload);
     }
   }
 }
@@ -1257,10 +1255,16 @@ const {
   localDraftStore,
   normalizeHostAudios,
   normalizeGameFlow,
-  onSaved: async () => {
+  onSaved: async ({ label }) => {
     if (!authoringSessionContent) return;
     try {
       await authoringSessionContent.refresh();
+      if (label === "Stage layouts" || label === "Controller layouts") {
+        for (const room of rooms.values()) {
+          authoringSessionContent.prepareLobbySession(room);
+          broadcastLobby(room);
+        }
+      }
     } catch (error) {
       // Saving remains durable. The next session boundary will report the
       // invalid/unavailable snapshot instead of falling back to old content.
@@ -1475,22 +1479,17 @@ const {
 const {
   handleHeartbeat,
   handleJoin,
-  handleLeave,
-  handleSelectAvatar
+  handleLeave
 } = createPlayerSessionHandlersRuntime({
   broadcastLobby,
   cleanPlayerName,
-  gameConstants,
   getExistingRoom,
   getRoom,
   lobbyPayload,
-  makeRandomAvatar,
-  normalizeAvatarShape,
   normalizePlayerId,
   normalizeStageCode,
   onPlayerDisconnected: gameInputRuntime.playerDisconnected,
   publicPlayer,
-  randomArrayItem,
   readJson,
   runtimeCapabilities,
   selectVip,
@@ -1666,7 +1665,6 @@ const {
   handleSaveHostAudios,
   handleUploadHostAudioAsset,
   handleSaveStageLayouts,
-  handleSelectAvatar,
   handleStart,
   handleStageEvents,
   handleStageTestConfig,

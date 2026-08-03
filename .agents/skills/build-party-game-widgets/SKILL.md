@@ -92,6 +92,25 @@ Treat the Art Manager layer list as a visual stack: layers nearer the top render
 - For the current voting-card structure, use `author` and `voteCount` above the background-bearing `answer` child.
 - Do not rely on creation or insertion order. Review the nested preview with every intended child visible and reorder layers until no background obscures information.
 
+### Required background-depth assertion
+
+Every widget task using this skill must perform an explicit layer-order assertion before saving:
+
+1. Classify each direct child in the owning composition as foreground, background/backplate, or
+   transparent layout-only container. Classify by rendered function, not by the element's name.
+2. Read the serialized component array in the Art Manager's top-first order.
+3. Assert that no foreground child appears after a functional background child. Transparent
+   layout-only containers are ignored unless their spawned/rendered children form a background.
+4. Repeat the assertion independently for every referenced/nested composition.
+5. Reorder failing layers in the authored composition and rerun the assertion; never compensate
+   with runtime `z-index`, CSS, insertion order, or a parent-only override.
+
+For a project-owned automated check, maintain an explicit set of known functional background
+component or instance labels and fail when any of them is not the last visual child (or last visual
+subgroup when several backgrounds intentionally stack) in its owning composition. The explicit
+classification keeps the check deterministic; shape kind or fill alone is not proof that an element
+is a background.
+
 ## Avoid the state-animation cross product
 
 Never create separate timelines such as `CorrectAppear`, `CorrectDisappear`, `IncorrectAppear`, and `IncorrectDisappear`.

@@ -8,7 +8,6 @@ const repoRoot = path.resolve(__dirname, "..");
 const filesToCheck = [
   "client/runtime/controller.ts",
   "client/runtime/controllerActionBindings.ts",
-  "client/runtime/controllerAvatarView.ts",
   "client/runtime/controllerChoiceInputView.ts",
   "client/runtime/controllerGlobalActionView.ts",
   "client/runtime/controllerHeartbeatRuntime.ts",
@@ -21,7 +20,6 @@ const filesToCheck = [
   "client/layout-tool.js",
   "client/runtime/stageRuntime.ts",
   "client/runtime/stageArtObjectVisuals.ts",
-  "client/runtime/stagePlayerRoster.ts",
   "client/runtime/stageVisualControllers.ts",
   "client/runtime/stageVotingCardVisuals.ts",
   "client/runtime/stageWidgetArtRenderer.ts"

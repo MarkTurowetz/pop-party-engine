@@ -57,14 +57,6 @@ function createVotingRuntime({
     return "";
   }
 
-  function avatarSnapshot(avatar) {
-    if (!avatar || typeof avatar !== "object") return null;
-    return {
-      color: avatar.color || "",
-      shape: avatar.shape || ""
-    };
-  }
-
   function playerSnapshot(player) {
     if (!player || typeof player !== "object") return null;
     const id = String(player.id || "").trim();
@@ -72,8 +64,7 @@ function createVotingRuntime({
     if (!id && !name) return null;
     return {
       id,
-      name,
-      avatar: avatarSnapshot(player.avatar)
+      name
     };
   }
 
@@ -81,9 +72,8 @@ function createVotingRuntime({
     if (!record || typeof record !== "object") return null;
     const id = String(record.playerId || record.authorPlayerId || record.authorId || "").trim();
     const name = String(record.playerName || record.authorName || record.name || "").trim();
-    const avatar = avatarSnapshot(record.playerAvatar || record.authorAvatar || record.avatar);
-    if (!id && !name && !avatar) return null;
-    return { id, name, avatar };
+    if (!id && !name) return null;
+    return { id, name };
   }
 
   function updateCardAuthorSnapshot(room, card, fallbackRecord = null) {
@@ -94,18 +84,15 @@ function createVotingRuntime({
     const storedAuthor = answerAuthorSnapshot(card);
     const authorId = liveAuthor?.id || storedAuthor?.id || answerAuthor?.id || String(card.authorPlayerId || "").trim();
     const authorName = liveAuthor?.name || storedAuthor?.name || answerAuthor?.name || "";
-    const authorAvatar = liveAuthor?.avatar || storedAuthor?.avatar || answerAuthor?.avatar || null;
     card.authorPlayerId = authorId || card.authorPlayerId;
     card.authorName = authorName;
-    card.authorAvatar = authorAvatar;
     return card;
   }
 
   function revealedCardAuthor(room, card) {
     updateCardAuthorSnapshot(room, card);
     return {
-      name: String(card.authorName || "").trim(),
-      avatar: avatarSnapshot(card.authorAvatar)
+      name: String(card.authorName || "").trim()
     };
   }
 
@@ -241,7 +228,7 @@ function createVotingRuntime({
           ? (card.voterIds || [])
               .map((playerId) => {
                 const player = room.players.get(playerId);
-                return player ? { id: player.id, name: player.name, avatar: player.avatar } : null;
+                return player ? { id: player.id, name: player.name } : null;
               })
               .filter(Boolean)
               .sort((a, b) => {
@@ -262,7 +249,6 @@ function createVotingRuntime({
           winnerRevealed,
           resultsShown: room.votingResultsShown === true,
           authorName: author.name,
-          authorAvatar: author.avatar,
           voters
         };
       });

@@ -30,10 +30,8 @@ function createLayoutNormalizationRuntime(options = {}) {
     presentclickwidget: "engine.stage.presentationAdvancePrompt"
   };
   const controllerRoleByElementId = {
-    controlleravatar: "engine.controller.avatarChoice",
     controllerinvalidbanner: "engine.controller.invalidSubmission",
     controllermicaccessbutton: "engine.controller.submitControl",
-    controllerplayerbanner: "engine.controller.playerIdentity",
     controllertextinput: "engine.controller.textInput",
     controllertextsubmitbutton: "engine.controller.submitControl",
     controllervoicebutton: "engine.controller.submitControl",

@@ -72,13 +72,11 @@ describe("createControllerActionBindings (ported)", () => {
   it("exposes bindAll", () => {
     const bindings = createControllerActionBindings({
       applyLayoutForPhase: vi.fn(),
-      closeAvatarPicker: vi.fn(),
       elements: {} as never,
       getStartButton: () => null,
       getControllerState: () => null,
       getSessionRuntime: () => ({ sendLeaveBeacon: vi.fn() }),
       getSubmitApi: () => ({ startOrCancelGame: vi.fn() }) as never,
-      openAvatarPicker: vi.fn(),
       origin: "http://x",
       renderState: vi.fn(),
       setMetaText: vi.fn()

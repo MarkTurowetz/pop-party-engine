@@ -366,15 +366,7 @@ function validateRendererRegistration(kind, id, value) {
   if (!String(value.name || "").trim()) throw new Error(`Renderer "${id}" requires a name`);
   assertPlainObject(value.target, `Renderer "${id}" target`);
   const targetKind = String(value.target.kind || "layout");
-  if (targetKind === "rosterItem") {
-    if (kind !== "stageRenderers") throw new Error(`Renderer "${id}" rosterItem targets are Stage-only`);
-    if (String(value.target.semanticRole || "") !== "engine.stage.playerIdentityWidget") {
-      throw new Error(`Renderer "${id}" rosterItem target requires semanticRole "engine.stage.playerIdentityWidget"`);
-    }
-    if (!String(value.target.source || "").trim() || !String(value.target.playerIdSource || "").trim()) {
-      throw new Error(`Renderer "${id}" rosterItem target requires source and playerIdSource`);
-    }
-  } else if (targetKind === "layout") {
+  if (targetKind === "layout") {
     if (!String(value.target.layoutElementId || "").trim()) {
       throw new Error(`Renderer "${id}" target requires layoutElementId`);
     }
@@ -392,7 +384,7 @@ function validateRendererRegistration(kind, id, value) {
   }
   const bindingIds = new Set();
   for (const binding of value.bindings) {
-    validateRendererBinding(id, binding, bindingIds, { nested: false, requireTarget: targetKind === "rosterItem" });
+    validateRendererBinding(id, binding, bindingIds, { nested: false, requireTarget: false });
   }
 }
 

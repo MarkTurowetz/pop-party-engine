@@ -54,10 +54,10 @@
         "fontColor": "#ffffff"
       },
       {
-        "id": "playerlobby",
-        "name": "Player Avatars",
-        "selector": "#playerLobby",
-        "kind": "art",
+        "id": "gameplayerpresentation",
+        "name": "Game-owned Player Presentation",
+        "selector": "",
+        "kind": "collection",
         "artCompositionId": "",
         "hidden": false,
         "locked": false,
@@ -73,7 +73,13 @@
         "fontSize": 58,
         "autoFitText": false,
         "fontFamily": "",
-        "fontColor": "#ffffff"
+        "fontColor": "#ffffff",
+        "collectionDirection": "horizontal",
+        "collectionDistribution": "space-evenly",
+        "collectionAlignment": "center",
+        "collectionGap": 24,
+        "collectionPadding": 0,
+        "collectionOverflow": "visible"
       },
       {
         "id": "stageBackground",

@@ -5,7 +5,7 @@
   "flowExpressionLanguageVersion": 1,
   "gameMigrationLevel": 0,
   "semanticRolesPath": "semantic-roles.json",
-  "parentRevision": "12e15ebee30eccfcd482d90fa0c5e3a222856e98aa4789a4ea14e32b426cb4ac",
+  "parentRevision": "",
   "publishedRevision": "",
   "files": [
     {
@@ -70,18 +70,18 @@
     },
     {
       "path": "game-data/runtime.json",
-      "sha256": "232a381a9d3fbd0e7b82935d029ed9cf66e9a802f3c4181b072acbec74f7f887",
-      "bytes": 905
+      "sha256": "8a97be2f5d791dd926ef45b848a71b00cee2c06a241f2d7aa50fc98b2fa9bec4",
+      "bytes": 802
     },
     {
       "path": "layouts/controller.json",
-      "sha256": "8d555a13251470764d3644ce9e9a4f4d55ab0007afd6a8bcbe8f4382060146e9",
-      "bytes": 45086
+      "sha256": "c890b260f039ff6af013dd3b0d5a767b8bc5c1845ee6fd4cede0906429fb557d",
+      "bytes": 44431
     },
     {
       "path": "layouts/stage.json",
-      "sha256": "95ff3a94d10ea2679162b9782486f2c6ad371ef150b4ebeb7bd7c45a5351203d",
-      "bytes": 20101
+      "sha256": "7a8d798c1fe6d4be6ca66e5a72920d906011594217a45e6af56f02acda1b03b8",
+      "bytes": 20361
     },
     {
       "path": "prompts/prompts.json",
@@ -90,9 +90,9 @@
     },
     {
       "path": "semantic-roles.json",
-      "sha256": "f47cda5ab48cae4a292adf8e69c125864b3341fb4ac681a780e0171720424189",
-      "bytes": 2469
+      "sha256": "adc804d2d669d2a37eae4a93346e817c5633982bb4384b8263bb98c6a13462dd",
+      "bytes": 1662
     }
   ],
-  "rootHash": "2af49894b93a1435d888f49e5bcb64f575f1e7345c16dfce08bf02ca30b49453"
+  "rootHash": "d2117400c7a602e7b8fe1290c1c1ceac31788f40636fe24ba4e660167ddb8273"
 }

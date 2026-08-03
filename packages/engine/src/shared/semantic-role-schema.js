@@ -16,10 +16,6 @@ class SemanticRoleValidationError extends Error {
 exports.SemanticRoleValidationError = SemanticRoleValidationError;
 exports.coreSemanticRoleDefinitions = Object.freeze({
     "engine.stage.activeBackground": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["backgroundDefault"] }),
-    "engine.stage.playerIdentityWidget": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["playerAnswerBubbleMC", "playerAvatarMC", "playerNameMC", "vipMC", "pointPopupContainer"] }),
-    "engine.stage.playerAnswerBubble": Object.freeze({ surface: "stage", terminalKind: "reference" }),
-    "engine.stage.playerPointsPopup": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["pointText", "pointShadow"] }),
-    "engine.stage.playerPointsPopupContainer": Object.freeze({ surface: "stage", terminalKind: "container" }),
     "engine.stage.votingCard": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["voteCount", "author", "voters", "answer"] }),
     "engine.stage.timer": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["craftingTimer"] }),
     "engine.stage.transition": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["wipeArtMC"] }),
@@ -31,15 +27,12 @@ exports.coreSemanticRoleDefinitions = Object.freeze({
     "engine.stage.countdown": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["popupText", "popupCard"] }),
     "engine.stage.presentationAdvancePrompt": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["cursorShape"] }),
     "engine.stage.layoutText": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["text"] }),
-    "engine.shared.playerAvatar": Object.freeze({ surface: "stage", terminalKind: "composition", requiredInstanceLabels: ["playerAvatarBehaviors"] }),
-    "engine.controller.playerIdentity": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["playerAvatarMc", "playerNameMc"] }),
     "engine.controller.textInput": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["placeholderText", "inputCard"] }),
     "engine.controller.submitControl": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["buttonText", "buttonCard"] }),
     "engine.controller.choiceControl": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["optionText", "optionCard"] }),
     "engine.controller.invalidSubmission": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["invalidText", "invalidCard"] }),
     "engine.controller.stageCodeInput": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["fieldLabel", "fieldValue", "fieldCard"] }),
-    "engine.controller.playerNameInput": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["fieldLabel", "fieldValue", "fieldCard"] }),
-    "engine.controller.avatarChoice": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["avatarCard"] })
+    "engine.controller.playerNameInput": Object.freeze({ surface: "controller", terminalKind: "composition", requiredInstanceLabels: ["fieldLabel", "fieldValue", "fieldCard"] })
 });
 exports.requiredCoreSemanticRoles = Object.freeze(Object.keys(exports.coreSemanticRoleDefinitions));
 const roleIdPattern = /^(?:engine|[a-z][a-z0-9-]{2,63})\.(?:[a-z][A-Za-z0-9]*\.)*[a-z][A-Za-z0-9]*$/;

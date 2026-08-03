@@ -37,8 +37,8 @@ describe("semantic role schema", () => {
     const fixture = validFixture();
     const result = validateSemanticRoleDocument(fixture.document, fixture.artManifest);
     expect(Object.keys(result.roles)).toEqual(requiredCoreSemanticRoles);
-    expect(semanticRoleTargetKey(result.roles["engine.stage.playerPointsPopupContainer"]))
-      .toContain("#target");
+    expect(semanticRoleTargetKey(result.roles["engine.stage.votingCard"]))
+      .toContain("fixture-");
   });
 
   it("rejects old string aliases, missing core roles, and unresolved component paths", () => {
@@ -52,17 +52,17 @@ describe("semantic role schema", () => {
       .toThrowError(expect.objectContaining({ code: "SEMANTIC_ROLE_REQUIRED_MISSING" }));
 
     const unresolved = validFixture();
-    unresolved.document.roles["engine.stage.playerAnswerBubble"].instancePath = ["oldAnswerBubble"];
+    unresolved.document.roles["engine.stage.layoutText"].instancePath = ["oldText"];
     expect(() => validateSemanticRoleDocument(unresolved.document, unresolved.artManifest))
       .toThrowError(expect.objectContaining({ code: "SEMANTIC_ROLE_PATH_UNRESOLVED" }));
   });
 
-  it("rejects a points origin that is not the authored player-widget container", () => {
+  it("rejects a semantic role composition on the wrong surface", () => {
     const fixture = validFixture();
-    const target = fixture.document.roles["engine.stage.playerPointsPopupContainer"];
-    fixture.artManifest.compositions[target.compositionId].components[0].kind = "shape";
+    const target = fixture.document.roles["engine.stage.layoutText"];
+    fixture.artManifest.compositions[target.compositionId].surface = "controller";
     expect(() => validateSemanticRoleDocument(fixture.document, fixture.artManifest))
-      .toThrowError(expect.objectContaining({ code: "SEMANTIC_ROLE_KIND_MISMATCH" }));
+      .toThrowError(expect.objectContaining({ code: "SEMANTIC_ROLE_SURFACE_MISMATCH" }));
   });
 
   it("rejects a mapped widget whose required text or child binding is absent", () => {

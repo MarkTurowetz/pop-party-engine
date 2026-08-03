@@ -78,7 +78,6 @@ The original shared shell loaded 85 external browser scripts in this order:
 /client/controller-module-cache.js
 /client/controller-text-renderer.js
 /client/controller-view-state.js
-/client/controller-avatar-view.js
 /client/controller-microphone-access-view.js
 /client/controller-recording-lifecycle.js
 /client/controller-voice-input.js
@@ -222,9 +221,8 @@ and the Node shell renderer replaces it with route-specific stylesheet links:
 /tools       base + stage-runtime + controller-runtime + tools + responsive
 ```
 
-`stage-runtime.css` still contains shared player/avatar styles used by the
-controller runtime. A later cleanup can split those into a smaller shared runtime
-stylesheet once the route shells are fully separated.
+Player/avatar presentation is not shared engine runtime CSS. Games that author
+those visuals own them through Layout, Art Manager, and plugin renderer bindings.
 
 Browser audit after the CSS split:
 

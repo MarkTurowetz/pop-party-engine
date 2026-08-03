@@ -40,7 +40,6 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     return {
       id: player.id,
       name: player.name,
-      avatar: player.avatar,
       active: player.active,
       joinedAt: player.joinedAt,
       points: Number(player.points || 0),

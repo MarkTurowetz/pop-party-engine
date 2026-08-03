@@ -46,7 +46,7 @@ function gameFixture(events, releaseOverrides = {}) {
     "layouts/controller.json": { canvas: {}, global: {}, states: [{ id: "join", elements: [] }] },
     "audio/host-audios.json": { hostAudios: [] },
     "prompts/prompts.json": { prompts: [] },
-    "game-data/runtime.json": { schemaVersion: 1, avatarShapes: ["triangle"], artGroups: [], availableFlowTransitions: [] }
+    "game-data/runtime.json": { schemaVersion: 1, artGroups: [], availableFlowTransitions: [] }
   };
   const snapshot = {
     revision: "content-1",

@@ -14,7 +14,6 @@ export interface ControllerLobbyViewOptions {
   hideViews: () => void;
   setButtonText?: (target: HTMLElement, value: unknown, spec?: Dict) => void;
   setText?: (target: HTMLElement, value: unknown) => void;
-  setAvatar: (me: Dict) => void;
   showView: (viewId: string) => void;
 }
 
@@ -25,7 +24,7 @@ export interface ControllerLobbyView {
 }
 
 export function createControllerLobbyView(options: ControllerLobbyViewOptions): ControllerLobbyView {
-  const { applyLayoutForPhase, disposeStartButton, elements, getStartButton, hideViews, setButtonText, setText, setAvatar, showView } = options;
+  const { applyLayoutForPhase, disposeStartButton, elements, getStartButton, hideViews, setButtonText, setText, showView } = options;
 
   const writeText =
     typeof setText === "function"
@@ -53,7 +52,6 @@ export function createControllerLobbyView(options: ControllerLobbyViewOptions): 
     applyLayoutForPhase(phase);
     showView("lobby");
     writeText(elements.playerName, me.name);
-    setAvatar(me);
     writeText(elements.meta, me.isVip ? "VIP Player" : "Waiting for the VIP");
     if (me.isVip !== true) {
       disposeStartButton();

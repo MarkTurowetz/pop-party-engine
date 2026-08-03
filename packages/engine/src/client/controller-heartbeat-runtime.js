@@ -4,7 +4,6 @@ function createControllerHeartbeatRuntime(options) {
   const {
     applyLayoutForPhase,
     clearIntervalImpl = globalThis.clearInterval.bind(globalThis),
-    closeAvatarPicker,
     elements,
     getJoinButton,
     getControllerState,
@@ -45,7 +44,6 @@ function createControllerHeartbeatRuntime(options) {
       if (error?.code === "KICKED_TO_LOBBY") {
         stop();
         setControllerState(null);
-        closeAvatarPicker({ commit: false });
         hideViews();
         showView("join");
         applyLayoutForPhase("join");

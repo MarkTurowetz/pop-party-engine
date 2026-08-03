@@ -1,9 +1,8 @@
-// Engine-owned player points popup lifecycle.
-import type { TimelineDocument } from "./timeline-model";
+"use strict";
 
-export function defaultPlayerPointPopupTimeline(): TimelineDocument {
+function defaultPlayerPointPopupTimeline() {
   const popupFrames = { start: 33, hold: 72, end: 78 };
-  const trackFor = (targetId: string, baseX: number, baseY: number) => ({
+  const trackFor = (targetId, baseX, baseY) => ({
     targetId,
     keyframes: [
       { frame: 0, props: { opacity: 0, scale: 1, x: baseX, y: baseY }, easing: "hold" },
@@ -51,12 +50,4 @@ export function defaultPlayerPointPopupTimeline(): TimelineDocument {
   };
 }
 
-export function migratePlayerPointPopupTimeline(
-  compositionId: unknown,
-  timeline: TimelineDocument | null | undefined
-): TimelineDocument | null | undefined {
-  if (String(compositionId || "") !== "player-point-popup") return timeline;
-  const hasPopup = Array.isArray(timeline?.labels)
-    && timeline.labels.some((label) => String(label?.name || "").trim().toLowerCase() === "popup");
-  return hasPopup ? timeline : defaultPlayerPointPopupTimeline();
-}
+module.exports = { defaultPlayerPointPopupTimeline };

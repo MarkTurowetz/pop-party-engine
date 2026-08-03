@@ -48,7 +48,7 @@ function fixture(overrides = {}) {
     "layouts/controller.json": { canvas: {}, global: {}, states: [{ id: "join", elements: [] }] },
     "audio/host-audios.json": { hostAudios: [] },
     "prompts/prompts.json": { prompts: [] },
-    "game-data/runtime.json": { schemaVersion: 1, avatarShapes: ["triangle"], artGroups: [], availableFlowTransitions: [] }
+    "game-data/runtime.json": { schemaVersion: 1, artGroups: [], availableFlowTransitions: [] }
   };
   const snapshot = {
     revision: "content-1",
@@ -197,47 +197,39 @@ describe("game readiness runtime", () => {
     await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_NESTED_COLLECTION_TARGET_INVALID" });
   });
 
-  it("validates roster extensions against the Player Widget while reserving engine-owned subtrees", async () => {
-    const semantic = semanticFixture();
-    const playerWidgetId = semantic.roles["engine.stage.playerIdentityWidget"].compositionId;
+  it("validates game-owned player collections without an engine roster composition", async () => {
     const registration = {
-      id: "fixture.roster",
+      id: "fixture.players",
       value: {
-        target: {
-          kind: "rosterItem",
-          semanticRole: "engine.stage.playerIdentityWidget",
-          source: "players",
-          playerIdSource: "playerId"
-        },
-        bindings: [
-          { id: "score", kind: "text", source: "score", targetComponentId: "game-score" },
-          {
-            id: "rows", kind: "collection", source: "rows", targetComponentId: "game-rows",
-            item: { keySource: "id", artCompositionId: "game-row", bindings: [] }
+        target: { kind: "layout", layoutElementId: "players", layoutScope: "global" },
+        bindings: [{
+          id: "players", kind: "collection", source: "players",
+          item: {
+            keySource: "id", artCompositionId: "game-player", bindings: [
+              { id: "score", kind: "text", source: "score", targetComponentId: "score" },
+              {
+                id: "rows", kind: "collection", source: "rows", targetComponentId: "rows",
+                item: { keySource: "id", artCompositionId: "game-row", bindings: [] }
+              }
+            ]
           }
-        ]
+        }]
       }
     };
     const { game, release, snapshot } = fixture({
       game: { registrations: { validators: [], stageRenderers: [registration], controllerRenderers: [] } }
     });
     const gameData = {
-      defaultStageLayouts: { states: [] },
+      defaultStageLayouts: { global: { elements: [{ id: "players", kind: "collection" }] }, states: [] },
       defaultControllerLayouts: { states: [] },
       defaultArtCompositions: [
         {
-          id: playerWidgetId,
+          id: "game-player",
           surface: "stage",
-          compositionKind: "prefab",
+          compositionKind: "gameObject",
           components: [
-            { id: "roster-anchor", instanceLabel: "playerRosterAnchor", kind: "container", x: 150, y: 185, width: 300, height: 370 },
-            { id: "answer", instanceLabel: "playerAnswerBubbleMC", kind: "reference", artCompositionId: "answer" },
-            { id: "avatar", instanceLabel: "playerAvatarMC", kind: "reference", artCompositionId: "avatar" },
-            { id: "name", instanceLabel: "playerNameMC", kind: "reference", artCompositionId: "name" },
-            { id: "vip", instanceLabel: "vipMC", kind: "reference", artCompositionId: "vip" },
-            { id: "points", instanceLabel: "pointPopupContainer", kind: "container" },
-            { id: "game-score", kind: "text" },
-            { id: "game-rows", kind: "container" }
+            { id: "score", kind: "text" },
+            { id: "rows", kind: "container" }
           ]
         },
         { id: "game-row", surface: "stage", compositionKind: "gameObject", components: [] }
@@ -246,13 +238,7 @@ describe("game readiness runtime", () => {
     const validateRelease = createGameReleaseValidator({ gameDefinition: game, engineVersion: "1.0.0" });
 
     await expect(validateRelease({ gameData, release, snapshot })).resolves.toMatchObject({ release: { contentRevision: "content-1" } });
-    const anchor = gameData.defaultArtCompositions[0].components.shift();
-    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_ROSTER_ANCHOR_INVALID" });
-    gameData.defaultArtCompositions[0].components.unshift(anchor);
-    registration.value.bindings[0].targetComponentId = "playerAvatarMC";
-    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_ROSTER_ENGINE_COMPONENT_RESERVED" });
-    registration.value.bindings[0].targetComponentId = "game-score";
-    gameData.defaultArtCompositions[0].components.find((component) => component.id === "game-rows").kind = "shape";
-    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_ROSTER_COLLECTION_TARGET_INVALID" });
+    gameData.defaultArtCompositions[0].components.find((component) => component.id === "rows").kind = "shape";
+    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_NESTED_COLLECTION_TARGET_INVALID" });
   });
 });

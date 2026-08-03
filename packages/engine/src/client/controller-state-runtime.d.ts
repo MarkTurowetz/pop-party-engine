@@ -11,7 +11,6 @@ export interface ControllerStateViewWithRender {
 }
 
 export interface ControllerStateRuntimeOptions {
-  closeAvatarPicker: (options: { commit: boolean }) => void;
   getChoiceInputView: () => ControllerStateViewWithRender;
   getGlobalActionView: () => {
     render: (lobby: ControllerStateRuntimeDictionary, me: ControllerStateRuntimeDictionary) => boolean;

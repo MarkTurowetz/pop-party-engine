@@ -3,17 +3,13 @@
 function createPlayerSessionHandlersRuntime({
   broadcastLobby,
   cleanPlayerName,
-  gameConstants,
   getExistingRoom,
   getRoom,
   lobbyPayload,
-  makeRandomAvatar,
-  normalizeAvatarShape,
   normalizePlayerId,
   normalizeStageCode,
   onPlayerDisconnected = () => {},
   publicPlayer,
-  randomArrayItem,
   readJson,
   runtimeCapabilities,
   selectVip,
@@ -69,7 +65,6 @@ function createPlayerSessionHandlersRuntime({
       player = {
         id: playerId,
         name: playerName,
-        avatar: makeRandomAvatar(room, playerId),
         active: true,
         kickedFromGame: false,
         points: 0,
@@ -129,48 +124,6 @@ function createPlayerSessionHandlersRuntime({
     sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room, playerId) });
   }
 
-  async function handleSelectAvatar(req, res) {
-    let payload;
-    try {
-      payload = await readJson(req);
-    } catch (error) {
-      sendJson(res, 400, { ok: false, error: "Invalid JSON payload" });
-      return;
-    }
-
-    const stageCode = normalizeStageCode(payload.stageCode);
-    const playerId = normalizePlayerId(payload.playerId);
-    const room = getExistingRoom(stageCode);
-    const shape = normalizeAvatarShape(payload.shape, room);
-    const player = room?.players.get(playerId);
-    if (!room || !player) {
-      sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
-      return;
-    }
-    if (!shape) {
-      sendJson(res, 400, { ok: false, error: "Choose a valid avatar" });
-      return;
-    }
-    if (player.kickedFromGame) {
-      sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "Player was returned to the join screen" });
-      return;
-    }
-    if (!player.active && Number(player.gameSessionId || 0) !== Number(room.gameSessionId || 0)) {
-      sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "This controller belongs to an earlier game session" });
-      return;
-    }
-
-    player.avatar = {
-      color: player.avatar?.color || randomArrayItem(gameConstants(room).playerColors),
-      shape
-    };
-    player.active = true;
-    player.lastSeen = Date.now();
-    player.gameSessionId = Number(room.gameSessionId || 0);
-    broadcastLobby(room);
-    sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room, playerId) });
-  }
-
   async function handleLeave(req, res) {
     let payload;
     try {
@@ -202,8 +155,7 @@ function createPlayerSessionHandlersRuntime({
   return {
     handleHeartbeat,
     handleJoin,
-    handleLeave,
-    handleSelectAvatar
+    handleLeave
   };
 }
 
