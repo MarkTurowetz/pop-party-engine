@@ -14,6 +14,11 @@ export interface ApiClient {
   getJson<T>(path: string): Promise<T>;
   postJson<TResponse, TBody = unknown>(path: string, body: TBody): Promise<TResponse>;
   deleteJson<T>(path: string): Promise<T>;
+  setMutationRecoveryHandler(handler: null | ((context: {
+    error: unknown;
+    method: string;
+    path: string;
+  }) => Promise<void> | void)): void;
 }
 
 export function createApiClient(options?: ApiClientOptions): ApiClient;

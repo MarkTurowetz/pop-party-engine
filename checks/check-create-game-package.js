@@ -518,7 +518,8 @@ module.exports = Object.freeze([
   fs.writeFileSync(artManifestPath, `${JSON.stringify(artManifest, null, 2)}\n`);
   refreshLocalContentBundle(path.join(targetRoot, "content"), { trackLineage: false });
   generatedSnapshot = createLocalContentBundleProvider({ root: path.join(targetRoot, "content") }).loadPublishedRevision();
-  const developmentSmoke = execFileSync(process.execPath, ["-e", `
+  const developmentSmokePath = path.join(targetRoot, ".pop-party-packed-browser-smoke.cjs");
+  fs.writeFileSync(developmentSmokePath, `
     const fs = require("node:fs");
     const { startDevelopmentApplication } = require("@pop-party/engine/tooling");
     const { chromium } = require(${JSON.stringify(playwrightModulePath)});
@@ -2402,11 +2403,30 @@ module.exports = Object.freeze([
       const recoveryPageErrors = [];
       const recoveredDraftMessages = [];
       let recoveryRequired = false;
+      let staleDraftRemaining = false;
+      let staleDraftRejections = 0;
+      let reconnectSessionAttempts = 0;
       let recoverySecondUrl = "";
       let recoveryCheckpointAttempts = 0;
       recoveryToolsPage.on("pageerror", (error) => recoveryPageErrors.push(error.message));
       await recoveryToolsPage.route("**/api/tool-drafts", async (route) => {
+        if (staleDraftRemaining) {
+          staleDraftRemaining = false;
+          staleDraftRejections += 1;
+          await route.fulfill({
+            status: 409,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: "The live prototype authoring session is no longer active",
+              errorCode: "AUTHORING_SESSION_STALE",
+              errorCategory: "authoring-session"
+            })
+          });
+          return;
+        }
         recoveredDraftMessages.push(JSON.parse(route.request().postData() || "{}"));
+        recoveryRequired = false;
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
       });
       await recoveryToolsPage.route("**/api/authoring/workspace/**", async (route) => {
@@ -2420,8 +2440,10 @@ module.exports = Object.freeze([
           workingRevision: "published-before-restart",
           gitSynced: true,
           leaseMs: 60_000,
+          recoveryRequired,
           release: { contentRevision: "published-before-restart", releaseRevision: "release-before-restart" }
         };
+        if (pathname.endsWith("/session")) reconnectSessionAttempts += 1;
         if (pathname.endsWith("/checkpoint")) {
           recoveryCheckpointAttempts += 1;
           if (recoveryRequired) {
@@ -2479,9 +2501,10 @@ module.exports = Object.freeze([
       await recoveryToolsPage.goto(recoveryFirst.startup.localUrl + "/tools", { waitUntil: "load" });
       await recoveryToolsPage.waitForFunction(() => document.querySelector('#globalSaveStatus')?.textContent?.includes("Git is up to date"), null, { timeout: 15_000 });
       await recoveryToolsPage.locator('[data-tool-target="constants"]').click();
+      const pendingBrowserTitle = "Generated Fixture Pending In Browser";
       const recoveredBrowserTitle = "Generated Fixture Recovered From Browser";
       const recoveryTitleInput = recoveryToolsPage.locator('[data-constants-field-input="gameTitle"]');
-      await recoveryTitleInput.fill(recoveredBrowserTitle);
+      await recoveryTitleInput.fill(pendingBrowserTitle);
       await recoveryTitleInput.press("Enter");
       await recoveryToolsPage.waitForFunction(() => document.querySelector('[data-constants-editor-status]')?.textContent?.includes("Unsaved"));
       await recoveryToolsPage.waitForTimeout(150);
@@ -2490,14 +2513,57 @@ module.exports = Object.freeze([
       const recoverySecond = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: recoveryPort });
       recoverySecondUrl = recoverySecond.startup.localUrl;
       recoveryRequired = true;
+      staleDraftRemaining = true;
       await (await fetch(recoverySecond.startup.localUrl + "/health")).json();
+      await recoveryTitleInput.fill(recoveredBrowserTitle);
+      await recoveryTitleInput.press("Enter");
+      try {
+        await recoveryToolsPage.waitForFunction((expected) => (
+          document.querySelector('[data-constants-field-input="gameTitle"]')?.value === expected
+          && document.querySelector('#globalSaveButton')?.dataset.authoringRecovery === "recovered"
+          && document.querySelector('#globalSaveStatus')?.textContent?.includes("Git is up to date")
+        ), recoveredBrowserTitle, { timeout: 20_000 });
+      } catch (error) {
+        const diagnostic = await recoveryToolsPage.evaluate(() => ({
+          title: document.querySelector('[data-constants-field-input="gameTitle"]')?.value,
+          recoveryState: document.querySelector('#globalSaveButton')?.dataset.authoringRecovery,
+          status: document.querySelector('#globalSaveStatus')?.textContent,
+          saveDisabled: document.querySelector('#globalSaveButton')?.disabled,
+          readOnly: document.querySelector('#constantsScreen')?.dataset.authoringReadOnly,
+          editorStatus: document.querySelector('[data-constants-editor-status]')?.textContent
+        }));
+        throw new Error("Recovered Tools tab did not reattach with its browser model: " + JSON.stringify({
+          diagnostic,
+          staleDraftRejections,
+          reconnectSessionAttempts,
+          recoveredDraftMessages: recoveredDraftMessages.length,
+          recoveryPageErrors
+        }), { cause: error });
+      }
       await recoveryToolsPage.locator('#globalSyncButton').click();
-      await recoveryToolsPage.waitForFunction((expected) => (
-        document.querySelector('[data-constants-editor-status]')?.textContent?.includes("Saved")
-        && document.querySelector('#globalSyncButton')?.textContent === "Sync Now"
-        && !document.querySelector('#globalSyncButton')?.disabled
-        && document.querySelector('[data-constants-field-input="gameTitle"]')?.value === expected
-      ), recoveredBrowserTitle, { timeout: 20_000 });
+      try {
+        await recoveryToolsPage.waitForFunction((expected) => (
+          document.querySelector('[data-constants-editor-status]')?.textContent?.includes("Saved")
+          && document.querySelector('#globalSyncButton')?.textContent === "Sync Now"
+          && !document.querySelector('#globalSyncButton')?.disabled
+          && document.querySelector('[data-constants-field-input="gameTitle"]')?.value === expected
+        ), recoveredBrowserTitle, { timeout: 20_000 });
+      } catch (error) {
+        const diagnostic = await recoveryToolsPage.evaluate(() => ({
+          title: document.querySelector('[data-constants-field-input="gameTitle"]')?.value,
+          editorStatus: document.querySelector('[data-constants-editor-status]')?.textContent,
+          syncText: document.querySelector('#globalSyncButton')?.textContent,
+          syncDisabled: document.querySelector('#globalSyncButton')?.disabled,
+          saveStatus: document.querySelector('#globalSaveStatus')?.textContent,
+          saveError: document.querySelector('#globalSaveButton')?.dataset.saveError
+        }));
+        throw new Error("Recovered Tools tab did not checkpoint and sync: " + JSON.stringify({
+          diagnostic,
+          recoveryCheckpointAttempts,
+          recoveredDraftMessages: recoveredDraftMessages.length,
+          recoveryPageErrors
+        }), { cause: error });
+      }
       const recoveredConstants = await (await fetch(recoverySecond.startup.localUrl + "/api/game-constants")).json();
       const authoringRecovery = await recoveryToolsPage.evaluate(() => ({
         browserTitle: document.querySelector('[data-constants-field-input="gameTitle"]')?.value,
@@ -2508,6 +2574,82 @@ module.exports = Object.freeze([
       }));
       authoringRecovery.checkpointAttempts = recoveryCheckpointAttempts;
       authoringRecovery.constantsDraftPublishes = recoveredDraftMessages.filter((message) => message.constants).length;
+      authoringRecovery.staleDraftRejections = staleDraftRejections;
+      authoringRecovery.reconnectSessionAttempts = reconnectSessionAttempts;
+
+      const busyToolsPage = await recoveryBrowser.newPage();
+      let busyOwnerClosed = false;
+      let busySessionAttempts = 0;
+      const busyResponse = {
+        ok: true,
+        active: true,
+        sessionId: "packed-browser-busy-reconnect",
+        baselineRevision: "browser-recovered",
+        localCheckpointRevision: "browser-recovered",
+        workingRevision: "browser-recovered",
+        gitSynced: true,
+        leaseMs: 6000,
+        release: { contentRevision: "browser-recovered", releaseRevision: "release-recovered" }
+      };
+      await busyToolsPage.route("**/api/authoring/workspace/**", async (route) => {
+        const pathname = new URL(route.request().url()).pathname;
+        if (pathname.endsWith("/session")) {
+          busySessionAttempts += 1;
+          if (!busyOwnerClosed) {
+            await route.fulfill({
+              status: 409,
+              contentType: "application/json",
+              body: JSON.stringify({
+                ok: false,
+                error: "Another Tools tab has an active live prototype authoring session",
+                errorCode: "AUTHORING_SESSION_BUSY",
+                details: { leaseMs: 6000, retryAfterMs: 2000 }
+              })
+            });
+            return;
+          }
+        }
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(busyResponse) });
+      });
+      await busyToolsPage.route("**/api/tool-drafts", async (route) => {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+      });
+      await busyToolsPage.goto(recoverySecond.startup.localUrl + "/tools", { waitUntil: "load" });
+      await busyToolsPage.waitForFunction(() => (
+        document.querySelector('#globalSaveStatus')?.textContent?.includes("Another Tools tab is editing")
+        && document.querySelector('#globalSaveButton')?.disabled
+      ), null, { timeout: 15_000 });
+      const busyReadOnly = await busyToolsPage.evaluate(() => ({
+        status: document.querySelector('#globalSaveStatus')?.textContent || "",
+        saveDisabled: Boolean(document.querySelector('#globalSaveButton')?.disabled),
+        screenReadOnly: document.querySelector('#flowScreen')?.dataset.authoringReadOnly === "true"
+      }));
+      busyOwnerClosed = true;
+      try {
+        await busyToolsPage.waitForFunction(() => (
+          document.querySelector('#globalSaveStatus')?.textContent?.includes("Git is up to date")
+          && !document.querySelector('#globalSaveButton')?.disabled
+          && Boolean(document.querySelector('.flow-react-shell'))
+        ), null, { timeout: 20_000 });
+      } catch (error) {
+        const diagnostic = await busyToolsPage.evaluate(() => ({
+          status: document.querySelector('#globalSaveStatus')?.textContent,
+          saveDisabled: document.querySelector('#globalSaveButton')?.disabled,
+          flowMounted: Boolean(document.querySelector('.flow-react-shell')),
+          flowReadOnly: document.querySelector('#flowScreen')?.dataset.authoringReadOnly,
+          sessionId: sessionStorage.getItem("pop-party-authoring-session")
+        }));
+        throw new Error("Busy Tools tab did not attach after its competing lease closed: " + JSON.stringify({
+          diagnostic,
+          busySessionAttempts
+        }), { cause: error });
+      }
+      const busyReconnect = await busyToolsPage.evaluate(() => ({
+        connected: document.querySelector('#globalSaveStatus')?.textContent?.includes("Git is up to date"),
+        saveEnabled: !document.querySelector('#globalSaveButton')?.disabled,
+        screenWritable: document.querySelector('#flowScreen')?.dataset.authoringReadOnly === "false"
+      }));
+      await busyToolsPage.close();
       await recoveryBrowser.close();
       await recoverySecond.runtime.stop();
       const result = {
@@ -2520,6 +2662,7 @@ module.exports = Object.freeze([
         recoveredServerTitle: recoveredConstants.constants.gameTitle,
         recoveredBrowserTitle,
         authoringRecovery,
+        busyAuthoringReconnect: { busyReadOnly, busyReconnect, sessionAttempts: busySessionAttempts },
         recoveryPageErrors,
         pluginActionVisible: Boolean(pluginActionMeta && pluginActionMeta.fields.some((field) => field.key === "amount")),
         pluginInputVisible: Boolean(pluginInputMeta && pluginInputMeta.fields.some((field) => field.key === "resultVariable")),
@@ -2648,7 +2791,11 @@ module.exports = Object.freeze([
       };
       process.stdout.write(JSON.stringify(result));
     })().catch((error) => { console.error(error); process.exit(1); });
-  `], { cwd: targetRoot, encoding: "utf8" });
+  `);
+  const developmentSmoke = execFileSync(process.execPath, [developmentSmokePath], {
+    cwd: targetRoot,
+    encoding: "utf8"
+  });
   const development = JSON.parse(developmentSmoke.trim().split(/\r?\n/).at(-1));
   if (!development.seededFirst || development.seededSecond
     || development.firstRevision !== development.healthRevision
@@ -2661,8 +2808,16 @@ module.exports = Object.freeze([
     || !development.authoringRecovery?.clean
     || development.authoringRecovery?.recoveryState !== "recovered"
     || !development.authoringRecovery?.workspacePresent
-    || development.authoringRecovery?.checkpointAttempts !== 2
+    || development.authoringRecovery?.checkpointAttempts < 1
     || development.authoringRecovery?.constantsDraftPublishes < 2
+    || development.authoringRecovery?.staleDraftRejections !== 1
+    || development.authoringRecovery?.reconnectSessionAttempts < 2
+    || !development.busyAuthoringReconnect?.busyReadOnly?.saveDisabled
+    || !development.busyAuthoringReconnect?.busyReadOnly?.screenReadOnly
+    || !development.busyAuthoringReconnect?.busyReconnect?.connected
+    || !development.busyAuthoringReconnect?.busyReconnect?.saveEnabled
+    || !development.busyAuthoringReconnect?.busyReconnect?.screenWritable
+    || development.busyAuthoringReconnect?.sessionAttempts < 3
     || development.recoveryPageErrors?.length !== 0
     || !development.pluginActionVisible
     || !development.pluginInputVisible

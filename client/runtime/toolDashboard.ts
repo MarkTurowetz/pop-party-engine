@@ -16,7 +16,7 @@ export interface DashboardWorkspaceActions {
   sync: () => Promise<unknown>;
   restore: () => Promise<unknown>;
   subscribe?: (listener: (status: {
-    phase: "synced" | "saved-local" | "syncing" | "error";
+    phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "busy" | "conflict" | "error";
     message: string;
   }) => void) => (() => void);
 }
@@ -63,7 +63,7 @@ let dashboardEventsInstalled = false;
 let workspaceActions: DashboardWorkspaceActions | null = null;
 let disposeWorkspaceStatus: (() => void) | null = null;
 let latestWorkspaceStatus: {
-  phase: "synced" | "saved-local" | "syncing" | "error";
+  phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "busy" | "conflict" | "error";
   message: string;
 } | null = null;
 
@@ -89,7 +89,10 @@ export function registerDashboardWorkspaceActions(
   if (actions?.subscribe) {
     disposeWorkspaceStatus = actions.subscribe((status) => {
       latestWorkspaceStatus = status;
-      setGlobalSaveStatus(status.message, status.phase === "error" ? "error" : "info");
+      setGlobalSaveStatus(
+        status.message,
+        status.phase === "error" || status.phase === "conflict" ? "error" : "info"
+      );
       updateWorkspaceActionButtons(status.phase);
     });
   } else {
@@ -133,7 +136,10 @@ function updateGlobalSaveButton(): void {
   const globalSaveButton = saveButton();
   if (!globalSaveButton) return;
   const dirty = TOOL_METADATA.some((tool) => isToolDirty(tool.id));
-  globalSaveButton.disabled = savingAllTools;
+  const connectionBlocked = latestWorkspaceStatus?.phase === "busy"
+    || latestWorkspaceStatus?.phase === "reconnecting"
+    || latestWorkspaceStatus?.phase === "conflict";
+  globalSaveButton.disabled = savingAllTools || connectionBlocked;
   globalSaveButton.dataset.dashboardDirty = dirty ? "true" : "false";
 }
 
@@ -147,17 +153,31 @@ function setGlobalSaveStatus(message = "", tone: "info" | "error" = "info"): voi
 }
 
 function updateWorkspaceActionButtons(
-  phase: "synced" | "saved-local" | "syncing" | "error" = "synced"
+  phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "busy" | "conflict" | "error" = "synced"
 ): void {
+  const connectionBlocked = phase === "busy" || phase === "reconnecting" || phase === "conflict";
+  const reconnecting = phase === "busy" || phase === "reconnecting";
   const currentSyncButton = syncButton();
   if (currentSyncButton) {
-    currentSyncButton.disabled = syncingWorkspace || restoringWorkspace || phase === "syncing";
-    currentSyncButton.textContent = phase === "syncing" ? "Syncing…" : "Sync Now";
+    currentSyncButton.disabled = syncingWorkspace || restoringWorkspace || phase === "syncing" || connectionBlocked;
+    currentSyncButton.textContent = phase === "syncing"
+      ? "Syncing…"
+      : reconnecting ? "Reconnecting…"
+        : phase === "conflict" ? "Sync blocked" : "Sync Now";
   }
   const currentRestoreButton = restoreButton();
   if (currentRestoreButton) {
-    currentRestoreButton.disabled = syncingWorkspace || restoringWorkspace;
+    currentRestoreButton.disabled = syncingWorkspace || restoringWorkspace || reconnecting;
   }
+  for (const tool of TOOL_METADATA) {
+    const screen = screenFor(tool.id);
+    if (!screen) continue;
+    screen.inert = connectionBlocked;
+    screen.dataset.authoringReadOnly = connectionBlocked ? "true" : "false";
+    if (reconnecting) screen.setAttribute("aria-busy", "true");
+    else screen.removeAttribute("aria-busy");
+  }
+  updateGlobalSaveButton();
 }
 
 async function saveAllTools(): Promise<void> {

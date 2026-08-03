@@ -31,6 +31,8 @@ concepts into focused modules.
   - Builds one complete memory-only working snapshot from every Tool draft and atomically installs only valid snapshots into the project's rooms.
   - Resets rooms to the lobby when the working revision changes while retaining joined-player identity.
   - Rejects destructive second-tab replacement and lets a still-open editor re-establish its session after a restart or heartbeat-lease expiry.
+  - Keeps a busy or disconnected Tools tab visibly read-only, retries the one workspace lease centrally, and mounts editors only after attachment. A stale heartbeat or draft mutation re-begins the session once, republishes every authoritative browser model (including clean models), and retries that mutation at most once.
+  - Reports authoring-session transport and lease failures separately from invalid game data. A real browser-checkpoint/Git conflict remains fail-closed and requires the explicit destructive Restore from Git action.
   - Treats heartbeat expiry, page exit, and unchanged session recovery as editor-lease bookkeeping: they never re-enter an existing Lobby, replay `Start Moment`, or restart widget animations. Cleanup queues the Git baseline for the room's next session boundary; only an explicit Restore from Git resets the current preview.
   - Validates and serializes the complete JSON-and-binary working snapshot as a browser IndexedDB checkpoint before Save returns; this local checkpoint is the refresh/restart recovery boundary.
   - Restores that checkpoint before Tool editors mount, including content-addressed art/audio blobs, and rejects automatic recovery if its Git baseline conflicts with a newer active release.
@@ -57,6 +59,8 @@ concepts into focused modules.
   - The Production service retains the immutable npm/GitHub/content release tuple and its
     protected manual approval. A production release refreshes Preview after coordinating a
     new engine version so the two services cannot remain engine-incompatible.
+  - Engine-only coordination preserves the active authored content revision. Checked-in
+    reference content is activated only when an operator explicitly supplies a content root.
   - `/api/health` exposes the non-secret application version, commit, branch, and deployment
     channel used by exact-commit preview verification.
 - `server/`

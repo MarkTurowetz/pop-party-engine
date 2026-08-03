@@ -42,6 +42,7 @@ function memoryCheckpointStore(initial: BrowserWorkspaceCheckpoint | null = null
 function browserWindow() {
   const storage = new Map<string, string>();
   const listeners = new Map<string, EventListener>();
+  let intervalHandler: (() => void) | null = null;
   const win = {
     location: { origin: "https://tools.example", reload: vi.fn() },
     sessionStorage: {
@@ -49,14 +50,24 @@ function browserWindow() {
       setItem: (key: string, value: string) => storage.set(key, value),
       removeItem: (key: string) => storage.delete(key)
     },
-    setInterval: vi.fn(() => 7),
+    setInterval: vi.fn((handler: () => void) => {
+      intervalHandler = handler;
+      return 7;
+    }),
     clearInterval: vi.fn(),
     setTimeout: vi.fn(() => 8),
+    clearTimeout: vi.fn(),
+    dispatchEvent: vi.fn(() => true),
     addEventListener: vi.fn((type: string, listener: EventListener) => listeners.set(type, listener)),
     removeEventListener: vi.fn(),
     globalSaveButton: { click: vi.fn() }
   } as unknown as Window & { globalSaveButton: { click(): void } };
-  return { listeners, storage, win };
+  return {
+    listeners,
+    storage,
+    win,
+    heartbeat: () => intervalHandler?.()
+  };
 }
 
 function sessionResponse() {
@@ -311,11 +322,91 @@ describe("live prototype browser workspace", () => {
       persisted.store
     );
 
-    expect(workspace?.getStatus()).toMatchObject({ phase: "error" });
+    expect(workspace?.getStatus()).toMatchObject({ phase: "conflict" });
     await expect(workspace?.save()).rejects.toThrow(/Git changed/);
     expect(persisted.current()?.workingRevision).toBe("local-one");
 
     await workspace?.restoreFromGit();
     expect(persisted.current()).toBeNull();
+  });
+
+  it("keeps a busy tab read-only and attaches automatically when the owner releases the lease", async () => {
+    let sessionAttempts = 0;
+    const busy = Object.assign(new Error("Another Tools tab is editing"), {
+      status: 409,
+      payload: { errorCode: "AUTHORING_SESSION_BUSY" }
+    });
+    let recoveryHandler: ((context: unknown) => Promise<void> | void) | null = null;
+    const postJson = vi.fn(async (path: string) => {
+      if (path.endsWith("/session")) {
+        sessionAttempts += 1;
+        if (sessionAttempts === 1) throw busy;
+        return sessionResponse();
+      }
+      return { ok: true };
+    });
+    const client = {
+      postJson,
+      setMutationRecoveryHandler(handler: typeof recoveryHandler) {
+        recoveryHandler = handler;
+      }
+    } as unknown as ApiClient;
+    const { storage, win } = browserWindow();
+
+    const workspace = await beginLivePrototypeWorkspace(client, win, memoryCheckpointStore().store);
+    await workspace?.whenAttached();
+
+    expect(sessionAttempts).toBe(2);
+    expect(workspace?.getStatus().phase).toBe("synced");
+    expect(storage.get("pop-party-authoring-session")).toBe("session-one");
+    expect(recoveryHandler).toBeTypeOf("function");
+  });
+
+  it("reconnects one workspace coordinator after a stale heartbeat and restores its checkpoint", async () => {
+    let sessionAttempts = 0;
+    let heartbeatAttempts = 0;
+    const stale = Object.assign(new Error("Session stale"), {
+      status: 409,
+      payload: { errorCode: "AUTHORING_SESSION_STALE" }
+    });
+    const localCheckpoint = checkpoint({ workingRevision: "browser-models" });
+    const postJson = vi.fn(async (path: string) => {
+      if (path.endsWith("/session")) {
+        sessionAttempts += 1;
+        return {
+          ...sessionResponse(),
+          recoveryRequired: sessionAttempts > 1
+        };
+      }
+      if (path.endsWith("/heartbeat")) {
+        heartbeatAttempts += 1;
+        if (heartbeatAttempts === 1) throw stale;
+        return sessionResponse();
+      }
+      if (path.endsWith("/restore-checkpoint")) {
+        return {
+          ...sessionResponse(),
+          workingRevision: localCheckpoint.workingRevision,
+          recoveryRequired: false
+        };
+      }
+      return { ok: true };
+    });
+    const browser = browserWindow();
+    const workspace = await beginLivePrototypeWorkspace(
+      { postJson } as unknown as ApiClient,
+      browser.win,
+      memoryCheckpointStore(localCheckpoint).store
+    );
+
+    browser.heartbeat();
+    await vi.waitFor(() => expect(sessionAttempts).toBe(2));
+    await workspace?.whenAttached();
+
+    expect(postJson.mock.calls.filter(([path]) => path.endsWith("/restore-checkpoint"))).toHaveLength(2);
+    expect(workspace?.getStatus()).toMatchObject({
+      phase: "saved-local",
+      localRevision: "browser-models"
+    });
   });
 });

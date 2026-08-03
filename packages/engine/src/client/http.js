@@ -34,6 +34,8 @@ function createApiClient(options = {}) {
   const baseUrl = normalizeBaseUrl(options.baseUrl);
   const fetchImpl = options.fetchImpl || fetch;
   let csrfTokenPromise = null;
+  let mutationRecoveryHandler = null;
+  let mutationRecoveryPromise = null;
 
   async function adminCsrfToken() {
     if (!options.adminCsrf) return "";
@@ -70,8 +72,30 @@ function createApiClient(options = {}) {
       && String(error.payload?.code || error.payload?.errorCode || "") === "ADMIN_CSRF_INVALID";
   }
 
+  function isStaleAuthoringSession(error, path) {
+    return !String(path || "").startsWith("/api/authoring/workspace/")
+      && error instanceof ApiError
+      && error.status === 409
+      && String(error.payload?.code || error.payload?.errorCode || "") === "AUTHORING_SESSION_STALE";
+  }
+
+  async function recoverMutation(error, context) {
+    if (typeof mutationRecoveryHandler !== "function") return false;
+    if (!mutationRecoveryPromise) {
+      mutationRecoveryPromise = Promise.resolve()
+        .then(() => mutationRecoveryHandler({ ...context, error }))
+        .finally(() => {
+          mutationRecoveryPromise = null;
+        });
+    }
+    await mutationRecoveryPromise;
+    return true;
+  }
+
   async function mutate(path, init) {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    let csrfRetried = false;
+    let authoringRetried = false;
+    while (true) {
       const response = await fetchImpl(apiUrl(baseUrl, path), {
         ...init,
         headers: {
@@ -82,11 +106,18 @@ function createApiClient(options = {}) {
       try {
         return await parseJsonResponse(response);
       } catch (error) {
-        if (attempt > 0 || !isInvalidCsrf(error)) throw error;
-        csrfTokenPromise = null;
+        if (!csrfRetried && isInvalidCsrf(error)) {
+          csrfRetried = true;
+          csrfTokenPromise = null;
+          continue;
+        }
+        if (!authoringRetried && isStaleAuthoringSession(error, path)) {
+          authoringRetried = true;
+          if (await recoverMutation(error, { method: init.method || "POST", path })) continue;
+        }
+        throw error;
       }
     }
-    throw new Error("Mutation retry exhausted");
   }
 
   return Object.freeze({
@@ -111,6 +142,9 @@ function createApiClient(options = {}) {
         headers: { Accept: "application/json" },
         credentials: "same-origin"
       });
+    },
+    setMutationRecoveryHandler(handler) {
+      mutationRecoveryHandler = typeof handler === "function" ? handler : null;
     }
   });
 }

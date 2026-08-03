@@ -47,7 +47,7 @@ jobs:
           const info=require("./build-version").buildInfo();
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `app_version=${info.version}\n`)'
 
-      - name: Atomically activate matching reference content and release coordinates
+      - name: Coordinate engine release while preserving active authored content
         id: activate
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -55,7 +55,6 @@ jobs:
         run: >-
           node scripts/coordinate-reference-release.js activate
           --engine-version "${{ inputs.release_version }}"
-          --content-root "apps/reference/content"
           --operation-key "${RELEASE_OPERATION_KEY}"
           --state-file "${RELEASE_STATE_FILE}"
 

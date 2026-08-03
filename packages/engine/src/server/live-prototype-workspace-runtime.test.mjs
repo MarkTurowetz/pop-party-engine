@@ -459,7 +459,8 @@ describe("live prototype workspace", () => {
 
     await expect(workspace.begin()).rejects.toMatchObject({
       code: "AUTHORING_SESSION_BUSY",
-      status: 409
+      status: 409,
+      details: { leaseMs: 20_000, retryAfterMs: 6_666 }
     });
     expect(workspace.readWorkingSnapshot().readJson("constants.json").gameTitle)
       .toBe("Still editing");
