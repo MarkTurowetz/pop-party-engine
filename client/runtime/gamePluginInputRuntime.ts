@@ -19,6 +19,7 @@ type InputBinding = {
   source?: string;
   labelSource?: string;
   targetComponentId?: string;
+  interactionTargetComponentId?: string;
   autoSubmit?: boolean;
   submitValues?: SubmitValues;
   holdSubmit?: { seconds: number; submitValues: SubmitValues };
@@ -77,6 +78,8 @@ export function createGamePluginInputView(options: {
   layoutScope?: string;
   prepareLayout?: boolean;
   retainControlsAcrossVisits?: boolean;
+  persistentSubmissions?: boolean;
+  onSubmitted?: () => void;
 }) {
   const controlScope = String(options.controlScope || "flow");
   const controlScopeSelector = `[data-game-plugin-input-scope="${cssEscape(controlScope)}"]`;
@@ -180,10 +183,10 @@ export function createGamePluginInputView(options: {
         );
         return;
       }
-      if (!hostChanged) return;
-      (runtime().setControllerPluginInputChoiceState as ((target: HTMLElement, selected: boolean) => unknown) | undefined)?.(
+      if (hostChanged) (runtime().setControllerPluginInputChoiceState as ((target: HTMLElement, selected: boolean, componentId?: string) => unknown) | undefined)?.(
         host,
-        hostSelected
+        hostSelected,
+        controlBindings.get(button)?.interactionTargetComponentId
       );
       return;
     }
@@ -414,6 +417,9 @@ export function createGamePluginInputView(options: {
       }
     }
     if (!button.parentElement) target.host.appendChild(button);
+    if (binding.kind === "choice") {
+      setChoiceSelected(button, values.get(String(binding.field || "")) === button.dataset.gamePluginInputOption);
+    }
   }
 
   function collectionOptions(binding: InputBinding, input: Dict, model: unknown): Array<{ id: string; label: string; disabled: boolean }> {
@@ -649,9 +655,11 @@ export function createGamePluginInputView(options: {
       const payload = Object.fromEntries(manifest.submission.map((field) => [field.id, overrides[field.id] ?? values.get(field.id)]));
       void options.submit(String(input.actionId), Number(input.visitId || 0), payload, submissionId())
         .then((result) => {
+          if (options.persistentSubmissions === true) submitting = false;
           const nextLobby = (result as Dict | null)?.lobby;
           if (nextLobby) options.renderState(nextLobby as Dict);
           else submitting = false;
+          options.onSubmitted?.();
         })
         .catch(() => {
           submitting = false;

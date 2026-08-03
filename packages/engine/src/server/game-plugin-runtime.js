@@ -264,6 +264,11 @@ function validateInputRegistration(id, value) {
         if (binding.kind === "choice" && (!Number.isInteger(Number(binding.optionIndex)) || Number(binding.optionIndex) < 0)) {
           throw new Error(`Input "${id}" choice binding "${bindingId}" requires a non-negative optionIndex`);
         }
+        if (binding.kind === "choice") {
+          if (binding.interactionTargetComponentId !== undefined && !String(binding.interactionTargetComponentId || "").trim()) {
+            throw new Error(`Input "${id}" choice binding "${bindingId}" interactionTargetComponentId must be non-empty`);
+          }
+        }
         if (binding.kind === "choiceCollection") {
           assertPlainObject(binding.item, `Input "${id}" choiceCollection binding "${bindingId}" item`);
           if (!String(binding.item.artCompositionId || "").trim()) {
@@ -349,6 +354,19 @@ function validateControllerInteractionRegistration(id, value) {
   }
   if (layoutScope === "layer" && !LAYOUT_LAYER_ID_PATTERN.test(String(value.controller.layoutLayerId || "").trim())) {
     throw new Error(`Controller interaction "${id}" targeting a persistent layer requires a normalized layoutLayerId`);
+  }
+  if (value.controller.disclosure !== undefined) {
+    assertPlainObject(value.controller.disclosure, `Controller interaction "${id}" disclosure`);
+    if (!String(value.controller.disclosure.triggerLayoutElementId || "").trim()) {
+      throw new Error(`Controller interaction "${id}" disclosure requires triggerLayoutElementId`);
+    }
+    const triggerScope = String(value.controller.disclosure.triggerLayoutScope || "global");
+    if (!new Set(["global", "layer"]).has(triggerScope)) {
+      throw new Error(`Controller interaction "${id}" disclosure triggerLayoutScope must be global or layer`);
+    }
+    if (triggerScope === "layer" && !LAYOUT_LAYER_ID_PATTERN.test(String(value.controller.disclosure.triggerLayoutLayerId || "").trim())) {
+      throw new Error(`Controller interaction "${id}" disclosure targeting a persistent layer requires triggerLayoutLayerId`);
+    }
   }
   validateInputRegistration(id, {
     ...value,

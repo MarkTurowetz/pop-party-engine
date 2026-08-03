@@ -131,6 +131,20 @@ function validateControllerInteractionContentContracts(game, gameData) {
       layoutLayerId: config.controller.layoutLayerId
     });
     const elements = new Map(candidates.map((element) => [String(element.id || ""), element]));
+    const disclosure = config.controller.disclosure;
+    if (disclosure) {
+      const triggerCandidates = layoutElementsForRenderer(gameData, "controller", {
+        layoutScope: String(disclosure.triggerLayoutScope || "global"),
+        layoutLayerId: disclosure.triggerLayoutLayerId
+      });
+      if (!triggerCandidates.some((element) => String(element.id || "") === String(disclosure.triggerLayoutElementId || ""))) {
+        readinessFailure("PLUGIN_CONTROLLER_INTERACTION_DISCLOSURE_TARGET_INVALID", `Controller interaction "${registration.id}" disclosure targets an unknown Controller Layout element`, {
+          interactionId: registration.id,
+          targetId: String(disclosure.triggerLayoutElementId || ""),
+          layoutScope: String(disclosure.triggerLayoutScope || "global")
+        });
+      }
+    }
     for (const binding of config.controller.bindings || []) {
       const targetId = String(binding.layoutElementId || "");
       const target = elements.get(targetId);
@@ -163,6 +177,19 @@ function validateControllerInteractionContentContracts(game, gameData) {
         const componentId = String(binding.targetComponentId || "");
         if (!composition || !artComponentForId(composition.components, componentId, compositions, new Set([compositionId]))) {
           readinessFailure("PLUGIN_CONTROLLER_INTERACTION_COMPONENT_INVALID", `Controller interaction "${registration.id}" text binding targets an unknown Art component`, { interactionId: registration.id, compositionId, targetComponentId: componentId });
+        }
+      }
+      if (binding.kind === "choice") {
+        const compositionId = String(target.artCompositionId || "");
+        const composition = compositions.get(compositionId);
+        for (const componentId of [binding.interactionTargetComponentId].filter(Boolean)) {
+          if (!composition || !artComponentForId(composition.components, String(componentId), compositions, new Set([compositionId]))) {
+            readinessFailure("PLUGIN_CONTROLLER_INTERACTION_COMPONENT_INVALID", `Controller interaction "${registration.id}" choice binding targets an unknown Art component`, {
+              interactionId: registration.id,
+              compositionId,
+              targetComponentId: String(componentId)
+            });
+          }
         }
       }
     }

@@ -75,11 +75,15 @@ async function postJson(baseUrl, pathname, body) {
 }
 
 async function main() {
-  const avatarChoiceComponents = referenceArt.compositions["controller-avatar-choice-item"]?.components || [];
-  assert.deepEqual(
-    avatarChoiceComponents.map((component) => component.id),
-    ["reference-avatar-choice-avatar", "reference-avatar-choice-backplate"],
-    "The avatar choice backplate must remain the lowest element in the Art Manager's top-first layer order"
+  assert.equal(
+    referenceArt.compositions["controller-avatar-picker-panel"]?.components?.[0]?.id,
+    "avatar-picker-panel-background",
+    "The avatar picker panel background must remain its lowest authored visual layer"
+  );
+  assert.equal(referenceArt.compositions["game-object-reference-player-presentation"], undefined, "The reference app must use its local Player Widget directly without a redundant presentation wrapper");
+  assert.ok(
+    referenceArt.compositions["prefab-player-widget-mc"]?.components?.some((component) => component.id === "reference-player-point-popup"),
+    "The local Player Widget must own its points popup"
   );
   const port = await openPort();
   const baseUrl = `http://${host}:${port}`;
@@ -112,7 +116,8 @@ async function main() {
     try {
       await controllerPage.waitForFunction(() => (
         Boolean(window.controllerState?.player?.id)
-        && document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"]').length === 6
+        && document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option]').length === 6
+        && document.querySelector('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]')
         && document.querySelector('[data-controller-layout-element-id="controllerplayerbanner"] [data-art-component-id="avatar-sprite"]')
       ), null, { timeout: 15_000 });
     } catch (error) {
@@ -152,7 +157,7 @@ async function main() {
       const itemState = items.map((item) => {
         const avatarSprite = [...item.querySelectorAll('[data-art-component-id="avatar-sprite"]')]
           .find((element) => element.classList.contains("is-sprite"));
-        const widget = item.querySelector('[data-art-component-id="reference-96c34ddb7ee0"]');
+        const widget = item;
         return {
           key: item.getAttribute("data-game-plugin-renderer-item-key"),
           visible: visible(item),
@@ -200,8 +205,9 @@ async function main() {
     assert.equal(before.hasEngineAvatarRole, false, "Reference avatars depend on a retired engine avatar role");
 
     const pickerBefore = await controllerPage.evaluate(() => {
-      const controls = [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"]')];
+      const controls = [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option]')];
       const banner = document.querySelector('[data-controller-layout-element-id="controllerplayerbanner"]');
+      const trigger = document.querySelector('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]');
       const visible = (element) => {
         const rect = element?.getBoundingClientRect();
         const style = element ? getComputedStyle(element) : null;
@@ -212,6 +218,8 @@ async function main() {
         bannerName: banner?.querySelector('[data-art-component-id="name-text"]')?.textContent?.trim() || "",
         bannerAvatarVisible: visible(banner?.querySelector('[data-art-component-id="avatar-sprite"]')),
         bannerAvatarAsset: banner?.querySelector('[data-art-component-id="avatar-sprite"]')?.dataset.spriteSource || "",
+        triggerExpanded: trigger?.getAttribute("aria-expanded"),
+        choicesHidden: controls.every((control) => !visible(control)),
         options: controls.map((control) => control.getAttribute("data-game-plugin-input-option")),
         currentAvatarId: (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
           .find((item) => item.id === "reference.avatarProfile")?.viewModel?.avatarId,
@@ -226,20 +234,86 @@ async function main() {
     assert.equal(pickerBefore.bannerVisible, true, "The reference Controller player banner is hidden in the lobby");
     assert.equal(pickerBefore.bannerName, "AVA", "The Controller banner did not bind the authenticated player's name");
     assert.equal(pickerBefore.bannerAvatarVisible, true, "The Controller banner did not render its local avatar Art");
+    assert.equal(pickerBefore.triggerExpanded, "false", "The avatar picker must begin closed behind the current avatar banner");
+    assert.equal(pickerBefore.choicesHidden, true, "The avatar choices must not replace the lobby UI until the banner is clicked");
+    await controllerPage.locator('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]').click();
+    try {
+      await controllerPage.waitForFunction(() => {
+        const controls = [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option]')];
+        return controls.length === 6 && controls.every((control) => {
+          const optionId = control.getAttribute("data-game-plugin-input-option");
+          const sprite = document.querySelector(`[data-controller-layout-element-id="reference-avatar-${CSS.escape(optionId)}-icon"] [data-art-component-id="avatar-sprite"]`);
+          const rect = sprite?.getBoundingClientRect();
+          return rect?.width > 0 && rect?.height > 0 && getComputedStyle(sprite).display !== "none";
+        });
+      }, null, { timeout: 5_000 });
+    } catch (error) {
+      const diagnostic = await controllerPage.evaluate(async () => {
+        return ({
+        trigger: document.querySelector('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]')?.outerHTML,
+        controls: [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option]')].map((control) => {
+          const host = control.closest('[data-controller-layout-element-id]');
+          const optionId = control.getAttribute("data-game-plugin-input-option");
+          const sprite = document.querySelector(`[data-controller-layout-element-id="reference-avatar-${CSS.escape(optionId)}-icon"] [data-art-component-id="avatar-sprite"]`);
+          const rect = sprite?.getBoundingClientRect();
+          return {
+            option: control.getAttribute("data-game-plugin-input-option"),
+            hostClass: host?.className,
+            hostState: host?.getAttribute("data-art-current-state"),
+            spriteClass: sprite?.className,
+            spriteState: sprite?.getAttribute("data-art-current-state"),
+            spriteRect: rect && { width: rect.width, height: rect.height },
+            spriteDisplay: sprite && getComputedStyle(sprite).display,
+            spriteScale: sprite && getComputedStyle(sprite).scale,
+            html: host?.outerHTML.slice(0, 1200)
+          };
+        })
+      });
+      });
+      throw new Error(`Avatar picker icons did not become visible: ${JSON.stringify(diagnostic)}`, { cause: error });
+    }
+    const openPicker = await controllerPage.evaluate(() => {
+      const controls = [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option]')];
+      return {
+        expanded: document.querySelector('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]')?.getAttribute("aria-expanded"),
+        assets: controls.map((control) => {
+          const optionId = control.getAttribute("data-game-plugin-input-option");
+          return document.querySelector(`[data-controller-layout-element-id="reference-avatar-${CSS.escape(optionId)}-icon"] [data-art-component-id="avatar-sprite"]`)?.dataset.spriteSource || "";
+        }),
+        enabled: controls.every((control) => !control.disabled)
+      };
+    });
+    assert.equal(openPicker.expanded, "true", "Clicking the current avatar did not open the authored picker layer");
+    assert.equal(openPicker.enabled, true, "The opened avatar choices are disabled");
+    assert.equal(new Set(openPicker.assets).size, 6, "The six avatar choices did not retain their distinct authored icon states");
     assert.deepEqual(pickerBefore.options, ["rex", "stego", "trike", "raptor", "bronto", "cleo"], "The reference avatar picker did not expose all six local choices");
     assert.equal(pickerBefore.controlsMatchArt, true, "Avatar picker native hit bounds do not match the authored widgets");
 
     const nextAvatarId = pickerBefore.options.find((id) => id !== pickerBefore.currentAvatarId);
     const nextAvatarState = ({ rex: "Rex", stego: "Stego", trike: "Trike", raptor: "Raptor", bronto: "Bronto", cleo: "Cleo" })[nextAvatarId];
     assert.ok(nextAvatarId && nextAvatarState, "The avatar picker did not provide an alternative selection");
+    let interactionRequests = 0;
+    const countInteraction = (request) => {
+      if (request.url().endsWith("/api/game-plugin-controller-interaction") && request.method() === "POST") interactionRequests += 1;
+    };
+    controllerPage.on("request", countInteraction);
+    await controllerPage.locator(
+      `[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option="${pickerBefore.currentAvatarId}"]`
+    ).click();
+    await controllerPage.locator(
+      `[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option="${nextAvatarId}"]`
+    ).click();
+    assert.equal(interactionRequests, 0, "Avatar choices submitted before the authored Done action");
     const avatarResponse = controllerPage.waitForResponse((response) => (
       response.url().endsWith("/api/game-plugin-controller-interaction")
       && response.request().method() === "POST"
     ));
-    await controllerPage.locator(
-      `[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option="${nextAvatarId}"]`
-    ).click();
+    await controllerPage.locator('[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-binding="saveAvatar"]').click();
     await avatarResponse;
+    controllerPage.off("request", countInteraction);
+    await controllerPage.waitForFunction(() => (
+      document.querySelector('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]')?.getAttribute("aria-expanded") === "false"
+    ));
     const avaAvatarAssetBefore = before.itemState.find((item) => item.key === ava.player.id)?.avatarAsset || "";
     await page.waitForFunction(({ playerId, previousAsset, expectedState }) => {
       const item = document.querySelector(
@@ -268,6 +342,22 @@ async function main() {
     }, ava.player.id);
     assert.notEqual(selectedAvatar.asset, avaAvatarAssetBefore, "Changing the lobby picker did not update the Stage avatar Art");
     assert.equal(selectedAvatar.tint, "#e3c6eb", "The reference Stage avatar did not retain its player color tint");
+
+    await controllerPage.locator('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]').click();
+    await controllerPage.locator(
+      `[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option="${nextAvatarId}"]`
+    ).click();
+    const sameAvatarResponse = controllerPage.waitForResponse((response) => (
+      response.url().endsWith("/api/game-plugin-controller-interaction")
+      && response.request().method() === "POST"
+    ));
+    await controllerPage.locator('[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-binding="saveAvatar"]').click();
+    await sameAvatarResponse;
+    await controllerPage.locator('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]').click();
+    await controllerPage.waitForFunction(() => (
+      [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"]')]
+        .every((control) => !control.disabled)
+    ));
 
     const cal = await postJson(baseUrl, "/api/join", { stageCode: "AVTR", playerName: "CAL" });
     await page.waitForFunction(() =>

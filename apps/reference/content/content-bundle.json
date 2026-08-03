@@ -10,8 +10,8 @@
   "files": [
     {
       "path": "art/manifest.json",
-      "sha256": "6b6ca043c741239d336af066b3259d15191702c3d222b7475590f09a2f405f3b",
-      "bytes": 377653
+      "sha256": "5aa5907799c5f5a062362c7d41faf3d0288106e22688b14381619b6810757e08",
+      "bytes": 381826
     },
     {
       "path": "audio/host-audios.json",
@@ -75,8 +75,8 @@
     },
     {
       "path": "layouts/controller.json",
-      "sha256": "59c8a838a4245b6f9db9a1421374ca326e0813262779d61b81a5ebc60ee64ea8",
-      "bytes": 48527
+      "sha256": "e29948cb82019596587dd9d755845f86fc7f5ea8ed2d059343c78afb02f67344",
+      "bytes": 53496
     },
     {
       "path": "layouts/stage.json",
@@ -94,5 +94,5 @@
       "bytes": 1308
     }
   ],
-  "rootHash": "65d0d5ea9fecada2bbdad4005f64453cb1c53fef7923058a675ab36c7df9667c"
+  "rootHash": "154abda3d90954896216466280af15e8db16f9eec0d6f9d54eabce259ea8aaaa"
 }

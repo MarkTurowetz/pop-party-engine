@@ -147,7 +147,7 @@ export type GameInputSubmitValues = Readonly<Record<string, string | number>>;
 
 export type GameInputControllerBinding =
   | { id: string; kind: "text"; layoutElementId: string; source: string; targetComponentId: string }
-  | { id: string; kind: "choice"; layoutElementId: string; field: string; optionIndex: number; labelSource?: string; autoSubmit?: boolean; submitValues?: GameInputSubmitValues; holdSubmit?: { seconds: number; submitValues: GameInputSubmitValues } }
+  | { id: string; kind: "choice"; layoutElementId: string; field: string; optionIndex: number; labelSource?: string; interactionTargetComponentId?: string; autoSubmit?: boolean; submitValues?: GameInputSubmitValues; holdSubmit?: { seconds: number; submitValues: GameInputSubmitValues } }
   | {
       id: string;
       kind: "choiceCollection";
@@ -235,6 +235,12 @@ export interface GameControllerInteractionRegistration<
   controller: {
     layoutScope: "global" | "layer";
     layoutLayerId?: string;
+    disclosure?: {
+      triggerLayoutElementId: string;
+      triggerLayoutScope?: "global" | "layer";
+      triggerLayoutLayerId?: string;
+      ariaLabel?: string;
+    };
     bindings: GameInputControllerBinding[];
   };
   available(context: GameControllerInteractionReadContext<TState, TProfile>): boolean;

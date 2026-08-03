@@ -9,7 +9,7 @@ const { createContentSnapshot } = require("../packages/engine/src/server/content
 
 const EXPECTED = Object.freeze({
   backgroundBaselineCommit: "e471cafee62ebe0f61195a6591152388487b5fd9",
-  currentReferenceRevision: "65d0d5ea9fecada2bbdad4005f64453cb1c53fef7923058a675ab36c7df9667c"
+  currentReferenceRevision: "154abda3d90954896216466280af15e8db16f9eec0d6f9d54eabce259ea8aaaa"
 });
 
 function snapshotFromDirectory(root) {

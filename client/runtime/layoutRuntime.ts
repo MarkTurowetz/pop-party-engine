@@ -795,9 +795,12 @@ function setControllerButtonDisabledState(target: El | null, disabled: boolean):
   return renderer?.stopAtComponent?.(`${compositionId}-state-ref`, disabled ? "Disabled" : "Default", { instant: true }) || 0;
 }
 
-function setControllerPluginInputChoiceState(target: El | null, selected: boolean): number {
+function setControllerPluginInputChoiceState(target: El | null, selected: boolean, targetComponentId = ""): number {
   if (!target) return 0;
   const renderer = artRendererForLayoutHost(target);
+  if (targetComponentId) {
+    return renderer?.stopAtComponent?.(targetComponentId, selected ? "Selected" : "Default", { instant: true }) || 0;
+  }
   return renderer?.stopAtAll?.(selected ? "Selected" : "Default", { instant: true }) || 0;
 }
 

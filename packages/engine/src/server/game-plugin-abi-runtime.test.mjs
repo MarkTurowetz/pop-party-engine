@@ -117,6 +117,11 @@ function fixturePlugin() {
         controller: {
           layoutScope: "layer",
           layoutLayerId: "profile-picker",
+          disclosure: {
+            triggerLayoutElementId: "player-banner",
+            triggerLayoutScope: "global",
+            ariaLabel: "Choose avatar"
+          },
           bindings: [{
             id: "avatars",
             kind: "choiceCollection",
@@ -702,6 +707,11 @@ describe("game plugin ABI", () => {
       layoutScope: "layer",
       layoutLayerId: "profile-picker",
       viewModel: { selectedAvatarId: "trike" }
+    });
+    expect(runtime.manifests[0].controller.disclosure).toEqual({
+      triggerLayoutElementId: "player-banner",
+      triggerLayoutScope: "global",
+      ariaLabel: "Choose avatar"
     });
     expect(p2.visitId).not.toBe(p1.visitId);
     expect(runtime.payloadsForViewer(room, "p1")[0].visitId).toBe(p1.visitId);
