@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1273",
+  "version": "1.0.17.1274",
   "baseVersion": "1.0.17",
-  "buildNumber": 1273,
-  "commit": "92155a0d",
-  "branch": "codex/authoring-session-reconnect",
-  "generatedAt": "2026-08-03T05:59:36.256Z"
+  "buildNumber": 1274,
+  "commit": "f1b0f3b3",
+  "branch": "codex/release-engine-1.4.1",
+  "generatedAt": "2026-08-03T06:04:39.508Z"
 }
