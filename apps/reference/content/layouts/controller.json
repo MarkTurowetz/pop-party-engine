@@ -79,6 +79,7 @@
       "id": "join",
       "name": "Join Controller",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": [
         "controllerplayerbanner",
         "controllerglobalactionmessage",
@@ -179,28 +180,8 @@
         "controllerglobalactionmessage",
         "controllerglobalactionbutton"
       ],
+      "hiddenLayers": [],
       "elements": [
-        {
-          "id": "controllerplayername",
-          "name": "Player Name",
-          "selector": "",
-          "kind": "art",
-          "artCompositionId": "layout-text-field",
-          "hidden": false,
-          "locked": false,
-          "x": 195,
-          "y": 290,
-          "width": 330,
-          "height": 80,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "On",
-          "defaultText": "Player",
-          "fontSize": 66,
-          "autoFitText": true,
-          "fontFamily": "ui-rounded, \"Avenir Next\", \"Trebuchet MS\", system-ui, sans-serif",
-          "fontColor": "#17131f"
-        },
         {
           "id": "controllermeta",
           "name": "Controller Status",
@@ -249,6 +230,7 @@
       "id": "intro",
       "name": "Game Intro Game State",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": [],
       "elements": [
         {
@@ -299,6 +281,7 @@
       "id": "round-intro-game-state",
       "name": "Round Intro Game State",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": [],
       "elements": [
         {
@@ -328,6 +311,7 @@
       "id": "crafting-game-state",
       "name": "Crafting Game State",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": [],
       "elements": [
         {
@@ -504,6 +488,7 @@
       "id": "presentation-game-state",
       "name": "Presentation Game State",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": [],
       "elements": [
         {
@@ -533,6 +518,7 @@
       "id": "scoreboard-game-state",
       "name": "Scoreboard Game State",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": [],
       "elements": [
         {
@@ -562,6 +548,7 @@
       "id": "post-game-state",
       "name": "Post Game State",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": [],
       "elements": [
         {
@@ -591,6 +578,7 @@
       "id": "writing-moment",
       "name": "Writing Moment",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": [],
       "elements": [
         {
@@ -704,6 +692,7 @@
       "id": "voting-moment",
       "name": "Voting Moment",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": [],
       "elements": [
         {
@@ -754,6 +743,7 @@
       "id": "voice-moment",
       "name": "Voice Moment",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": null,
       "elements": [
         {
@@ -972,6 +962,7 @@
       "id": "controller-presentation",
       "name": "Presentation",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": null,
       "elements": [
         {
@@ -1022,6 +1013,7 @@
       "id": "controller-multiple-choice",
       "name": "Multiple Choice",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": null,
       "elements": [
         {
@@ -1093,6 +1085,7 @@
       "id": "controller-voting",
       "name": "Voting",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": null,
       "elements": [
         {
@@ -1164,6 +1157,7 @@
       "id": "controller-text-input",
       "name": "Text Input",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": null,
       "elements": [
         {
@@ -1277,6 +1271,7 @@
       "id": "controller-voice-input",
       "name": "Voice Input",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": null,
       "elements": [
         {
@@ -1390,6 +1385,7 @@
       "id": "controller-microphone-access",
       "name": "Microphone Access",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": null,
       "elements": [
         {
@@ -1461,6 +1457,7 @@
       "id": "controller-paused",
       "name": "Paused",
       "hiddenInStates": false,
+      "hiddenLayers": ["reference-avatar-picker"],
       "hiddenGlobals": null,
       "elements": [
         {
@@ -1504,6 +1501,147 @@
           "autoFitText": false,
           "fontFamily": "",
           "fontColor": "#ffffff"
+        }
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "id": "reference-avatar-picker",
+      "name": "Reference Avatar Picker",
+      "zIndex": 180,
+      "elements": [
+        {
+          "id": "reference-avatar-rex",
+          "name": "Rex Avatar",
+          "selector": "",
+          "kind": "art",
+          "artCompositionId": "controller-avatar-choice-item",
+          "hidden": false,
+          "locked": false,
+          "x": 75,
+          "y": 170,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "Rex",
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontFamily": "",
+          "fontColor": "#ffffff",
+          "zIndex": 1
+        },
+        {
+          "id": "reference-avatar-stego",
+          "name": "Stego Avatar",
+          "selector": "",
+          "kind": "art",
+          "artCompositionId": "controller-avatar-choice-item",
+          "hidden": false,
+          "locked": false,
+          "x": 195,
+          "y": 170,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "Stego",
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontFamily": "",
+          "fontColor": "#ffffff",
+          "zIndex": 2
+        },
+        {
+          "id": "reference-avatar-trike",
+          "name": "Trike Avatar",
+          "selector": "",
+          "kind": "art",
+          "artCompositionId": "controller-avatar-choice-item",
+          "hidden": false,
+          "locked": false,
+          "x": 315,
+          "y": 170,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "Trike",
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontFamily": "",
+          "fontColor": "#ffffff",
+          "zIndex": 3
+        },
+        {
+          "id": "reference-avatar-raptor",
+          "name": "Raptor Avatar",
+          "selector": "",
+          "kind": "art",
+          "artCompositionId": "controller-avatar-choice-item",
+          "hidden": false,
+          "locked": false,
+          "x": 75,
+          "y": 290,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "Raptor",
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontFamily": "",
+          "fontColor": "#ffffff",
+          "zIndex": 4
+        },
+        {
+          "id": "reference-avatar-bronto",
+          "name": "Bronto Avatar",
+          "selector": "",
+          "kind": "art",
+          "artCompositionId": "controller-avatar-choice-item",
+          "hidden": false,
+          "locked": false,
+          "x": 195,
+          "y": 290,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "Bronto",
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontFamily": "",
+          "fontColor": "#ffffff",
+          "zIndex": 5
+        },
+        {
+          "id": "reference-avatar-cleo",
+          "name": "Cleo Avatar",
+          "selector": "",
+          "kind": "art",
+          "artCompositionId": "controller-avatar-choice-item",
+          "hidden": false,
+          "locked": false,
+          "x": 315,
+          "y": 290,
+          "width": 104,
+          "height": 104,
+          "scale": 1,
+          "rotation": 0,
+          "defaultAnimationState": "Cleo",
+          "defaultText": "",
+          "fontSize": 58,
+          "autoFitText": false,
+          "fontFamily": "",
+          "fontColor": "#ffffff",
+          "zIndex": 6
         }
       ]
     }

@@ -10,8 +10,8 @@
   "files": [
     {
       "path": "art/manifest.json",
-      "sha256": "4fd0a8c91391b795da617343f1d04c37a7f65a010c0405d8b0563f43b65f6c63",
-      "bytes": 368178
+      "sha256": "6b6ca043c741239d336af066b3259d15191702c3d222b7475590f09a2f405f3b",
+      "bytes": 377653
     },
     {
       "path": "audio/host-audios.json",
@@ -65,13 +65,13 @@
     },
     {
       "path": "flow.json",
-      "sha256": "c4ec28d1d49d33314c4cf2463fec5de2992f5929b65e3136d9eabe47334e6d7c",
-      "bytes": 51456
+      "sha256": "3d341ca67e46c8673538ff598f4f0216af8a4dd44468c2b44572d982d84754b9",
+      "bytes": 32897
     },
     {
       "path": "game-data/runtime.json",
-      "sha256": "8a97be2f5d791dd926ef45b848a71b00cee2c06a241f2d7aa50fc98b2fa9bec4",
-      "bytes": 802
+      "sha256": "232a381a9d3fbd0e7b82935d029ed9cf66e9a802f3c4181b072acbec74f7f887",
+      "bytes": 905
     },
     {
       "path": "layouts/controller.json",
@@ -94,5 +94,5 @@
       "bytes": 1662
     }
   ],
-  "rootHash": "c71005b957b96bc193331c0076ed9f4fbc0814e801ce944142085b9e538ff0ec"
+  "rootHash": "e60f0efd93c43e0af316cb0951f52099cc898fd7c06b6d2033dec455760cdfd9"
 }

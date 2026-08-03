@@ -22,6 +22,14 @@
       "description": "Composed answer card art used by voting moments."
     }
   ],
+  "avatarShapes": [
+    "rex",
+    "stego",
+    "trike",
+    "raptor",
+    "bronto",
+    "ankylo"
+  ],
   "availableFlowTransitions": [
     {
       "id": "horizontalWipe",

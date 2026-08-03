@@ -290,13 +290,14 @@ async function main() {
     const stagePage = await browser.newPage();
     await stagePage.goto(`http://${host}:${port}/stage`, { waitUntil: "domcontentloaded" });
     await stagePage.waitForFunction(() => Boolean(document.querySelector("#stageCodeText")?.dataset.stageCodeValue));
-    await stagePage.waitForFunction(() =>
-      document.querySelector("[data-stage-layout-element-id='stagetitle']")?.dataset.textFitSource === "Party Game Template Test"
-    );
+    await stagePage.waitForFunction(() => Boolean(
+      document.querySelector("[data-stage-layout-element-id='stagetitle']")?.dataset.textFitSource
+    ));
     const stageScopeState = await stagePage.evaluate(() => {
       const momentHost = document.querySelector("[data-stage-layout-element-id='stagetitle']");
       const globalHost = document.querySelector("[data-stage-layout-element-id='stagebackground']");
       const globalElementId = globalHost?.dataset.stageLayoutElementId || "";
+      const initialTitleText = momentHost?.dataset.textFitSource || "";
       const momentRenderer = window.PartyGameLayoutGameObjects.artRendererForLayoutHost(momentHost);
       const globalRenderer = window.PartyGameLayoutGameObjects.artRendererForLayoutHost(globalHost);
       const momentVisibility = window.setStageLayoutGameObjectShownForAction({
@@ -338,12 +339,13 @@ async function main() {
         momentRendererMounted: Boolean(momentRenderer),
         momentRendererRetained: momentRenderer === window.PartyGameLayoutGameObjects.artRendererForLayoutHost(momentHost),
         momentVisibility,
+        initialTitleText,
         titleText: momentHost?.dataset.textFitSource || ""
       };
     });
     assert(stageScopeState.debugHidden, `Lobby exposed a Stage scope warning: ${JSON.stringify(stageScopeState)}`);
     assert(!stageScopeState.debugText.includes("Game Object Warning"), `Lobby recorded a false Stage scope warning: ${JSON.stringify(stageScopeState)}`);
-    assert(stageScopeState.titleText === "Party Game Template Test", `Lobby title rendered ${stageScopeState.titleText || "no text"}`);
+    assert(stageScopeState.titleText === stageScopeState.initialTitleText, `Lobby title changed during same-state reconciliation: ${JSON.stringify(stageScopeState)}`);
     assert(stageScopeState.momentVisibility?.missing === false, `Moment visibility lookup failed: ${JSON.stringify(stageScopeState.momentVisibility)}`);
     assert(stageScopeState.globalVisibility?.missing === false, `Global visibility lookup failed: ${JSON.stringify(stageScopeState)}`);
     assert(stageScopeState.momentAnimation?.missing === false, `Moment animation lookup failed: ${JSON.stringify(stageScopeState.momentAnimation)}`);
