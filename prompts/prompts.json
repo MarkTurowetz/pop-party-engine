@@ -1,0 +1,125 @@
+{
+  "prompts": [
+    {
+      "id": "four-letter-word",
+      "prompt": "Which of these is a 4-letter word?",
+      "options": [
+        "Hi",
+        "Cat",
+        "Fish",
+        "House"
+      ],
+      "correctAnswerIndex": 2
+    },
+    {
+      "id": "animal-that-flies",
+      "prompt": "Which of these animals can fly?",
+      "options": [
+        "Dog",
+        "Penguin",
+        "Falcon",
+        "Horse"
+      ],
+      "correctAnswerIndex": 2
+    },
+    {
+      "id": "planet-red",
+      "prompt": "Which planet is known as the Red Planet?",
+      "options": [
+        "Venus",
+        "Mars",
+        "Jupiter",
+        "Neptune"
+      ],
+      "correctAnswerIndex": 1
+    },
+    {
+      "id": "water-freezes",
+      "prompt": "At what temperature does water freeze in Celsius?",
+      "options": [
+        "0",
+        "10",
+        "50",
+        "100"
+      ],
+      "correctAnswerIndex": 0
+    },
+    {
+      "id": "largest-ocean",
+      "prompt": "Which ocean is the largest?",
+      "options": [
+        "Atlantic",
+        "Pacific",
+        "Indian",
+        "Arctic"
+      ],
+      "correctAnswerIndex": 1
+    },
+    {
+      "id": "primary-color",
+      "prompt": "Which of these is a primary color?",
+      "options": [
+        "Green",
+        "Purple",
+        "Red",
+        "Orange"
+      ],
+      "correctAnswerIndex": 2
+    },
+    {
+      "id": "weekday-after-monday",
+      "prompt": "Which day comes after Monday?",
+      "options": [
+        "Sunday",
+        "Tuesday",
+        "Friday",
+        "Saturday"
+      ],
+      "correctAnswerIndex": 1
+    },
+    {
+      "id": "shape-three-sides",
+      "prompt": "Which shape has three sides?",
+      "options": [
+        "Square",
+        "Circle",
+        "Triangle",
+        "Hexagon"
+      ],
+      "correctAnswerIndex": 2
+    },
+    {
+      "id": "five-plus-two",
+      "prompt": "What is 5 + 2?",
+      "options": [
+        "6",
+        "7",
+        "8",
+        "9"
+      ],
+      "correctAnswerIndex": 1
+    },
+    {
+      "id": "instrument-keys",
+      "prompt": "Which instrument usually has keys?",
+      "options": [
+        "Drum",
+        "Piano",
+        "Trumpet",
+        "Violin"
+      ],
+      "correctAnswerIndex": 1
+    },
+    {
+      "id": "opposite-hot",
+      "prompt": "Which word is the opposite of hot?",
+      "options": [
+        "Warm",
+        "Cold",
+        "Bright",
+        "Fast"
+      ],
+      "correctAnswerIndex": 1
+    }
+  ]
+}
