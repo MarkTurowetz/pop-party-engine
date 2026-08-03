@@ -9,6 +9,34 @@ const { chromium } = require("playwright");
 
 const root = path.resolve(__dirname, "..");
 const host = "127.0.0.1";
+const referenceFlow = require(path.join(root, "apps/reference/content/flow.json"));
+const referenceArt = require(path.join(root, "apps/reference/content/art/manifest.json"));
+
+function feedbackFixtureFlow() {
+  const flow = structuredClone(referenceFlow);
+  const visit = (actions) => {
+    for (const action of actions || []) {
+      if (action.timing) action.timing.seconds = 0;
+      visit(action.subActions);
+    }
+  };
+  visit(flow.routeNodes);
+  for (const state of flow.states || []) visit(state.actions);
+  const intro = flow.states.find((state) => state.id === "intro");
+  intro.nextStateTargetId = "crafting-game-state";
+  const crafting = flow.states.find((state) => state.id === "crafting-game-state");
+  const shown = crafting.actions.find((action) => action.type === "setPlayerAnswersShown" && action.playerFilter === "all");
+  shown.timing.seconds = 0.65;
+  const reveal = crafting.actions.find((action) => action.type === "revealPlayerAnswerCorrectness");
+  reveal.timing.seconds = 0.65;
+  const hideWrong = crafting.actions.find((action) => action.type === "setPlayerAnswersShown" && action.playerFilter === "wrong");
+  hideWrong.playerFilter = "votingWinner";
+  const points = crafting.actions.find((action) => action.type === "showPoints");
+  points.playerFilter = "all";
+  points.points = 200;
+  points.timing.seconds = 2;
+  return flow;
+}
 
 function openPort() {
   return new Promise((resolve, reject) => {
@@ -47,6 +75,12 @@ async function postJson(baseUrl, pathname, body) {
 }
 
 async function main() {
+  const avatarChoiceComponents = referenceArt.compositions["controller-avatar-choice-item"]?.components || [];
+  assert.deepEqual(
+    avatarChoiceComponents.map((component) => component.id),
+    ["reference-avatar-choice-avatar", "reference-avatar-choice-backplate"],
+    "The avatar choice backplate must remain the lowest element in the Art Manager's top-first layer order"
+  );
   const port = await openPort();
   const baseUrl = `http://${host}:${port}`;
   const child = spawn(process.execPath, ["server.js"], {
@@ -70,13 +104,38 @@ async function main() {
   try {
     await waitForHealth(baseUrl, child);
     await postJson(baseUrl, "/api/stage/rooms", { stageCode: "AVTR" });
-    const ava = await postJson(baseUrl, "/api/join", { stageCode: "AVTR", playerName: "AVA" });
+    browser = await chromium.launch({ headless: true });
+    const controllerPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const browserErrors = [];
+    controllerPage.on("pageerror", (error) => browserErrors.push(`controller: ${error.message}`));
+    await controllerPage.goto(`${baseUrl}/controller?stage=AVTR&name=AVA&join=1`, { waitUntil: "load" });
+    try {
+      await controllerPage.waitForFunction(() => (
+        Boolean(window.controllerState?.player?.id)
+        && document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"]').length === 6
+        && document.querySelector('[data-controller-layout-element-id="controllerplayerbanner"] [data-art-component-id="avatar-sprite"]')
+      ), null, { timeout: 15_000 });
+    } catch (error) {
+      const diagnostic = await controllerPage.evaluate(() => ({
+        player: window.controllerState?.player,
+        phase: window.controllerState?.lobby?.phase,
+        interactions: window.controllerState?.lobby?.gamePlugin?.controllerInteractions,
+        controls: document.querySelectorAll('[data-game-plugin-controller-interaction]').length,
+        layoutElements: [...document.querySelectorAll('[data-controller-layout-element-id]')].map((element) => ({
+          id: element.getAttribute("data-controller-layout-element-id"),
+          scope: element.getAttribute("data-controller-layout-scope"),
+          display: getComputedStyle(element).display,
+          html: element.outerHTML.slice(0, 500)
+        })),
+        body: document.body.innerText.slice(0, 800)
+      }));
+      throw new Error(`Controller presentation did not become ready: ${JSON.stringify(diagnostic)}`, { cause: error });
+    }
+    const ava = await controllerPage.evaluate(() => ({ player: window.controllerState.player }));
     const ben = await postJson(baseUrl, "/api/join", { stageCode: "AVTR", playerName: "BEN" });
 
-    browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    const browserErrors = [];
-    page.on("pageerror", (error) => browserErrors.push(error.message));
+    page.on("pageerror", (error) => browserErrors.push(`stage: ${error.message}`));
     await page.goto(`${baseUrl}/stage?stage=AVTR`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(() =>
       document.querySelectorAll('[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
@@ -91,15 +150,20 @@ async function main() {
         return Boolean(rect && rect.width > 0 && rect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden");
       };
       const itemState = items.map((item) => {
-        const avatarSprite = [...item.querySelectorAll('[data-art-component-id="avatar"]')]
+        const avatarSprite = [...item.querySelectorAll('[data-art-component-id="avatar-sprite"]')]
           .find((element) => element.classList.contains("is-sprite"));
+        const widget = item.querySelector('[data-art-component-id="reference-96c34ddb7ee0"]');
         return {
           key: item.getAttribute("data-game-plugin-renderer-item-key"),
           visible: visible(item),
-          widgetVisible: visible(item.querySelector('[data-art-component-id="player-widget-mc"]')),
+          widgetVisible: visible(widget),
+          widgetDisplay: widget ? getComputedStyle(widget).display : "missing",
+          widgetState: widget?.getAttribute("data-art-current-state") || widget?.getAttribute("data-art-animation-state") || "",
+          widgetHtml: widget?.outerHTML.slice(0, 800) || "",
           avatarVisible: visible(avatarSprite),
           backgroundVisible: visible(item.querySelector('[data-art-component-id="avatar-background"]')),
           avatarAsset: avatarSprite?.dataset.spriteSource || "",
+          avatarTint: getComputedStyle(avatarSprite).getPropertyValue("--component-sprite-tint").trim(),
           name: item.querySelector('[data-art-component-id="name-text"]')?.textContent?.trim() || ""
         };
       });
@@ -127,13 +191,83 @@ async function main() {
     assert.deepEqual(before.itemState.map((item) => item.name), ["AVA", "BEN"], "Local player-name Art did not bind public names");
     for (const item of before.itemState) {
       assert.equal(item.visible, true, `${item.key} collection item has no visible geometry`);
-      assert.equal(item.widgetVisible, true, `${item.key} local Player Widget MC is hidden`);
+      assert.equal(item.widgetVisible, true, `${item.key} local Player Widget MC is hidden: ${JSON.stringify(item)}`);
       assert.equal(item.avatarVisible, true, `${item.key} local avatar sprite is hidden`);
       assert.equal(item.backgroundVisible, true, `${item.key} local avatar background is hidden`);
       assert.ok(item.avatarAsset, `${item.key} local avatar sprite has no image asset`);
     }
     assert.equal(before.model.players.length, 2, "Stage did not receive the reference game's player view model");
     assert.equal(before.hasEngineAvatarRole, false, "Reference avatars depend on a retired engine avatar role");
+
+    const pickerBefore = await controllerPage.evaluate(() => {
+      const controls = [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"]')];
+      const banner = document.querySelector('[data-controller-layout-element-id="controllerplayerbanner"]');
+      const visible = (element) => {
+        const rect = element?.getBoundingClientRect();
+        const style = element ? getComputedStyle(element) : null;
+        return Boolean(rect && rect.width > 0 && rect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden");
+      };
+      return {
+        bannerVisible: visible(banner),
+        bannerName: banner?.querySelector('[data-art-component-id="name-text"]')?.textContent?.trim() || "",
+        bannerAvatarVisible: visible(banner?.querySelector('[data-art-component-id="avatar-sprite"]')),
+        bannerAvatarAsset: banner?.querySelector('[data-art-component-id="avatar-sprite"]')?.dataset.spriteSource || "",
+        options: controls.map((control) => control.getAttribute("data-game-plugin-input-option")),
+        currentAvatarId: (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
+          .find((item) => item.id === "reference.avatarProfile")?.viewModel?.avatarId,
+        controlsMatchArt: controls.every((control) => {
+          const host = control.closest('[data-controller-layout-element-id]');
+          const controlRect = control.getBoundingClientRect();
+          const hostRect = host?.getBoundingClientRect();
+          return Boolean(hostRect && Math.abs(controlRect.width - hostRect.width) < 1 && Math.abs(controlRect.height - hostRect.height) < 1);
+        })
+      };
+    });
+    assert.equal(pickerBefore.bannerVisible, true, "The reference Controller player banner is hidden in the lobby");
+    assert.equal(pickerBefore.bannerName, "AVA", "The Controller banner did not bind the authenticated player's name");
+    assert.equal(pickerBefore.bannerAvatarVisible, true, "The Controller banner did not render its local avatar Art");
+    assert.deepEqual(pickerBefore.options, ["rex", "stego", "trike", "raptor", "bronto", "cleo"], "The reference avatar picker did not expose all six local choices");
+    assert.equal(pickerBefore.controlsMatchArt, true, "Avatar picker native hit bounds do not match the authored widgets");
+
+    const nextAvatarId = pickerBefore.options.find((id) => id !== pickerBefore.currentAvatarId);
+    const nextAvatarState = ({ rex: "Rex", stego: "Stego", trike: "Trike", raptor: "Raptor", bronto: "Bronto", cleo: "Cleo" })[nextAvatarId];
+    assert.ok(nextAvatarId && nextAvatarState, "The avatar picker did not provide an alternative selection");
+    const avatarResponse = controllerPage.waitForResponse((response) => (
+      response.url().endsWith("/api/game-plugin-controller-interaction")
+      && response.request().method() === "POST"
+    ));
+    await controllerPage.locator(
+      `[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-option="${nextAvatarId}"]`
+    ).click();
+    await avatarResponse;
+    const avaAvatarAssetBefore = before.itemState.find((item) => item.key === ava.player.id)?.avatarAsset || "";
+    await page.waitForFunction(({ playerId, previousAsset, expectedState }) => {
+      const item = document.querySelector(
+        `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"]`
+      );
+      const model = window.currentStageState?.lobby?.gamePlugin?.viewModels?.["reference.players"]
+        || window.currentStageState?.gamePlugin?.viewModels?.["reference.players"];
+      return model?.players?.find((player) => player.id === playerId)?.avatarState === expectedState
+        && item?.querySelector('[data-art-component-id="avatar-sprite"]')?.dataset.spriteSource !== previousAsset;
+    }, { playerId: ava.player.id, previousAsset: avaAvatarAssetBefore, expectedState: nextAvatarState }, { timeout: 15_000 });
+    await controllerPage.waitForFunction((expectedAvatarId) => (
+      (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
+        .find((item) => item.id === "reference.avatarProfile")?.viewModel?.avatarId === expectedAvatarId
+    ), nextAvatarId, { timeout: 15_000 });
+    await controllerPage.waitForFunction((previousAsset) => (
+      document.querySelector('[data-controller-layout-element-id="controllerplayerbanner"] [data-art-component-id="avatar-sprite"]')?.dataset.spriteSource !== previousAsset
+    ), pickerBefore.bannerAvatarAsset, { timeout: 15_000 });
+    const selectedAvatar = await page.evaluate((playerId) => {
+      const sprite = document.querySelector(
+        `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"] [data-art-component-id="avatar-sprite"]`
+      );
+      return {
+        asset: sprite?.dataset.spriteSource || "",
+        tint: sprite ? getComputedStyle(sprite).getPropertyValue("--component-sprite-tint").trim().toLowerCase() : ""
+      };
+    }, ava.player.id);
+    assert.notEqual(selectedAvatar.asset, avaAvatarAssetBefore, "Changing the lobby picker did not update the Stage avatar Art");
+    assert.equal(selectedAvatar.tint, "#e3c6eb", "The reference Stage avatar did not retain its player color tint");
 
     const cal = await postJson(baseUrl, "/api/join", { stageCode: "AVTR", playerName: "CAL" });
     await page.waitForFunction(() =>
@@ -149,8 +283,98 @@ async function main() {
     }), cal.player.id);
     assert.equal(after.retained, true, "Adding a player rebuilt an unchanged avatar item");
     assert.equal(after.calName, "CAL", "The added player did not receive a local avatar widget");
-    assert.deepEqual(browserErrors, [], `Stage emitted browser errors: ${browserErrors.join("; ")}`);
-    console.log("Reference-game-owned player avatars rendered and reconciled in Chromium.");
+
+    const feedbackRoom = await postJson(baseUrl, "/api/stage/rooms", { stageCode: "FDBK" });
+    const feedbackConfigResponse = await fetch(`${baseUrl}/api/stage/FDBK/test-config`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-stage-capability": feedbackRoom.stageCapability
+      },
+      body: JSON.stringify({ flow: feedbackFixtureFlow() })
+    });
+    assert.equal(feedbackConfigResponse.status, 200, `Could not install the reference feedback fixture: ${await feedbackConfigResponse.text()}`);
+    const feedbackController = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    feedbackController.on("pageerror", (error) => browserErrors.push(`feedback controller: ${error.message}`));
+    await feedbackController.goto(`${baseUrl}/controller?stage=FDBK&name=QUIZ&join=1`, { waitUntil: "load" });
+    await feedbackController.waitForFunction(() => (
+      window.controllerState?.player?.isVip === true
+      && document.querySelector('[data-option-id="lobby.startGame"]')
+    ), null, { timeout: 15_000 });
+    const feedbackPlayerId = await feedbackController.evaluate(() => window.controllerState.player.id);
+    const feedbackStage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    feedbackStage.on("pageerror", (error) => browserErrors.push(`feedback stage: ${error.message}`));
+    await feedbackStage.addInitScript(({ stageCode, stageCapability }) => {
+      sessionStorage.setItem(`partyTemplateStageCapability:${stageCode}`, stageCapability);
+    }, { stageCode: "FDBK", stageCapability: feedbackRoom.stageCapability });
+    await feedbackStage.goto(`${baseUrl}/stage?stage=FDBK`, { waitUntil: "load" });
+    await feedbackController.locator('[data-option-id="lobby.startGame"]').click();
+    await feedbackStage.waitForFunction(() => window.currentStageState?.action?.id === "intro-action-mqw4c168", null, { timeout: 15_000 });
+    await feedbackStage.mouse.click(720, 450);
+    await feedbackStage.waitForFunction(() => window.currentStageState?.action?.id === "crafting-game-state-action-mqlafl8m", null, { timeout: 15_000 });
+    await feedbackStage.mouse.click(720, 450);
+    try {
+      await feedbackController.waitForFunction(() => (
+        window.controllerState?.lobby?.action?.id === "crafting-game-state-action-mqlrlkp0"
+        && document.querySelector('[data-option-id^="choice."]')
+      ), null, { timeout: 15_000 });
+    } catch (error) {
+      const diagnostic = await feedbackController.evaluate(() => ({
+        action: window.controllerState?.lobby?.action,
+        choiceInput: window.controllerState?.lobby?.choiceInput,
+        viewState: window.controllerState?.controllerViewStateId,
+        buttons: [...document.querySelectorAll("button")].map((button) => ({ optionId: button.dataset.optionId, text: button.textContent?.trim() })),
+        body: document.body.innerText.slice(0, 1000)
+      }));
+      throw new Error(`Feedback Controller did not receive trivia choices: ${JSON.stringify(diagnostic)}`, { cause: error });
+    }
+    await feedbackController.locator('[data-option-id^="choice."]').first().click();
+    await feedbackStage.waitForFunction((playerId) => {
+      const model = window.currentStageState?.lobby?.gamePlugin?.viewModels?.["reference.players"]
+        || window.currentStageState?.gamePlugin?.viewModels?.["reference.players"];
+      const player = model?.players?.find((item) => item.id === playerId);
+      const item = document.querySelector(
+        `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"]`
+      );
+      const answerText = item?.querySelector('[data-art-component-id="answer-text"]');
+      const popup = item?.querySelector('[data-art-component-id="reference-player-point-popup"]');
+      const popupRect = popup?.getBoundingClientRect();
+      return player?.answerLifecycleState === "Update"
+        && ["Correct", "Incorrect"].includes(player?.answerSemanticState)
+        && player?.pointPopupState === "Popup"
+        && player?.pointLabel === "+200"
+        && Boolean(answerText?.textContent?.trim())
+        && popupRect?.width > 0
+        && popupRect?.height > 0
+        && getComputedStyle(popup).display !== "none";
+    }, feedbackPlayerId, { timeout: 15_000 });
+    const feedbackResult = await feedbackStage.evaluate((playerId) => {
+      const model = window.currentStageState?.lobby?.gamePlugin?.viewModels?.["reference.players"]
+        || window.currentStageState?.gamePlugin?.viewModels?.["reference.players"];
+      const player = model.players.find((item) => item.id === playerId);
+      const item = document.querySelector(
+        `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"]`
+      );
+      const popup = item.querySelector('[data-art-component-id="reference-player-point-popup"]');
+      return {
+        answer: item.querySelector('[data-art-component-id="answer-text"]')?.textContent?.trim() || "",
+        answerSemanticState: player.answerSemanticState,
+        answerLifecycleState: player.answerLifecycleState,
+        pointText: item.querySelector('[data-art-component-id="point-text"]')?.textContent?.trim() || "",
+        pointShadow: item.querySelector('[data-art-component-id="point-shadow"]')?.textContent?.trim() || "",
+        pointPopupState: player.pointPopupState,
+        popupVisible: popup && getComputedStyle(popup).display !== "none" && popup.getBoundingClientRect().width > 0
+      };
+    }, feedbackPlayerId);
+    assert.ok(feedbackResult.answer, "The answer bubble did not receive the submitted answer text");
+    assert.match(feedbackResult.answerSemanticState, /^(Correct|Incorrect)$/, "The answer bubble did not receive correctness state");
+    assert.equal(feedbackResult.answerLifecycleState, "Update", "The answer bubble did not receive its reveal lifecycle state");
+    assert.equal(feedbackResult.pointText, "+200", "The points popup text did not bind the pending award");
+    assert.equal(feedbackResult.pointShadow, "+200", "The points popup shadow did not bind the pending award");
+    assert.equal(feedbackResult.pointPopupState, "Popup", "The points popup timeline was not requested");
+    assert.equal(feedbackResult.popupVisible, true, "The points popup Art remained hidden during its authored animation");
+    assert.deepEqual(browserErrors, [], `Reference player presentation emitted browser errors: ${browserErrors.join("; ")}`);
+    console.log("Reference-game-owned avatars, Controller picker/banner, answer feedback, and points popup rendered in Chromium.");
   } catch (error) {
     if (stdout.trim()) console.error(`\nserver stdout:\n${stdout.trim()}`);
     if (stderr.trim()) console.error(`\nserver stderr:\n${stderr.trim()}`);
@@ -163,6 +387,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`Reference player presentation check failed: ${error.message}`);
+  console.error(`Reference player presentation check failed: ${error.stack || error.message}`);
   process.exitCode = 1;
 });

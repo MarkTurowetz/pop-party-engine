@@ -10,8 +10,8 @@
   "files": [
     {
       "path": "art/manifest.json",
-      "sha256": "4fd0a8c91391b795da617343f1d04c37a7f65a010c0405d8b0563f43b65f6c63",
-      "bytes": 368178
+      "sha256": "6b6ca043c741239d336af066b3259d15191702c3d222b7475590f09a2f405f3b",
+      "bytes": 377653
     },
     {
       "path": "audio/host-audios.json",
@@ -65,23 +65,23 @@
     },
     {
       "path": "flow.json",
-      "sha256": "c4ec28d1d49d33314c4cf2463fec5de2992f5929b65e3136d9eabe47334e6d7c",
-      "bytes": 51456
+      "sha256": "3d341ca67e46c8673538ff598f4f0216af8a4dd44468c2b44572d982d84754b9",
+      "bytes": 32897
     },
     {
       "path": "game-data/runtime.json",
-      "sha256": "8a97be2f5d791dd926ef45b848a71b00cee2c06a241f2d7aa50fc98b2fa9bec4",
-      "bytes": 802
+      "sha256": "232a381a9d3fbd0e7b82935d029ed9cf66e9a802f3c4181b072acbec74f7f887",
+      "bytes": 905
     },
     {
       "path": "layouts/controller.json",
-      "sha256": "c890b260f039ff6af013dd3b0d5a767b8bc5c1845ee6fd4cede0906429fb557d",
-      "bytes": 44431
+      "sha256": "59c8a838a4245b6f9db9a1421374ca326e0813262779d61b81a5ebc60ee64ea8",
+      "bytes": 48527
     },
     {
       "path": "layouts/stage.json",
-      "sha256": "2f1e4ae0f03ba0545ece9516a5852ff4abbf5cacd83d69393a6b99f3767ae828",
-      "bytes": 20363
+      "sha256": "7539f8c6cb5b511ed8eb371132a803efa06632dd99d1a07dd10ce5e883f43987",
+      "bytes": 20337
     },
     {
       "path": "prompts/prompts.json",
@@ -90,9 +90,9 @@
     },
     {
       "path": "semantic-roles.json",
-      "sha256": "adc804d2d669d2a37eae4a93346e817c5633982bb4384b8263bb98c6a13462dd",
-      "bytes": 1662
+      "sha256": "eb7e19f4f1bbe16a548f66a2bb553fae839751e4213dd9202dba04533820c2c8",
+      "bytes": 1308
     }
   ],
-  "rootHash": "3deed277b1a4949d0120a4647938b2e15edea0c7538c8b14175c308d3b45997d"
+  "rootHash": "65d0d5ea9fecada2bbdad4005f64453cb1c53fef7923058a675ab36c7df9667c"
 }

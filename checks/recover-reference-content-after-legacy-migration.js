@@ -8,8 +8,8 @@ const { createBundleGameData } = require("../packages/engine/src/server/content-
 const { createContentSnapshot } = require("../packages/engine/src/server/content-snapshot-runtime");
 
 const EXPECTED = Object.freeze({
-  laterToolStateCommit: "e471cafee62ebe0f61195a6591152388487b5fd9",
-  laterToolStateRevision: "3deed277b1a4949d0120a4647938b2e15edea0c7538c8b14175c308d3b45997d"
+  backgroundBaselineCommit: "e471cafee62ebe0f61195a6591152388487b5fd9",
+  currentReferenceRevision: "65d0d5ea9fecada2bbdad4005f64453cb1c53fef7923058a675ab36c7df9667c"
 });
 
 function snapshotFromDirectory(root) {
@@ -84,8 +84,8 @@ function recoverReferenceContent(options = {}) {
   const snapshot = snapshotFromDirectory(referenceRoot);
   assert.equal(
     snapshot.revision,
-    EXPECTED.laterToolStateRevision,
-    "The committed reference content no longer matches the audited background-capable Tool state"
+    EXPECTED.currentReferenceRevision,
+    "The committed reference content no longer matches the audited reference Tool state"
   );
   const gameData = createBundleGameData(snapshot);
 
@@ -107,7 +107,7 @@ function recoverReferenceContent(options = {}) {
   return Object.freeze({
     snapshot,
     summary: Object.freeze({
-      sourceContentCommit: EXPECTED.laterToolStateCommit,
+      sourceContentCommit: EXPECTED.backgroundBaselineCommit,
       restoredContentRevision: snapshot.revision,
       fileCount: snapshot.paths.length,
       stateCount: flow.states.length,

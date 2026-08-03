@@ -11,18 +11,18 @@ describe("reference content rollback", () => {
   it("preserves the complete background-capable Tool state", () => {
     const result = recoverReferenceContent();
 
-    expect(result.snapshot.revision).toBe(EXPECTED.laterToolStateRevision);
+    expect(result.snapshot.revision).toBe(EXPECTED.currentReferenceRevision);
     expect(result.summary).toEqual({
-      sourceContentCommit: EXPECTED.laterToolStateCommit,
-      restoredContentRevision: EXPECTED.laterToolStateRevision,
+      sourceContentCommit: EXPECTED.backgroundBaselineCommit,
+      restoredContentRevision: EXPECTED.currentReferenceRevision,
       fileCount: 17,
       stateCount: 10,
-      startMomentCount: 1,
+      startMomentCount: 10,
       endMomentCount: 10,
       routeNodeCount: 5,
       stageLayoutCount: 10,
       controllerLayoutCount: 18,
-      artCompositionCount: 73,
+      artCompositionCount: 74,
       backgroundCompositionCount: 10,
       artAssetCount: 8
     });
