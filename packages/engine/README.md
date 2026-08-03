@@ -161,6 +161,74 @@ being mistaken for a duplicate lobby payload. A game input's declared custom
 `layoutStateId` is also selected ahead of the room's ordinary controller phase
 layout for that input visit; built-in semantic input layouts remain compatible.
 
+### Persistent authenticated Controller interactions
+
+Game-owned profile settings that must remain available outside a Flow barrier
+register through `controllerInteractions`. They target only the Controller
+Global layout or a named persistent Controller layer, so they coexist with
+lobby Start/Cancel, active Flow inputs, submitted/waiting layouts, late joins,
+reconnects, and heartbeats without replacing the active Controller state.
+
+```js
+registry.controllerInteractions("my-game.avatarProfile", {
+  name: "Avatar profile",
+  profileField: "avatarId",
+  visibility: "public",
+  submission: [{
+    id: "avatarId",
+    type: "choice",
+    optionsSource: "options",
+    options: [{ id: "trike" }, { id: "bronto" }]
+  }],
+  controller: {
+    layoutScope: "layer",
+    layoutLayerId: "profile-picker",
+    bindings: [{
+      id: "avatars",
+      kind: "choiceCollection",
+      layoutElementId: "avatar-options",
+      field: "avatarId",
+      item: {
+        artCompositionId: "my-game-avatar-option",
+        targetComponentId: "label",
+        labelSource: "label"
+      },
+      autoSubmit: true
+    }]
+  },
+  available(context) {
+    return context.viewer.active;
+  },
+  view(context) {
+    return {
+      avatarId: context.profile.avatarId || "trike",
+      options: [
+        { id: "trike", label: "Triceratops" },
+        { id: "bronto", label: "Brontosaurus" }
+      ]
+    };
+  },
+  submit(context, payload) {
+    context.profile.set(payload.avatarId);
+    context.broadcast.request();
+  }
+});
+```
+
+The server recomputes `available` and the private `view` for the authenticated
+viewer on every projection. A submission can write only the registration's
+declared `profileField`; the payload is checked against both the private
+`optionsSource` and the optional static option whitelist. A `private` field is
+never available to Stage renderers. A `public` field is exposed to same-plugin
+Stage renderer selectors through `context.profiles[playerId]`, but Stage is
+published only when the submit handler explicitly calls
+`context.broadcast.request()`. Controller renderer selectors receive only the
+authenticated viewer's own `context.profile`. Profile values survive ordinary
+game initialize/restart boundaries within the room; stale session or view
+tokens, inactive players, removed options, and foreign player credentials fail
+closed. No engine avatar choices, avatar endpoint, Controller banner, or
+player-art semantics are implied by this API.
+
 ## Typed subroutine interfaces
 
 Nested Flow subroutines may declare typed inputs and outputs in the Flow Tool.

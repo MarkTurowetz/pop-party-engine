@@ -6,6 +6,7 @@
 import { createControllerModuleCache } from "./controllerModuleCache";
 import { renderGamePluginSurface } from "./gamePluginRendererRuntime";
 import { createGamePluginInputView } from "./gamePluginInputRuntime";
+import { createGamePluginControllerInteractionView } from "./gamePluginControllerInteractionRuntime";
 import { createControllerViewState } from "./controllerViewState";
 import { createControllerVoiceInput, shouldDeferVoiceHeartbeat } from "./controllerVoiceInput";
 import { controllerViewVisitKey } from "./controllerViewVisit";
@@ -345,6 +346,17 @@ function getGamePluginInputView() {
   );
 }
 
+function getGamePluginControllerInteractionView() {
+  return controllerModules.get("gamePluginControllerInteractionView", () =>
+    createGamePluginControllerInteractionView({
+      applyLayoutForPhase: applyControllerLayoutForPhase,
+      renderState: renderControllerState,
+      submit: (interactionId, visitId, payload, id) =>
+        getControllerSubmitApi().submitGamePluginControllerInteraction(interactionId, visitId, payload, id) as Promise<unknown>
+    })
+  );
+}
+
 function getControllerHeartbeatRuntime() {
   return controllerModules.get("heartbeatRuntime", () =>
     createControllerHeartbeatRuntime({
@@ -579,6 +591,7 @@ function renderControllerState(lobbyInput: unknown): void {
   window.clearInterval(w.controllerCountdownTimer ?? undefined);
   const me = ((lobby.players as Dict[]) || []).find((player) => player.id === w.controllerState!.playerId);
   if (!me) {
+    getGamePluginControllerInteractionView().reset();
     w.controllerState.startToken = "";
     getControllerLobbyView().renderMissingPlayer();
     return;
@@ -598,6 +611,7 @@ function renderControllerState(lobbyInput: unknown): void {
   }
   lastControllerViewStateId = renderedState.id;
   renderGamePluginSurface("controller", lobby);
+  getGamePluginControllerInteractionView().render(lobby);
   w.controllerState.controllerViewStateId = renderedState.id;
   w.controllerCountdownTimer = renderedState.countdownTimer;
 }

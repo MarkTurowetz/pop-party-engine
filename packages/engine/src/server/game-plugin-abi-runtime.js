@@ -22,6 +22,12 @@ function cloneJson(value, fallback = null) {
   }
 }
 
+function canonicalJson(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+}
+
 function assertJsonValue(value, label, seen = new Set()) {
   if (value === undefined || typeof value === "function" || typeof value === "symbol" || typeof value === "bigint") {
     throw new Error(`${label} must be JSON-safe`);
@@ -219,6 +225,49 @@ function pluginStateFor(room, namespace) {
   return room.gamePluginState[namespace];
 }
 
+function pluginProfilesFor(room, namespace) {
+  if (!room.gamePluginProfiles || typeof room.gamePluginProfiles !== "object" || Array.isArray(room.gamePluginProfiles)) {
+    room.gamePluginProfiles = {};
+  }
+  if (!room.gamePluginProfiles[namespace] || typeof room.gamePluginProfiles[namespace] !== "object" || Array.isArray(room.gamePluginProfiles[namespace])) {
+    room.gamePluginProfiles[namespace] = {};
+  }
+  return room.gamePluginProfiles[namespace];
+}
+
+function pluginProfileFor(room, namespace, playerId) {
+  const profiles = pluginProfilesFor(room, namespace);
+  const id = String(playerId || "");
+  if (!profiles[id] || typeof profiles[id] !== "object" || Array.isArray(profiles[id])) profiles[id] = {};
+  return profiles[id];
+}
+
+function publicPluginProfiles(room, registrations) {
+  const result = {};
+  const fieldsByNamespace = new Map();
+  for (const registration of registrations || []) {
+    if (String(registration.value.visibility || "private") !== "public") continue;
+    const fields = fieldsByNamespace.get(registration.ownerNamespace) || new Set();
+    fields.add(String(registration.value.profileField || ""));
+    fieldsByNamespace.set(registration.ownerNamespace, fields);
+  }
+  for (const [namespace, fields] of fieldsByNamespace) {
+    const namespaceProfiles = pluginProfilesFor(room, namespace);
+    const projected = {};
+    for (const [playerId, profile] of Object.entries(namespaceProfiles)) {
+      const player = room.players?.get?.(playerId);
+      if (!player || player.active === false) continue;
+      const selected = {};
+      for (const field of fields) {
+        if (Object.prototype.hasOwnProperty.call(profile, field)) selected[field] = cloneJson(profile[field]);
+      }
+      if (Object.keys(selected).length) projected[playerId] = selected;
+    }
+    result[namespace] = projected;
+  }
+  return result;
+}
+
 function writePluginOutput(room, variableName, value) {
   if (/^[gGlL]\.[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/.test(variableName)) {
     room.G = room.G && typeof room.G === "object" && !Array.isArray(room.G) ? room.G : {};
@@ -390,6 +439,7 @@ function assertRendererCollectionModel(bindings, model, path = "model") {
 function createGameRendererRuntime({
   stageRenderers = [],
   controllerRenderers = [],
+  controllerInteractions = [],
   activePlayers,
   currentAction = () => null
 } = {}) {
@@ -412,6 +462,12 @@ function createGameRendererRuntime({
       const context = Object.freeze({
         namespace: registration.ownerNamespace,
         state: cloneJson(pluginStateFor(room, registration.ownerNamespace), {}),
+        profile: registration.surface === "controller" && viewer
+          ? Object.freeze(cloneJson(pluginProfileFor(room, registration.ownerNamespace, viewer.id), {}))
+          : null,
+        profiles: registration.surface === "stage"
+          ? Object.freeze(cloneJson(publicPluginProfiles(room, controllerInteractions)[registration.ownerNamespace] || {}, {}))
+          : Object.freeze({}),
         players: Object.freeze(players),
         viewer,
         capability: Object.freeze({
@@ -442,6 +498,199 @@ function createGameRendererRuntime({
   }
 
   return Object.freeze({ manifests: Object.freeze(manifests), viewModels });
+}
+
+function controllerInteractionManifest(registration) {
+  const config = registration.value;
+  return Object.freeze({
+    id: registration.id,
+    name: String(config.name),
+    profileField: String(config.profileField),
+    visibility: String(config.visibility || "private"),
+    submission: Object.freeze(config.submission.map((field) => Object.freeze(cloneJson(field)))),
+    controller: Object.freeze({
+      layoutScope: String(config.controller.layoutScope),
+      layoutLayerId: String(config.controller.layoutLayerId || ""),
+      bindings: Object.freeze(config.controller.bindings.map((binding) => Object.freeze(cloneJson(binding))))
+    })
+  });
+}
+
+function createGameControllerInteractionRuntime({
+  registrations = [],
+  activePlayers = (room) => Array.from(room.players?.values?.() || []).filter((player) => player.active !== false),
+  broadcastLobby = () => {}
+} = {}) {
+  const registrationById = new Map(registrations.map((registration) => [registration.id, registration]));
+  const manifests = Object.freeze(registrations.map(controllerInteractionManifest));
+
+  function authorityStore(room) {
+    if (!(room.gamePluginControllerInteractionAuthorities instanceof Map)) {
+      room.gamePluginControllerInteractionAuthorities = new Map();
+    }
+    return room.gamePluginControllerInteractionAuthorities;
+  }
+
+  function submissionStore(room) {
+    if (!(room.gamePluginControllerInteractionSubmissions instanceof Map)) {
+      room.gamePluginControllerInteractionSubmissions = new Map();
+    }
+    return room.gamePluginControllerInteractionSubmissions;
+  }
+
+  function readContext(room, registration, player) {
+    const players = activePlayers(room).map((candidate) => publicPlayerSnapshot(candidate, room));
+    return Object.freeze({
+      namespace: registration.ownerNamespace,
+      state: Object.freeze(cloneJson(pluginStateFor(room, registration.ownerNamespace), {})),
+      profile: Object.freeze(cloneJson(pluginProfileFor(room, registration.ownerNamespace, player.id), {})),
+      players: Object.freeze(players),
+      viewer: publicPlayerSnapshot(player, room),
+      capability: Object.freeze({ authenticated: true, isVip: String(room.vipPlayerId || "") === String(player.id || "") }),
+      flow: Object.freeze(cloneJson(room.flowVariables, {})),
+      local: Object.freeze(cloneJson(room.localVariables, {})),
+      phase: String(room.phase || ""),
+      flowStateId: String(room.flowStateId || room.phase || "")
+    });
+  }
+
+  function privatePayload(room, registration, playerId) {
+    const player = room.players?.get(String(playerId || ""));
+    if (!player || player.active === false) return null;
+    const context = readContext(room, registration, player);
+    const available = registration.value.available(context);
+    if (available && typeof available.then === "function") throw new Error("available functions must be synchronous");
+    const authorityKey = `${String(player.id)}:${registration.id}`;
+    if (available !== true) {
+      authorityStore(room).delete(authorityKey);
+      return null;
+    }
+    const model = registration.value.view(context);
+    if (model && typeof model.then === "function") throw new Error("view functions must be synchronous");
+    assertJsonValue(model, `Controller interaction "${registration.id}" view model`);
+    const signature = canonicalJson({
+      gameSessionId: Number(room.gameSessionId || 0),
+      phase: String(room.phase || ""),
+      flowStateId: String(room.flowStateId || room.phase || ""),
+      model
+    });
+    const authorities = authorityStore(room);
+    let authority = authorities.get(authorityKey);
+    if (!authority || authority.signature !== signature) {
+      room.controllerInteractionVisitCounter = Math.max(0, Number(room.controllerInteractionVisitCounter || 0)) + 1;
+      authority = { signature, visitId: room.controllerInteractionVisitCounter };
+      authorities.set(authorityKey, authority);
+    }
+    return {
+      id: registration.id,
+      type: registration.id,
+      actionId: registration.id,
+      visitId: authority.visitId,
+      gameSessionId: Number(room.gameSessionId || 0),
+      layoutScope: String(registration.value.controller.layoutScope),
+      layoutLayerId: String(registration.value.controller.layoutLayerId || ""),
+      viewModel: cloneJson(model, null)
+    };
+  }
+
+  function payloadsForViewer(room, viewerPlayerId = "") {
+    const playerId = String(viewerPlayerId || "");
+    if (!playerId) return [];
+    const payloads = [];
+    for (const registration of registrations) {
+      try {
+        const payload = privatePayload(room, registration, playerId);
+        if (payload) payloads.push(payload);
+      } catch (error) {
+        createRuntimeFault(room, {
+          code: "GAME_PLUGIN_CONTROLLER_INTERACTION_VIEW_FAILED",
+          message: `Controller interaction "${registration.id}" could not build its private view`,
+          expected: "A synchronous JSON-safe authenticated controller interaction",
+          actual: String(error?.message || error)
+        });
+      }
+    }
+    return payloads;
+  }
+
+  function wasSubmitted(room, key, submissionId) {
+    if (!submissionId) return false;
+    return (submissionStore(room).get(key) || []).includes(submissionId);
+  }
+
+  function rememberSubmission(room, key, submissionId) {
+    if (!submissionId) return;
+    const submissions = submissionStore(room);
+    submissions.set(key, [...(submissions.get(key) || []), submissionId].slice(-32));
+  }
+
+  function submit(room, playerId, request) {
+    const registration = registrationById.get(String(request.interactionId || request.actionId || ""));
+    if (!registration) return { status: 409, error: "No game-owned controller interaction is active", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INACTIVE" };
+    const actorId = String(playerId || "");
+    const actor = room.players?.get(actorId);
+    if (!actor || actor.active === false) return { status: 403, error: "This player is not eligible for the controller interaction", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INELIGIBLE" };
+    const submittedId = String(request.submissionId || "");
+    if (!submittedId || submittedId.length > 128) {
+      return { status: 422, error: "Controller interaction submissions require a valid submission identity", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INVALID" };
+    }
+    if (Number(request.gameSessionId || 0) !== Number(room.gameSessionId || 0)) {
+      return { status: 409, error: "This controller interaction visit is stale", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_STALE" };
+    }
+    const submissionKey = `${Number(room.gameSessionId || 0)}:${actorId}:${registration.id}`;
+    if (wasSubmitted(room, submissionKey, submittedId)) return { status: 200, duplicate: true };
+    let current;
+    try {
+      current = privatePayload(room, registration, actorId);
+    } catch (error) {
+      return { status: 500, error: String(error?.message || error), errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_FAILED" };
+    }
+    if (!current) return { status: 403, error: "This controller interaction is not available", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INELIGIBLE" };
+    if (
+      Number(request.visitId || 0) !== Number(current.visitId || 0)
+    ) return { status: 409, error: "This controller interaction visit is stale", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_STALE" };
+    let payload;
+    try {
+      payload = validateInputPayload(registration.value, current.viewModel, request.payload);
+    } catch (error) {
+      return { status: 422, error: String(error?.message || error), errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INVALID" };
+    }
+    try {
+      const profile = pluginProfileFor(room, registration.ownerNamespace, actorId);
+      const profileField = String(registration.value.profileField);
+      let nextValue;
+      let setRequested = false;
+      let broadcastRequested = false;
+      const context = Object.freeze({
+        namespace: registration.ownerNamespace,
+        state: Object.freeze(cloneJson(pluginStateFor(room, registration.ownerNamespace), {})),
+        actor: publicPlayerSnapshot(actor, room),
+        players: Object.freeze(activePlayers(room).map((player) => publicPlayerSnapshot(player, room))),
+        capability: Object.freeze({ authenticated: true, isVip: String(room.vipPlayerId || "") === actorId }),
+        profile: Object.freeze({
+          field: profileField,
+          current: Object.freeze(cloneJson(profile, {})),
+          set(value) {
+            assertJsonValue(value, `Controller interaction "${registration.id}" profile value`);
+            nextValue = cloneJson(value, null);
+            setRequested = true;
+          }
+        }),
+        broadcast: Object.freeze({ request() { broadcastRequested = true; } })
+      });
+      const result = registration.value.submit(context, payload);
+      if (result && typeof result.then === "function") throw new Error("submit functions must be synchronous");
+      if (!setRequested) throw new Error(`Controller interaction "${registration.id}" did not set its declared profile field`);
+      profile[profileField] = nextValue;
+      rememberSubmission(room, submissionKey, submittedId);
+      if (broadcastRequested) broadcastLobby(room);
+      return { status: 200, duplicate: false };
+    } catch (error) {
+      return { status: 500, error: String(error?.message || error), errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_FAILED" };
+    }
+  }
+
+  return Object.freeze({ manifests, payloadsForViewer, submit });
 }
 
 function inputManifest(registration) {
@@ -521,6 +770,10 @@ function validateInputPayload(config, viewModel, rawPayload) {
       const optionId = String(value ?? "");
       const eligibleIds = options.map((option, index) => String(option && typeof option === "object" ? option.id ?? index : option));
       if (!eligibleIds.includes(optionId)) throw new Error(`Choice field "${field.id}" is invalid`);
+      if (Array.isArray(field.options)) {
+        const declaredIds = field.options.map((option) => String(option && typeof option === "object" ? option.id : option));
+        if (!declaredIds.includes(optionId)) throw new Error(`Choice field "${field.id}" is not a declared option`);
+      }
       result[field.id] = optionId;
       continue;
     }
@@ -791,10 +1044,12 @@ function pluginFlowActionTypes(actionRegistrations = []) {
 module.exports = {
   SAFE_COMPONENT_PROPERTIES,
   createGameActionExecutor,
+  createGameControllerInteractionRuntime,
   createGameInputRuntime,
   createGameRendererRuntime,
   createPluginInputActionDefinitions,
   createPluginFlowActionDefinitions,
   inputManifest,
+  controllerInteractionManifest,
   pluginFlowActionTypes
 };

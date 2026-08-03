@@ -24,6 +24,7 @@ const INPUT_BINDING_KINDS = new Set(["choice", "choiceCollection", "integer", "s
 const INPUT_COMPLETION_POLICIES = new Set(["allRecipients", "anyRecipient", "manual"]);
 const INPUT_DISCONNECT_POLICIES = new Set(["wait", "completeRemaining", "fault"]);
 const INPUT_TIMEOUT_POLICIES = new Set(["wait", "complete", "fault"]);
+const CONTROLLER_INTERACTION_VISIBILITIES = new Set(["private", "public"]);
 const RENDERER_BINDING_KINDS = new Set(["collection", "component", "state", "text"]);
 const RENDERER_COMPONENT_PROPERTIES = new Set([
   "defaultText",
@@ -37,6 +38,7 @@ const RENDERER_COMPONENT_PROPERTIES = new Set([
 const REGISTRATION_KINDS = Object.freeze([
   "actions",
   "inputs",
+  "controllerInteractions",
   "stageRenderers",
   "controllerRenderers",
   "stateSchemas",
@@ -188,6 +190,19 @@ function validateInputRegistration(id, value) {
     if (field.type === "choice" && !String(field.optionsSource || "").trim()) {
       throw new Error(`Input "${id}" choice field "${fieldId}" requires optionsSource`);
     }
+    if (field.type === "choice" && field.options !== undefined) {
+      if (!Array.isArray(field.options) || field.options.length === 0) {
+        throw new Error(`Input "${id}" choice field "${fieldId}" options must be a non-empty array`);
+      }
+      const optionIds = new Set();
+      for (const option of field.options) {
+        const optionId = String(option && typeof option === "object" ? option.id : option ?? "").trim();
+        if (!optionId || optionIds.has(optionId)) {
+          throw new Error(`Input "${id}" choice field "${fieldId}" has an empty or duplicate static option`);
+        }
+        optionIds.add(optionId);
+      }
+    }
     if (field.type === "integer") {
       if (!Number.isInteger(Number(field.min)) || !Number.isInteger(Number(field.max)) || Number(field.min) > Number(field.max)) {
         throw new Error(`Input "${id}" integer field "${fieldId}" requires valid min and max bounds`);
@@ -313,6 +328,40 @@ function validateInputRegistration(id, value) {
   }
 }
 
+function validateControllerInteractionRegistration(id, value) {
+  assertPlainObject(value, `Controller interaction registration "${id}"`);
+  if (!String(value.name || "").trim()) throw new Error(`Controller interaction "${id}" requires a name`);
+  const profileField = String(value.profileField || "").trim();
+  if (!ACTION_FIELD_KEY_PATTERN.test(profileField)) {
+    throw new Error(`Controller interaction "${id}" requires a normalized profileField`);
+  }
+  const visibility = String(value.visibility || "private");
+  if (!CONTROLLER_INTERACTION_VISIBILITIES.has(visibility)) {
+    throw new Error(`Controller interaction "${id}" has unsupported visibility "${visibility}"`);
+  }
+  if (typeof value.available !== "function") throw new Error(`Controller interaction "${id}" requires an available function`);
+  if (typeof value.view !== "function") throw new Error(`Controller interaction "${id}" requires a view function`);
+  if (typeof value.submit !== "function") throw new Error(`Controller interaction "${id}" requires a submit function`);
+  assertPlainObject(value.controller, `Controller interaction "${id}" controller`);
+  const layoutScope = String(value.controller.layoutScope || "");
+  if (!new Set(["global", "layer"]).has(layoutScope)) {
+    throw new Error(`Controller interaction "${id}" controller layoutScope must be global or layer`);
+  }
+  if (layoutScope === "layer" && !LAYOUT_LAYER_ID_PATTERN.test(String(value.controller.layoutLayerId || "").trim())) {
+    throw new Error(`Controller interaction "${id}" targeting a persistent layer requires a normalized layoutLayerId`);
+  }
+  validateInputRegistration(id, {
+    ...value,
+    fields: [{ key: "answersSubmittedTargetActionId", label: "Internal completion target", control: "actionTarget" }],
+    completionTargetField: "answersSubmittedTargetActionId",
+    controller: {
+      layoutStateId: "engine-controller-interaction",
+      bindings: value.controller.bindings
+    },
+    recipients() { return []; }
+  });
+}
+
 function validateRendererBinding(rendererId, binding, bindingIds, context = {}) {
   assertPlainObject(binding, `Renderer "${rendererId}" binding`);
   const bindingId = String(binding.id || "").trim();
@@ -391,6 +440,7 @@ function validateRendererRegistration(kind, id, value) {
 function validateRegistration(kind, id, value) {
   if (kind === "actions") validateActionRegistration(id, value);
   if (kind === "inputs") validateInputRegistration(id, value);
+  if (kind === "controllerInteractions") validateControllerInteractionRegistration(id, value);
   if (kind === "stageRenderers" || kind === "controllerRenderers") {
     validateRendererRegistration(kind, id, value);
   }
@@ -416,6 +466,15 @@ function createGamePluginRegistry() {
       throw new Error(`Duplicate ${kind} registration: ${normalizedId}`);
     }
     validateRegistration(kind, normalizedId, value);
+    if (kind === "controllerInteractions") {
+      const duplicateField = Array.from(bucket.values()).find((registration) => (
+        registration.ownerNamespace === ownerNamespace
+        && String(registration.value.profileField || "") === String(value.profileField || "")
+      ));
+      if (duplicateField) {
+        throw new Error(`Plugin "${ownerNamespace}" already owns controller profile field "${String(value.profileField || "")}"`);
+      }
+    }
     bucket.set(normalizedId, Object.freeze({ id: normalizedId, kind, ownerNamespace, value }));
   }
 
@@ -447,6 +506,7 @@ module.exports = {
   createGamePluginRegistry,
   defineGamePlugin,
   validateActionRegistration,
+  validateControllerInteractionRegistration,
   validateInputRegistration,
   validateRendererRegistration
 };

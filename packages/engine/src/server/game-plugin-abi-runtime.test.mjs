@@ -5,6 +5,7 @@ const require = createRequire(import.meta.url);
 const { createGamePluginRegistry, defineGamePlugin } = require("./game-plugin-runtime");
 const {
   createGameActionExecutor,
+  createGameControllerInteractionRuntime,
   createGameInputRuntime,
   createGameRendererRuntime,
   createPluginInputActionDefinitions,
@@ -101,6 +102,46 @@ function fixturePlugin() {
         submit(context, payload) {
           context.state.wagers ||= {};
           context.state.wagers[context.actor.id] = payload;
+        }
+      });
+      registry.controllerInteractions("fixture.avatarProfile", {
+        name: "Avatar profile",
+        profileField: "avatarId",
+        visibility: "public",
+        submission: [{
+          id: "avatarId",
+          type: "choice",
+          optionsSource: "options",
+          options: [{ id: "trike" }, { id: "bronto" }, { id: "stego" }]
+        }],
+        controller: {
+          layoutScope: "layer",
+          layoutLayerId: "profile-picker",
+          bindings: [{
+            id: "avatars",
+            kind: "choiceCollection",
+            layoutElementId: "avatar-options",
+            field: "avatarId",
+            item: { artCompositionId: "fixture-avatar-option", targetComponentId: "label" },
+            autoSubmit: true
+          }]
+        },
+        available(context) {
+          return context.viewer.active && context.phase !== "post-game";
+        },
+        view(context) {
+          return {
+            selectedAvatarId: context.profile.avatarId || "trike",
+            options: [
+              { id: "trike", label: "Trike" },
+              { id: "bronto", label: "Bronto" },
+              { id: "stego", label: "Stego" }
+            ]
+          };
+        },
+        submit(context, payload) {
+          context.profile.set(payload.avatarId);
+          context.broadcast.request();
         }
       });
       const renderer = {
@@ -630,6 +671,87 @@ describe("game plugin ABI", () => {
     room.players.get("p2").active = false;
     expect(runtime.playerDisconnected(room)).toBe(true);
     expect(jumpToAction).toHaveBeenLastCalledWith(room, "after-wagers", action);
+  });
+
+  it("runs persistent authenticated controller interactions outside Flow without granting cross-player mutation", () => {
+    const registrations = createGamePluginRegistry().install(fixturePlugin()).controllerInteractions;
+    const broadcastLobby = vi.fn();
+    const runtime = createGameControllerInteractionRuntime({ registrations, broadcastLobby });
+    const room = {
+      stageCode: "TEST",
+      phase: "lobby",
+      flowStateId: "lobby",
+      gameSessionId: 0,
+      vipPlayerId: "p1",
+      controllerInteractionVisitCounter: 0,
+      players: new Map([
+        ["p1", { id: "p1", name: "One", active: true, points: 0 }],
+        ["p2", { id: "p2", name: "Two", active: true, points: 0 }]
+      ]),
+      flowVariables: {},
+      localVariables: {},
+      gamePluginState: { fixture: { round: 1 } },
+      gamePluginProfiles: {}
+    };
+
+    const p1 = runtime.payloadsForViewer(room, "p1")[0];
+    const p2 = runtime.payloadsForViewer(room, "p2")[0];
+    expect(p1).toMatchObject({
+      id: "fixture.avatarProfile",
+      gameSessionId: 0,
+      layoutScope: "layer",
+      layoutLayerId: "profile-picker",
+      viewModel: { selectedAvatarId: "trike" }
+    });
+    expect(p2.visitId).not.toBe(p1.visitId);
+    expect(runtime.payloadsForViewer(room, "p1")[0].visitId).toBe(p1.visitId);
+
+    expect(runtime.submit(room, "p1", {
+      interactionId: "fixture.avatarProfile",
+      visitId: p1.visitId - 1,
+      gameSessionId: 0,
+      submissionId: "stale",
+      payload: { avatarId: "bronto" }
+    })).toMatchObject({ status: 409, errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_STALE" });
+    expect(runtime.submit(room, "p1", {
+      interactionId: "fixture.avatarProfile",
+      visitId: p1.visitId,
+      gameSessionId: 0,
+      submissionId: "invalid",
+      payload: { avatarId: "raptor" }
+    })).toMatchObject({ status: 422, errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INVALID" });
+    expect(runtime.submit(room, "p1", {
+      interactionId: "fixture.avatarProfile",
+      visitId: p1.visitId,
+      gameSessionId: 0,
+      submissionId: "choose-bronto",
+      payload: { avatarId: "bronto" }
+    })).toMatchObject({ status: 200, duplicate: false });
+    expect(room.gamePluginProfiles.fixture).toEqual({ p1: { avatarId: "bronto" }, p2: {} });
+    expect(broadcastLobby).toHaveBeenCalledOnce();
+    expect(runtime.submit(room, "p1", {
+      interactionId: "fixture.avatarProfile",
+      visitId: p1.visitId,
+      gameSessionId: 0,
+      submissionId: "choose-bronto",
+      payload: { avatarId: "bronto" }
+    })).toMatchObject({ status: 200, duplicate: true });
+
+    const next = runtime.payloadsForViewer(room, "p1")[0];
+    expect(next.visitId).not.toBe(p1.visitId);
+    expect(next.viewModel.selectedAvatarId).toBe("bronto");
+    room.gameSessionId = 1;
+    expect(runtime.payloadsForViewer(room, "p1")[0].visitId).not.toBe(next.visitId);
+    expect(room.gamePluginProfiles.fixture.p1.avatarId).toBe("bronto");
+    expect(runtime.submit(room, "p1", {
+      interactionId: "fixture.avatarProfile",
+      visitId: p1.visitId,
+      gameSessionId: 0,
+      submissionId: "choose-bronto",
+      payload: { avatarId: "bronto" }
+    })).toMatchObject({ status: 409, errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_STALE" });
+    room.phase = "post-game";
+    expect(runtime.payloadsForViewer(room, "p1")).toEqual([]);
   });
 
   it("completes an input barrier according to its authored timeout policy", () => {

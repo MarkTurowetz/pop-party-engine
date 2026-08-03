@@ -29,6 +29,7 @@ const {
   createFlowTargetRuntime,
   createGameFlowMergeRuntime,
   createGameFlowNormalizationRuntime,
+  createGamePluginControllerInteractionHandlersRuntime,
   createGamePluginInputHandlersRuntime,
   createGameConstantsRuntime,
   createHostAudioRuntime,
@@ -104,10 +105,12 @@ const { createToolSourceReadersRuntime } = require("./tool-source-readers-runtim
 const { createToolSourceStoresRuntime } = require("./tool-source-stores-runtime");
 const {
   createGameActionExecutor,
+  createGameControllerInteractionRuntime,
   createGameInputRuntime,
   createGameRendererRuntime,
   createPluginInputActionDefinitions,
   createPluginFlowActionDefinitions,
+  controllerInteractionManifest,
   inputManifest,
   pluginFlowActionTypes
 } = require("./game-plugin-abi-runtime");
@@ -296,7 +299,9 @@ const {
 } = activeRuntime.gameData;
 const pluginActionRegistrations = runtimeGameDefinition.registrations.actions || [];
 const pluginInputRegistrations = runtimeGameDefinition.registrations.inputs || [];
+const pluginControllerInteractionRegistrations = runtimeGameDefinition.registrations.controllerInteractions || [];
 const pluginInputManifests = pluginInputRegistrations.map(inputManifest);
+const pluginControllerInteractionManifests = pluginControllerInteractionRegistrations.map(controllerInteractionManifest);
 const pluginActionDefinitions = [
   ...createPluginFlowActionDefinitions(pluginActionRegistrations),
   ...createPluginInputActionDefinitions(pluginInputRegistrations)
@@ -425,7 +430,8 @@ const gameRendererRuntime = createGameRendererRuntime({
   activePlayers,
   currentAction: (room) => _currentRoomActionFn?.(room) || null,
   stageRenderers: runtimeGameDefinition.registrations.stageRenderers,
-  controllerRenderers: runtimeGameDefinition.registrations.controllerRenderers
+  controllerRenderers: runtimeGameDefinition.registrations.controllerRenderers,
+  controllerInteractions: pluginControllerInteractionRegistrations
 });
 
 const {
@@ -802,6 +808,7 @@ const {
   gameDefinition: runtimeGameDefinition,
   gamePluginRenderers: gameRendererRuntime.manifests,
   gamePluginInputs: pluginInputManifests,
+  gamePluginControllerInteractions: pluginControllerInteractionManifests,
   indexFile: INDEX_FILE,
   root: ROOT,
   sendJson,
@@ -1420,6 +1427,12 @@ const gameInputRuntime = createGameInputRuntime({
 });
 _clearGamePluginInputFn = gameInputRuntime.clear;
 
+const controllerInteractionRuntime = createGameControllerInteractionRuntime({
+  registrations: pluginControllerInteractionRegistrations,
+  activePlayers,
+  broadcastLobby
+});
+
 const {
   publicPlayer
 } = createPlayerPublicRuntime({ choiceInputPayload });
@@ -1443,6 +1456,7 @@ const {
   runtimeGameFlow,
   gamePluginViewModels: gameRendererRuntime.viewModels,
   gamePluginInputPayload: gameInputRuntime.payloadForViewer,
+  gamePluginControllerInteractionsPayload: controllerInteractionRuntime.payloadsForViewer,
   ensureGamePluginInput: gameInputRuntime.ensure,
   scheduleRoomSubActions,
   scheduleMicrophoneAccessAdvance,
@@ -1468,6 +1482,18 @@ const {
   handleGamePluginInput
 } = createGamePluginInputHandlersRuntime({
   gameInputRuntime,
+  getExistingRoom,
+  lobbyPayload,
+  normalizePlayerId,
+  normalizeStageCode,
+  readJson,
+  sendJson
+});
+
+const {
+  handleGamePluginControllerInteraction
+} = createGamePluginControllerInteractionHandlersRuntime({
+  controllerInteractionRuntime,
   getExistingRoom,
   lobbyPayload,
   normalizePlayerId,
@@ -1643,6 +1669,7 @@ const {
   handleControllerChoice,
   handleControllerMicrophoneAccess,
   handleControllerTextSubmit,
+  handleGamePluginControllerInteraction,
   handleGamePluginInput,
   handleHeartbeat,
   handleInputEvent,

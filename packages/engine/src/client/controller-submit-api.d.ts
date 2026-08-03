@@ -20,6 +20,7 @@ export interface ControllerSubmitApi {
   saveTextDraft(actionId: string, text: string, draftSequence: number): Promise<ControllerSubmitJson>;
   submitChoice(actionId: string, optionIndex: number, cardId?: string): Promise<ControllerSubmitJson>;
   submitGamePluginInput(actionId: string, visitId: number, payload: Record<string, unknown>, submissionId: string): Promise<ControllerSubmitJson>;
+  submitGamePluginControllerInteraction(interactionId: string, visitId: number, payload: Record<string, unknown>, submissionId: string): Promise<ControllerSubmitJson>;
   submitText(actionId: string, text: string): Promise<ControllerSubmitJson>;
   startOrCancelGame(options?: { isCancel?: boolean; startToken?: string }): Promise<ControllerSubmitJson>;
 }

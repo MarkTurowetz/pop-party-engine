@@ -813,11 +813,23 @@ function setControllerPluginInputCollectionState(target: El | null, state: strin
   return renderer?.stopAtAll?.(String(state || "Default"), { instant: true }) || 0;
 }
 
-function controllerLayoutElementForId(elementId: string): Dict | null {
+function controllerLayoutElementForId(elementId: string, requestedScope = ""): Dict | null {
   const normalized = normalizeTextTargetId(elementId);
   const stateElements = (controllerLayoutState(currentControllerLayoutStateId)?.elements as Dict[]) || [];
   const globalElements = (globalControllerLayout().elements as Dict[]) || [];
-  const layerElements = controllerLayoutLayers().flatMap((layer) => (layer.elements as Dict[]) || []);
+  const requestedLayerId = requestedScope.startsWith("layer:") ? requestedScope.slice("layer:".length) : "";
+  const layerElements = requestedLayerId
+    ? ((controllerLayoutLayers().find((layer) => String(layer.id || "") === requestedLayerId)?.elements as Dict[]) || [])
+    : controllerLayoutLayers().flatMap((layer) => (layer.elements as Dict[]) || []);
+  if (requestedScope === "global") {
+    return globalElements.find((element) => normalizeTextTargetId(element.id) === normalized) || null;
+  }
+  if (requestedLayerId) {
+    return layerElements.find((element) => normalizeTextTargetId(element.id) === normalized) || null;
+  }
+  if (requestedScope.startsWith("state:")) {
+    return stateElements.find((element) => normalizeTextTargetId(element.id) === normalized) || null;
+  }
   return stateElements.find((element) => normalizeTextTargetId(element.id) === normalized)
     || globalElements.find((element) => normalizeTextTargetId(element.id) === normalized)
     || layerElements.find((element) => normalizeTextTargetId(element.id) === normalized)

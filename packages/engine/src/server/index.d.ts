@@ -95,11 +95,13 @@ export function createControllerSubmitHandlersRuntime(options: Record<string, un
 export function createActionCompletionRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createRoomActionEffectsRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGameActionExecutor(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createGameControllerInteractionRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGameInputRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createGameRendererRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createPluginInputActionDefinitions(registrations?: readonly unknown[]): readonly Record<string, unknown>[];
 export function createPluginFlowActionDefinitions(registrations?: readonly unknown[]): readonly Record<string, unknown>[];
 export function createGamePluginInputHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function createGamePluginControllerInteractionHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function pluginFlowActionTypes(registrations?: readonly unknown[]): readonly Record<string, unknown>[];
 export function createStageActionHandlersRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;
 export function createFlowActionPublicRuntime(options: Record<string, unknown>): Readonly<Record<string, unknown>>;

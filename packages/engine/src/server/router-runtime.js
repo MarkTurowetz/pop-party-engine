@@ -17,6 +17,7 @@ function createRouterRuntime({
   handleControllerChoice,
   handleControllerMicrophoneAccess,
   handleControllerTextSubmit,
+  handleGamePluginControllerInteraction,
   handleGamePluginInput,
   handleHeartbeat,
   handleInputEvent,
@@ -459,6 +460,11 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/game-plugin-input") {
       handleGamePluginInput(req, res);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/game-plugin-controller-interaction") {
+      handleGamePluginControllerInteraction(req, res);
       return;
     }
 

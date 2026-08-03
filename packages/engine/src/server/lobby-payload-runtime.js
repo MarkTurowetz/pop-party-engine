@@ -9,6 +9,7 @@ function createLobbyPayloadRuntime({
   currentRoomAction,
   gamePluginViewModels = () => ({}),
   gamePluginInputPayload = () => null,
+  gamePluginControllerInteractionsPayload = () => [],
   ensureGamePluginInput = () => false,
   gameConstants,
   microphoneAccessPayload,
@@ -111,7 +112,8 @@ function createLobbyPayloadRuntime({
       gameTitle: constants.gameTitle,
       gamePlugin: {
         viewModels: gamePluginViewModels(room, viewerPlayerId),
-        input: gamePluginInput
+        input: gamePluginInput,
+        controllerInteractions: runtimeFault ? [] : gamePluginControllerInteractionsPayload(room, viewerPlayerId)
       },
       speechToTextSendInputBuffer: constants.speechToTextSendInputBuffer,
       numSequentialGames: room.numSequentialGames || 0,
