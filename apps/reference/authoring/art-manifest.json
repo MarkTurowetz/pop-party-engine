@@ -9028,6 +9028,61 @@
         ]
       }
     },
+    "game-object-reference-player-presentation": {
+      "name": "Reference Player Presentation",
+      "description": "Reference-game-owned player presentation composed from the project's local Player Widget MC prefab.",
+      "surface": "stage",
+      "compositionKind": "gameObject",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 300,
+        "height": 370
+      },
+      "components": [
+        {
+          "id": "player-widget-mc",
+          "name": "Player Widget MC",
+          "instanceLabel": "playerWidgetMC",
+          "kind": "reference",
+          "x": 150,
+          "y": 185,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "On",
+          "artCompositionId": "prefab-player-widget-mc",
+          "referenceSizeMode": "intrinsic"
+        }
+      ],
+      "updatedAt": "2026-08-03T08:00:00.000Z",
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-0"
+          }
+        ],
+        "tracks": []
+      }
+    },
     "prefab-player-widget-mc": {
       "name": "Player Widget MC",
       "description": "Reusable player composite with independently addressable bubble, player avatar, name, and VIP instances.",
@@ -13478,7 +13533,8 @@
     "player-object-stego",
     "player-object-trike",
     "player-object-raptor",
-    "player-object-bronto"
+    "player-object-bronto",
+    "prefab-crafting-timer-mc"
   ],
   "organization": {
     "stage": {
@@ -13540,14 +13596,16 @@
           "composition:prefab-untitled-prefab-2",
           "composition:player-vip-widget",
           "composition:prefab-player-avatar-mc",
-          "composition:prefab-player-widget-mc"
+          "composition:prefab-player-widget-mc",
+          "composition:game-object-reference-player-presentation"
         ],
         "folder-b5fd5048-989e-4076-917e-f37779efddbb": [
           "composition:stage-code-panel",
           "composition:join-widget",
           "composition:waiting-status-widget",
           "composition:countdown-popup",
-          "composition:join-qr-code"
+          "composition:join-qr-code",
+          "composition:prefab-layout-text-field-text"
         ],
         "folder-bff56326-48c1-48ac-9938-abac6bed9fa7": [
           "composition:player-point-popup",
