@@ -4,24 +4,6 @@
     "engine.stage.activeBackground": {
       "compositionId": "stage-background"
     },
-    "engine.stage.playerIdentityWidget": {
-      "compositionId": "prefab-player-widget-mc"
-    },
-    "engine.stage.playerAnswerBubble": {
-      "compositionId": "prefab-player-widget-mc",
-      "instancePath": [
-        "playerAnswerBubbleMC"
-      ]
-    },
-    "engine.stage.playerPointsPopup": {
-      "compositionId": "player-point-popup"
-    },
-    "engine.stage.playerPointsPopupContainer": {
-      "compositionId": "prefab-player-widget-mc",
-      "instancePath": [
-        "pointPopupContainer"
-      ]
-    },
     "engine.stage.votingCard": {
       "compositionId": "prefab-voting-card-mc"
     },
@@ -55,12 +37,6 @@
     "engine.stage.layoutText": {
       "compositionId": "layout-text-field"
     },
-    "engine.shared.playerAvatar": {
-      "compositionId": "prefab-player-avatar-mc"
-    },
-    "engine.controller.playerIdentity": {
-      "compositionId": "controller-player-banner"
-    },
     "engine.controller.textInput": {
       "compositionId": "controller-text-input-field"
     },
@@ -78,9 +54,6 @@
     },
     "engine.controller.playerNameInput": {
       "compositionId": "controller-player-name-field"
-    },
-    "engine.controller.avatarChoice": {
-      "compositionId": "controller-avatar-button"
     }
   }
 }

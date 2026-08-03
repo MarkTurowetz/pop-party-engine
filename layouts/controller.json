@@ -12,7 +12,7 @@
       {
         "id": "controllerplayerbanner",
         "name": "Player Banner",
-        "selector": "#controllerPlayerBanner",
+        "selector": "",
         "kind": "art",
         "artCompositionId": "controller-player-banner",
         "hidden": false,
@@ -23,7 +23,7 @@
         "height": 78,
         "scale": 1,
         "rotation": 0,
-        "defaultAnimationState": "Off",
+        "defaultAnimationState": "On",
         "defaultText": "",
         "fontSize": 58,
         "autoFitText": false,
@@ -176,32 +176,10 @@
       "name": "Lobby Controller",
       "hiddenInStates": false,
       "hiddenGlobals": [
-        "controllerplayerbanner",
         "controllerglobalactionmessage",
         "controllerglobalactionbutton"
       ],
       "elements": [
-        {
-          "id": "controlleravatar",
-          "name": "Player Avatar",
-          "selector": "#controllerAvatar",
-          "kind": "art",
-          "artCompositionId": "controller-avatar-button",
-          "hidden": false,
-          "locked": false,
-          "x": 195,
-          "y": 150,
-          "width": 104,
-          "height": 104,
-          "scale": 1,
-          "rotation": 0,
-          "defaultAnimationState": "On",
-          "defaultText": "",
-          "fontSize": 58,
-          "autoFitText": false,
-          "fontFamily": "",
-          "fontColor": "#ffffff"
-        },
         {
           "id": "controllerplayername",
           "name": "Player Name",
