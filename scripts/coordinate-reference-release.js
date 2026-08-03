@@ -11,6 +11,8 @@ const {
   createGithubGitDataRuntime,
   normalizeRef
 } = require("../packages/engine/src/server/github-git-data-runtime");
+const { createGithubContentBundleStore } = require("../packages/engine/src/server/github-content-bundle-store");
+const { createLocalContentBundleProvider } = require("../packages/engine/src/server/local-content-bundle-provider");
 
 const ACTIVE_RELEASE_PATH = "active-release.json";
 const PUBLISHED_REVISIONS_PATH = "published-revisions.json";
@@ -34,6 +36,7 @@ function parseArguments(argv) {
     engineVersion: "",
     operationKey: "",
     releaseRef: "heads/game-releases",
+    contentRoot: "apps/reference/content",
     stateFile: ""
   };
   const values = [...argv];
@@ -46,6 +49,7 @@ function parseArguments(argv) {
     if (argument === "--engine-version") result.engineVersion = String(values[++index] || "");
     else if (argument === "--operation-key") result.operationKey = String(values[++index] || "");
     else if (argument === "--release-ref") result.releaseRef = String(values[++index] || "");
+    else if (argument === "--content-root") result.contentRoot = String(values[++index] || "");
     else if (argument === "--state-file") result.stateFile = String(values[++index] || "");
     else throw new Error(`Unknown argument: ${argument}`);
   }
@@ -148,7 +152,9 @@ async function activateReferenceRelease(options) {
     engineVersion: options.engineVersion,
     pluginVersion: game.version
   };
-  if (coordinatesMatch(state.release, desiredCoordinates)) {
+  const workspaceSnapshot = options.workspaceSnapshot || null;
+  if (coordinatesMatch(state.release, desiredCoordinates)
+    && (!workspaceSnapshot || state.release.contentRevision === workspaceSnapshot.revision)) {
     return Object.freeze({
       action: "activate",
       changed: false,
@@ -157,6 +163,28 @@ async function activateReferenceRelease(options) {
       activeRelease: state.release,
       previousRefSha: state.ref.sha,
       activeRefSha: state.ref.sha
+    });
+  }
+  if (workspaceSnapshot) {
+    const store = options.store || createGithubContentBundleStore({
+      git: options.git,
+      releaseRef: options.releaseRef
+    });
+    const committed = await store.commitWorkspace({
+      snapshot: workspaceSnapshot,
+      expectedActiveRevision: state.release.releaseRevision,
+      idempotencyKey: options.operationKey,
+      release: desiredCoordinates
+    });
+    const activeRef = await options.git.getRef(options.releaseRef);
+    return Object.freeze({
+      action: "activate",
+      changed: true,
+      operationKey: options.operationKey,
+      previousRelease: state.release,
+      activeRelease: committed.release,
+      previousRefSha: state.ref.sha,
+      activeRefSha: activeRef.sha
     });
   }
   const activeRelease = createReleaseRecord({
@@ -219,7 +247,7 @@ async function rollbackReferenceRelease(options) {
   const rollbackRelease = createReleaseRecord({
     ...previousCoordinates,
     gameId: state.release.gameId,
-    contentRevision: state.release.contentRevision
+    contentRevision: activation.previousRelease.contentRevision
   }, state.release.releaseRevision);
   const operationKey = requiredIdempotencyKey(`${options.operationKey}:rollback`);
   const operations = {
@@ -267,7 +295,8 @@ async function runCommand(options) {
       releaseRef: options.arguments.releaseRef,
       engineVersion: options.arguments.engineVersion,
       operationKey: options.arguments.operationKey,
-      gameDefinition: options.gameDefinition
+      gameDefinition: options.gameDefinition,
+      workspaceSnapshot: options.workspaceSnapshot
     });
   }
   const activation = JSON.parse(fs.readFileSync(options.arguments.stateFile, "utf8"));
@@ -287,8 +316,19 @@ async function main() {
     if (!repo) throw new Error("GITHUB_REPOSITORY is required");
     if (!token) throw new Error("GITHUB_TOKEN is required");
     const gameDefinition = require(path.resolve(__dirname, "..", "apps", "reference", "game.config.js"));
+    const contentProvider = argumentsValue.command === "activate"
+      ? createLocalContentBundleProvider({
+        root: path.resolve(__dirname, "..", argumentsValue.contentRoot),
+        gameBuild: gameDefinition.version,
+        engineVersion: argumentsValue.engineVersion,
+        pluginVersion: gameDefinition.version
+      })
+      : null;
+    const workspaceSnapshot = contentProvider
+      ? contentProvider.loadPublishedRevision()
+      : null;
     const git = createGithubGitDataRuntime({ repo, token, userAgent: "pop-party-release-coordinator" });
-    const result = await runCommand({ arguments: argumentsValue, gameDefinition, git });
+    const result = await runCommand({ arguments: argumentsValue, gameDefinition, git, workspaceSnapshot });
     fs.writeFileSync(argumentsValue.stateFile, `${JSON.stringify(result, null, 2)}\n`);
     writeGithubOutputs(result);
     console.log(JSON.stringify(result, null, 2));

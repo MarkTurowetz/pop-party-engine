@@ -166,6 +166,58 @@ describe("reference release coordination", () => {
     });
   });
 
+  it("atomically activates the checked-in reference bundle with the engine coordinates", async () => {
+    const initial = createReleaseRecord({
+      gameId: "pop-party-reference",
+      gameBuild: "1.0.17",
+      engineVersion: "1.3.38",
+      pluginVersion: "1.0.17",
+      contentRevision: "content-old"
+    });
+    const git = gitFixture(initial);
+    const nextSnapshot = { revision: "content-new" };
+    const nextRelease = createReleaseRecord({
+      gameId: "pop-party-reference",
+      gameBuild: "1.0.17",
+      engineVersion: "1.4.0",
+      pluginVersion: "1.0.17",
+      contentRevision: "content-new"
+    }, initial.releaseRevision);
+    const commitWorkspace = vi.fn(async () => ({
+      contentRevision: nextSnapshot.revision,
+      release: nextRelease,
+      diagnostics: []
+    }));
+    const activation = await activateReferenceRelease({
+      git,
+      releaseRef: "heads/game-releases",
+      engineVersion: "1.4.0",
+      operationKey: "engine-1.4.0-build-1271",
+      workspaceSnapshot: nextSnapshot,
+      store: { commitWorkspace },
+      gameDefinition: {
+        gameId: "pop-party-reference",
+        version: "1.0.17",
+        engineCompatibility: "1.4.0"
+      }
+    });
+    expect(commitWorkspace).toHaveBeenCalledWith({
+      snapshot: nextSnapshot,
+      expectedActiveRevision: initial.releaseRevision,
+      idempotencyKey: "engine-1.4.0-build-1271",
+      release: {
+        gameBuild: "1.0.17",
+        engineVersion: "1.4.0",
+        pluginVersion: "1.0.17"
+      }
+    });
+    expect(activation).toMatchObject({
+      changed: true,
+      previousRelease: { contentRevision: "content-old" },
+      activeRelease: { contentRevision: "content-new", engineVersion: "1.4.0" }
+    });
+  });
+
   it("writes a compensating release on deployment failure without moving content backward", async () => {
     const initial = createReleaseRecord({
       gameId: "pop-party-reference",
