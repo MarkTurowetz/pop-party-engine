@@ -71,6 +71,26 @@ describe("createControllerSubmitApi (ported)", () => {
     });
   });
 
+  it("posts persistent game-owned controller interactions through their own authenticated route", async () => {
+    const { api, postJson } = setup({
+      playerId: "p1",
+      stageCode: "ABCD",
+      lobby: { gameSessionId: 4 }
+    });
+
+    await api.submitGamePluginControllerInteraction("fixture.avatarProfile", 12, { avatarId: "trike" }, "submission-1");
+
+    expect(postJson).toHaveBeenCalledWith("/api/game-plugin-controller-interaction", {
+      gameSessionId: 4,
+      interactionId: "fixture.avatarProfile",
+      payload: { avatarId: "trike" },
+      playerId: "p1",
+      stageCode: "ABCD",
+      submissionId: "submission-1",
+      visitId: 12
+    });
+  });
+
   it("resolves null without calling postJson when there is no controller state", async () => {
     const { api, postJson } = setup(null);
     expect(await api.heartbeat()).toBe(null);

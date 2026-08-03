@@ -197,6 +197,60 @@ describe("game readiness runtime", () => {
     await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({ code: "PLUGIN_RENDERER_NESTED_COLLECTION_TARGET_INVALID" });
   });
 
+  it("fails closed when a persistent controller interaction targets invalid authored content", async () => {
+    const registration = {
+      id: "fixture.profile",
+      value: {
+        controller: {
+          layoutScope: "layer",
+          layoutLayerId: "profile-picker",
+          bindings: [{
+            id: "avatars",
+            kind: "choiceCollection",
+            layoutElementId: "avatar-options",
+            field: "avatarId",
+            item: { artCompositionId: "avatar-option", targetComponentId: "label" }
+          }]
+        }
+      }
+    };
+    const { game, release, snapshot } = fixture({
+      game: {
+        registrations: {
+          validators: [],
+          stageRenderers: [],
+          controllerRenderers: [],
+          controllerInteractions: [registration]
+        }
+      }
+    });
+    const gameData = {
+      defaultStageLayouts: { states: [] },
+      defaultControllerLayouts: {
+        layers: [{ id: "profile-picker", elements: [{ id: "avatar-options", kind: "collection" }] }],
+        states: []
+      },
+      defaultArtCompositions: [{
+        id: "avatar-option",
+        surface: "controller",
+        compositionKind: "gameObject",
+        components: [{ id: "label", kind: "text" }]
+      }]
+    };
+    const validateRelease = createGameReleaseValidator({ gameDefinition: game, engineVersion: "1.0.0" });
+    await expect(validateRelease({ gameData, release, snapshot })).resolves.toMatchObject({ release: { contentRevision: "content-1" } });
+
+    gameData.defaultArtCompositions[0].surface = "stage";
+    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({
+      code: "PLUGIN_CONTROLLER_INTERACTION_COMPOSITION_INVALID"
+    });
+    gameData.defaultArtCompositions[0].surface = "controller";
+    gameData.defaultControllerLayouts.layers[0].elements[0].kind = "art";
+    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({
+      code: "PLUGIN_CONTROLLER_INTERACTION_COLLECTION_TARGET_INVALID"
+    });
+  });
+
   it("validates game-owned player collections without an engine roster composition", async () => {
     const registration = {
       id: "fixture.players",

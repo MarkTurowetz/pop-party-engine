@@ -51,6 +51,7 @@ const serverApi = {
   ...require("./room-action-effects-runtime"),
   ...require("./game-plugin-abi-runtime"),
   ...require("./game-plugin-input-handlers-runtime"),
+  ...require("./game-plugin-controller-interaction-handlers-runtime"),
   ...require("./stage-action-handlers-runtime"),
   ...require("./flow-action-public-runtime"),
   ...require("./game-flow-normalization-runtime"),

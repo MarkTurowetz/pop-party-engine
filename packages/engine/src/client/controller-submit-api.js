@@ -56,6 +56,18 @@ function createControllerSubmitApi(options) {
     });
   }
 
+  function submitGamePluginControllerInteraction(interactionId, visitId, payload, submissionId) {
+    const base = payloadBase();
+    if (!base) return Promise.resolve(null);
+    return postJson("/api/game-plugin-controller-interaction", {
+      ...base,
+      interactionId: String(interactionId || ""),
+      visitId: Math.max(0, Number(visitId || 0)),
+      payload,
+      submissionId: String(submissionId || "")
+    });
+  }
+
   function saveTextDraft(actionId, text, draftSequence) {
     const base = payloadBase();
     if (!base) return Promise.resolve(null);
@@ -94,6 +106,7 @@ function createControllerSubmitApi(options) {
     join,
     saveTextDraft,
     submitChoice,
+    submitGamePluginControllerInteraction,
     submitGamePluginInput,
     submitText,
     startOrCancelGame

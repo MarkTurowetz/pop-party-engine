@@ -102,7 +102,10 @@ export async function mountLayoutEditor(
   let gamePluginRenderers: GamePluginRendererManifest[] = [];
   try {
     const config = JSON.parse(doc.getElementById("pop-party-runtime-config")?.textContent || "{}");
-    gamePluginInputs = Array.isArray(config?.gamePlugin?.inputs) ? config.gamePlugin.inputs : [];
+    gamePluginInputs = [
+      ...(Array.isArray(config?.gamePlugin?.inputs) ? config.gamePlugin.inputs : []),
+      ...(Array.isArray(config?.gamePlugin?.controllerInteractions) ? config.gamePlugin.controllerInteractions : [])
+    ];
     gamePluginRenderers = Array.isArray(config?.gamePlugin?.renderers) ? config.gamePlugin.renderers : [];
   } catch {
     gamePluginInputs = [];

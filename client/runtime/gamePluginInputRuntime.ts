@@ -6,6 +6,10 @@ import {
 type Dict = Record<string, unknown>;
 type SubmitValues = Record<string, string | number>;
 
+function cssEscape(value: string): string {
+  return globalThis.CSS?.escape?.(value) || value.replace(/[^a-zA-Z0-9_-]/g, (character) => `\\${character}`);
+}
+
 type InputBinding = {
   id: string;
   kind: "choice" | "choiceCollection" | "integer" | "submit" | "text";
@@ -44,7 +48,7 @@ function propertyPathValue(root: unknown, path: string): unknown {
   return current;
 }
 
-function manifests(): InputManifest[] {
+function defaultManifests(): InputManifest[] {
   const node = document.getElementById("pop-party-runtime-config");
   try {
     return (JSON.parse(node?.textContent || "{}")?.gamePlugin?.inputs || []) as InputManifest[];
@@ -67,7 +71,15 @@ export function createGamePluginInputView(options: {
   renderState: (lobby: Dict) => void;
   showView: (viewId: string) => unknown;
   submit: (actionId: string, visitId: number, payload: Dict, submissionId: string) => Promise<unknown>;
+  manifestSource?: () => InputManifest[];
+  payloadForLobby?: (lobby: Dict) => Dict | null;
+  controlScope?: string;
+  layoutScope?: string;
+  prepareLayout?: boolean;
+  retainControlsAcrossVisits?: boolean;
 }) {
+  const controlScope = String(options.controlScope || "flow");
+  const controlScopeSelector = `[data-game-plugin-input-scope="${cssEscape(controlScope)}"]`;
   const values = new Map<string, unknown>();
   const submitHandlers = new WeakMap<HTMLElement, (overrides?: SubmitValues) => void>();
   const controlBindings = new WeakMap<HTMLElement, InputBinding>();
@@ -85,9 +97,9 @@ export function createGamePluginInputView(options: {
 
   function targetFor(layoutElementId: string): { element: Dict; host: HTMLElement } | null {
     const rt = runtime();
-    const element = (rt.controllerLayoutElementForId as ((id: string) => Dict | null))?.(layoutElementId);
+    const element = (rt.controllerLayoutElementForId as ((id: string, scope?: string) => Dict | null))?.(layoutElementId, options.layoutScope || "");
     if (!element) return null;
-    const host = (rt.controllerLayoutTargetElement as ((item: Dict) => HTMLElement | null))?.(element);
+    const host = (rt.controllerLayoutTargetElement as ((item: Dict, scope?: string) => HTMLElement | null))?.(element, options.layoutScope || "");
     return host ? { element, host } : null;
   }
 
@@ -154,7 +166,7 @@ export function createGamePluginInputView(options: {
     }
     const host = button.parentElement as HTMLElement | null;
     if (host) {
-      const hostSelected = Array.from(host.querySelectorAll<HTMLButtonElement>("[data-game-plugin-input-option]"))
+      const hostSelected = Array.from(host.querySelectorAll<HTMLButtonElement>(`[data-game-plugin-input-option]${controlScopeSelector}`))
         .some((control) => control.getAttribute("aria-pressed") === "true");
       const hostState = hostSelected ? "true" : "false";
       const hostChanged = host.dataset.gamePluginInputSelected !== hostState;
@@ -192,7 +204,7 @@ export function createGamePluginInputView(options: {
     }
     const host = button.parentElement as HTMLElement | null;
     if (!host) return;
-    const hostHolding = Array.from(host.querySelectorAll<HTMLButtonElement>("[data-game-plugin-input-holding]"))
+    const hostHolding = Array.from(host.querySelectorAll<HTMLButtonElement>(`[data-game-plugin-input-holding]${controlScopeSelector}`))
       .some((control) => control.dataset.gamePluginInputHolding === "true");
     host.dataset.gamePluginInputHolding = hostHolding ? "true" : "false";
     host.classList.toggle("has-game-plugin-holding-input", hostHolding);
@@ -279,12 +291,12 @@ export function createGamePluginInputView(options: {
     const selectedOption = button.dataset.gamePluginInputOption || "";
     values.set(fieldId, selectedOption);
     for (const [key, value] of Object.entries(submitValues)) values.set(key, value);
-    document.querySelectorAll<HTMLButtonElement>(`[data-game-plugin-input-field="${CSS.escape(fieldId)}"][data-game-plugin-input-option]`)
+    document.querySelectorAll<HTMLButtonElement>(`[data-game-plugin-input-field="${CSS.escape(fieldId)}"][data-game-plugin-input-option]${controlScopeSelector}`)
       .forEach((control) => setChoiceSelected(control, control.dataset.gamePluginInputOption === selectedOption));
   }
 
   function existingControl(target: HTMLElement, binding: InputBinding, tagName: "button" | "input"): HTMLElement | null {
-    const selector = `[data-game-plugin-input-binding="${CSS.escape(binding.id)}"]`;
+    const selector = `[data-game-plugin-input-binding="${CSS.escape(binding.id)}"]${controlScopeSelector}`;
     const controls = Array.from(target.querySelectorAll<HTMLElement>(selector));
     const matching = controls.find((node) => node.tagName.toLowerCase() === tagName) || null;
     for (const node of controls) {
@@ -353,6 +365,7 @@ export function createGamePluginInputView(options: {
       field.type = "number";
       field.className = "game-plugin-input-control game-plugin-integer-input";
       field.dataset.gamePluginInputBinding = binding.id;
+      field.dataset.gamePluginInputScope = controlScope;
       field.dataset.gamePluginInputField = fieldId;
       field.min = String(definition?.min ?? "");
       field.max = String(definition?.max ?? "");
@@ -376,6 +389,7 @@ export function createGamePluginInputView(options: {
     button.type = "button";
     button.classList.add("game-plugin-input-control", "game-plugin-action-button");
     button.dataset.gamePluginInputBinding = binding.id;
+    button.dataset.gamePluginInputScope = controlScope;
     button.disabled = input.submitted === true || submitting;
     submitHandlers.set(button, submitNow);
     controlBindings.set(button, binding);
@@ -456,13 +470,15 @@ export function createGamePluginInputView(options: {
     const activeIds = new Set(optionsForViewer.map((option) => option.id));
     activeCollectionOptionIds.set(binding.id, activeIds);
     const existing = Array.from(
-      target.host.querySelectorAll<HTMLButtonElement>(`:scope > button[data-game-plugin-input-binding="${CSS.escape(binding.id)}"][data-game-plugin-choice-collection-item="true"]`)
+      target.host.querySelectorAll<HTMLButtonElement>(`:scope > button[data-game-plugin-input-binding="${CSS.escape(binding.id)}"][data-game-plugin-choice-collection-item="true"]${controlScopeSelector}`)
     );
     const byOptionId = new Map<string, HTMLButtonElement>();
     for (const button of existing) {
       const sameVisit = button.dataset.gamePluginInputVisitKey === visitKey;
       const optionId = button.dataset.gamePluginInputOption || "";
-      if (sameVisit && activeIds.has(optionId) && !byOptionId.has(optionId)) byOptionId.set(optionId, button);
+      if ((sameVisit || options.retainControlsAcrossVisits === true) && activeIds.has(optionId) && !byOptionId.has(optionId)) {
+        byOptionId.set(optionId, button);
+      }
       else clearCollectionControl(button);
     }
     const dimensions = choiceCollectionItemDimensions(target.element, composition, optionsForViewer.length);
@@ -477,6 +493,7 @@ export function createGamePluginInputView(options: {
       }
       button.hidden = false;
       button.dataset.gamePluginInputBinding = binding.id;
+      button.dataset.gamePluginInputScope = controlScope;
       button.dataset.gamePluginInputVisitKey = visitKey;
       button.dataset.gamePluginInputField = String(binding.field || "");
       button.dataset.gamePluginInputOption = option.id;
@@ -497,7 +514,9 @@ export function createGamePluginInputView(options: {
       collectionControlAuthority.set(button, { bindingId: binding.id, optionId: option.id, visitKey });
       bindChoiceControlListeners(button);
       target.host.appendChild(button);
-      const rendererKey = `plugin-input:${visitKey}:${binding.id}:${option.id}`;
+      const rendererKey = options.retainControlsAcrossVisits === true
+        ? `plugin-input:${controlScope}:${binding.id}:${option.id}`
+        : `plugin-input:${controlScope}:${visitKey}:${binding.id}:${option.id}`;
       button.dataset.gamePluginChoiceRendererKey = rendererKey;
       (runtime().renderControllerArtInstance as ((element: Dict, host: HTMLElement, key: string, options: Dict) => unknown) | undefined)?.(
         {
@@ -530,9 +549,11 @@ export function createGamePluginInputView(options: {
   }
 
   function render(lobby: Dict): boolean {
-    const input = ((lobby.gamePlugin as Dict | undefined)?.input as Dict | undefined) || null;
+    const input = options.payloadForLobby
+      ? options.payloadForLobby(lobby)
+      : (((lobby.gamePlugin as Dict | undefined)?.input as Dict | undefined) || null);
     if (!input?.actionId || !input.type) return false;
-    const manifest = manifests().find((item) => item.id === String(input.type));
+    const manifest = (options.manifestSource?.() || defaultManifests()).find((item) => item.id === String(input.type));
     if (!manifest) return false;
     const nextVisitKey = `${input.gameSessionId}:${input.actionId}:${input.visitId}`;
     if (nextVisitKey !== visitKey) {
@@ -544,19 +565,21 @@ export function createGamePluginInputView(options: {
     }
     const withManifest = { ...input, manifest };
     const model = input.viewModel;
-    options.hideViews();
     const layoutStateId = String(input.layoutStateId || "controller-presentation");
     const viewId = layoutStateId === "controller-multiple-choice" || layoutStateId === "controller-voting"
       ? "choice"
       : layoutStateId === "controller-text-input" || layoutStateId === "controller-voice-input"
         ? "textInput"
         : "globalAction";
-    options.showView(viewId);
-    options.applyLayoutForPhase(
-      layoutStateId,
-      () => {},
-      { preferRequestedState: true }
-    );
+    if (options.prepareLayout !== false) {
+      options.hideViews();
+      options.showView(viewId);
+      options.applyLayoutForPhase(
+        layoutStateId,
+        () => {},
+        { preferRequestedState: true }
+      );
+    }
     const activeBindings = input.submitted === true && manifest.controller.submitted
       ? manifest.controller.submitted.bindings
       : manifest.controller.bindings;
@@ -565,6 +588,11 @@ export function createGamePluginInputView(options: {
     renderModeKey = nextRenderModeKey;
     restoreSuppressedHosts();
     activeCollectionOptionIds.clear();
+    for (const field of manifest.submission) {
+      if (values.has(field.id)) continue;
+      const initial = propertyPathValue(model, field.id);
+      if (typeof initial === "string" || typeof initial === "number") values.set(field.id, initial);
+    }
     const availableBindings = activeBindings.filter((binding) => binding.kind !== "choice" || choiceOption(binding, withManifest, model));
     const availableBindingIds = new Set(availableBindings.map((binding) => binding.id));
     const bindingsByHost = new Map<HTMLElement, InputBinding[]>();
@@ -595,7 +623,7 @@ export function createGamePluginInputView(options: {
       validChoiceIdsByField.set(field.id, ids);
       if (values.has(field.id) && !ids.has(String(values.get(field.id)))) values.delete(field.id);
     }
-    document.querySelectorAll<HTMLElement>("[data-game-plugin-input-binding]").forEach((control) => {
+    document.querySelectorAll<HTMLElement>(`[data-game-plugin-input-binding]${controlScopeSelector}`).forEach((control) => {
       if (!availableBindingIds.has(control.dataset.gamePluginInputBinding || "")) {
         if (control instanceof HTMLButtonElement && control.dataset.gamePluginChoiceCollectionItem === "true") {
           clearCollectionControl(control);
@@ -609,7 +637,7 @@ export function createGamePluginInputView(options: {
       if (input.submitted === true || submitting) return;
       submitting = true;
       cancelAllHolds();
-      document.querySelectorAll<HTMLInputElement | HTMLButtonElement>("[data-game-plugin-input-binding]")
+      document.querySelectorAll<HTMLInputElement | HTMLButtonElement>(`[data-game-plugin-input-binding]${controlScopeSelector}`)
         .forEach((control) => {
           control.disabled = true;
           if (control instanceof HTMLButtonElement && control.dataset.gamePluginChoiceCollectionItem === "true") {
@@ -645,7 +673,7 @@ export function createGamePluginInputView(options: {
     renderModeKey = "";
     submitting = false;
     activeCollectionOptionIds.clear();
-    document.querySelectorAll<HTMLElement>("[data-game-plugin-input-binding]").forEach((node) => {
+    document.querySelectorAll<HTMLElement>(`[data-game-plugin-input-binding]${controlScopeSelector}`).forEach((node) => {
       if (node instanceof HTMLButtonElement && node.dataset.gamePluginChoiceCollectionItem === "true") {
         clearCollectionControl(node);
       } else node.remove();

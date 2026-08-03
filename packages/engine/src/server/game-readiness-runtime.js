@@ -122,6 +122,53 @@ function validateRendererContentContracts(game, gameData, semanticRoles) {
   }
 }
 
+function validateControllerInteractionContentContracts(game, gameData) {
+  const compositions = new Map((gameData.defaultArtCompositions || []).map((composition) => [String(composition.id || ""), composition]));
+  for (const registration of game.registrations?.controllerInteractions || []) {
+    const config = registration.value;
+    const candidates = layoutElementsForRenderer(gameData, "controller", {
+      layoutScope: config.controller.layoutScope,
+      layoutLayerId: config.controller.layoutLayerId
+    });
+    const elements = new Map(candidates.map((element) => [String(element.id || ""), element]));
+    for (const binding of config.controller.bindings || []) {
+      const targetId = String(binding.layoutElementId || "");
+      const target = elements.get(targetId);
+      if (!target) {
+        readinessFailure("PLUGIN_CONTROLLER_INTERACTION_TARGET_INVALID", `Controller interaction "${registration.id}" targets an unknown persistent Controller Layout element`, {
+          interactionId: registration.id,
+          targetId,
+          layoutScope: config.controller.layoutScope,
+          layoutLayerId: config.controller.layoutLayerId || ""
+        });
+      }
+      if (binding.kind === "choiceCollection") {
+        if (String(target.kind || "").toLowerCase() !== "collection") {
+          readinessFailure("PLUGIN_CONTROLLER_INTERACTION_COLLECTION_TARGET_INVALID", `Controller interaction "${registration.id}" choice collection must target a Controller Layout collection`, { interactionId: registration.id, targetId });
+        }
+        const compositionId = String(binding.item?.artCompositionId || "");
+        const composition = compositions.get(compositionId);
+        if (!composition || String(composition.surface || "").toLowerCase() !== "controller" || String(composition.compositionKind || "gameObject").toLowerCase() !== "gameobject") {
+          readinessFailure("PLUGIN_CONTROLLER_INTERACTION_COMPOSITION_INVALID", `Controller interaction "${registration.id}" references an unknown or wrong-surface Controller Game Object`, { interactionId: registration.id, compositionId });
+        }
+        const componentId = String(binding.item?.targetComponentId || "");
+        if (!artComponentForId(composition.components, componentId, compositions, new Set([compositionId]))) {
+          readinessFailure("PLUGIN_CONTROLLER_INTERACTION_COMPONENT_INVALID", `Controller interaction "${registration.id}" choice item targets an unknown Art component`, { interactionId: registration.id, compositionId, targetComponentId: componentId });
+        }
+        continue;
+      }
+      if (binding.kind === "text") {
+        const compositionId = String(target.artCompositionId || "");
+        const composition = compositions.get(compositionId);
+        const componentId = String(binding.targetComponentId || "");
+        if (!composition || !artComponentForId(composition.components, componentId, compositions, new Set([compositionId]))) {
+          readinessFailure("PLUGIN_CONTROLLER_INTERACTION_COMPONENT_INVALID", `Controller interaction "${registration.id}" text binding targets an unknown Art component`, { interactionId: registration.id, compositionId, targetComponentId: componentId });
+        }
+      }
+    }
+  }
+}
+
 function createGameReleaseValidator(options = {}) {
   const game = options.gameDefinition;
   if (!game || typeof game !== "object") throw new Error("Game release validation requires a defined game");
@@ -144,6 +191,7 @@ function createGameReleaseValidator(options = {}) {
     const semanticRoles = semanticRolesFrom(snapshot);
     assertExpectedSemanticRoles(game.semanticRoles, semanticRoles);
     validateRendererContentContracts(game, gameData, semanticRoles);
+    validateControllerInteractionContentContracts(game, gameData);
     for (const registration of game.registrations?.validators || []) {
       if (typeof registration.value !== "function") readinessFailure("PLUGIN_VALIDATOR_INVALID", "Game validator registration is not callable", { id: registration.id });
       const validation = await registration.value({ game, gameData, release, semanticRoles, snapshot });

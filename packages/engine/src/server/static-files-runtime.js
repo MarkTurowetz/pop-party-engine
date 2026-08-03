@@ -161,7 +161,7 @@ function renderViteBody(html, role) {
   return `${html.slice(0, bodyOpenEnd)}\n${blocks}\n\n${html.slice(scriptIndex)}`;
 }
 
-function runtimeConfigScript(gameDefinition, gamePluginRenderers = [], gamePluginInputs = []) {
+function runtimeConfigScript(gameDefinition, gamePluginRenderers = [], gamePluginInputs = [], gamePluginControllerInteractions = []) {
   const serialized = JSON.stringify({
     game: {
       id: String(gameDefinition?.gameId || ""),
@@ -179,7 +179,8 @@ function runtimeConfigScript(gameDefinition, gamePluginRenderers = [], gamePlugi
         runner: "controllerInputBarrier"
       }))),
       renderers: gamePluginRenderers,
-      inputs: gamePluginInputs
+      inputs: gamePluginInputs,
+      controllerInteractions: gamePluginControllerInteractions
     }
   }).replace(/[<>&\u2028\u2029]/g, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`);
   return `  <script id="pop-party-runtime-config" type="application/json">${serialized}</script>`;
@@ -193,6 +194,7 @@ function createStaticFilesRuntime({
   gameDefinition,
   gamePluginRenderers = [],
   gamePluginInputs = [],
+  gamePluginControllerInteractions = [],
   indexFile,
   root,
   sendJson,
@@ -209,7 +211,7 @@ function createStaticFilesRuntime({
       const stylesheetLinks = renderStylesheetLinks(stylesForRole(role));
       const viteEntryScript = viteEntryScriptForRole(viteManifestRoot, role);
       const html = renderViteBody(String(data), role)
-        .replace(BODY_OPEN, `${BODY_OPEN}\n${runtimeConfigScript(gameDefinition, gamePluginRenderers, gamePluginInputs)}`)
+        .replace(BODY_OPEN, `${BODY_OPEN}\n${runtimeConfigScript(gameDefinition, gamePluginRenderers, gamePluginInputs, gamePluginControllerInteractions)}`)
         .replace(LEGACY_STYLESHEET_PATTERN, stylesheetLinks)
         .replace(LEGACY_SCRIPT_BLOCK_PATTERN, viteEntryScript)
         .replaceAll("__APP_VERSION__", appVersion);

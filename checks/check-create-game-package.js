@@ -61,7 +61,7 @@ try {
     if (!renderBlueprint.includes(contract)) throw new Error(`Generated Render Blueprint is missing ${contract}`);
   }
   if (!fs.existsSync(path.join(targetRoot, "DEPLOYMENT.md"))) throw new Error("Generated game is missing its deployment runbook");
-  for (const relativePath of ["src/actions/index.js", "src/stage/index.js", "src/controller/index.js", "src/tools/index.js", "src/plugin/index.js", "tests/config.test.js"]) {
+  for (const relativePath of ["src/actions/index.js", "src/controller-interactions/index.js", "src/stage/index.js", "src/controller/index.js", "src/tools/index.js", "src/plugin/index.js", "tests/config.test.js"]) {
     if (!fs.existsSync(path.join(targetRoot, relativePath))) throw new Error(`Generated game is missing ${relativePath}`);
   }
   if (generatedManifest.dependencies?.["@pop-party/engine"] !== engineVersion) throw new Error("Generated game did not pin the exact engine version");
@@ -276,6 +276,65 @@ module.exports = Object.freeze([
   }
 ]);
 `);
+  fs.writeFileSync(path.join(targetRoot, "src", "controller-interactions", "index.js"), `"use strict";
+const avatarOptions = Object.freeze([
+  Object.freeze({ id: "trike", label: "Triceratops" }),
+  Object.freeze({ id: "bronto", label: "Brontosaurus" }),
+  Object.freeze({ id: "stego", label: "Stegosaurus" })
+]);
+const accentOptions = Object.freeze([
+  Object.freeze({ id: "sun", label: "Sun" }),
+  Object.freeze({ id: "moon", label: "Moon" })
+]);
+module.exports = Object.freeze([
+  {
+    id: "generated-fixture.avatarProfile",
+    value: {
+      name: "Avatar Profile",
+      profileField: "avatarId",
+      visibility: "public",
+      submission: [{ id: "avatarId", type: "choice", optionsSource: "options", options: avatarOptions }],
+      controller: {
+        layoutScope: "layer",
+        layoutLayerId: "fixture-profile-picker",
+        bindings: [{
+          id: "avatars", kind: "choiceCollection", layoutElementId: "fixture-profile-options", field: "avatarId",
+          item: { artCompositionId: "controller-text-input-field", targetComponentId: "placeholder-text", labelSource: "label" },
+          autoSubmit: true
+        }]
+      },
+      available(context) { return context.viewer.active && context.phase !== "post-game"; },
+      view(context) { return { avatarId: context.profile.avatarId || "trike", options: avatarOptions }; },
+      submit(context, payload) {
+        context.profile.set(payload.avatarId);
+        context.broadcast.request();
+      }
+    }
+  },
+  {
+    id: "generated-fixture.privateAccent",
+    value: {
+      name: "Private Accent",
+      profileField: "accentId",
+      visibility: "private",
+      submission: [{ id: "accentId", type: "choice", optionsSource: "options", options: accentOptions }],
+      controller: {
+        layoutScope: "layer",
+        layoutLayerId: "fixture-profile-picker",
+        bindings: [{
+          id: "accents", kind: "choiceCollection", layoutElementId: "fixture-private-options", field: "accentId",
+          item: { artCompositionId: "controller-text-input-field", targetComponentId: "placeholder-text", labelSource: "label" },
+          autoSubmit: true,
+          holdSubmit: { seconds: 1.5, submitValues: {} }
+        }]
+      },
+      available(context) { return context.viewer.active; },
+      view(context) { return { accentId: context.profile.accentId || "sun", options: accentOptions }; },
+      submit(context, payload) { context.profile.set(payload.accentId); }
+    }
+  }
+]);
+`);
   const generatedRenderer = (id, layoutElementId, targetComponentId) => `"use strict";
 module.exports = Object.freeze([{
   id: ${JSON.stringify(id)},
@@ -360,6 +419,7 @@ module.exports = Object.freeze([
           keySource: "id", artCompositionId: "fixture-player-presentation", bindings: [
             { id: "name", kind: "text", source: "name", targetComponentId: "fixture-player-name" },
             { id: "score", kind: "text", source: "score", targetComponentId: "fixture-player-score" },
+            { id: "avatar", kind: "text", source: "avatarId", targetComponentId: "fixture-player-avatar" },
             { id: "state", kind: "state", source: "state", playback: "stop" },
             {
               id: "rows", kind: "collection", source: "rows", targetComponentId: "fixture-player-rows",
@@ -384,6 +444,7 @@ module.exports = Object.freeze([
             id: player.id,
             name: player.name,
             score: String((index + 1) * 10 + count),
+            avatarId: context.profiles[player.id]?.avatarId || "trike",
             state: player.needsInput ? "Choosing Start" : "On",
             rows: [{ id: "main", cards: playerCards }]
           }))
@@ -462,6 +523,33 @@ module.exports = Object.freeze([
     }))
   });
   fs.writeFileSync(stageLayoutPath, `${JSON.stringify(stageLayouts, null, 2)}\n`);
+  const controllerLayoutPath = path.join(targetRoot, "content", "layouts", "controller.json");
+  const controllerLayouts = JSON.parse(fs.readFileSync(controllerLayoutPath, "utf8"));
+  controllerLayouts.layers = [
+    ...(controllerLayouts.layers || []).filter((layer) => layer.id !== "fixture-profile-picker"),
+    {
+      id: "fixture-profile-picker",
+      name: "Fixture Profile Picker",
+      zIndex: 160,
+      elements: [
+        {
+          id: "fixture-profile-options", name: "Public Profile Options", selector: "", kind: "collection", artCompositionId: "",
+          hidden: false, locked: false, x: 195, y: 690, width: 350, height: 100, scale: 1, rotation: 0,
+          defaultAnimationState: "On", collectionDirection: "horizontal", collectionGap: 8,
+          collectionDistribution: "center", collectionAlignment: "center", collectionPadding: 6,
+          collectionOverflow: "auto", zIndex: 10
+        },
+        {
+          id: "fixture-private-options", name: "Private Accent Options", selector: "", kind: "collection", artCompositionId: "",
+          hidden: false, locked: false, x: 195, y: 805, width: 350, height: 100, scale: 1, rotation: 0,
+          defaultAnimationState: "On", collectionDirection: "horizontal", collectionGap: 8,
+          collectionDistribution: "center", collectionAlignment: "center", collectionPadding: 6,
+          collectionOverflow: "auto", zIndex: 11
+        }
+      ]
+    }
+  ];
+  fs.writeFileSync(controllerLayoutPath, `${JSON.stringify(controllerLayouts, null, 2)}\n`);
   const artManifestPath = path.join(targetRoot, "content", "art", "manifest.json");
   const artManifest = JSON.parse(fs.readFileSync(artManifestPath, "utf8"));
   const nestedLayoutTextComposition = artManifest.compositions["prefab-layout-text-field-text"];
@@ -512,6 +600,7 @@ module.exports = Object.freeze([
     components: [
       { id: "fixture-player-name", name: "Fixture Player Name", kind: "text", x: 150, y: 18, width: 220, height: 28, defaultText: "PLAYER", fontSize: 20, fontColor: "#17131f", defaultAnimationState: "On" },
       { id: "fixture-player-score", name: "Fixture Player Score", kind: "text", x: 150, y: 48, width: 120, height: 28, defaultText: "0", fontSize: 20, fontColor: "#17131f", defaultAnimationState: "On" },
+      { id: "fixture-player-avatar", name: "Fixture Player Avatar", kind: "text", x: 150, y: 76, width: 220, height: 24, defaultText: "trike", fontSize: 16, fontColor: "#17131f", defaultAnimationState: "On" },
       { id: "fixture-player-rows", name: "Fixture Player Rows", kind: "container", childDistribution: "vertical", x: 150, y: 130, width: 280, height: 150, fillColor: "transparent", defaultAnimationState: "On", children: [] }
     ]
   };
@@ -950,6 +1039,130 @@ module.exports = Object.freeze([
         }));
         throw new Error("Game-owned player presentation fixture did not reconcile: " + JSON.stringify(diagnostic), { cause: error });
       }
+      await Promise.all([collectionControllerOne, collectionControllerTwo].map((page) => page.waitForFunction(() => (
+        document.querySelectorAll('[data-game-plugin-controller-interaction="generated-fixture.avatarProfile"]').length === 3
+        && document.querySelectorAll('[data-game-plugin-controller-interaction="generated-fixture.privateAccent"]').length === 2
+      ), null, { timeout: 15_000 })));
+      const profileInteractionBefore = await collectionControllerOne.evaluate(() => {
+        const interactions = window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [];
+        const avatar = interactions.find((item) => item.id === "generated-fixture.avatarProfile");
+        const accent = interactions.find((item) => item.id === "generated-fixture.privateAccent");
+        const bronto = document.querySelector('[data-game-plugin-controller-interaction="generated-fixture.avatarProfile"][data-game-plugin-input-option="bronto"]');
+        window.__fixtureProfileBronto = bronto;
+        return {
+          avatarVisitId: avatar?.visitId,
+          accentVisitId: accent?.visitId,
+          avatarId: avatar?.viewModel?.avatarId,
+          accentId: accent?.viewModel?.accentId,
+          avatarControls: document.querySelectorAll('[data-game-plugin-controller-interaction="generated-fixture.avatarProfile"]').length,
+          accentControls: document.querySelectorAll('[data-game-plugin-controller-interaction="generated-fixture.privateAccent"]').length,
+          vipStartPresent: Boolean(document.querySelector('[data-option-id="lobby.startGame"]'))
+        };
+      });
+      const secondProfileInteractionBefore = await collectionControllerTwo.evaluate(() => {
+        const interactions = window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [];
+        return {
+          avatarId: interactions.find((item) => item.id === "generated-fixture.avatarProfile")?.viewModel?.avatarId,
+          accentId: interactions.find((item) => item.id === "generated-fixture.privateAccent")?.viewModel?.accentId,
+          publicProfiles: window.controllerState?.lobby?.gamePlugin?.profiles
+        };
+      });
+      const profileStageBefore = await collectionStagePage.evaluate((playerId) => {
+        const item = document.querySelector('[data-stage-layout-element-id="fixture-players"] [data-game-plugin-renderer-item-key="' + CSS.escape(playerId) + '"]');
+        window.__fixtureProfilePlayerItem = item;
+        window.__fixtureProfilePlayerRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(item);
+        return {
+          applyCount: Number(window.__popPartyStageMetrics?.applyCount || 0),
+          avatarText: item?.querySelector('[data-art-component-id="fixture-player-avatar"]')?.textContent?.trim()?.toLowerCase(),
+          surfaceRevision: window.currentStageState?.surfaceRevision
+        };
+      }, collectionPlayerOne.player.id);
+      const privateAccentControl = collectionControllerOne.locator(
+        '[data-game-plugin-controller-interaction="generated-fixture.privateAccent"][data-game-plugin-input-option="moon"]'
+      );
+      const privateAccentResponse = collectionControllerOne.waitForResponse((response) => (
+        response.url().endsWith("/api/game-plugin-controller-interaction")
+        && response.request().method() === "POST"
+      ));
+      await privateAccentControl.hover();
+      await collectionControllerOne.mouse.down();
+      await collectionControllerOne.waitForTimeout(1_100);
+      const retainedPersistentHold = await collectionControllerOne.evaluate(() => {
+        const control = document.querySelector('[data-game-plugin-controller-interaction="generated-fixture.privateAccent"][data-game-plugin-input-option="moon"]');
+        return {
+          holding: control?.dataset.gamePluginInputHolding,
+          visitId: (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
+            .find((item) => item.id === "generated-fixture.privateAccent")?.visitId
+        };
+      });
+      await collectionControllerOne.waitForTimeout(550);
+      await privateAccentResponse;
+      await collectionControllerOne.mouse.up();
+      await collectionControllerOne.waitForFunction(() => (
+        (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
+          .find((item) => item.id === "generated-fixture.privateAccent")?.viewModel?.accentId === "moon"
+      ), null, { timeout: 15_000 });
+      const profileInteractionAfterPrivate = await collectionControllerOne.evaluate(() => ({
+        avatarRetained: window.__fixtureProfileBronto === document.querySelector(
+          '[data-game-plugin-controller-interaction="generated-fixture.avatarProfile"][data-game-plugin-input-option="bronto"]'
+        ),
+        accentId: (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
+          .find((item) => item.id === "generated-fixture.privateAccent")?.viewModel?.accentId
+      }));
+      await collectionStagePage.waitForTimeout(250);
+      const privateInteractionResult = await collectionStagePage.evaluate(() => ({
+        applyCount: Number(window.__popPartyStageMetrics?.applyCount || 0),
+        surfaceRevision: window.currentStageState?.surfaceRevision
+      }));
+      const avatarResponsePromise = collectionControllerOne.waitForResponse((response) => (
+        response.url().endsWith("/api/game-plugin-controller-interaction")
+        && response.request().method() === "POST"
+      ));
+      await collectionControllerOne.locator(
+        '[data-game-plugin-controller-interaction="generated-fixture.avatarProfile"][data-game-plugin-input-option="bronto"]'
+      ).click();
+      const avatarRequest = JSON.parse((await avatarResponsePromise).request().postData() || "{}");
+      await collectionStagePage.waitForFunction(({ playerId, previousApplyCount }) => {
+        const item = document.querySelector('[data-stage-layout-element-id="fixture-players"] [data-game-plugin-renderer-item-key="' + CSS.escape(playerId) + '"]');
+        return Number(window.__popPartyStageMetrics?.applyCount || 0) > previousApplyCount
+          && item?.querySelector('[data-art-component-id="fixture-player-avatar"]')?.textContent?.trim()?.toLowerCase() === "bronto";
+      }, { playerId: collectionPlayerOne.player.id, previousApplyCount: profileStageBefore.applyCount }, { timeout: 15_000 });
+      const publicProfileResult = await collectionStagePage.evaluate((playerId) => {
+        const item = document.querySelector('[data-stage-layout-element-id="fixture-players"] [data-game-plugin-renderer-item-key="' + CSS.escape(playerId) + '"]');
+        return {
+          applyCount: Number(window.__popPartyStageMetrics?.applyCount || 0),
+          avatarText: item?.querySelector('[data-art-component-id="fixture-player-avatar"]')?.textContent?.trim()?.toLowerCase(),
+          itemRetained: window.__fixtureProfilePlayerItem === item,
+          rendererRetained: window.__fixtureProfilePlayerRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(item)
+        };
+      }, collectionPlayerOne.player.id);
+      const profileInteractionAfter = await collectionControllerOne.evaluate(() => ({
+        avatarId: (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
+          .find((item) => item.id === "generated-fixture.avatarProfile")?.viewModel?.avatarId,
+        brontoRetained: window.__fixtureProfileBronto === document.querySelector(
+          '[data-game-plugin-controller-interaction="generated-fixture.avatarProfile"][data-game-plugin-input-option="bronto"]'
+        )
+      }));
+      const secondProfileInteractionAfter = await collectionControllerTwo.evaluate(() => ({
+        avatarId: (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
+          .find((item) => item.id === "generated-fixture.avatarProfile")?.viewModel?.avatarId
+      }));
+      const staleProfileSubmission = await collectionControllerOne.evaluate(async (request) => {
+        try {
+          await window.postJson("/api/game-plugin-controller-interaction", request);
+          return { accepted: true };
+        } catch (error) {
+          return { accepted: false, code: error?.code, status: error?.status };
+        }
+      }, {
+        interactionId: "generated-fixture.avatarProfile",
+        visitId: profileInteractionBefore.avatarVisitId,
+        gameSessionId: avatarRequest.gameSessionId,
+        playerId: collectionPlayerOne.player.id,
+        stageCode: "RCOL",
+        payload: { avatarId: "stego" },
+        submissionId: "stale-profile-fixture"
+      });
       await collectionStagePage.evaluate(() => {
         for (const elementId of ["fixture-hand-rows", "fixture-flat-cards"]) {
           window.setStageLayoutGameObjectShownForAction?.({
@@ -1684,7 +1897,7 @@ module.exports = Object.freeze([
           activeLayoutElements: Array.from(document.querySelectorAll("[data-controller-layout-element-id]"))
             .map((node) => node.getAttribute("data-controller-layout-element-id")),
           choiceHost: document.querySelector('[data-controller-layout-element-id="fixture-hit-button"]')?.outerHTML,
-          controls: document.querySelectorAll("[data-game-plugin-input-binding]").length
+          controls: document.querySelectorAll('[data-game-plugin-input-binding][data-game-plugin-input-scope="flow"]').length
         }));
         throw new Error("Generated controller input did not activate: " + JSON.stringify(diagnostic), { cause: error });
       }
@@ -1769,11 +1982,11 @@ module.exports = Object.freeze([
       });
       await controllerPage.waitForFunction(() => (
         window.controllerState?.lobby?.gamePlugin?.input?.actionId === "fixture-gesture-tap"
-        && document.querySelectorAll("[data-game-plugin-input-option]").length === 2
+        && document.querySelectorAll('[data-game-plugin-input-option][data-game-plugin-input-scope="flow"]').length === 2
         && document.querySelectorAll("[data-game-plugin-input-unavailable='true']").length === 2
       ), null, { timeout: 15_000 });
       const gestureTwoSlotState = await controllerPage.evaluate(() => ({
-        controls: document.querySelectorAll("[data-game-plugin-input-option]").length,
+        controls: document.querySelectorAll('[data-game-plugin-input-option][data-game-plugin-input-scope="flow"]').length,
         unavailableHosts: document.querySelectorAll("[data-game-plugin-input-unavailable='true']").length
       }));
       const tapResponsePromise = controllerPage.waitForResponse((response) => (
@@ -1815,11 +2028,11 @@ module.exports = Object.freeze([
       const twoGestureHoldLobby = await heartbeat(two);
       await controllerPage.waitForFunction(() => (
         window.controllerState?.lobby?.gamePlugin?.input?.actionId === "fixture-gesture-hold"
-        && document.querySelectorAll("[data-game-plugin-input-option]").length === 4
+        && document.querySelectorAll('[data-game-plugin-input-option][data-game-plugin-input-scope="flow"]').length === 4
         && document.querySelectorAll("[data-game-plugin-input-unavailable='true']").length === 0
       ), null, { timeout: 15_000 });
       const gestureFourSlotState = await controllerPage.evaluate(() => ({
-        controls: document.querySelectorAll("[data-game-plugin-input-option]").length,
+        controls: document.querySelectorAll('[data-game-plugin-input-option][data-game-plugin-input-scope="flow"]').length,
         unavailableHosts: document.querySelectorAll("[data-game-plugin-input-unavailable='true']").length
       }));
       const staleGestureResponse = await submitPluginInputResponse(one, oneGestureTapLobby, { choice: "alpha", mode: "tap" }, "gesture-stale-one");
@@ -1907,7 +2120,7 @@ module.exports = Object.freeze([
         try {
           await controllerPage.waitForFunction(({ actionId, count }) => (
             window.controllerState?.lobby?.gamePlugin?.input?.actionId === actionId
-            && document.querySelectorAll('[data-game-plugin-choice-collection-item="true"]').length === count
+            && document.querySelectorAll('[data-game-plugin-choice-collection-item="true"][data-game-plugin-input-scope="flow"]').length === count
           ), { actionId: "fixture-dynamic-targets", count: optionCount }, { timeout: 15_000 });
         } catch (error) {
           const diagnostic = await controllerPage.evaluate(() => ({
@@ -1917,16 +2130,16 @@ module.exports = Object.freeze([
                 id: element.getAttribute('data-controller-layout-element-id'),
                 kind: element.getAttribute('data-controller-layout-element-kind'),
                 scope: element.getAttribute('data-controller-layout-scope'),
-                children: element.querySelectorAll('[data-game-plugin-choice-collection-item="true"]').length
+                children: element.querySelectorAll('[data-game-plugin-choice-collection-item="true"][data-game-plugin-input-scope="flow"]').length
               })),
-            collectionItems: document.querySelectorAll('[data-game-plugin-choice-collection-item="true"]').length,
+            collectionItems: document.querySelectorAll('[data-game-plugin-choice-collection-item="true"][data-game-plugin-input-scope="flow"]').length,
             bodyText: document.body.innerText.slice(0, 500)
           }));
           throw new Error("Dynamic Controller collection did not reconcile: " + JSON.stringify({ optionCount, diagnostic }), { cause: error });
         }
         await secondControllerPage.waitForFunction(({ actionId, count }) => (
           window.controllerState?.lobby?.gamePlugin?.input?.actionId === actionId
-          && document.querySelectorAll('[data-game-plugin-choice-collection-item="true"]').length === count
+          && document.querySelectorAll('[data-game-plugin-choice-collection-item="true"][data-game-plugin-input-scope="flow"]').length === count
         ), { actionId: "fixture-dynamic-targets", count: Math.min(optionCount, 2) }, { timeout: 15_000 });
         return { firstLobby, secondLobby };
       };
@@ -1947,7 +2160,7 @@ module.exports = Object.freeze([
         if (request.url().endsWith("/api/game-plugin-input") && request.method() === "POST") dynamicBrowserSubmissionCount += 1;
       });
       const dynamicIdentityBefore = await controllerPage.evaluate(() => {
-        const buttons = Array.from(document.querySelectorAll('[data-game-plugin-choice-collection-item="true"]'));
+        const buttons = Array.from(document.querySelectorAll('[data-game-plugin-choice-collection-item="true"][data-game-plugin-input-scope="flow"]'));
         const retained = buttons[0];
         const removed = buttons[3];
         retained?.focus();
@@ -1987,7 +2200,7 @@ module.exports = Object.freeze([
         const retained = window.__fixtureDynamicRetainedButton;
         const removed = window.__fixtureDynamicRemovedButton;
         const container = document.querySelector('[data-controller-layout-element-id="fixture-target-collection"]');
-        const buttons = Array.from(container?.querySelectorAll(':scope > [data-game-plugin-choice-collection-item="true"]') || []);
+        const buttons = Array.from(container?.querySelectorAll(':scope > [data-game-plugin-choice-collection-item="true"][data-game-plugin-input-scope="flow"]') || []);
         const artLayer = retained?.querySelector(":scope > .controller-widget-art-layer");
         const buttonRect = retained?.getBoundingClientRect();
         const artRect = artLayer?.getBoundingClientRect();
@@ -2056,7 +2269,7 @@ module.exports = Object.freeze([
       const dynamicSecondResponsePromise = secondControllerPage.waitForResponse((response) => (
         response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
       ));
-      await secondControllerPage.locator('[data-game-plugin-choice-collection-item="true"]:not(:disabled)').first().click();
+      await secondControllerPage.locator('[data-game-plugin-choice-collection-item="true"][data-game-plugin-input-scope="flow"]:not(:disabled)').first().click();
       await dynamicSecondResponsePromise;
       await dynamicStagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-dynamic-done", null, { timeout: 15_000 });
       const dynamicBarrierAction = (await (await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby")).json()).lobby.action?.id;
@@ -2155,7 +2368,7 @@ module.exports = Object.freeze([
       await controllerPage.waitForFunction(() => {
         const input = window.controllerState?.lobby?.gamePlugin?.input;
         return input?.type === "generated-fixture.privateWager"
-          && document.querySelectorAll("[data-game-plugin-input-binding]").length === 4;
+          && document.querySelectorAll('[data-game-plugin-input-binding][data-game-plugin-input-scope="flow"]').length === 4;
       }, null, { timeout: 15_000 });
       const wagerInitialState = await controllerPage.evaluate(() => {
         const field = document.querySelector('[data-game-plugin-input-binding="amount"]');
@@ -2246,12 +2459,12 @@ module.exports = Object.freeze([
         window.controllerState?.lobby?.gamePlugin?.input?.submitted === true
         && window.controllerState?.lobby?.gamePlugin?.input?.layoutStateId === "fixture-wager-confirmed"
         && document.querySelector('[data-controller-layout-element-id="fixture-wager-confirmation"]')
-        && document.querySelectorAll("[data-game-plugin-input-binding]").length === 0
+        && document.querySelectorAll('[data-game-plugin-input-binding][data-game-plugin-input-scope="flow"]').length === 0
       ), null, { timeout: 15_000 });
       const submittedControllerState = await controllerPage.evaluate(() => ({
         layoutStateId: window.controllerState?.lobby?.gamePlugin?.input?.layoutStateId,
         submitted: window.controllerState?.lobby?.gamePlugin?.input?.submitted,
-        activeControls: document.querySelectorAll("[data-game-plugin-input-binding]").length,
+        activeControls: document.querySelectorAll('[data-game-plugin-input-binding][data-game-plugin-input-scope="flow"]').length,
         persistentHostRetained: window.__fixturePersistentHost === document.querySelector('[data-controller-layout-scope="layer:fixture-persistent-context"][data-controller-layout-element-id="fixture-persistent-pulse"]'),
         persistentArtRetained: window.__fixturePersistentArtLayer === window.__fixturePersistentHost?.querySelector(":scope > .controller-widget-art-layer"),
         persistentRendererRetained: window.__fixturePersistentRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixturePersistentHost),
@@ -2702,6 +2915,18 @@ module.exports = Object.freeze([
         collectionReconcileState,
         playerPresentationIdentityBefore,
         playerPresentationReconcileState,
+        controllerProfileInteractions: {
+          before: profileInteractionBefore,
+          secondBefore: secondProfileInteractionBefore,
+          retainedHold: retainedPersistentHold,
+          afterPrivate: profileInteractionAfterPrivate,
+          privateResult: privateInteractionResult,
+          publicResult: publicProfileResult,
+          after: profileInteractionAfter,
+          secondAfter: secondProfileInteractionAfter,
+          staleSubmission: staleProfileSubmission,
+          stageBefore: profileStageBefore
+        },
         persistentLayerReloaded: secondControllerLayouts.layouts.layers
           ?.some((layer) => layer.id === "fixture-persistent-context" && layer.zIndex === 150),
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
@@ -2915,6 +3140,29 @@ module.exports = Object.freeze([
     || JSON.stringify(development.playerPresentationReconcileState?.cardOrder) !== JSON.stringify(["a", "d", "b"])
     || development.playerPresentationReconcileState?.score !== "11"
     || development.playerPresentationReconcileState?.tiles !== 2
+    || development.controllerProfileInteractions?.before?.avatarId !== "trike"
+    || development.controllerProfileInteractions?.before?.accentId !== "sun"
+    || development.controllerProfileInteractions?.before?.avatarControls !== 3
+    || development.controllerProfileInteractions?.before?.accentControls !== 2
+    || !development.controllerProfileInteractions?.before?.vipStartPresent
+    || development.controllerProfileInteractions?.secondBefore?.avatarId !== "trike"
+    || development.controllerProfileInteractions?.secondBefore?.accentId !== "sun"
+    || development.controllerProfileInteractions?.secondBefore?.publicProfiles !== undefined
+    || development.controllerProfileInteractions?.retainedHold?.holding !== "true"
+    || development.controllerProfileInteractions?.retainedHold?.visitId !== development.controllerProfileInteractions?.before?.accentVisitId
+    || !development.controllerProfileInteractions?.afterPrivate?.avatarRetained
+    || development.controllerProfileInteractions?.afterPrivate?.accentId !== "moon"
+    || development.controllerProfileInteractions?.privateResult?.applyCount !== development.controllerProfileInteractions?.stageBefore?.applyCount
+    || development.controllerProfileInteractions?.privateResult?.surfaceRevision !== development.controllerProfileInteractions?.stageBefore?.surfaceRevision
+    || development.controllerProfileInteractions?.publicResult?.applyCount <= development.controllerProfileInteractions?.stageBefore?.applyCount
+    || development.controllerProfileInteractions?.publicResult?.avatarText !== "bronto"
+    || !development.controllerProfileInteractions?.publicResult?.itemRetained
+    || !development.controllerProfileInteractions?.publicResult?.rendererRetained
+    || development.controllerProfileInteractions?.after?.avatarId !== "bronto"
+    || development.controllerProfileInteractions?.secondAfter?.avatarId !== "trike"
+    || development.controllerProfileInteractions?.staleSubmission?.accepted !== false
+    || development.controllerProfileInteractions?.staleSubmission?.code !== "GAME_PLUGIN_CONTROLLER_INTERACTION_STALE"
+    || development.controllerProfileInteractions?.staleSubmission?.status !== 409
     || !development.persistentLayerReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"

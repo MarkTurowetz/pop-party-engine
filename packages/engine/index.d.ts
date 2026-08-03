@@ -98,6 +98,8 @@ export type GameRendererBinding = GameRendererValueBinding | GameRendererCollect
 export interface GameRendererSelectionContext<TState extends Record<string, unknown> = Record<string, unknown>> {
   readonly namespace: string;
   readonly state: Readonly<TState>;
+  readonly profile: Readonly<Record<string, unknown>> | null;
+  readonly profiles: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
   readonly players: readonly GameActionPlayer[];
   readonly viewer: GameActionPlayer | null;
   readonly capability: Readonly<{ hasViewer: boolean; isVip: boolean }>;
@@ -138,7 +140,7 @@ export interface GameInputSubmitContext<TState extends Record<string, unknown> =
 }
 
 export type GameInputSubmissionField =
-  | { id: string; type: "choice"; optionsSource: string }
+  | { id: string; type: "choice"; optionsSource: string; options?: ReadonlyArray<string | number | { id: string | number }> }
   | { id: string; type: "integer"; min: number; max: number };
 
 export type GameInputSubmitValues = Readonly<Record<string, string | number>>;
@@ -189,6 +191,60 @@ export interface GameInputRegistration<TState extends Record<string, unknown> = 
   submit(context: GameInputSubmitContext<TState>, payload: Readonly<Record<string, string | number>>, action: Readonly<Record<string, unknown>>): void;
 }
 
+export interface GameControllerInteractionReadContext<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+  TProfile extends Record<string, unknown> = Record<string, unknown>
+> {
+  readonly namespace: string;
+  readonly state: Readonly<TState>;
+  readonly profile: Readonly<TProfile>;
+  readonly viewer: GameActionPlayer;
+  readonly players: readonly GameActionPlayer[];
+  readonly capability: Readonly<{ authenticated: true; isVip: boolean }>;
+  readonly flow: Readonly<Record<string, unknown>>;
+  readonly local: Readonly<Record<string, unknown>>;
+  readonly phase: string;
+  readonly flowStateId: string;
+}
+
+export interface GameControllerInteractionSubmitContext<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+  TProfile extends Record<string, unknown> = Record<string, unknown>
+> {
+  readonly namespace: string;
+  readonly state: Readonly<TState>;
+  readonly actor: GameActionPlayer;
+  readonly players: readonly GameActionPlayer[];
+  readonly capability: Readonly<{ authenticated: true; isVip: boolean }>;
+  readonly profile: Readonly<{
+    field: string;
+    current: Readonly<TProfile>;
+    set(value: unknown): void;
+  }>;
+  readonly broadcast: Readonly<{ request(): void }>;
+}
+
+export interface GameControllerInteractionRegistration<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+  TProfile extends Record<string, unknown> = Record<string, unknown>
+> {
+  name: string;
+  profileField: string;
+  visibility?: "private" | "public";
+  submission: GameInputSubmissionField[];
+  controller: {
+    layoutScope: "global" | "layer";
+    layoutLayerId?: string;
+    bindings: GameInputControllerBinding[];
+  };
+  available(context: GameControllerInteractionReadContext<TState, TProfile>): boolean;
+  view(context: GameControllerInteractionReadContext<TState, TProfile>): unknown;
+  submit(
+    context: GameControllerInteractionSubmitContext<TState, TProfile>,
+    payload: Readonly<Record<string, string | number>>
+  ): void;
+}
+
 export interface GameLayoutRendererTarget {
   kind?: "layout";
   layoutElementId: string;
@@ -211,6 +267,7 @@ export interface GameControllerRendererRegistration<TState extends Record<string
 export interface GamePluginRegistryApi {
   actions(id: string, value: GameActionRegistration): void;
   inputs(id: string, value: GameInputRegistration): void;
+  controllerInteractions(id: string, value: GameControllerInteractionRegistration): void;
   stageRenderers(id: string, value: GameRendererRegistration): void;
   controllerRenderers(id: string, value: GameControllerRendererRegistration): void;
   stateSchemas(id: string, value: unknown): void;

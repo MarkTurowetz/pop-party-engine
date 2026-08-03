@@ -258,6 +258,14 @@ concepts into focused modules.
     removed items are disabled and marked stale before their renderer is disposed. Collection
     geometry is authored in Layout, and the Layout preview renders the same item Game Object and
     long-label override through the shared geometry rules. Fixed `choice` bindings remain valid.
+  - Persistent authenticated Controller interactions are game-owned profile/setting inputs outside
+    Flow. Each registration targets Controller Global or one named persistent layer, declares one
+    namespaced profile field, and reuses the same fixed/collection bindings and server validation as
+    Flow inputs without replacing the active Controller state. Availability and the private model are
+    recomputed per authenticated viewer, including late joins and reconnects. Private fields never
+    enter the Stage projection; public fields are visible only to same-plugin Stage renderer selectors,
+    and the handler must explicitly request their publication. The engine supplies identity,
+    authorization, stale-token rejection, and field-scoped mutation but no profile or avatar art.
   - Stage and Controller renderer registrations may use a recursive `collection` binding. The
     root targets a same-surface Tools-authored Layout collection; every item instantiates a
     same-surface Art Manager Game Object by a semantic `keySource`. Nested bindings target an
