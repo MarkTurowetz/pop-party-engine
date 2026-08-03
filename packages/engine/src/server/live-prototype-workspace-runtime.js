@@ -191,6 +191,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     );
     error.code = "AUTHORING_SESSION_BUSY";
     error.status = 409;
+    error.details = Object.freeze({ leaseMs, retryAfterMs: Math.max(1000, Math.floor(leaseMs / 3)) });
     return error;
   }
 

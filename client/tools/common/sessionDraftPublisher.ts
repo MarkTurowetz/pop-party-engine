@@ -135,7 +135,9 @@ export function createSessionDraftPublisher(
   };
   const republish = async (): Promise<void> => {
     await flush();
-    if (lastPublishedSnapshot === savedSnapshot) return;
+    // A restarted or displaced server has lost every session-scoped draft,
+    // including models the editors still correctly report as clean. Re-send
+    // the browser's complete authoritative model set, not only dirty models.
     await publish(lastPublishedSnapshot, { force: true });
   };
   const activePublisher = { flush, republish };

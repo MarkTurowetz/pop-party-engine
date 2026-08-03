@@ -36,7 +36,7 @@ function parseArguments(argv) {
     engineVersion: "",
     operationKey: "",
     releaseRef: "heads/game-releases",
-    contentRoot: "apps/reference/content",
+    contentRoot: "",
     stateFile: ""
   };
   const values = [...argv];
@@ -316,7 +316,7 @@ async function main() {
     if (!repo) throw new Error("GITHUB_REPOSITORY is required");
     if (!token) throw new Error("GITHUB_TOKEN is required");
     const gameDefinition = require(path.resolve(__dirname, "..", "apps", "reference", "game.config.js"));
-    const contentProvider = argumentsValue.command === "activate"
+    const contentProvider = argumentsValue.command === "activate" && argumentsValue.contentRoot
       ? createLocalContentBundleProvider({
         root: path.resolve(__dirname, "..", argumentsValue.contentRoot),
         gameBuild: gameDefinition.version,

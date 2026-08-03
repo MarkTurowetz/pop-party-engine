@@ -102,9 +102,12 @@ void livePrototypeWorkspace.then((workspace) => {
     subscribe: (listener) => workspace.subscribe(listener)
   });
 });
+const livePrototypeEditorsReady = livePrototypeWorkspace.then((workspace) =>
+  workspace?.whenAttached()
+);
 
 let flowController: FlowEditorController | null = null;
-void livePrototypeWorkspace
+void livePrototypeEditorsReady
   .then(() =>
     mountFlowEditor({
       api: toolsContext.api.flow,
@@ -126,7 +129,7 @@ registerDashboardTool("flow", {
 });
 
 let constantsController: ConstantsController | null = null;
-void livePrototypeWorkspace
+void livePrototypeEditorsReady
   .then(() =>
     mountConstantsEditor({
       api: toolsContext.api.constants,
@@ -146,7 +149,7 @@ registerDashboardTool("constants", {
 });
 
 let hostAudioController: HostAudioController | null = null;
-void livePrototypeWorkspace
+void livePrototypeEditorsReady
   .then(() =>
     mountHostAudioEditor({
       api: toolsContext.api.hostAudio,
@@ -191,7 +194,7 @@ const openArtComposition = (compositionId: string) => {
   void showDashboardTool("art");
   if (selectArtComposition(compositionId)) pendingArtCompositionId = "";
 };
-void livePrototypeWorkspace
+void livePrototypeEditorsReady
   .then(() =>
     mountArtEditor({
       api: toolsContext.api.art,
@@ -236,7 +239,7 @@ registerDashboardTool("art", {
   setup: revealScreen("artScreen")
 });
 
-void livePrototypeWorkspace
+void livePrototypeEditorsReady
   .then(() =>
     mountLayoutEditor({
       api: toolsContext.api.layout,

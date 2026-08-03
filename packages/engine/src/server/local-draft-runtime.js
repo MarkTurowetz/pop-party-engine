@@ -24,6 +24,21 @@ function createLocalDraftRuntime({
   syncControllerLayoutsWithFlow,
   syncStageLayoutsWithFlow
 }) {
+  function isAuthoringSessionBoundaryError(error) {
+    return [
+      "AUTHORING_SESSION_STALE",
+      "AUTHORING_SESSION_BUSY",
+      "AUTHORING_SESSION_RECOVERY_REQUIRED"
+    ].includes(String(error?.code || ""));
+  }
+
+  function restoreLocalDraftStore(previousDraft) {
+    for (const key of Object.keys(localDraftStore)) {
+      if (!Object.prototype.hasOwnProperty.call(previousDraft, key)) delete localDraftStore[key];
+    }
+    Object.assign(localDraftStore, previousDraft);
+  }
+
   function sendLocalDraft(res) {
     sendJson(res, 200, {
       ok: true,
@@ -130,11 +145,15 @@ function createLocalDraftRuntime({
       try {
         await onDraftChanged({ payload, req });
       } catch (error) {
-        Object.assign(localDraftStore, previousDraft);
+        restoreLocalDraftStore(previousDraft);
+        const authoringBoundary = isAuthoringSessionBoundaryError(error);
         sendJson(res, error?.status || 400, {
           ok: false,
-          error: `Working bundle is invalid: ${error.message}`,
+          error: authoringBoundary
+            ? error.message
+            : `Working bundle is invalid: ${error.message}`,
           errorCode: error.code || "WORKING_BUNDLE_INVALID",
+          errorCategory: authoringBoundary ? "authoring-session" : "content-validation",
           diagnostics: error.diagnostics || []
         });
         return;

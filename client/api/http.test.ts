@@ -41,4 +41,28 @@ describe("tool API CSRF", () => {
     expect(fetchImpl.mock.calls[1][1]?.headers).toMatchObject({ "X-CSRF-Token": "csrf-old" });
     expect(fetchImpl.mock.calls[3][1]?.headers).toMatchObject({ "X-CSRF-Token": "csrf-new" });
   });
+
+  it("coalesces authoring-session recovery and retries a rejected mutation exactly once", async () => {
+    const stale = new Response(JSON.stringify({
+      ok: false,
+      error: "The live prototype authoring session is no longer active",
+      errorCode: "AUTHORING_SESSION_STALE"
+    }), { status: 409 });
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(stale)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const recover = vi.fn(async () => undefined);
+    const client = createApiClient({ fetchImpl });
+    client.setMutationRecoveryHandler(recover);
+
+    await client.postJson("/api/tool-drafts", { constants: { gameTitle: "Preserved" } });
+
+    expect(recover).toHaveBeenCalledOnce();
+    expect(recover).toHaveBeenCalledWith(expect.objectContaining({
+      method: "POST",
+      path: "/api/tool-drafts"
+    }));
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[1][1]?.body).toBe(fetchImpl.mock.calls[0][1]?.body);
+  });
 });

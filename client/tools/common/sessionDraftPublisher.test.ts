@@ -85,7 +85,7 @@ describe("createSessionDraftPublisher", () => {
     }
   });
 
-  it("does not republish clean snapshots", async () => {
+  it("republishes clean browser models after the server loses session drafts", async () => {
     const postDraft = vi.fn(async (message) => message);
     const publisher = createSessionDraftPublisher({
       postDraft,
@@ -97,7 +97,8 @@ describe("createSessionDraftPublisher", () => {
 
     try {
       await republishAllSessionDraftPublishers();
-      expect(postDraft).not.toHaveBeenCalled();
+      expect(postDraft).toHaveBeenCalledOnce();
+      expect(postDraft).toHaveBeenCalledWith({ flow: "saved" });
     } finally {
       publisher.dispose();
     }

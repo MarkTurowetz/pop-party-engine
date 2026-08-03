@@ -25,6 +25,7 @@ function createLivePrototypeHandlersRuntime(options = {}) {
         ok: false,
         error: error.message,
         errorCode: error.code || "LIVE_PROTOTYPE_OPERATION_FAILED",
+        details: error.details || {},
         diagnostics: error.diagnostics || []
       });
     }
