@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const { createControllerLayoutNormalizationRuntime } = require("./controller-layout-normalization-runtime");
 const { createControllerLayoutNormalizationRuntime: createEngineControllerLayoutNormalizationRuntime } = require("@pop-party/engine/server");
-const semanticRoles = { "engine.controller.playerIdentity": { compositionId: "controller-player-banner" } };
+const semanticRoles = {};
 
 function runtime() {
   const defaults = {
@@ -36,13 +36,13 @@ describe("controller layout normalization", () => {
     });
     const layouts = engine.normalizeControllerLayouts({
       global: defaultControllerLayouts.global,
-      states: [{ id: "intro", name: "Game-owned Intro", elements: [{ id: "controllerplayerbanner" }] }]
+      states: [{ id: "intro", name: "Game-owned Intro", elements: [{ id: "gameidentity" }] }]
     });
 
     expect(layouts.states).toHaveLength(1);
     expect(layouts.states[0]).toMatchObject({ id: "intro" });
     expect(layouts.states[0].elements[0]).toMatchObject({
-      id: "controllerplayerbanner",
+      id: "gameidentity",
       defaultAnimationState: "On"
     });
     expect(layouts.states[0].elements[0]).not.toHaveProperty("artCompositionId");
@@ -68,39 +68,6 @@ describe("controller layout normalization", () => {
     expect(layouts.states[0].elements.map((element) => element.defaultAnimationState)).toEqual(["On", "Off", "Off"]);
   });
 
-  it("migrates the legacy Player Banner to the compound widget and turns it On once", () => {
-    const layouts = runtime().normalizeControllerLayouts({
-      canvas: { width: 390, height: 844 },
-      global: {
-        id: "global",
-        name: "Global",
-        elements: [{ id: "controllerPlayerBanner", defaultAnimationState: "Off" }]
-      },
-      states: []
-    });
-
-    expect(layouts.global.elements[0]).toMatchObject({
-      kind: "art",
-      artCompositionId: "controller-player-banner",
-      defaultAnimationState: "On",
-      playerBannerWidgetVersion: 1
-    });
-  });
-
-  it("preserves an explicitly authored Player Banner state after widget migration", () => {
-    const layouts = runtime().normalizeControllerLayouts({
-      canvas: { width: 390, height: 844 },
-      global: {
-        id: "global",
-        name: "Global",
-        elements: [{ id: "controllerPlayerBanner", defaultAnimationState: "Off", playerBannerWidgetVersion: 1 }]
-      },
-      states: []
-    });
-
-    expect(layouts.global.elements[0].defaultAnimationState).toBe("Off");
-  });
-
   it("migrates legacy global action art into uniquely owned state containers", () => {
     const layouts = runtime().normalizeControllerLayouts({
       canvas: { width: 390, height: 844 },
@@ -108,7 +75,7 @@ describe("controller layout normalization", () => {
         id: "global",
         name: "Global",
         elements: [
-          { id: "controllerplayerbanner" },
+          { id: "gameidentity" },
           { id: "controllerglobalactionmessage" },
           { id: "controllerglobalactionbutton" }
         ]
@@ -134,7 +101,7 @@ describe("controller layout normalization", () => {
       ]
     });
 
-    expect(layouts.global.elements.map((element) => element.id)).toEqual(["controllerplayerbanner"]);
+    expect(layouts.global.elements.map((element) => element.id)).toEqual(["gameidentity"]);
     expect(layouts.states[0].elements.map((element) => element.id)).toEqual([
       "controllerpresentationmessage",
       "controllerpresentationbuttoncontainer"

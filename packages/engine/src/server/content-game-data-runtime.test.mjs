@@ -26,7 +26,6 @@ function snapshot(overrides = {}) {
     "art/manifest.json": { compositions: { card: { name: "Card" } }, assets: [] },
     "game-data/runtime.json": {
       schemaVersion: 1,
-      avatarShapes: ["triangle"],
       artGroups: [{ id: "cards" }],
       availableFlowTransitions: [{ id: "wipe", name: "Wipe" }]
     },
@@ -40,7 +39,6 @@ describe("bundle game data runtime", () => {
     const gameData = createBundleGameData(snapshot());
     expect(gameData.defaultGameFlow.states[0].id).toBe("lobby");
     expect(gameData.defaultArtCompositions[0].id).toBe("card");
-    expect(gameData.avatarShapes).toEqual(["triangle"]);
     expect(gameData.defaultPlayerColors).toEqual(["#ffffff"]);
     expect(gameData.availableFlowActionTypes.some((action) => action.id === "prepareVotingCards")).toBe(true);
     expect(gameData.availableFlowActionTypes).toContainEqual(expect.objectContaining({

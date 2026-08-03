@@ -74,7 +74,6 @@ describe("createControllerSubmitApi (ported)", () => {
   it("resolves null without calling postJson when there is no controller state", async () => {
     const { api, postJson } = setup(null);
     expect(await api.heartbeat()).toBe(null);
-    expect(await api.updateAvatar("circle")).toBe(null);
     expect(postJson).not.toHaveBeenCalled();
   });
 

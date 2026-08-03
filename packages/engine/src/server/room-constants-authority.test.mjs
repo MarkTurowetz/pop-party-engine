@@ -9,7 +9,7 @@ const { createPlayerStateRuntime } = require("./player-state-runtime");
 
 afterEach(() => vi.useRealTimers());
 
-describe("room constant and avatar authority", () => {
+describe("room constant and player authority", () => {
   it("passes the room to decision constant lookup", () => {
     const room = { players: new Map(), numSequentialGames: 0 };
     const gameConstants = vi.fn((candidate) => ({
@@ -57,24 +57,19 @@ describe("room constant and avatar authority", () => {
     expect(durationMs).toHaveBeenCalledWith(room);
   });
 
-  it("uses pinned player colors and avatar shapes for the room", () => {
+  it("tracks active players and VIP authority without requiring presentation data", () => {
     const room = {
-      players: new Map(),
-      gameData: {
-        avatarShapes: ["pinned-shape"],
-        defaultGameConstants: { playerColors: ["#123456"] }
-      }
+      players: new Map([
+        ["p1", { id: "p1", active: false }],
+        ["p2", { id: "p2", active: true }]
+      ]),
+      vipPlayerId: "",
+      startToken: ""
     };
-    const runtime = createPlayerStateRuntime({
-      avatarShapes: ["legacy-shape"],
-      gameConstants: (candidate) => candidate?.gameData?.defaultGameConstants || { playerColors: ["#abcdef"] },
-      normalizeColor: (value) => value,
-      randomToken: () => "token"
-    });
+    const runtime = createPlayerStateRuntime({ randomToken: () => "token" });
 
-    expect(runtime.makeAvatar(0, room)).toEqual({ color: "#123456", shape: "pinned-shape" });
-    expect(runtime.makeRandomAvatar(room, "p1")).toEqual({ color: "#123456", shape: "pinned-shape" });
-    expect(runtime.normalizeAvatarShape("pinned-shape", room)).toBe("pinned-shape");
-    expect(runtime.normalizeAvatarShape("legacy-shape", room)).toBe("");
+    expect(runtime.activePlayers(room)).toEqual([{ id: "p2", active: true }]);
+    runtime.selectVip(room);
+    expect(room).toMatchObject({ vipPlayerId: "p2", startToken: "token" });
   });
 });

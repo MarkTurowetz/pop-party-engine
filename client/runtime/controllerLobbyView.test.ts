@@ -9,7 +9,6 @@ describe("createControllerLobbyView (ported)", () => {
       elements: {} as never,
       getStartButton: () => ({} as HTMLButtonElement),
       hideViews: vi.fn(),
-      setAvatar: vi.fn(),
       showView: vi.fn()
     });
     expect(view.renderLobby).toBeTypeOf("function");
@@ -32,7 +31,6 @@ describe("createControllerLobbyView (ported)", () => {
       elements: {} as never,
       getStartButton: () => ({} as HTMLButtonElement),
       hideViews,
-      setAvatar: vi.fn(),
       showView
     });
 
@@ -53,7 +51,6 @@ describe("createControllerLobbyView (ported)", () => {
       elements: { meta: {} as HTMLElement } as never,
       getStartButton: () => ({} as HTMLButtonElement),
       hideViews,
-      setAvatar: vi.fn(),
       setText: vi.fn(),
       showView
     });

@@ -60,7 +60,7 @@ function createLivePrototypeRoomContentRuntime(options = {}) {
     room,
     snapshot,
     release,
-    { reset = false, deferUntilNextSession = false } = {}
+    { reset = false, deferUntilNextSession = false, hotReload = false } = {}
   ) {
     const requestedRevision = String(release?.contentRevision || snapshot?.revision || "");
     const installedRevision = String(
@@ -82,10 +82,11 @@ function createLivePrototypeRoomContentRuntime(options = {}) {
       return Object.freeze({ deferred: true });
     }
 
-    // A room owns one immutable content view for the duration of a game.
-    // Authoring edits, session recovery, and an expired Tools heartbeat may
-    // change what the next game should use, but must never interrupt the game
-    // that is already running.
+    // Gameplay-affecting authoring remains session-boundary data. Validated
+    // presentation-only Art/Layout snapshots are different: live-prototype is
+    // an authoring surface, so the existing room must resolve the same saved
+    // composition that the Tools and the next room resolve without restarting
+    // Flow or replaying the active moment.
     if (reset && String(room?.phase || "lobby") !== "lobby") {
       pendingPins.set(room, pin);
       return Object.freeze({ deferred: true });
@@ -93,6 +94,10 @@ function createLivePrototypeRoomContentRuntime(options = {}) {
 
     pendingPins.delete(room);
     applyPin(room, pin);
+    if (hotReload) {
+      broadcastLobby(room);
+      return Object.freeze({ deferred: false, hotReloaded: true });
+    }
     if (reset) {
       enterLobbyPhase(room);
       broadcastLobby(room);

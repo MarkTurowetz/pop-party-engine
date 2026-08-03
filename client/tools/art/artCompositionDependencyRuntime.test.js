@@ -31,10 +31,10 @@ describe("art composition dependency report", () => {
     expect(report.compositionRevisions.child).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it("tracks the authored player prefabs without retaining legacy player compositions", () => {
+  it("tracks arbitrary game-authored semantic compositions without legacy fallbacks", () => {
     const runtimeIds = artRuntimeReferences({
-      "engine.stage.playerIdentityWidget": { compositionId: "prefab-player-widget-mc" },
-      "engine.shared.playerAvatar": { compositionId: "prefab-player-avatar-mc" },
+      "reference.stage.playerPresentation": { compositionId: "prefab-player-widget-mc" },
+      "reference.stage.playerAvatar": { compositionId: "prefab-player-avatar-mc" },
       "engine.stage.transition": { compositionId: "wipe-widget-mc" }
     }).map((reference) => reference.compositionId);
     expect(runtimeIds).toContain("prefab-player-widget-mc");

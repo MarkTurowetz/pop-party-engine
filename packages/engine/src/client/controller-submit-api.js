@@ -87,12 +87,6 @@ function createControllerSubmitApi(options) {
     return postJson(isCancel ? "/api/cancel-start" : "/api/start", { ...base, startToken });
   }
 
-  function updateAvatar(shape) {
-    const base = payloadBase();
-    if (!base) return Promise.resolve(null);
-    return postJson("/api/avatar", { ...base, shape });
-  }
-
   return Object.freeze({
     heartbeat,
     grantMicrophoneAccess,
@@ -102,8 +96,7 @@ function createControllerSubmitApi(options) {
     submitChoice,
     submitGamePluginInput,
     submitText,
-    startOrCancelGame,
-    updateAvatar
+    startOrCancelGame
   });
 }
 

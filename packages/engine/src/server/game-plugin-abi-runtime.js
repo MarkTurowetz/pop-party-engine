@@ -159,7 +159,43 @@ function deterministicRandom(seedText) {
   };
 }
 
-function publicPlayerSnapshot(player, room) {
+function playerNeedsInput(player, room, currentAction) {
+  const currentActionId = String(currentAction?.id || "");
+  const hasChoiceInput = Boolean(room.choiceInputActionId) && room.choiceInputActionId === currentActionId;
+  const hasTextInput = Boolean(room.textInputActionId) && room.textInputActionId === currentActionId;
+  const hasMicrophoneInput = Boolean(room.microphoneAccessActionId) && room.microphoneAccessActionId === currentActionId;
+  const hasPluginInput = Boolean(room.gamePluginInputActionId) && room.gamePluginInputActionId === currentActionId;
+  const needsChoice = hasChoiceInput && (
+    room.choiceInputMode === "continuous" || !room.choiceInputAnswers?.get(player.id)
+  );
+  const needsText = hasTextInput
+    && (room.textInputMode !== "voiceVip" || player.id === room.vipPlayerId)
+    && room.textInputAnswers?.get(player.id)?.done !== true;
+  const needsMicrophone = hasMicrophoneInput
+    && (room.microphoneAccessMode === "all" || player.id === room.vipPlayerId)
+    && room.microphoneAccessAnswers?.get(player.id)?.done !== true;
+  const needsPlugin = hasPluginInput
+    && room.gamePluginInputRecipientIds?.has(player.id) === true
+    && !room.gamePluginInputSubmissions?.has(player.id);
+  return player.active !== false && (needsChoice || needsText || needsMicrophone || needsPlugin);
+}
+
+function displayedAnswerSnapshot(player, room) {
+  const answer = room.displayedPlayerAnswers?.get(player.id) || null;
+  if (!answer) return null;
+  return Object.freeze({
+    ...(answer.optionIndex == null ? {} : { optionIndex: Number(answer.optionIndex) }),
+    ...(answer.originalOptionIndex == null ? {} : { originalOptionIndex: Number(answer.originalOptionIndex) }),
+    ...(answer.text == null ? {} : { text: String(answer.text) }),
+    done: answer.done === true,
+    invalid: answer.invalid === true,
+    correct: answer.correct === true ? true : answer.correct === false ? false : null,
+    hidden: room.hiddenPlayerAnswerIds?.has(player.id) === true,
+    nonce: answer.nonce || 0
+  });
+}
+
+function publicPlayerSnapshot(player, room, currentAction = null) {
   if (!player) return null;
   return Object.freeze({
     id: String(player.id || ""),
@@ -167,7 +203,9 @@ function publicPlayerSnapshot(player, room) {
     active: player.active !== false,
     isVip: String(room.vipPlayerId || "") === String(player.id || ""),
     points: Number(player.points || 0),
-    avatar: Object.freeze(cloneJson(player.avatar, {}))
+    pendingPoints: Number(player.pendingPoints || 0),
+    needsInput: playerNeedsInput(player, room, currentAction),
+    displayedAnswer: displayedAnswerSnapshot(player, room)
   });
 }
 
@@ -306,50 +344,18 @@ function rendererBindingManifest(binding) {
 
 function rendererManifest(registration, surface) {
   const value = registration.value;
-  const targetKind = String(value.target.kind || "layout");
   return Object.freeze({
     id: registration.id,
     name: String(value.name),
     surface,
-    target: targetKind === "rosterItem"
-      ? Object.freeze({
-          kind: "rosterItem",
-          semanticRole: String(value.target.semanticRole),
-          source: String(value.target.source),
-          playerIdSource: String(value.target.playerIdSource)
-        })
-      : Object.freeze({
-          kind: "layout",
-          layoutElementId: String(value.target.layoutElementId),
-          layoutScope: String(value.target.layoutScope || "moment"),
-          layoutLayerId: String(value.target.layoutLayerId || "")
-        }),
+    target: Object.freeze({
+      kind: "layout",
+      layoutElementId: String(value.target.layoutElementId),
+      layoutScope: String(value.target.layoutScope || "moment"),
+      layoutLayerId: String(value.target.layoutLayerId || "")
+    }),
     bindings: Object.freeze(value.bindings.map(rendererBindingManifest))
   });
-}
-
-function assertRendererRosterModel(registration, model, players) {
-  if (String(registration.value.target.kind || "layout") !== "rosterItem") return;
-  const target = registration.value.target;
-  const selected = rendererPathValue(model, target.source);
-  if (!Array.isArray(selected)) throw new Error(`model.${target.source} must be an array`);
-  const publicPlayerIds = new Set(players.map((player) => String(player.id || "")));
-  const playerIds = new Set();
-  for (let index = 0; index < selected.length; index += 1) {
-    const item = selected[index];
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      throw new Error(`model.${target.source}[${index}] must be an object`);
-    }
-    const playerId = String(rendererPathValue(item, target.playerIdSource) ?? "").trim();
-    if (!playerId || playerIds.has(playerId)) {
-      throw new Error(`model.${target.source} contains an empty or duplicate player id "${playerId}"`);
-    }
-    if (!publicPlayerIds.has(playerId)) {
-      throw new Error(`model.${target.source} contains foreign player id "${playerId}"`);
-    }
-    playerIds.add(playerId);
-    assertRendererCollectionModel(registration.value.bindings, item, `model.${target.source}[${playerId}]`);
-  }
 }
 
 function rendererPathValue(root, path) {
@@ -381,7 +387,12 @@ function assertRendererCollectionModel(bindings, model, path = "model") {
   }
 }
 
-function createGameRendererRuntime({ stageRenderers = [], controllerRenderers = [], activePlayers } = {}) {
+function createGameRendererRuntime({
+  stageRenderers = [],
+  controllerRenderers = [],
+  activePlayers,
+  currentAction = () => null
+} = {}) {
   const registrations = [
     ...stageRenderers.map((registration) => ({ ...registration, surface: "stage" })),
     ...controllerRenderers.map((registration) => ({ ...registration, surface: "controller" }))
@@ -389,7 +400,9 @@ function createGameRendererRuntime({ stageRenderers = [], controllerRenderers = 
   const manifests = registrations.map((registration) => rendererManifest(registration, registration.surface));
 
   function viewModels(room, viewerPlayerId = "") {
-    const players = (activePlayers ? activePlayers(room) : Array.from(room.players?.values?.() || [])).map((player) => publicPlayerSnapshot(player, room));
+    const action = currentAction(room);
+    const players = (activePlayers ? activePlayers(room) : Array.from(room.players?.values?.() || []))
+      .map((player) => publicPlayerSnapshot(player, room, action));
     const result = {};
     for (const registration of registrations) {
       if (registration.surface === "controller" && !viewerPlayerId) continue;
@@ -413,10 +426,7 @@ function createGameRendererRuntime({ stageRenderers = [], controllerRenderers = 
       try {
         const selected = registration.value.select(context);
         assertJsonValue(selected, `Game renderer "${registration.id}" view model`);
-        assertRendererRosterModel(registration, selected, players);
-        if (String(registration.value.target.kind || "layout") !== "rosterItem") {
-          assertRendererCollectionModel(registration.value.bindings, selected);
-        }
+        assertRendererCollectionModel(registration.value.bindings, selected);
         result[registration.id] = cloneJson(selected, null);
       } catch (error) {
         createRuntimeFault(room, {

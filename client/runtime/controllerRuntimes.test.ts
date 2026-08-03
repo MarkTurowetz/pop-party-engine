@@ -101,7 +101,6 @@ describe("createControllerStateRuntime (ported)", () => {
   function options(over: Partial<ControllerStateRuntimeOptions> = {}): ControllerStateRuntimeOptions {
     const view = (render: () => boolean | number | null) => ({ render: vi.fn(render) });
     return {
-      closeAvatarPicker: vi.fn(),
       getChoiceInputView: () => view(() => true),
       getGlobalActionView: () => ({ render: vi.fn(() => true), renderMessage: vi.fn(() => null) }),
       getLobbyView: () => ({ renderInGamePhase: vi.fn(), renderLobby: vi.fn(() => 99) }),

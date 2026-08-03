@@ -9,13 +9,11 @@ interface SubmitApi {
 
 export interface ControllerActionBindingsOptions {
   applyLayoutForPhase: (phase: string) => void;
-  closeAvatarPicker: (options: { commit: boolean }) => void;
   elements: Record<string, HTMLButtonElement & HTMLElement> & Record<string, HTMLElement>;
   getStartButton: () => HTMLButtonElement | null;
   getControllerState: () => Dict | null | undefined;
   getSessionRuntime: () => { sendLeaveBeacon: (origin: string) => void };
   getSubmitApi: () => SubmitApi;
-  openAvatarPicker: () => void;
   origin: string;
   renderState: (lobby: unknown) => void;
   setMetaText: (message: string) => void;
@@ -24,13 +22,11 @@ export interface ControllerActionBindingsOptions {
 export function createControllerActionBindings(options: ControllerActionBindingsOptions) {
   const {
     applyLayoutForPhase,
-    closeAvatarPicker,
     elements,
     getStartButton,
     getControllerState,
     getSessionRuntime,
     getSubmitApi,
-    openAvatarPicker,
     origin,
     renderState,
     setMetaText
@@ -52,17 +48,6 @@ export function createControllerActionBindings(options: ControllerActionBindings
     });
   }
 
-  function bindAvatarPicker(): void {
-    elements.avatar.addEventListener("click", openAvatarPicker);
-    elements.avatarPicker.addEventListener("click", (event) => {
-      if (event.target === elements.avatarPicker) closeAvatarPicker({ commit: true });
-    });
-    elements.avatarPickerPanel.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-    elements.avatarPickerDoneButton.addEventListener("click", () => closeAvatarPicker({ commit: true }));
-  }
-
   function bindWindowLifecycle(): void {
     window.addEventListener("pagehide", () => {
       getSessionRuntime().sendLeaveBeacon(origin);
@@ -77,7 +62,6 @@ export function createControllerActionBindings(options: ControllerActionBindings
 
   function bindAll(): void {
     bindStartButton();
-    bindAvatarPicker();
     bindWindowLifecycle();
   }
 

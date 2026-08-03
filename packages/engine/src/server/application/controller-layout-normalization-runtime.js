@@ -30,19 +30,6 @@ function migrateControllerLocalButtonElement(element) {
   };
 }
 
-function migrateControllerPlayerBannerElement(element, playerBannerCompositionId) {
-  const compactId = String(element?.id || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (compactId !== "controllerplayerbanner") return element;
-  const isCurrentWidget = Number(element.playerBannerWidgetVersion || 0) >= 1;
-  return {
-    ...element,
-    kind: "art",
-    artCompositionId: playerBannerCompositionId,
-    defaultAnimationState: isCurrentWidget ? element.defaultAnimationState : "On",
-    playerBannerWidgetVersion: 1
-  };
-}
-
 function migrateControllerActionElement(element, stateId) {
   if (!element) return element;
   if (element.id === "controllerglobalactionmessage") {
@@ -75,13 +62,10 @@ function migrateControllerActionState(state) {
 }
 
 function createControllerLayoutNormalizationRuntime(options) {
-  const playerBannerCompositionId = String(options.semanticRoles?.["engine.controller.playerIdentity"]?.compositionId || "");
-  if (!playerBannerCompositionId) throw new Error("Controller layout normalization requires engine.controller.playerIdentity");
   return createEngineControllerLayoutNormalizationRuntime({
     ...options,
     includeMissingDefaultStates: true,
-    migrateControllerElement: (element) =>
-      migrateControllerPlayerBannerElement(migrateControllerLocalButtonElement(element), playerBannerCompositionId),
+    migrateControllerElement: migrateControllerLocalButtonElement,
     migrateControllerState: migrateControllerActionState,
     shouldIncludeControllerState: (state) => state.id !== "intro",
     shouldIncludeGlobalElement: (element) => !legacyGlobalActionIds.has(element.id),

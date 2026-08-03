@@ -43,7 +43,6 @@ async function main() {
   assert.ok(active.gameData.defaultArtCompositions.length > 0, "Reference art must materialize from its bundle");
   assert.ok(active.gameData.defaultStageLayouts.states.length > 0, "Reference stage layouts must materialize from its bundle");
   assert.ok(active.gameData.defaultControllerLayouts.states.length > 0, "Reference controller layouts must materialize from its bundle");
-  assert.deepEqual(active.gameData.avatarShapes, authoringSourceGameData.avatarShapes);
   assert.deepEqual(active.gameData.availableFlowTransitions, authoringSourceGameData.availableFlowTransitions);
   const roomPins = createRoomContentPinRuntime({ contentStore, gameId: referenceGame.gameId });
   const room = {};

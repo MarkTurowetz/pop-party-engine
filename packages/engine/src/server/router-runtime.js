@@ -39,7 +39,6 @@ function createRouterRuntime({
   handleSaveHostAudios,
   handleUploadHostAudioAsset,
   handleSaveStageLayouts,
-  handleSelectAvatar,
   handleStart,
   handleStageEvents,
   handleStageTestConfig,
@@ -400,11 +399,6 @@ function createRouterRuntime({
 
     if (req.method === "POST" && url.pathname === "/api/heartbeat") {
       handleHeartbeat(req, res);
-      return;
-    }
-
-    if (req.method === "POST" && url.pathname === "/api/avatar") {
-      handleSelectAvatar(req, res);
       return;
     }
 

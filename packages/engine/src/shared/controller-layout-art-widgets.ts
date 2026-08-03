@@ -9,10 +9,8 @@
   const controllerChoiceOptionArtCompositionId = "controller-choice-option";
 
   const controllerLayoutWidgetArtCompositionIds: Record<string, string> = Object.freeze({
-    controlleravatar: "controller-avatar-button",
     controllerinvalidbanner: "controller-invalid-banner",
     controllermicaccessbutton: controllerPrimaryButtonArtCompositionId,
-    controllerplayerbanner: "controller-player-banner",
     controllertextinput: "controller-text-input-field",
     controllertextsubmitbutton: controllerPrimaryButtonArtCompositionId,
     controllervoicebutton: controllerPrimaryButtonArtCompositionId,

@@ -87,8 +87,8 @@ concepts into focused modules.
   - `local-draft-runtime.js` owns unsaved tool draft storage endpoints and room refreshes.
   - `network-urls-runtime.js` owns LAN URL discovery for startup logging.
   - `player-public-runtime.js` owns player serialization for lobby/controller payloads.
-  - `player-session-handlers-runtime.js` owns join, heartbeat, avatar selection, and leave endpoints.
-  - `player-state-runtime.js` owns player avatar helpers, active-player filtering, and VIP selection.
+  - `player-session-handlers-runtime.js` owns join, heartbeat, and leave endpoints.
+  - `player-state-runtime.js` owns active-player filtering and VIP selection.
   - `room-action-effects-runtime.js` owns one-time room action-effect dispatch; effect behavior
     lives on descriptors in `shared/flow-action-registry.js`.
   - `room-state-runtime.js` owns default room construction and room lookup helpers.
@@ -118,8 +118,7 @@ concepts into focused modules.
     persisted action normalization, and public stage/controller serialization.
   - `game-constants-schema.js` owns shared custom game constant primitive/type
     normalization for the Constants Tool and server runtime.
-  - `game-data.js` owns default layouts, default constants, prompts, avatar metadata,
-    and art manifest metadata.
+  - `game-data.js` owns default layouts, default constants, prompts, and art manifest metadata.
   - `controller-layout-states.js` owns the semantic controller layout ids and the choice/text
     input-to-layout routing shared by the server, controller runtime, and Layout Tool.
 - `index.html`
@@ -128,7 +127,7 @@ concepts into focused modules.
 - `client/`
   - Browser-side modules served directly by the Node server without a build step.
   - `client/stage/visual-object.js` owns the generic CSS visual object animation contract
-    used by stage text and player answer bubbles.
+    used by Stage presentation.
   - `client/stage/game-object.js` owns the shared game-object wrapper that routes
     staged elements through a consistent visibility/default-state/animation API,
     including custom visual-object animation handlers for assets with bespoke motion.
@@ -265,24 +264,16 @@ concepts into focused modules.
     references, while dynamic duplicate keys or non-JSON-safe models fault that projection before
     publication. Stage collection updates remain within the Stage projection's frame-coalesced
     renderer slice; Controller-private projections do not invalidate Stage.
-  - A Stage renderer may instead target the existing player roster with
-    `target: { kind: "rosterItem", semanticRole: "engine.stage.playerIdentityWidget", source,
-    playerIdSource }`. The selected source is a public array keyed by player ID; each matching model
-    layers text, component, lifecycle-state, and recursive collection bindings onto that player's
-    existing Player Widget renderer. Readiness resolves targets through the authored Player Widget
-    composition and rejects bindings inside the engine-owned answer, avatar, name, VIP, and points
-    subtrees. An extended Player Widget must also author exactly one top-level Art container with
-    instance label `playerRosterAnchor`. Its center and bounds define the stable identity footprint
-    distributed inside the authored `playerlobby` Layout host, so adding game-owned content outside
-    that footprint cannot move the avatar/name/VIP block. The anchor is reserved from plugin
-    bindings and malformed or ambiguous anchors fault readiness; legacy Player Widgets without a
-    roster extension retain whole-canvas placement. Empty, duplicate, foreign, private, or
-    non-JSON-safe player models fault closed.
-    Stable roster tiles, root renderers, animation timelines, and nested keyed items are reconciled
-    in place. Active game-plugin input recipients participate in the public `needsInput` signal, so
-    their existing avatar plays Choosing Start and, after submission, Choosing End; that deliberate
-    public roster change may apply only the Stage roster slice while unrelated Controller-private
-    transitions remain invisible to Stage.
+  - Player identity and interaction state are presentation-neutral. The engine owns authenticated
+    player IDs, names, VIP selection, points, pending points, input eligibility, and explicitly
+    displayed answer state, but it does not create an avatar, roster, answer bubble, or points
+    widget. Those public fields are available to game-owned renderer selectors. A game that wants
+    player visuals authors an ordinary Layout collection and an Art Manager Game Object, then binds
+    the public player array through the same recursive keyed collection contract described above.
+    An empty plugin therefore has no player Art at all; the copied reference game demonstrates one
+    possible presentation without making its compositions part of the engine ABI. Player-related
+    Flow state actions still complete safely when no renderer is registered. Private Controller
+    input models remain unavailable to Stage and to other viewers.
   - Controller Layout supports named persistent layers in addition to Global and the active state.
     Each layer has a normalized ID and explicit z-index, remains mounted across active-state visits,
     and can be hidden per state without clearing its DOM node, Art renderer, or timeline. Runtime
@@ -416,20 +407,11 @@ concepts into focused modules.
 - When a flow action explicitly invokes a labeled child component, that exact child becomes the
   action's callback target. The parent may be placed in an immediate `On` setup state, but it does
   not duplicate the child's animation or contribute a second completion signal.
-- Three deliberately fire-and-forget runtime command sources are allowed. A newly spawned dynamic
-  player may play `Appear` on its avatar MC, name MC, and VIP MC; input-state changes may play
-  `ChoosingStart` or `ChoosingEnd` on avatar behavior; Show Points may start its popup animation.
-  None of these animations contributes to an action barrier or advances game flow.
-- `Show Points` uses the direct `pointPopupContainer` child of Player Widget MC as an authored
-  position anchor. The popup itself is spawned into an overflow-visible roster overlay at the
-  live rendered container's center. Runtime must not project an older composition snapshot, infer
-  this point from the avatar, or synthesize an entity from a similarly named DOM node. If the
-  awarded player's live authored container is unavailable, the popup is rejected and the stage
-  reports a game-object diagnostic. Each popup plays only the top-level 1.5-second Player Point Popup `Popup` timeline. Its
-  terminal callback removes only that popup; it never joins or completes the Show Points action.
-  Pause, quit, and moment teardown cancel the timeline and remove the popup immediately without
-  waiting for cleanup. CSS supplies centering only and owns no popup motion.
-- Composite reveal widgets follow the same ownership model as Player Widget MC. Voting Card MC
+- Player/session/input/answer/correctness/points/VIP/needs-input actions are presentation-neutral
+  engine authority and complete without Art. A game may project those public values into its own
+  Layout and Art through ordinary plugin renderer bindings. Those optional timelines never become
+  action-completion dependencies, and the absence of a visual target is not an error.
+- Composite reveal widgets own their complete visual hierarchy. Voting Card MC
   owns labeled `cardArt`, `answer`, `author`, `voters`, and `voteCount` child prefabs; runtime code
   reveals those children through their timelines. `cardArt` owns the deeper stopped
   `correctnessState` (`Neutral`/`Correct`) instead of runtime code assigning presentation colors.

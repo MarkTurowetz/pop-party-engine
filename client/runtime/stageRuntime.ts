@@ -62,7 +62,6 @@ declare global {
     gameConstants: Dict;
     // app-shell DOM refs (used by the stage orchestrator).
     craftingTimer: El;
-    playerLobby: El;
     stageDebugAction: El;
     stageDebugAlert: El;
     stageWipe: El;
@@ -100,13 +99,15 @@ const artComposition = (id: string): Dict | null => w().artComposition?.(id) || 
 
 let stageTextControllerInstance: { init: () => void; set: (t: unknown, o: Dict) => number } | null = null;
 let craftingTimerControllerInstance: Dict | null = null;
-let playerRosterRendererInstance: Dict | null = null;
 let stageDebugPanelInstance: Dict | null = null;
 let stageWipeControllerInstance: Dict | null = null;
 let stageRenderOrchestratorInstance: Dict | null = null;
 let stageWidgetArtRendererInstance: Dict | null = null;
 let stageCountdownPopupControllerInstance: StageCountdownPopupController | null = null;
 let stageFrameRenderQueue: AnimationFrameRenderQueue<Dict> | null = null;
+let loadedStageContentRevision = "";
+let pendingStageContentLobby: Dict | null = null;
+let stageContentReloadPromise: Promise<void> | null = null;
 const initializedStageWidgetEntityRenderers = new WeakMap<El, unknown>();
 let renderedStageJoinQrUrl = "";
 const stageManagedTextSources = new StageManagedTextSources();
@@ -160,17 +161,6 @@ function craftingTimerController(): Dict | null {
   return craftingTimerControllerInstance;
 }
 
-function playerRosterRenderer(): Dict | null {
-  if (!playerRosterRendererInstance && w().PartyGamePlayerRoster) {
-    playerRosterRendererInstance = (w().PartyGamePlayerRoster as unknown as { createRenderer: (o: Dict) => Dict }).createRenderer({
-      host: w().playerLobby, document, gameObjectApi: w().PartyGameGameObject || w().PartyGameStageGameObject,
-      timerSink: (timerId: number) => w().textObjectTimers.push(timerId),
-      getComposition: artComposition
-    });
-  }
-  return playerRosterRendererInstance;
-}
-
 function stageDebugPanel(): Dict | null {
   if (!stageDebugPanelInstance && w().PartyGameStageDebug) {
     stageDebugPanelInstance = (w().PartyGameStageDebug as unknown as { createPanel: (o: Dict) => Dict }).createPanel({
@@ -182,10 +172,7 @@ function stageDebugPanel(): Dict | null {
 
 const PartyGameStageDebugRuntime = {
   showGameObjectWarning: (details: Dict) => (stageDebugPanel() as { showGameObjectWarning?: (d: Dict) => void } | null)?.showGameObjectWarning?.(details),
-  showArtAssetWarning: (details: Dict) => (stageDebugPanel() as { showGameObjectWarning?: (d: Dict) => void } | null)?.showGameObjectWarning?.(details),
-  playerRosterItemForId: (playerId: string) => (
-    playerRosterRenderer() as { rosterItemForPlayer?: (id: string) => Dict | null } | null
-  )?.rosterItemForPlayer?.(playerId) || null
+  showArtAssetWarning: (details: Dict) => (stageDebugPanel() as { showGameObjectWarning?: (d: Dict) => void } | null)?.showGameObjectWarning?.(details)
 };
 w().PartyGameStageDebugRuntime = PartyGameStageDebugRuntime;
 
@@ -251,7 +238,7 @@ let votingCardVisualRenderer: Dict | null = null;
 function votingCardRenderer(): Dict | null {
   if (!votingCardVisualRenderer && w().votingCardLayer && w().PartyGameVotingCardVisuals) {
     votingCardVisualRenderer = (w().PartyGameVotingCardVisuals as unknown as { createRenderer: (o: Dict) => Dict }).createRenderer({
-      layer: w().votingCardLayer, visualAnimation: visualAnimation(), avatarClass: w().avatarClass, avatarFrameImage: w().avatarFrameImage, dinoIcon: w().dinoIcon, playerAvatarArt: w().playerAvatarArt,
+      layer: w().votingCardLayer, visualAnimation: visualAnimation(),
       gameObjectApi: w().PartyGameGameObject || w().PartyGameStageGameObject, getComposition: (id: string) => artComposition(id)
     });
   }
@@ -263,53 +250,22 @@ function clearVotingCardVisuals(options: Dict = {}): void {
 }
 
 function setPlayerAnswerBubblesShownForAction(isShown: boolean, options: Dict = {}): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const renderer = playerRosterRenderer() as { setAnswerBubblesShown?: (s: boolean, o: Dict) => number } | null;
-    if (!renderer?.setAnswerBubblesShown) {
-      reject(new Error("Player answer bubble renderer unavailable"));
-      return;
-    }
-    renderer.setAnswerBubblesShown(isShown, { ...options, complete: resolve });
-  });
+  void isShown;
+  void options;
+  return Promise.resolve();
 }
 
 function revealPlayerAnswerCorrectnessForAction(action: Dict): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const renderer = playerRosterRenderer() as { revealAnswerCorrectness?: (o: Dict) => number } | null;
-    if (!renderer?.revealAnswerCorrectness) {
-      reject(new Error("Player answer bubble renderer unavailable"));
-      return;
-    }
-    renderer.revealAnswerCorrectness({
-      instant: action.instant === true,
-      answerCorrectness: action.answerCorrectness,
-      complete: resolve
-    });
-  });
-}
-
-function renderStagePlayers(players: Dict[], options: Dict = {}): void {
-  (playerRosterRenderer() as { render?: (p: Dict[], o?: Dict) => void } | null)?.render?.(players, options);
+  void action;
+  return Promise.resolve();
 }
 
 function setPlayersShownForAction(action: Dict): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const renderer = playerRosterRenderer() as { setShown?: (s: boolean, o: Dict) => number } | null;
-    if (!renderer?.setShown) {
-      reject(new Error("Player roster renderer unavailable"));
-      return;
-    }
-    renderer.setShown(action?.isShown !== false, { instant: action?.instant === true, complete: resolve });
-  });
+  void action;
+  return Promise.resolve();
 }
 
-function renderPointPopups(popups: Dict[] = [], options: Dict = {}): void {
-  (playerRosterRenderer() as { renderPointPopups?: (p: Dict[], o?: Dict) => void } | null)?.renderPointPopups?.(popups, options);
-}
-
-function showPointPopupsForAction(_action: Dict): void {
-  (playerRosterRenderer() as { showPointPopupsForAction?: () => void } | null)?.showPointPopupsForAction?.();
-}
+function showPointPopupsForAction(_action: Dict): void { void _action; }
 
 function votingCardRenderOptions(lobby: Dict): Dict {
   const action = (lobby?.action as Dict) || null;
@@ -453,8 +409,6 @@ function resetStageObjects(options: Dict = {}): void {
   if (options.resetWipe === true) cancelStageWipe();
   clearStageAudioPlayers();
   (craftingTimerController() as { reset?: () => void } | null)?.reset?.();
-  (playerRosterRenderer() as { resetAnswerBubbles?: () => void } | null)?.resetAnswerBubbles?.();
-  (playerRosterRenderer() as { clearPointPopups?: () => void } | null)?.clearPointPopups?.();
   clearVotingCardVisuals({ instant: true });
   initStageTextObjects();
 }
@@ -482,8 +436,6 @@ async function endCurrentMomentForAction(_action: Dict, options: Dict = {}): Pro
   setPresentationClickPromptForAction(false, { instant: true });
   clearStageAudioPlayers();
   (craftingTimerController() as { reset?: () => void } | null)?.reset?.();
-  (playerRosterRenderer() as { resetAnswerBubbles?: () => void; clearPointPopups?: () => void } | null)?.resetAnswerBubbles?.();
-  (playerRosterRenderer() as { clearPointPopups?: () => void } | null)?.clearPointPopups?.();
   clearVotingCardVisuals({ instant: true });
   w().resetStageMomentLayout?.();
   initStageTextObjects();
@@ -811,22 +763,6 @@ function applyStageState(lobby: Dict, options: Dict = {}): void {
     renderStageWidgetBinding("presentationClickPrompt");
   }
 
-  const rosterChanged = changed("roster", {
-    players,
-    playersShown: lobby.playersShown,
-    liveAnswerPreviewType: (lobby.textInput as Dict | null)?.type
-  });
-  if (rosterChanged) {
-    renderStagePlayers(players, {
-      // Voice capture owns a live answer preview: the temporary T and the final
-      // transcript update the current Player Answer Bubble MC while this input is active.
-      liveAnswerPreviewEnabled: String((lobby.textInput as Dict | null)?.type || "") === "voice"
-    });
-  }
-
-  if (changed("pointPopups", lobby.pendingPointPopups || [])) {
-    renderPointPopups((lobby.pendingPointPopups as Dict[]) || [], { deferAnimation: true });
-  }
   const votingOptions = votingCardRenderOptions(lobby);
   if (changed("voting", { cards: lobby.votingCards || [], options: votingOptions })) {
     renderVotingCards((lobby.votingCards as Dict[]) || [], votingOptions);
@@ -876,8 +812,8 @@ function applyStageState(lobby: Dict, options: Dict = {}): void {
   }
 
   const gamePluginChanged = changed("gamePlugin", (lobby.gamePlugin as Dict | null)?.viewModels || {});
-  if (gamePluginChanged || rosterChanged) {
-    renderGamePluginSurface("stage", lobby, document, { playerRosterRenderer: playerRosterRenderer() });
+  if (gamePluginChanged) {
+    renderGamePluginSurface("stage", lobby, document);
   }
 
   const durationMs = Math.max(0, (globalThis.performance?.now?.() || Date.now()) - startedAt);
@@ -901,7 +837,43 @@ function applyStageState(lobby: Dict, options: Dict = {}): void {
   w().__popPartyStageMetrics = metrics;
 }
 
+function stageContentRevision(lobby: Dict | null): string {
+  return String(((lobby?.release as Dict | null)?.contentRevision) || "");
+}
+
+function reloadPendingStageContent(): void {
+  if (stageContentReloadPromise || !pendingStageContentLobby) return;
+  const lobby = pendingStageContentLobby;
+  pendingStageContentLobby = null;
+  const revision = stageContentRevision(lobby);
+  if (revision && revision === loadedStageContentRevision) {
+    (stageRenderOrchestrator() as { render?: (l: Dict, o?: Dict) => void } | null)?.render?.(lobby);
+    return;
+  }
+  const stageCode = String(lobby.stageCode || "");
+  stageContentReloadPromise = Promise.all([
+    w().loadArtAssets!({ stageCode }),
+    w().loadStageLayouts!({ forceServer: true, stageCode })
+  ]).then(() => {
+    loadedStageContentRevision = revision;
+    (stageRenderOrchestrator() as { render?: (l: Dict, o?: Dict) => void } | null)
+      ?.render?.(lobby, { force: true });
+  }).catch((error) => {
+    setStageWaitingStatus(`Presentation update failed: ${String((error as Error)?.message || error)}`, true);
+  }).finally(() => {
+    stageContentReloadPromise = null;
+    if (pendingStageContentLobby) reloadPendingStageContent();
+  });
+}
+
 function renderStageLobby(lobby: Dict, options: Dict = {}): void {
+  const revision = stageContentRevision(lobby);
+  if (!loadedStageContentRevision) loadedStageContentRevision = revision;
+  if (revision && loadedStageContentRevision && revision !== loadedStageContentRevision) {
+    pendingStageContentLobby = lobby;
+    reloadPendingStageContent();
+    return;
+  }
   (stageRenderOrchestrator() as { render?: (l: Dict, o?: Dict) => void } | null)?.render?.(lobby, options);
 }
 

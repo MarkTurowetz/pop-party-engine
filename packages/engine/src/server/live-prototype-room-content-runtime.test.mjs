@@ -81,6 +81,38 @@ describe("live prototype room content", () => {
     expect(broadcastLobby).toHaveBeenCalledOnce();
   });
 
+  it("hot-reloads presentation content into an active room without restarting Flow", async () => {
+    const { broadcastLobby, enterLobbyPhase, runtime } = fixture();
+    const originalSnapshot = { title: "Art at y=110" };
+    const savedSnapshot = { title: "Art at y=385" };
+    const room = {
+      phase: "active-play",
+      momentVisitId: 17,
+      actionExecutionId: 42,
+      releasePin: Object.freeze({ contentRevision: "working-1" }),
+      contentSnapshot: originalSnapshot,
+      gameData: { title: originalSnapshot.title }
+    };
+
+    const result = await runtime.installRoomSnapshot(
+      room,
+      savedSnapshot,
+      { contentRevision: "working-2", contentSource: "live-prototype" },
+      { reset: false, hotReload: true }
+    );
+
+    expect(result).toEqual({ deferred: false, hotReloaded: true });
+    expect(room).toMatchObject({
+      phase: "active-play",
+      momentVisitId: 17,
+      actionExecutionId: 42,
+      contentSnapshot: savedSnapshot,
+      gameData: { title: "Art at y=385" }
+    });
+    expect(enterLobbyPhase).not.toHaveBeenCalled();
+    expect(broadcastLobby).toHaveBeenCalledOnce();
+  });
+
   it("does not restart an idle lobby when the installed content revision is unchanged", async () => {
     const { broadcastLobby, enterLobbyPhase, runtime } = fixture();
     const snapshot = { title: "Already installed preview content" };

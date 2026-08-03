@@ -137,6 +137,19 @@ function clearDraftObject(drafts) {
   drafts.binaryFiles = {};
 }
 
+function isPresentationOnlyDraft(drafts) {
+  const hasPresentationDraft = Boolean(
+    drafts.layouts
+    || drafts.controllerLayouts
+    || drafts.artCompositions
+    || drafts.artOrganization
+    || drafts.artAssetReplacements
+    || drafts.artDeletedCompositionIds
+  );
+  const hasGameplayDraft = Boolean(drafts.flow || drafts.constants || drafts.hostAudios);
+  return hasPresentationDraft && !hasGameplayDraft;
+}
+
 function createLivePrototypeWorkspaceRuntime(options = {}) {
   const contentStore = options.contentStore;
   if (!contentStore
@@ -277,11 +290,15 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     validateSnapshot(candidate);
     const previousSnapshot = workingSnapshot;
     const previousCounter = workingCounter;
+    const presentationOnly = isPresentationOnlyDraft(drafts);
     workingSnapshot = candidate;
     workingCounter += 1;
     try {
       await onSnapshotChanged(workingSnapshot, workingRelease());
-      await installEveryRoom(workingSnapshot, workingRelease());
+      await installEveryRoom(workingSnapshot, workingRelease(), {
+        reset: !presentationOnly,
+        hotReload: presentationOnly
+      });
       activeSession.recoveryRequired = false;
       return state();
     } catch (error) {
@@ -492,5 +509,6 @@ module.exports = Object.freeze({
   clearDraftObject,
   createLivePrototypeWorkspaceRuntime,
   deserializeWorkspaceCheckpoint,
+  isPresentationOnlyDraft,
   serializeWorkspaceCheckpoint
 });

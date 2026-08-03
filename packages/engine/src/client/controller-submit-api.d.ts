@@ -22,7 +22,6 @@ export interface ControllerSubmitApi {
   submitGamePluginInput(actionId: string, visitId: number, payload: Record<string, unknown>, submissionId: string): Promise<ControllerSubmitJson>;
   submitText(actionId: string, text: string): Promise<ControllerSubmitJson>;
   startOrCancelGame(options?: { isCancel?: boolean; startToken?: string }): Promise<ControllerSubmitJson>;
-  updateAvatar(shape: string): Promise<ControllerSubmitJson>;
 }
 
 export function createControllerSubmitApi(options: ControllerSubmitApiOptions): ControllerSubmitApi;

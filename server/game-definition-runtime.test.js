@@ -11,7 +11,6 @@ const requiredGameData = Object.fromEntries([
   "artGroups",
   "availableFlowActionTypes",
   "availableFlowTransitions",
-  "avatarShapes",
   "defaultArtCompositions",
   "defaultControllerLayouts",
   "defaultGameConstants",

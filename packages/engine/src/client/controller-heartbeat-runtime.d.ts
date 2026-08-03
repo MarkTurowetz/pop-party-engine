@@ -1,7 +1,6 @@
 export interface ControllerHeartbeatOptions {
   applyLayoutForPhase: (phase: string) => void;
   clearIntervalImpl?: (timer: unknown) => void;
-  closeAvatarPicker: (options: { commit: boolean }) => void;
   elements: { meta: HTMLElement } & Record<string, HTMLElement>;
   getJoinButton: () => HTMLButtonElement;
   getControllerState: () => unknown;

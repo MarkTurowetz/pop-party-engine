@@ -374,6 +374,62 @@ describe("game plugin ABI", () => {
     });
   });
 
+  it("exposes authoritative public player state to game-owned renderers without requiring engine Art", () => {
+    const plugin = defineGamePlugin({
+      namespace: "presentation",
+      register(registry) {
+        registry.stageRenderers("presentation.players", {
+          name: "Game-owned player presentation",
+          target: { layoutElementId: "players" },
+          bindings: [{ id: "label", kind: "text", source: "label", targetComponentId: "label" }],
+          select: (context) => ({ label: "Players", players: context.players })
+        });
+      }
+    });
+    const registrations = createGamePluginRegistry().install(plugin);
+    const runtime = createGameRendererRuntime({
+      stageRenderers: registrations.stageRenderers,
+      currentAction: () => ({ id: "choice-1" })
+    });
+    const room = {
+      phase: "play",
+      flowStateId: "play",
+      vipPlayerId: "p1",
+      choiceInputActionId: "choice-1",
+      choiceInputMode: "once",
+      choiceInputAnswers: new Map(),
+      displayedPlayerAnswers: new Map([["p1", { text: "Seven", done: true, correct: true, nonce: 3 }]]),
+      hiddenPlayerAnswerIds: new Set(),
+      gamePluginState: { presentation: {} },
+      flowVariables: {},
+      players: new Map([["p1", {
+        id: "p1",
+        name: "Ava",
+        active: true,
+        points: 12,
+        pendingPoints: 4
+      }]])
+    };
+
+    expect(runtime.viewModels(room)["presentation.players"].players[0]).toEqual({
+      id: "p1",
+      name: "Ava",
+      active: true,
+      isVip: true,
+      points: 12,
+      pendingPoints: 4,
+      needsInput: true,
+      displayedAnswer: {
+        text: "Seven",
+        done: true,
+        invalid: false,
+        correct: true,
+        hidden: false,
+        nonce: 3
+      }
+    });
+  });
+
   it("publishes recursive keyed collection manifests and rejects duplicate dynamic keys", () => {
     const plugin = defineGamePlugin({
       namespace: "cards",
@@ -428,25 +484,26 @@ describe("game plugin ABI", () => {
     expect(room.runtimeFault).toMatchObject({ code: "GAME_PLUGIN_RENDERER_FAILED" });
   });
 
-  it("publishes Stage roster-item extensions and rejects duplicate or foreign public player keys", () => {
+  it("publishes public players through an ordinary game-owned keyed collection", () => {
     const plugin = defineGamePlugin({
       namespace: "roster",
       register(registry) {
         registry.stageRenderers("roster.tableau", {
-          name: "Roster tableau",
-          target: {
-            kind: "rosterItem",
-            semanticRole: "engine.stage.playerIdentityWidget",
-            source: "players",
-            playerIdSource: "playerId"
-          },
-          bindings: [
-            { id: "score", kind: "text", source: "score", targetComponentId: "gameScore" },
-            {
-              id: "rows", kind: "collection", source: "rows", targetComponentId: "gameRows",
-              item: { keySource: "id", artCompositionId: "game-row", bindings: [] }
+          name: "Game-owned player presentation",
+          target: { kind: "layout", layoutElementId: "players", layoutScope: "global" },
+          bindings: [{
+            id: "players", kind: "collection", source: "players",
+            item: {
+              keySource: "id", artCompositionId: "game-player", bindings: [
+                { id: "name", kind: "text", source: "name", targetComponentId: "name" },
+                { id: "score", kind: "text", source: "score", targetComponentId: "score" },
+                {
+                  id: "rows", kind: "collection", source: "rows", targetComponentId: "rows",
+                  item: { keySource: "id", artCompositionId: "game-row", bindings: [] }
+                }
+              ]
             }
-          ],
+          }],
           select: (context) => ({ players: context.state.players })
         });
       }
@@ -455,23 +512,20 @@ describe("game plugin ABI", () => {
     const runtime = createGameRendererRuntime({ stageRenderers: registrations.stageRenderers });
     const room = {
       phase: "play",
-      gamePluginState: { roster: { players: [{ playerId: "p1", score: "12", rows: [] }] } },
+      gamePluginState: { roster: { players: [{ id: "p1", name: "Ava", score: "12", rows: [] }] } },
       flowVariables: {},
       players: new Map([["p1", { id: "p1", name: "Ava", active: true }]])
     };
 
     expect(runtime.manifests[0].target).toEqual({
-      kind: "rosterItem",
-      semanticRole: "engine.stage.playerIdentityWidget",
-      source: "players",
-      playerIdSource: "playerId"
+      kind: "layout",
+      layoutElementId: "players",
+      layoutScope: "global",
+      layoutLayerId: ""
     });
-    expect(runtime.viewModels(room)["roster.tableau"].players[0]).toMatchObject({ playerId: "p1", score: "12" });
+    expect(runtime.viewModels(room)["roster.tableau"].players[0]).toMatchObject({ id: "p1", score: "12" });
 
-    room.gamePluginState.roster.players.push({ playerId: "p1", score: "duplicate", rows: [] });
-    expect(runtime.viewModels(room)["roster.tableau"]).toBeNull();
-    room.runtimeFault = null;
-    room.gamePluginState.roster.players = [{ playerId: "p2", score: "foreign", rows: [] }];
+    room.gamePluginState.roster.players.push({ id: "p1", name: "Duplicate", score: "duplicate", rows: [] });
     expect(runtime.viewModels(room)["roster.tableau"]).toBeNull();
     expect(room.runtimeFault).toMatchObject({ code: "GAME_PLUGIN_RENDERER_FAILED" });
   });

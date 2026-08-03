@@ -24,11 +24,9 @@ function createHarness(room, payload) {
     getExistingRoom: () => room,
     getRoom: () => room,
     lobbyPayload: () => ({ gameSessionId: room.gameSessionId }),
-    makeRandomAvatar: () => ({ shape: "rex", color: "#ff4fa3" }),
-    normalizeAvatarShape: (value) => String(value || ""),
     normalizePlayerId: (value) => String(value || ""),
     normalizeStageCode: (value) => String(value || ""),
-    publicPlayer: (player) => ({ id: player.id, name: player.name, avatar: player.avatar }),
+    publicPlayer: (player) => ({ id: player.id, name: player.name }),
     randomArrayItem: (items) => items[0],
     readJson: async () => payload,
     runtimeCapabilities,
@@ -43,7 +41,6 @@ describe("player session identity", () => {
     const player = {
       id: "p1",
       name: "Ava",
-      avatar: { shape: "trike", color: "#ff4fa3" },
       active: false,
       kickedFromGame: false,
       gameSessionId: 7
@@ -55,7 +52,7 @@ describe("player session identity", () => {
 
     expect(response).toMatchObject({
       status: 200,
-      body: { player: { id: "p1", name: "Ava", avatar: { shape: "trike", color: "#ff4fa3" } } }
+      body: { player: { id: "p1", name: "Ava" } }
     });
     expect(player).toMatchObject({ active: true, gameSessionId: 7 });
   });
@@ -64,7 +61,6 @@ describe("player session identity", () => {
     const player = {
       id: "p1",
       name: "Ava",
-      avatar: { shape: "trike", color: "#ff4fa3" },
       active: false,
       kickedFromGame: false,
       gameSessionId: 7
@@ -82,7 +78,6 @@ describe("player session identity", () => {
     const oldPlayer = {
       id: "p1",
       name: "Ava",
-      avatar: { shape: "trike", color: "#ff4fa3" },
       active: false,
       kickedFromGame: false,
       gameSessionId: 7

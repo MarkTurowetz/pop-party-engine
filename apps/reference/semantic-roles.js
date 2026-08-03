@@ -2,16 +2,6 @@
 
 module.exports = Object.freeze({
   "engine.stage.activeBackground": { compositionId: "stage-background" },
-  "engine.stage.playerIdentityWidget": { compositionId: "prefab-player-widget-mc" },
-  "engine.stage.playerAnswerBubble": {
-    compositionId: "prefab-player-widget-mc",
-    instancePath: ["playerAnswerBubbleMC"]
-  },
-  "engine.stage.playerPointsPopup": { compositionId: "player-point-popup" },
-  "engine.stage.playerPointsPopupContainer": {
-    compositionId: "prefab-player-widget-mc",
-    instancePath: ["pointPopupContainer"]
-  },
   "engine.stage.votingCard": { compositionId: "prefab-voting-card-mc" },
   "engine.stage.timer": { compositionId: "crafting-timer-widget" },
   "engine.stage.transition": { compositionId: "wipe-widget-mc" },
@@ -23,13 +13,10 @@ module.exports = Object.freeze({
   "engine.stage.countdown": { compositionId: "countdown-popup" },
   "engine.stage.presentationAdvancePrompt": { compositionId: "presentation-click-prompt" },
   "engine.stage.layoutText": { compositionId: "layout-text-field" },
-  "engine.shared.playerAvatar": { compositionId: "prefab-player-avatar-mc" },
-  "engine.controller.playerIdentity": { compositionId: "controller-player-banner" },
   "engine.controller.textInput": { compositionId: "controller-text-input-field" },
   "engine.controller.submitControl": { compositionId: "controller-primary-button" },
   "engine.controller.choiceControl": { compositionId: "controller-choice-option" },
   "engine.controller.invalidSubmission": { compositionId: "controller-invalid-banner" },
   "engine.controller.stageCodeInput": { compositionId: "controller-stage-code-field" },
-  "engine.controller.playerNameInput": { compositionId: "controller-player-name-field" },
-  "engine.controller.avatarChoice": { compositionId: "controller-avatar-button" }
+  "engine.controller.playerNameInput": { compositionId: "controller-player-name-field" }
 });

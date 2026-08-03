@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  controllerPlayerBannerRenderOptions,
   layoutTextArtRenderOptions,
   layoutTextArtUsesNestedPrefab,
   normalizedStageLayoutScope,
@@ -19,14 +18,12 @@ beforeEach(() => {
   globalThis.__POP_PARTY_RUNTIME_CONFIG__ = {
     semanticRoles: {
       "engine.stage.layoutText": { compositionId: "layout-text-field" },
-      "engine.controller.playerIdentity": { compositionId: "controller-player-banner" },
       "engine.controller.textInput": { compositionId: "controller-text-input-field" },
       "engine.controller.submitControl": { compositionId: "controller-primary-button" },
       "engine.controller.choiceControl": { compositionId: "controller-choice-option" },
       "engine.controller.invalidSubmission": { compositionId: "controller-invalid-banner" },
       "engine.controller.stageCodeInput": { compositionId: "controller-stage-code-field" },
       "engine.controller.playerNameInput": { compositionId: "controller-player-name-field" },
-      "engine.controller.avatarChoice": { compositionId: "controller-avatar-button" }
     }
   };
 });
@@ -82,23 +79,6 @@ describe("layout text art runtime targeting", () => {
     expect(layoutTextArtRenderOptions({ defaultText: "Round Intro" }).textOverrides).toEqual({
       "prefab-layout-text-field-text/text": "Round Intro",
       "layout-text-field/text": ""
-    });
-  });
-});
-
-describe("controller Player Banner runtime targeting", () => {
-  it("binds identity to the nested name and deepest avatar sprite", () => {
-    expect(controllerPlayerBannerRenderOptions({
-      name: "Ava",
-      avatar: { shape: "trike", color: "#ff4fa3" }
-    })).toEqual({
-      textOverrides: {
-        "player-name-widget/name-text": "Ava",
-        "controller-player-banner/banner-name": "Ava"
-      },
-      componentOverrides: {
-        "avatars/avatar": { imageTint: "#ff4fa3" }
-      }
     });
   });
 });

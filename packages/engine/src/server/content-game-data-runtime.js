@@ -135,16 +135,11 @@ function createBundleGameData(snapshot) {
   if (runtimeDocument.schemaVersion !== 1) {
     throw new Error(`Unsupported bundle runtime-data schema version: ${String(runtimeDocument.schemaVersion ?? "")}`);
   }
-  const avatarShapes = requiredArray(runtimeDocument.avatarShapes, "game-data/runtime.json.avatarShapes", { allowEmpty: false });
   const artGroups = requiredArray(runtimeDocument.artGroups, "game-data/runtime.json.artGroups");
   const availableFlowTransitions = requiredArray(
     runtimeDocument.availableFlowTransitions,
     "game-data/runtime.json.availableFlowTransitions"
   );
-  if (!avatarShapes.every((shape) => typeof shape === "string" && shape.trim())) {
-    throw new Error("Bundle avatar shapes must be non-empty strings");
-  }
-
   return Object.freeze({
     acceptedArtTypes: ACCEPTED_ART_TYPES,
     artAssets: structuredClone(artManifest.assets),
@@ -152,7 +147,6 @@ function createBundleGameData(snapshot) {
     artOrganization: structuredClone(artManifest.organization || {}),
     availableFlowActionTypes: structuredClone(availableFlowActionTypes),
     availableFlowTransitions: structuredClone(availableFlowTransitions),
-    avatarShapes: structuredClone(avatarShapes),
     defaultArtCompositions: Object.freeze(Object.entries(compositions).map(([id, composition]) => ({
       id,
       ...structuredClone(composition)

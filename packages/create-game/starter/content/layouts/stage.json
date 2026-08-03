@@ -54,28 +54,6 @@
         "fontColor": "#ffffff"
       },
       {
-        "id": "playerlobby",
-        "name": "Player Avatars",
-        "selector": "#playerLobby",
-        "kind": "art",
-        "artCompositionId": "",
-        "hidden": false,
-        "locked": false,
-        "x": 960,
-        "y": 720,
-        "width": 1320,
-        "height": 150,
-        "scale": 1.3,
-        "rotation": 0,
-        "tags": [],
-        "defaultAnimationState": "",
-        "defaultText": "",
-        "fontSize": 58,
-        "autoFitText": false,
-        "fontFamily": "",
-        "fontColor": "#ffffff"
-      },
-      {
         "id": "stageBackground",
         "name": "Background Layer",
         "kind": "art",

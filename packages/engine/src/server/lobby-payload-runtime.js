@@ -23,6 +23,16 @@ function createLobbyPayloadRuntime({
   serializeVotingCards,
   textInputPayload
 }) {
+  function stagePlayerProjection(player) {
+    const {
+      input: _input,
+      answer: _answer,
+      needsInput: _needsInput,
+      ...publicStagePlayer
+    } = player;
+    return publicStagePlayer;
+  }
+
   function actionExecutionId(room, action) {
     if (!action) {
       room.actionExecutionSignature = "";
@@ -116,7 +126,10 @@ function createLobbyPayloadRuntime({
       wipeShown: room.wipeShown === true,
       votingCards: serializeVotingCards(room),
       votingResultsShown: room.votingResultsShown === true,
-      players: activePlayers(room).map((player) => publicPlayer(player, room, currentAction))
+      players: activePlayers(room).map((player) => {
+        const projected = publicPlayer(player, room, currentAction);
+        return viewerPlayerId ? projected : stagePlayerProjection(projected);
+      })
     };
     return projectLobbyPayload(room, viewerPlayerId, payload);
   }

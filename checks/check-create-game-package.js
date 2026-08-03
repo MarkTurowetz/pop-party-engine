@@ -350,38 +350,42 @@ module.exports = Object.freeze([
     }
   },
   {
-    id: "generated-fixture.rosterTableaus",
+    id: "generated-fixture.playerPresentations",
     value: {
-      name: "Fixture Existing Roster Extensions",
-      target: {
-        kind: "rosterItem",
-        semanticRole: "engine.stage.playerIdentityWidget",
-        source: "players",
-        playerIdSource: "playerId"
-      },
-      bindings: [
-        { id: "score", kind: "text", source: "score", targetComponentId: "fixture-roster-score" },
-        {
-          id: "rows", kind: "collection", source: "rows", targetComponentId: "fixture-roster-rows",
-          item: {
-            keySource: "id", artCompositionId: "fixture-hand-row", bindings: [{
-              id: "cards", kind: "collection", source: "cards", targetComponentId: "cards-slot",
-              item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings }
-            }]
-          }
+      name: "Fixture Game-owned Player Presentations",
+      target: { kind: "layout", layoutElementId: "fixture-players", layoutScope: "global" },
+      bindings: [{
+        id: "players", kind: "collection", source: "players",
+        item: {
+          keySource: "id", artCompositionId: "fixture-player-presentation", bindings: [
+            { id: "name", kind: "text", source: "name", targetComponentId: "fixture-player-name" },
+            { id: "score", kind: "text", source: "score", targetComponentId: "fixture-player-score" },
+            { id: "state", kind: "state", source: "state", playback: "stop" },
+            {
+              id: "rows", kind: "collection", source: "rows", targetComponentId: "fixture-player-rows",
+              item: {
+                keySource: "id", artCompositionId: "fixture-hand-row", bindings: [{
+                  id: "cards", kind: "collection", source: "cards", targetComponentId: "cards-slot",
+                  item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings }
+                }]
+              }
+            }
+          ]
         }
-      ],
+      }],
       select(context) {
         const count = Number(context.flow.collectionCount || 0);
         const all = cards(count);
-        const rosterCards = count > 0
+        const playerCards = count > 0
           ? [all.find((card) => card.id === "a"), all.find((card) => card.id === "d"), all.find((card) => card.id === "b")].filter(Boolean)
           : [all.find((card) => card.id === "a"), all.find((card) => card.id === "b")].filter(Boolean);
         return {
           players: context.players.map((player, index) => ({
-            playerId: player.id,
+            id: player.id,
+            name: player.name,
             score: String((index + 1) * 10 + count),
-            rows: [{ id: "main", cards: rosterCards }]
+            state: player.needsInput ? "Choosing Start" : "On",
+            rows: [{ id: "main", cards: playerCards }]
           }))
         };
       }
@@ -436,6 +440,12 @@ module.exports = Object.freeze([
       hidden: false, locked: false, x: 1360, y: 420, width: 700, height: 180, scale: 1, rotation: 0,
       collectionDirection: "horizontal", collectionGap: 18, collectionDistribution: "center", collectionAlignment: "center",
       collectionPadding: 10, collectionOverflow: "visible", zIndex: 31
+    },
+    {
+      id: "fixture-players", name: "Fixture Players", selector: "", kind: "collection", artCompositionId: "",
+      hidden: false, locked: false, x: 960, y: 850, width: 1320, height: 220, scale: 1, rotation: 0,
+      collectionDirection: "horizontal", collectionGap: 24, collectionDistribution: "space-evenly", collectionAlignment: "center",
+      collectionPadding: 10, collectionOverflow: "visible", zIndex: 32
     }
   ];
   stageLayouts.global.elements.push(...structuredClone(rendererCollectionLayoutElements));
@@ -446,7 +456,7 @@ module.exports = Object.freeze([
   stageLayouts.states.push({
     id: "fixture-renderer-preview",
     name: "Fixture Renderer Preview",
-    elements: structuredClone(rendererCollectionLayoutElements).map((element) => ({
+    elements: structuredClone(rendererCollectionLayoutElements.slice(0, 2)).map((element) => ({
       ...element,
       id: element.id === "fixture-hand-rows" ? "fixture-preview-hand-rows" : "fixture-preview-flat-cards"
     }))
@@ -495,44 +505,16 @@ module.exports = Object.freeze([
     timeline: fixtureVisibleTimeline,
     components: [{ id: "cards-slot", name: "Cards Slot", kind: "container", childDistribution: "horizontal", x: 320, y: 75, width: 620, height: 145, fillColor: "transparent", defaultAnimationState: "On", children: [] }]
   };
-  artManifest.compositions["fixture-roster-extension"] = {
-    name: "Fixture Roster Extension", surface: "stage", compositionKind: "gameObject", isCustom: true,
-    canvas: { width: 300, height: 190 },
+  artManifest.compositions["fixture-player-presentation"] = {
+    name: "Fixture Player Presentation", surface: "stage", compositionKind: "gameObject", isCustom: true,
+    canvas: { width: 300, height: 210 },
     timeline: fixtureVisibleTimeline,
     components: [
-      { id: "fixture-roster-score", name: "Fixture Roster Score", kind: "text", x: 150, y: 18, width: 120, height: 28, defaultText: "0", fontSize: 20, fontColor: "#17131f", defaultAnimationState: "On" },
-      { id: "fixture-roster-rows", name: "Fixture Roster Rows", kind: "container", childDistribution: "vertical", x: 150, y: 105, width: 280, height: 150, fillColor: "transparent", defaultAnimationState: "On", children: [] }
+      { id: "fixture-player-name", name: "Fixture Player Name", kind: "text", x: 150, y: 18, width: 220, height: 28, defaultText: "PLAYER", fontSize: 20, fontColor: "#17131f", defaultAnimationState: "On" },
+      { id: "fixture-player-score", name: "Fixture Player Score", kind: "text", x: 150, y: 48, width: 120, height: 28, defaultText: "0", fontSize: 20, fontColor: "#17131f", defaultAnimationState: "On" },
+      { id: "fixture-player-rows", name: "Fixture Player Rows", kind: "container", childDistribution: "vertical", x: 150, y: 130, width: 280, height: 150, fillColor: "transparent", defaultAnimationState: "On", children: [] }
     ]
   };
-  const playerWidgetComposition = artManifest.compositions["prefab-player-widget-mc"];
-  playerWidgetComposition.canvas.height = 620;
-  playerWidgetComposition.components.push({
-    id: "fixture-player-roster-anchor",
-    name: "Player Roster Anchor",
-    instanceLabel: "playerRosterAnchor",
-    kind: "container",
-    x: 150,
-    y: 185,
-    width: 300,
-    height: 370,
-    fillColor: "transparent",
-    children: []
-  });
-  playerWidgetComposition.components.push({
-    id: "fixture-roster-extension-ref",
-    name: "Fixture Roster Extension",
-    instanceLabel: "fixtureRosterExtension",
-    kind: "reference",
-    x: 150,
-    y: 515,
-    scale: 0.5,
-    rotation: 0,
-    opacity: 1,
-    visible: true,
-    defaultAnimationState: "On",
-    artCompositionId: "fixture-roster-extension",
-    referenceSizeMode: "intrinsic"
-  });
   fs.writeFileSync(artManifestPath, `${JSON.stringify(artManifest, null, 2)}\n`);
   refreshLocalContentBundle(path.join(targetRoot, "content"), { trackLineage: false });
   generatedSnapshot = createLocalContentBundleProvider({ root: path.join(targetRoot, "content") }).loadPublishedRevision();
@@ -774,6 +756,33 @@ module.exports = Object.freeze([
       };
       const controllerLayouts = {
         ...controllerLayoutsPayload.layouts,
+        global: {
+          ...controllerLayoutsPayload.layouts.global,
+          elements: [
+            ...(controllerLayoutsPayload.layouts.global?.elements || []).filter((element) => element.id !== "fixture-global-context"),
+            {
+              id: "fixture-global-context",
+              name: "Fixture Global Context",
+              selector: "",
+              kind: "art",
+              artCompositionId: "layout-text-field",
+              hidden: false,
+              locked: false,
+              x: 195,
+              y: 170,
+              width: 300,
+              height: 60,
+              scale: 1,
+              rotation: 0,
+              defaultAnimationState: "On",
+              defaultText: "Global context",
+              fontSize: 22,
+              autoFitText: false,
+              fontFamily: "",
+              fontColor: "#17131f"
+            }
+          ]
+        },
         layers: [
           ...(controllerLayoutsPayload.layouts.layers || []).filter((layer) => layer.id !== persistentContextLayer.id),
           persistentContextLayer
@@ -892,11 +901,11 @@ module.exports = Object.freeze([
       });
       const collectionRoom = await collectionRoomResponse.json();
       const collectionControllerOne = await browser.newPage();
-      await collectionControllerOne.goto(first.startup.localUrl + "/controller?stage=RCOL&name=Roster%20One&join=1", { waitUntil: "load" });
+      await collectionControllerOne.goto(first.startup.localUrl + "/controller?stage=RCOL&name=Player%20One&join=1", { waitUntil: "load" });
       await collectionControllerOne.waitForFunction(() => Boolean(window.controllerState?.player?.id), null, { timeout: 15_000 });
       const collectionPlayerOne = await collectionControllerOne.evaluate(() => ({ player: window.controllerState.player }));
       const collectionControllerTwo = await browser.newPage();
-      await collectionControllerTwo.goto(first.startup.localUrl + "/controller?stage=RCOL&name=Roster%20Two&join=1", { waitUntil: "load" });
+      await collectionControllerTwo.goto(first.startup.localUrl + "/controller?stage=RCOL&name=Player%20Two&join=1", { waitUntil: "load" });
       await collectionControllerTwo.waitForFunction(() => Boolean(window.controllerState?.player?.id), null, { timeout: 15_000 });
       const collectionPlayerTwo = await collectionControllerTwo.evaluate(() => ({ player: window.controllerState.player }));
       const collectionLobbyState = {
@@ -926,21 +935,19 @@ module.exports = Object.freeze([
           && document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] > [data-game-plugin-renderer-collection-item="true"]').length === 3
           && document.querySelectorAll('[data-stage-layout-element-id="fixture-hand-rows"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
           && document.querySelectorAll('[data-stage-layout-element-id="fixture-hand-rows"] [data-game-plugin-renderer-nested-collection="cards"] [data-game-plugin-renderer-collection-item="true"]').length === 3
-          && document.querySelectorAll('#playerLobby > .player-tile[data-player-id]').length === 2
-          && document.querySelectorAll('[data-game-plugin-roster-collection="generated-fixture.rosterTableaus:rows"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
+          && document.querySelectorAll('[data-stage-layout-element-id="fixture-players"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
+          && document.querySelectorAll('[data-stage-layout-element-id="fixture-players"] [data-game-plugin-renderer-nested-collection="rows"] > [data-game-plugin-renderer-collection-item="true"]').length === 2
         ), null, { timeout: 15_000 });
       } catch (error) {
         const diagnostic = await collectionStagePage.evaluate(() => ({
           action: window.currentStageState?.action?.id,
           fault: window.currentStageState?.runtimeFault,
-          rosterModel: window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.rosterTableaus"],
-          runtimeConfig: JSON.parse(document.getElementById("pop-party-runtime-config")?.textContent || "{}").gamePlugin?.renderers?.find((item) => item.id === "generated-fixture.rosterTableaus"),
-          tiles: document.querySelectorAll('#playerLobby > .player-tile[data-player-id]').length,
-          rosterHosts: document.querySelectorAll('[data-game-plugin-roster-collection]').length,
-          rosterItems: document.querySelectorAll('[data-game-plugin-roster-collection] > [data-game-plugin-renderer-collection-item="true"]').length,
-          playerHtml: document.querySelector('#playerLobby')?.innerHTML.slice(0, 4000)
+          playerModel: window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.playerPresentations"],
+          runtimeConfig: JSON.parse(document.getElementById("pop-party-runtime-config")?.textContent || "{}").gamePlugin?.renderers?.find((item) => item.id === "generated-fixture.playerPresentations"),
+          items: document.querySelectorAll('[data-stage-layout-element-id="fixture-players"] > [data-game-plugin-renderer-collection-item="true"]').length,
+          playerHtml: document.querySelector('[data-stage-layout-element-id="fixture-players"]')?.innerHTML.slice(0, 4000)
         }));
-        throw new Error("Roster renderer extension fixture did not reconcile: " + JSON.stringify(diagnostic), { cause: error });
+        throw new Error("Game-owned player presentation fixture did not reconcile: " + JSON.stringify(diagnostic), { cause: error });
       }
       await collectionStagePage.evaluate(() => {
         for (const elementId of ["fixture-hand-rows", "fixture-flat-cards"]) {
@@ -1033,41 +1040,187 @@ module.exports = Object.freeze([
           artLayerVisible
         };
       });
-      const rosterIdentityBefore = await collectionStagePage.evaluate(({ firstPlayerId, secondPlayerId }) => {
-        const firstTile = document.querySelector('#playerLobby > .player-tile[data-player-id="' + CSS.escape(firstPlayerId) + '"]');
-        const secondTile = document.querySelector('#playerLobby > .player-tile[data-player-id="' + CSS.escape(secondPlayerId) + '"]');
-        const firstRow = firstTile?.querySelector('[data-game-plugin-roster-collection="generated-fixture.rosterTableaus:rows"] > [data-game-plugin-renderer-item-key="main"]');
+      const artHotReloadBefore = await collectionStagePage.evaluate(() => ({
+        actionId: window.currentStageState?.action?.id,
+        contentRevision: window.currentStageState?.release?.contentRevision,
+        cardTop: document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"] [data-art-component-id="card"]')?.getBoundingClientRect().top || 0
+      }));
+      const artToolsPage = await browser.newPage();
+      artToolsPage.on("pageerror", (error) => toolsPageErrors.push(error.message));
+      await artToolsPage.goto(first.startup.localUrl + "/tools", { waitUntil: "load" });
+      await artToolsPage.locator('[data-tool-target="art"]').click();
+      if (await artToolsPage.locator('[data-art-migration-summary]').count()) {
+        artToolsPage.once("dialog", (dialog) => dialog.accept());
+        const artMigrationResponse = artToolsPage.waitForResponse((response) => (
+          response.url().endsWith("/api/art-compositions") && response.request().method() === "POST"
+        ));
+        await artToolsPage.locator('.art-composition-editor .art-editor-toolbar .flow-editor-controls button', { hasText: "Save" }).click();
+        if (!(await artMigrationResponse).ok()) throw new Error("Art Manager timeline migration did not save before the live edit");
+        await artToolsPage.waitForSelector('[data-art-migration-summary]', { state: "detached" });
+      }
+      await artToolsPage.locator('[data-art-browser-composition="fixture-card"] > button').first().dispatchEvent("click");
+      await artToolsPage.waitForSelector('[data-art-canvas="fixture-card"]', { state: "attached" });
+      await artToolsPage.locator('.art-timeline-target-select[title^="Card (card)"]').click();
+      await artToolsPage.waitForSelector('[data-art-react-component="component-inspector"][data-art-component-id="card"]');
+      const cardCanvasComponent = artToolsPage.locator('[data-art-canvas="fixture-card"] [data-art-canvas-component="card"][data-art-component-target-path]');
+      const cardCanvasTopBefore = await cardCanvasComponent.evaluate((element) => element.style.top);
+      const cardYField = artToolsPage.locator('[data-art-component-field="y"]').first();
+      await cardYField.focus();
+      await cardYField.fill("82");
+      await cardYField.press("Tab");
+      try {
+        await artToolsPage.waitForFunction(({ previousTop }) => (
+          document.querySelector('[data-art-canvas="fixture-card"] [data-art-canvas-component="card"][data-art-component-target-path]')?.style.top !== previousTop
+        ), { previousTop: cardCanvasTopBefore }, { timeout: 3_000 });
+      } catch (error) {
+        const editorDiagnostic = await artToolsPage.evaluate(() => ({
+          inspectorId: document.querySelector('[data-art-react-component="component-inspector"]')?.getAttribute("data-art-component-id"),
+          fieldValue: document.querySelector('[data-art-component-field="y"]')?.value,
+          activeField: document.activeElement?.getAttribute?.("data-art-component-field") || document.activeElement?.tagName,
+          status: document.querySelector('[data-art-compositions-status]')?.textContent,
+          selectedTargets: Array.from(document.querySelectorAll('[data-art-timeline-target-selected="true"] .art-timeline-target-select')).map((target) => target.title),
+          canvasStyle: document.querySelector('[data-art-canvas="fixture-card"] [data-art-canvas-component="card"]')?.getAttribute("style")
+        }));
+        throw new Error("Art Manager did not commit the component position from its inspector: " + JSON.stringify(editorDiagnostic), { cause: error });
+      }
+      if (await cardYField.inputValue() !== "82") throw new Error("Art Manager component Y field did not retain the authored value");
+      await artToolsPage.waitForFunction(() => (
+        document.querySelector("[data-art-compositions-status]")?.textContent === "Unsaved changes"
+      ), null, { timeout: 15_000 });
+      const artSaveResponse = artToolsPage.waitForResponse((response) => (
+        response.url().endsWith("/api/art-compositions") && response.request().method() === "POST"
+      ));
+      await artToolsPage.evaluate(() => {
+        if (!window.setupToolDashboard || !window.globalSaveButton) throw new Error("Tools dashboard Save All bridge is unavailable");
+        window.setupToolDashboard();
+        window.globalSaveButton.click();
+      });
+      const savedArtResponse = await artSaveResponse;
+      const savedArtRequest = JSON.parse(savedArtResponse.request().postData() || "{}");
+      const savedFixtureCard = savedArtRequest.compositions?.find((composition) => composition.id === "fixture-card");
+      if (!savedArtResponse.ok() || savedFixtureCard?.components?.find((component) => component.id === "card")?.y !== 82) {
+        throw new Error("Art Manager Save All did not persist the edited component position: " + JSON.stringify({
+          status: savedArtResponse.status(),
+          compositionIds: savedArtRequest.compositions?.map((composition) => composition.id),
+          card: savedFixtureCard?.components?.find((component) => component.id === "card"),
+          tracks: savedFixtureCard?.timeline?.tracks
+        }));
+      }
+      await artToolsPage.waitForFunction(() => (
+        document.querySelector("#globalSaveButton")?.textContent === "Save All"
+        && document.querySelector("[data-art-compositions-status]")?.textContent === "Saved"
+      ), null, { timeout: 30_000 });
+      await artToolsPage.close();
+      try {
+        await collectionStagePage.waitForFunction(({ previousRevision, previousTop }) => (
+          window.currentStageState?.action?.id === "collection-wait"
+          && window.currentStageState?.release?.contentRevision !== previousRevision
+          && Math.abs((document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"] [data-art-component-id="card"]')?.getBoundingClientRect().top || 0) - previousTop) > 1
+        ), { previousRevision: artHotReloadBefore.contentRevision, previousTop: artHotReloadBefore.cardTop }, { timeout: 15_000 });
+      } catch (error) {
+        const durableArt = await (await fetch(first.startup.localUrl + "/api/art-assets")).json();
+        const roomArt = await (await fetch(first.startup.localUrl + "/api/stage/RCOL/content/art-assets")).json();
+        const stageArt = await collectionStagePage.evaluate(() => ({
+          actionId: window.currentStageState?.action?.id,
+          contentRevision: window.currentStageState?.release?.contentRevision,
+          authoredY: window.artComposition?.("fixture-card")?.components?.find((component) => component.id === "card")?.y,
+          cardTop: document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"] [data-art-component-id="card"]')?.getBoundingClientRect().top || 0
+        }));
+        const yOf = (payload) => payload.compositions?.find((composition) => composition.id === "fixture-card")?.components?.find((component) => component.id === "card")?.y;
+        throw new Error("Saved Art did not hot reload into the existing Stage: " + JSON.stringify({
+          before: artHotReloadBefore,
+          durable: { revision: durableArt.revision, y: yOf(durableArt) },
+          room: { revision: roomArt.revision, y: yOf(roomArt) },
+          stage: stageArt
+        }), { cause: error });
+      }
+      const artHotReloadExistingRoom = await collectionStagePage.evaluate((before) => ({
+        actionId: window.currentStageState?.action?.id,
+        contentRevisionChanged: window.currentStageState?.release?.contentRevision !== before.contentRevision,
+        itemRetained: window.__fixtureFlatA === document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"]'),
+        cardTopChanged: Math.abs((document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"] [data-art-component-id="card"]')?.getBoundingClientRect().top || 0) - before.cardTop) > 1
+      }), artHotReloadBefore);
+      const hotReloadRoomResponse = await fetch(first.startup.localUrl + "/api/stage/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ stageCode: "RNEW" })
+      });
+      const hotReloadRoom = await hotReloadRoomResponse.json();
+      await fetch(first.startup.localUrl + "/api/join", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ stageCode: "RNEW", playerName: "New Room Player" })
+      });
+      await fetch(first.startup.localUrl + "/api/stage/RNEW/test-config", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-stage-capability": hotReloadRoom.stageCapability },
+        body: JSON.stringify({ flow: collectionFlow })
+      });
+      const hotReloadNewRoomPage = await browser.newPage();
+      await hotReloadNewRoomPage.goto(first.startup.localUrl + "/stage?stage=RNEW", { waitUntil: "load" });
+      try {
+        await hotReloadNewRoomPage.waitForFunction(() => (
+          window.currentStageState?.action?.id === "collection-wait"
+          && window.artComposition?.("fixture-card")?.components?.find((component) => component.id === "card")?.y === 82
+          && document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-collection-item="true"]').length === 3
+        ), null, { timeout: 15_000 });
+      } catch (error) {
+        const newRoomDiagnostic = await hotReloadNewRoomPage.evaluate(() => ({
+          actionId: window.currentStageState?.action?.id,
+          fault: window.currentStageState?.runtimeFault,
+          release: window.currentStageState?.release,
+          flatModel: window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.stageFlatCards"],
+          hostPresent: Boolean(document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"]')),
+          itemCount: document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-collection-item="true"]').length
+        }));
+        throw new Error("New room did not render the saved Art fixture: " + JSON.stringify(newRoomDiagnostic), { cause: error });
+      }
+      const artHotReloadNewRoom = await hotReloadNewRoomPage.evaluate(() => ({
+        actionId: window.currentStageState?.action?.id,
+        contentRevision: window.currentStageState?.release?.contentRevision,
+        authoredY: window.artComposition?.("fixture-card")?.components?.find((component) => component.id === "card")?.y
+      }));
+      await hotReloadNewRoomPage.reload({ waitUntil: "load" });
+      try {
+        await hotReloadNewRoomPage.waitForFunction(() => (
+          window.artComposition?.("fixture-card")?.components?.find((component) => component.id === "card")?.y === 82
+          && document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-collection-item="true"]').length === 3
+        ), null, { timeout: 15_000 });
+      } catch (error) {
+        const reloadedDiagnostic = await hotReloadNewRoomPage.evaluate(() => ({
+          actionId: window.currentStageState?.action?.id,
+          release: window.currentStageState?.release,
+          authoredY: window.artComposition?.("fixture-card")?.components?.find((component) => component.id === "card")?.y,
+          itemCount: document.querySelectorAll('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-collection-item="true"]').length
+        }));
+        throw new Error("Reloaded room did not retain the saved Art fixture: " + JSON.stringify(reloadedDiagnostic), { cause: error });
+      }
+      const artHotReloadReloaded = await hotReloadNewRoomPage.evaluate(() => ({
+        actionId: window.currentStageState?.action?.id,
+        authoredY: window.artComposition?.("fixture-card")?.components?.find((component) => component.id === "card")?.y
+      }));
+      await hotReloadNewRoomPage.close();
+      const playerPresentationIdentityBefore = await collectionStagePage.evaluate(({ firstPlayerId, secondPlayerId }) => {
+        const host = document.querySelector('[data-stage-layout-element-id="fixture-players"]');
+        const firstTile = host?.querySelector(':scope > [data-game-plugin-renderer-item-key="' + CSS.escape(firstPlayerId) + '"]');
+        const secondTile = host?.querySelector(':scope > [data-game-plugin-renderer-item-key="' + CSS.escape(secondPlayerId) + '"]');
+        const firstRow = firstTile?.querySelector('[data-game-plugin-renderer-nested-collection="rows"] > [data-game-plugin-renderer-item-key="main"]');
         const firstCard = firstRow?.querySelector('[data-game-plugin-renderer-item-key="a"]');
-        window.__fixtureRosterFirstTile = firstTile;
-        window.__fixtureRosterFirstRenderer = window.PartyGameStageDebugRuntime?.playerRosterItemForId?.(firstPlayerId)?.renderer;
-        window.__fixtureRosterFirstRow = firstRow;
-        window.__fixtureRosterFirstCard = firstCard;
-        window.__fixtureRosterFirstCardRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(firstCard);
-        const rosterHostRect = document.querySelector('#playerLobby')?.getBoundingClientRect();
-        const firstTileRect = firstTile?.getBoundingClientRect();
-        const canvasWidth = Number(firstTile?.dataset.playerObjectWidth || 1);
-        const canvasHeight = Number(firstTile?.dataset.playerObjectHeight || 1);
-        const anchorX = Number(firstTile?.dataset.playerRosterAnchorX || canvasWidth / 2);
-        const anchorY = Number(firstTile?.dataset.playerRosterAnchorY || canvasHeight / 2);
+        window.__fixturePlayerFirstTile = firstTile;
+        window.__fixturePlayerFirstRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(firstTile);
+        window.__fixturePlayerFirstRow = firstRow;
+        window.__fixturePlayerFirstCard = firstCard;
+        window.__fixturePlayerFirstCardRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(firstCard);
         return {
-          tiles: document.querySelectorAll('#playerLobby > .player-tile[data-player-id]').length,
-          duplicateLayoutTableaus: document.querySelectorAll('[data-stage-layout-element-id*="tableau" i]').length,
-          firstScore: firstTile?.querySelector('[data-art-component-id="fixture-roster-score"]')?.textContent?.trim(),
-          secondScore: secondTile?.querySelector('[data-art-component-id="fixture-roster-score"]')?.textContent?.trim(),
-          firstRows: firstTile?.querySelectorAll('[data-game-plugin-roster-collection="generated-fixture.rosterTableaus:rows"] > [data-game-plugin-renderer-collection-item="true"]').length,
+          tiles: host?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length,
+          firstName: firstTile?.querySelector('[data-art-component-id="fixture-player-name"]')?.textContent?.trim(),
+          firstScore: firstTile?.querySelector('[data-art-component-id="fixture-player-score"]')?.textContent?.trim(),
+          secondScore: secondTile?.querySelector('[data-art-component-id="fixture-player-score"]')?.textContent?.trim(),
+          firstRows: firstTile?.querySelectorAll('[data-game-plugin-renderer-nested-collection="rows"] > [data-game-plugin-renderer-collection-item="true"]').length,
           firstCards: firstRow?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] > [data-game-plugin-renderer-collection-item="true"]').length,
-          rosterRendererPresent: Boolean(window.__fixtureRosterFirstRenderer),
-          nestedRendererPresent: Boolean(window.__fixtureRosterFirstCardRenderer),
-          firstNeedsInput: firstTile?.dataset.playerNeedsInput,
-          anchorExplicit: firstTile?.dataset.playerRosterAnchorExplicit,
-          anchorCenterDelta: {
-            x: firstTileRect && rosterHostRect
-              ? firstTileRect.left + (anchorX / canvasWidth) * firstTileRect.width - (rosterHostRect.left + rosterHostRect.width / 2)
-              : null,
-            y: firstTileRect && rosterHostRect
-              ? firstTileRect.top + (anchorY / canvasHeight) * firstTileRect.height - (rosterHostRect.top + rosterHostRect.height / 2)
-              : null
-          }
+          playerRendererPresent: Boolean(window.__fixturePlayerFirstRenderer),
+          nestedRendererPresent: Boolean(window.__fixturePlayerFirstCardRenderer),
+          firstState: firstTile?.dataset.gamePluginRendererState
         };
       }, { firstPlayerId: collectionPlayerOne.player.id, secondPlayerId: collectionPlayerTwo.player.id });
       await fetch(first.startup.localUrl + "/api/complete-action", {
@@ -1110,21 +1263,22 @@ module.exports = Object.freeze([
           nestedCardVisible: visibleRect(nestedCard)
         };
       });
-      const rosterReconcileState = await collectionStagePage.evaluate((firstPlayerId) => {
-        const firstTile = document.querySelector('#playerLobby > .player-tile[data-player-id="' + CSS.escape(firstPlayerId) + '"]');
-        const firstRow = firstTile?.querySelector('[data-game-plugin-roster-collection="generated-fixture.rosterTableaus:rows"] > [data-game-plugin-renderer-item-key="main"]');
+      const playerPresentationReconcileState = await collectionStagePage.evaluate((firstPlayerId) => {
+        const host = document.querySelector('[data-stage-layout-element-id="fixture-players"]');
+        const firstTile = host?.querySelector(':scope > [data-game-plugin-renderer-item-key="' + CSS.escape(firstPlayerId) + '"]');
+        const firstRow = firstTile?.querySelector('[data-game-plugin-renderer-nested-collection="rows"] > [data-game-plugin-renderer-item-key="main"]');
         const cards = Array.from(firstRow?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] > [data-game-plugin-renderer-collection-item="true"]') || []);
         const retainedCard = firstRow?.querySelector('[data-game-plugin-renderer-item-key="a"]');
         return {
-          tileRetained: firstTile === window.__fixtureRosterFirstTile,
-          rosterRendererRetained: window.__fixtureRosterFirstRenderer === window.PartyGameStageDebugRuntime?.playerRosterItemForId?.(firstPlayerId)?.renderer,
-          rowRetained: firstRow === window.__fixtureRosterFirstRow,
-          cardRetained: retainedCard === window.__fixtureRosterFirstCard,
-          cardRendererRetained: window.__fixtureRosterFirstCardRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(retainedCard),
+          tileRetained: firstTile === window.__fixturePlayerFirstTile,
+          playerRendererRetained: window.__fixturePlayerFirstRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(firstTile),
+          rowRetained: firstRow === window.__fixturePlayerFirstRow,
+          cardRetained: retainedCard === window.__fixturePlayerFirstCard,
+          cardRendererRetained: window.__fixturePlayerFirstCardRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(retainedCard),
           cardCount: cards.length,
           cardOrder: cards.map((card) => card.dataset.gamePluginRendererItemKey),
-          score: firstTile?.querySelector('[data-art-component-id="fixture-roster-score"]')?.textContent?.trim(),
-          tiles: document.querySelectorAll('#playerLobby > .player-tile[data-player-id]').length
+          score: firstTile?.querySelector('[data-art-component-id="fixture-player-score"]')?.textContent?.trim(),
+          tiles: host?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length
         };
       }, collectionPlayerOne.player.id);
       await collectionStagePage.close();
@@ -1881,7 +2035,8 @@ module.exports = Object.freeze([
       const dynamicStageBefore = await dynamicStagePage.evaluate(() => ({
         applies: window.__popPartyStageMetrics?.applyCount,
         surfaceRevision: window.currentStageState?.surfaceRevision,
-        needsInput: Object.fromEntries((window.currentStageState?.players || []).map((player) => [player.id, player.needsInput]))
+        needsInput: Object.fromEntries((window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.playerPresentations"]?.players || [])
+          .map((player) => [player.id, player.state === "Choosing Start"]))
       }));
       const dynamicSubmitResponsePromise = controllerPage.waitForResponse((response) => (
         response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
@@ -1894,7 +2049,8 @@ module.exports = Object.freeze([
         applies: window.__popPartyStageMetrics?.applyCount,
         surfaceRevision: window.currentStageState?.surfaceRevision,
         appliedSlices: window.__popPartyStageMetrics?.lastAppliedSlices,
-        needsInput: Object.fromEntries((window.currentStageState?.players || []).map((player) => [player.id, player.needsInput]))
+        needsInput: Object.fromEntries((window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.playerPresentations"]?.players || [])
+          .map((player) => [player.id, player.state === "Choosing Start"]))
       }));
       const dynamicSecondResponsePromise = secondControllerPage.waitForResponse((response) => (
         response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
@@ -2040,7 +2196,7 @@ module.exports = Object.freeze([
       }));
       await controllerPage.evaluate(() => {
         const host = document.querySelector('[data-controller-layout-scope="layer:fixture-persistent-context"][data-controller-layout-element-id="fixture-persistent-pulse"]');
-        const globalHost = document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]');
+        const globalHost = document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="fixture-global-context"]');
         if (!host || !globalHost) return;
         window.__fixturePersistentHost = host;
         window.__fixturePersistentArtLayer = host.querySelector(":scope > .controller-widget-art-layer");
@@ -2074,7 +2230,8 @@ module.exports = Object.freeze([
           layoutApplyCount: window.__fixtureStageLayoutApplyCount,
           animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
           rendererPresent: Boolean(window.__fixtureStageRenderer),
-          needsInput: Object.fromEntries((window.currentStageState?.players || []).map((player) => [player.id, player.needsInput]))
+          needsInput: Object.fromEntries((window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.playerPresentations"]?.players || [])
+            .map((player) => [player.id, player.state === "Choosing Start"]))
         };
       });
       const browserSubmitResponse = controllerPage.waitForResponse((response) => (
@@ -2097,7 +2254,7 @@ module.exports = Object.freeze([
         persistentHostRetained: window.__fixturePersistentHost === document.querySelector('[data-controller-layout-scope="layer:fixture-persistent-context"][data-controller-layout-element-id="fixture-persistent-pulse"]'),
         persistentArtRetained: window.__fixturePersistentArtLayer === window.__fixturePersistentHost?.querySelector(":scope > .controller-widget-art-layer"),
         persistentRendererRetained: window.__fixturePersistentRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixturePersistentHost),
-        globalHostRetained: window.__fixtureGlobalHost === document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]'),
+        globalHostRetained: window.__fixtureGlobalHost === document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="fixture-global-context"]'),
         globalRendererRetained: window.__fixtureGlobalRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixtureGlobalHost),
         animationTime: Number(window.__fixturePersistentAnimation?.currentTime || 0),
         animationState: window.__fixturePersistentAnimation?.playState
@@ -2113,7 +2270,8 @@ module.exports = Object.freeze([
         animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
         animationState: window.__fixtureStageAnimation?.playState,
         appliedSlices: window.__popPartyStageMetrics?.lastAppliedSlices,
-        needsInput: Object.fromEntries((window.currentStageState?.players || []).map((player) => [player.id, player.needsInput])),
+        needsInput: Object.fromEntries((window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.playerPresentations"]?.players || [])
+          .map((player) => [player.id, player.state === "Choosing Start"])),
         changedProjectionKeys: Array.from(new Set([
           ...Object.keys(window.__fixtureStageProjectionBefore || {}),
           ...Object.keys(window.currentStageState || {})
@@ -2165,10 +2323,10 @@ module.exports = Object.freeze([
           persistentHostRetained: window.__fixturePersistentHost === document.querySelector('[data-controller-layout-scope="layer:fixture-persistent-context"][data-controller-layout-element-id="fixture-persistent-pulse"]'),
           persistentArtRetained: window.__fixturePersistentArtLayer === window.__fixturePersistentHost?.querySelector(":scope > .controller-widget-art-layer"),
           persistentRendererRetained: window.__fixturePersistentRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixturePersistentHost),
-          globalHostRetained: window.__fixtureGlobalHost === document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]'),
+          globalHostRetained: window.__fixtureGlobalHost === document.querySelector('[data-controller-layout-scope="global"][data-controller-layout-element-id="fixture-global-context"]'),
           globalRendererRetained: window.__fixtureGlobalRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(window.__fixtureGlobalHost),
           originalGlobalConnected: window.__fixtureGlobalHost?.isConnected === true,
-          globalCandidates: document.querySelectorAll('[data-controller-layout-scope="global"][data-controller-layout-element-id="controllerplayerbanner"]').length,
+          globalCandidates: document.querySelectorAll('[data-controller-layout-scope="global"][data-controller-layout-element-id="fixture-global-context"]').length,
           animationTime: Number(window.__fixturePersistentAnimation?.currentTime || 0),
           animationState: window.__fixturePersistentAnimation?.playState,
           maxFrameGap: Math.max(...(window.__fixtureTransitionFrameGaps || [0])),
@@ -2206,6 +2364,10 @@ module.exports = Object.freeze([
       const secondFlow = await (await fetch(second.startup.localUrl + "/api/game-flow")).json();
       const secondControllerLayouts = await (await fetch(second.startup.localUrl + "/api/controller-layouts")).json();
       const secondStageLayouts = await (await fetch(second.startup.localUrl + "/api/stage-layouts")).json();
+      const secondArtAssets = await (await fetch(second.startup.localUrl + "/api/art-assets")).json();
+      const restartedFixtureCardY = secondArtAssets.compositions
+        ?.find((composition) => composition.id === "fixture-card")?.components
+        ?.find((component) => component.id === "card")?.y;
       const restartedBrowser = await chromium.launch({ headless: true });
       const restartedControllerPage = await restartedBrowser.newPage();
       const restartedRoomResponse = await fetch(second.startup.localUrl + "/api/stage/rooms", {
@@ -2389,16 +2551,20 @@ module.exports = Object.freeze([
           .some((action) => action.type === "presentText"
             && action.textTarget === "layout-text-field-instance-1"
             && action.text === nestedAutoFitText),
+        artHotReloadExistingRoom,
+        artHotReloadNewRoom,
+        artHotReloadReloaded,
+        restartedFixtureCardY,
         collectionIdentityBefore,
         collectionReconcileState,
-        rosterIdentityBefore,
-        rosterReconcileState,
+        playerPresentationIdentityBefore,
+        playerPresentationReconcileState,
         persistentLayerReloaded: secondControllerLayouts.layouts.layers
           ?.some((layer) => layer.id === "fixture-persistent-context" && layer.zIndex === 150),
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
           && stageHtml.includes("generated-fixture.stageHandRows")
           && stageHtml.includes("generated-fixture.stageFlatCards")
-          && stageHtml.includes("generated-fixture.rosterTableaus")
+          && stageHtml.includes("generated-fixture.playerPresentations")
           && controllerHtml.includes("generated-fixture.controllerCounter"),
         pluginViewModel: configuredLobby.gamePlugin?.viewModels?.["generated-fixture.stageCounter"]?.label,
         vipControllerJourney,
@@ -2523,6 +2689,14 @@ module.exports = Object.freeze([
     || !development.rendererCollectionRestarted
     || !development.nestedAutoFitLayoutReloaded
     || !development.nestedPresentTextReloaded
+    || development.artHotReloadExistingRoom?.actionId !== "collection-wait"
+    || !development.artHotReloadExistingRoom?.contentRevisionChanged
+    || !development.artHotReloadExistingRoom?.itemRetained
+    || !development.artHotReloadExistingRoom?.cardTopChanged
+    || development.artHotReloadNewRoom?.actionId !== "collection-wait"
+    || development.artHotReloadNewRoom?.authoredY !== 82
+    || development.artHotReloadReloaded?.authoredY !== 82
+    || development.restartedFixtureCardY !== 82
     || development.collectionIdentityBefore?.flatCount !== 3
     || development.collectionIdentityBefore?.rowCount !== 2
     || development.collectionIdentityBefore?.nestedCount !== 3
@@ -2569,25 +2743,23 @@ module.exports = Object.freeze([
     || !development.collectionReconcileState?.nestedItemVisible
     || !development.collectionReconcileState?.flatCardVisible
     || !development.collectionReconcileState?.nestedCardVisible
-    || development.rosterIdentityBefore?.tiles !== 2
-    || development.rosterIdentityBefore?.duplicateLayoutTableaus !== 0
-    || development.rosterIdentityBefore?.firstScore !== "10"
-    || development.rosterIdentityBefore?.secondScore !== "20"
-    || development.rosterIdentityBefore?.firstRows !== 1
-    || development.rosterIdentityBefore?.firstCards !== 2
-    || !development.rosterIdentityBefore?.rosterRendererPresent
-    || !development.rosterIdentityBefore?.nestedRendererPresent
-    || development.rosterIdentityBefore?.anchorExplicit !== "true"
-    || Math.abs(Number(development.rosterIdentityBefore?.anchorCenterDelta?.y)) > 1.5
-    || !development.rosterReconcileState?.tileRetained
-    || !development.rosterReconcileState?.rosterRendererRetained
-    || !development.rosterReconcileState?.rowRetained
-    || !development.rosterReconcileState?.cardRetained
-    || !development.rosterReconcileState?.cardRendererRetained
-    || development.rosterReconcileState?.cardCount !== 3
-    || JSON.stringify(development.rosterReconcileState?.cardOrder) !== JSON.stringify(["a", "d", "b"])
-    || development.rosterReconcileState?.score !== "11"
-    || development.rosterReconcileState?.tiles !== 2
+    || development.playerPresentationIdentityBefore?.tiles !== 2
+    || development.playerPresentationIdentityBefore?.firstName !== "PLAYER ONE"
+    || development.playerPresentationIdentityBefore?.firstScore !== "10"
+    || development.playerPresentationIdentityBefore?.secondScore !== "20"
+    || development.playerPresentationIdentityBefore?.firstRows !== 1
+    || development.playerPresentationIdentityBefore?.firstCards !== 2
+    || !development.playerPresentationIdentityBefore?.playerRendererPresent
+    || !development.playerPresentationIdentityBefore?.nestedRendererPresent
+    || !development.playerPresentationReconcileState?.tileRetained
+    || !development.playerPresentationReconcileState?.playerRendererRetained
+    || !development.playerPresentationReconcileState?.rowRetained
+    || !development.playerPresentationReconcileState?.cardRetained
+    || !development.playerPresentationReconcileState?.cardRendererRetained
+    || development.playerPresentationReconcileState?.cardCount !== 3
+    || JSON.stringify(development.playerPresentationReconcileState?.cardOrder) !== JSON.stringify(["a", "d", "b"])
+    || development.playerPresentationReconcileState?.score !== "11"
+    || development.playerPresentationReconcileState?.tiles !== 2
     || !development.persistentLayerReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"
@@ -2679,7 +2851,7 @@ module.exports = Object.freeze([
     || JSON.stringify(development.dynamicSubmitPayload) !== JSON.stringify({ targetPlayerId: development.dynamicIdentityBefore?.retainedOption })
     || !(development.dynamicStageAfterPartial?.applies > development.dynamicStageBefore?.applies)
     || !(development.dynamicStageAfterPartial?.surfaceRevision > development.dynamicStageBefore?.surfaceRevision)
-    || JSON.stringify(development.dynamicStageAfterPartial?.appliedSlices) !== JSON.stringify(["roster"])
+    || JSON.stringify(development.dynamicStageAfterPartial?.appliedSlices) !== JSON.stringify(["gamePlugin"])
     || Object.values(development.dynamicStageBefore?.needsInput || {}).filter(Boolean).length !== 2
     || Object.values(development.dynamicStageAfterPartial?.needsInput || {}).filter(Boolean).length !== 1
     || development.dynamicBarrierAction !== "fixture-dynamic-done"
@@ -2722,7 +2894,7 @@ module.exports = Object.freeze([
     || !(development.stageAfterPartialSubmission?.roomRevision > development.stageBeforePartialSubmission?.roomRevision)
     || !(development.stageAfterPartialSubmission?.surfaceRevision > development.stageBeforePartialSubmission?.surfaceRevision)
     || development.stageAfterPartialSubmission?.layoutApplyCount !== development.stageBeforePartialSubmission?.layoutApplyCount
-    || JSON.stringify(development.stageAfterPartialSubmission?.appliedSlices) !== JSON.stringify(["roster"])
+    || JSON.stringify(development.stageAfterPartialSubmission?.appliedSlices) !== JSON.stringify(["gamePlugin"])
     || Object.values(development.stageBeforePartialSubmission?.needsInput || {}).filter(Boolean).length !== 2
     || Object.values(development.stageAfterPartialSubmission?.needsInput || {}).filter(Boolean).length !== 1
     || !development.stageAfterPartialSubmission?.hostRetained

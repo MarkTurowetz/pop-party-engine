@@ -5,8 +5,6 @@
 // (controller.js, stage-runtime.js, layout-runtime.js, app-shell.js) keep resolving
 // them as bare identifiers.
 
-import { playerAvatarCompositionArt, type PlayerAvatarArtComposition } from "./playerAvatarCompositionArt";
-
 type Dict = Record<string, unknown>;
 type ArtComposition = { id?: string; canvas?: { width?: number; height?: number }; components?: Dict[] };
 
@@ -14,6 +12,7 @@ interface ArtSchemaApi {
   normalizeComponentKind?: (kind?: string) => string;
   normalizeShapeStyle?: (style?: string, kind?: string) => string;
 }
+
 interface ToolContextApi {
   api?: { art?: { loadArtAssets?: () => Promise<Dict> } };
 }
@@ -28,8 +27,6 @@ declare global {
     artOrganization: Dict;
     artOrganizationSavedSnapshot: string;
     artAssetUrls: Map<string, string>;
-    avatarAssetIds: Record<string, string>;
-    avatarComposites: Array<{ species: string; name: string }>;
     controllerScreen: HTMLElement;
     PartyGameArtComponentSchema?: ArtSchemaApi;
     publishRuntimeLocalChanges?: () => void;
@@ -49,11 +46,6 @@ declare global {
     setLocalValue?: (key: string, value: string) => void;
     removeSessionValue?: (key: string) => void;
     getControllerPlayerId?: () => string;
-    avatarClass?: (shape?: string) => string;
-    avatarFrameImage?: () => string;
-    avatarLabel?: (shape?: string) => string;
-    dinoIcon?: (shape?: string) => string;
-    playerAvatarArt?: (shape?: string) => string;
     listenForArtAssetsChanged?: (callback: () => void) => void;
     loadArtAssets?: (options?: { stageCode?: string }) => Promise<Dict[]>;
     postJson?: (path: string, payload: unknown) => Promise<Dict>;
@@ -100,7 +92,7 @@ function syncAppHeight(): void {
 }
 
 function shouldAllowControllerTouch(target: EventTarget | null): boolean {
-  return Boolean((target as Element)?.closest?.("input, textarea, select, .avatar-picker-grid"));
+  return Boolean((target as Element)?.closest?.("input, textarea, select"));
 }
 
 function lockControllerViewport(): void {
@@ -415,83 +407,12 @@ function getControllerPlayerId(): string {
   return next;
 }
 
-function avatarClass(shape?: string): string {
-  return `shape-${shape || "rex"}`;
-}
-
 function cssUrl(url?: string): string {
   return `url('${String(url || "").replaceAll("'", "%27")}')`;
 }
 
 function artAssetUrl(assetId?: string): string {
   return w.artAssetUrls.get(assetId || "") || "";
-}
-
-function avatarComponentStyle(component: Dict, canvas: Dict | undefined, layerIndex = 0, siblingCount = 1): string {
-  const canvasWidth = Math.max(1, Number(canvas?.width || 1));
-  const canvasHeight = Math.max(1, Number(canvas?.height || 1));
-  return [
-    `z-index:${Math.max(1, Number(siblingCount || 1) - Number(layerIndex || 0))}`,
-    `left:${(Number(component.x || 0) / canvasWidth) * 100}%`,
-    `top:${(Number(component.y || 0) / canvasHeight) * 100}%`,
-    `width:${(Number(component.width || 1) / canvasWidth) * 100}%`,
-    `height:${(Number(component.height || 1) / canvasHeight) * 100}%`,
-    `transform:translate(-50%, -50%) rotate(${Number(component.rotation || 0)}deg) scale(${Number(component.scale || 1)})`,
-    `filter:brightness(${Math.max(0, Number(component.brightness ?? 1))})`,
-    `--avatar-component-fit:${component.imageObjectFit || "contain"}`,
-    `--avatar-component-fill:${component.fillCss || component.fillColor || "transparent"}`,
-    `--avatar-component-border-color:${component.borderColor || "transparent"}`,
-    `--avatar-component-border-width:${Number(component.borderWidth || 0)}px`,
-    `--avatar-component-border-radius:${Number(component.borderRadius || 0)}px`,
-    `--avatar-component-tint:${component.imageTint || "currentColor"}`
-  ].join(";");
-}
-
-function avatarComponentImageSource(component?: Dict): string {
-  return (component?.imageDataUrl as string) || artAssetUrl(component?.imageAssetId as string) || "";
-}
-
-function avatarCompositionComponentMarkup(component: Dict, canvas: Dict | undefined, layerIndex = 0, siblingCount = 1): string {
-  const imageSource = avatarComponentImageSource(component);
-  const style = avatarComponentStyle(component, canvas, layerIndex, siblingCount);
-  const kind = w.PartyGameArtComponentSchema?.normalizeComponentKind?.(component?.kind as string) || component?.kind || "shape";
-  const shapeStyle =
-    w.PartyGameArtComponentSchema?.normalizeShapeStyle?.(component?.shapeStyle as string, kind as string) ||
-    component?.shapeStyle ||
-    "rounded";
-  const tinted = kind === "sprite" && component.spriteRenderMode === "tinted" && Boolean(imageSource);
-  const classes = `avatar-art-component is-${kind} is-style-${shapeStyle}${imageSource ? " has-sprite-source" : ""}${tinted ? " is-sprite-tinted" : ""}`;
-  if (tinted) {
-    return `<span class="${classes}" style="${style};--avatar-mask-url:${cssUrl(imageSource)}"><span class="avatar-art-mask-image"></span></span>`;
-  }
-  if (imageSource) {
-    return `<span class="${classes}" style="${style}"><img class="avatar-art-image" alt="" draggable="false" src="${imageSource}"></span>`;
-  }
-  return `<span class="${classes}" style="${style}"></span>`;
-}
-
-function playerAvatarArt(shape?: string): string {
-  return playerAvatarCompositionArt({
-    shape,
-    getComposition: (compositionId) => artComposition(compositionId) as PlayerAvatarArtComposition | null,
-    assetUrl: artAssetUrl,
-    normalizeComponentKind: w.PartyGameArtComponentSchema?.normalizeComponentKind,
-    normalizeShapeStyle: w.PartyGameArtComponentSchema?.normalizeShapeStyle
-  }) || `${avatarFrameImage()}${dinoIcon(shape)}`;
-}
-
-function dinoIcon(shape?: string): string {
-  const species = shape && w.avatarAssetIds[shape] ? shape : "rex";
-  const url = artAssetUrl(w.avatarAssetIds[species]);
-  return `<span class="avatar-dino-mask dino-icon dino-${species}" style="--dino-url:${cssUrl(url)}"><span class="avatar-dino-mask-image"></span></span>`;
-}
-
-function avatarFrameImage(): string {
-  return `<img class="avatar-frame-art" alt="" src="${artAssetUrl("avatar-frame")}">`;
-}
-
-function avatarLabel(shape?: string): string {
-  return w.avatarComposites.find((composite) => composite.species === shape)?.name.replace("Player Avatar ", "") || shape || "";
 }
 
 function artComposition(compositionId: string): ArtComposition | null {
@@ -661,16 +582,8 @@ const utilsApi = {
   getLocalJsonArray,
   removeSessionValue,
   getControllerPlayerId,
-  avatarClass,
   cssUrl,
   artAssetUrl,
-  avatarComponentStyle,
-  avatarComponentImageSource,
-  avatarCompositionComponentMarkup,
-  playerAvatarArt,
-  dinoIcon,
-  avatarFrameImage,
-  avatarLabel,
   artComposition,
   normalizeLoadedArtOrganization,
   applyArtAssets,
@@ -700,6 +613,5 @@ export {
   postJson,
   getJson,
   runtimeCapabilityHeaders,
-  loadArtAssets,
-  playerAvatarArt
+  loadArtAssets
 };

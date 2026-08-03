@@ -10,7 +10,6 @@ const {
   normalizeCurrentArtManifestGeometry
 } = require("../../shared/art-component-schema-migration");
 const { normalizeTimeline } = require("../../shared/timeline-model");
-const { migratePlayerPointPopupTimeline } = require("../../shared/player-point-popup-timeline");
 const { ART_TIMELINE_ARCHITECTURE_VERSION } = require("../../shared/art-timeline-architecture");
 const {
   migrateLayoutTextFieldWidgetComponents,
@@ -27,9 +26,7 @@ const {
   migrateLobbyWidgetTimeline
 } = require("../../shared/lobby-widget-art");
 const { controllerButtonOverride } = require("../../shared/controller-button-art");
-const { controllerPlayerBannerOverride } = require("./controller-player-banner-art-runtime");
 const { stageBackgroundOverride } = require("./stage-background-art-runtime");
-const { migratePlayerWidgetPointPopupAnchorComponents } = require("./player-widget-point-popup-anchor-runtime");
 const { createArtComponentNormalizationRuntime } = require("../art-component-normalization-runtime");
 const { createArtCompositionCatalogRuntime } = require("../art-composition-catalog-runtime");
 const { compositionRevision, createArtCompositionDependencyReport } = require("../art-composition-dependency-runtime");
@@ -156,9 +153,7 @@ function createArtAssetsRuntime({
     migrateGeneratedWidgetDefaults(composition.id, components);
     migrateRemovedWidgetComponents(composition.id, components);
     migrateGeneratedWidgetLayerOrder(composition.id, components);
-    migratePlayerWidgetPointPopupAnchorComponents(composition.id, components);
     migrateVotingCardVoterContainerDefaults(composition.id, components);
-    migratePlayerAnswerBubbleLayerOrder(composition.id, components);
     migrateLayoutTextFieldWidgetComponents(composition.id, components);
     migrateLobbyWidgetComponents(composition.id, components);
     const canvas = {
@@ -166,11 +161,9 @@ function createArtAssetsRuntime({
       height: cleanNumber(override?.canvas?.height, Number(composition.canvas?.height || 1), 1)
     };
     migrateGeneratedWidgetCanvas(composition.id, canvas);
-    migratePlayerObjectCanvas(composition.id, canvas);
     migrateLobbyWidgetReferenceBounds(composition.id, components, canvas);
     let timelineOverride = migrateLayoutTextFieldWidgetTimeline(composition.id, override?.timeline, composition.timeline);
     timelineOverride = migrateLobbyWidgetTimeline(composition.id, timelineOverride, composition.timeline);
-    timelineOverride = migratePlayerPointPopupTimeline(composition.id, timelineOverride || composition.timeline);
     const timeline = normalizeTimeline(timelineOverride, composition.timeline);
     const normalized = {
       id: composition.id,
@@ -206,16 +199,6 @@ function createArtAssetsRuntime({
     const voterContainer = components.find((component) => component?.id === "voter-container");
     if (!voterContainer || voterContainer.childDistribution === "vertical") return;
     voterContainer.childDistribution = "horizontal";
-  }
-
-  function migratePlayerAnswerBubbleLayerOrder(compositionId, components = []) {
-    if (compositionId !== "player-answer-bubble") return;
-    const legacyOrder = ["answer-bubble-tail", "answer-bubble-card", "answer-text"];
-    const componentIds = components.map((component) => component.id);
-    if (componentIds.length !== legacyOrder.length) return;
-    if (!legacyOrder.every((id, index) => componentIds[index] === id)) return;
-    const byId = new Map(components.map((component) => [component.id, component]));
-    components.splice(0, components.length, byId.get("answer-text"), byId.get("answer-bubble-card"), byId.get("answer-bubble-tail"));
   }
 
   function normalizeCompositionSurface(surface) {
@@ -272,11 +255,6 @@ function createArtAssetsRuntime({
       canvas.width = 180;
       canvas.height = 180;
     }
-  }
-
-  function migratePlayerObjectCanvas(compositionId, canvas = {}) {
-    if (!String(compositionId || "").startsWith("player-object-")) return;
-    if (Number(canvas.height || 0) < 370) canvas.height = 370;
   }
 
   function migrateGeneratedWidgetDefaults(compositionId, components = []) {
@@ -362,8 +340,7 @@ function createArtAssetsRuntime({
 
   function migrateRemovedWidgetComponents(compositionId, components = []) {
     const removedByComposition = {
-      "join-qr-code": new Set(["qr-url"]),
-      "controller-player-banner": new Set(["banner-name", "banner-card"])
+      "join-qr-code": new Set(["qr-url"])
     };
     const removedIds = removedByComposition[compositionId];
     if (!removedIds?.size) return;
@@ -396,7 +373,6 @@ function createArtAssetsRuntime({
   function publicArtComposition(composition, manifest) {
     const manifestCompositions = manifest.compositions || {};
     const explicitOverride = controllerButtonOverride(composition, manifestCompositions)
-      || controllerPlayerBannerOverride(composition, manifestCompositions)
       || stageBackgroundOverride(composition, manifestCompositions);
     const migratedChildOverride = explicitOverride
       ? null

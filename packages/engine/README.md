@@ -275,7 +275,7 @@ bundle only after determinism and full release validation pass; source content
 and the active release are never rewritten or published by this command.
 
 Bundle-mode games do not supply a parallel `game-data.js`. Readiness
-materializes flow, constants, layouts, audio, prompts, art, avatar choices, and
+materializes flow, constants, layouts, audio, prompts, art, and
 transition metadata from the same pinned snapshot after hash and semantic-role
 validation. Missing runtime fields fail with `BUNDLE_GAME_DATA_INVALID`; the
 engine never fills them from reference or starter defaults.
@@ -286,7 +286,7 @@ process-global drafts or legacy files, and teardown drops the release tuple,
 snapshot, and materialized data together. A snapshot that cannot produce a
 complete room dataset fails room creation with
 `ACTIVE_CONTENT_GAME_DATA_INVALID`. Runtime decisions, scoring defaults,
-countdown/crafting durations, player colors, and avatar choices likewise resolve
+countdown/crafting durations and player colors likewise resolve
 through that room's pinned dataset. Trivia selection and host-audio action
 resolution also use the room-owned prompt and audio collections, never a newer
 process-global authoring draft.
@@ -294,11 +294,12 @@ process-global authoring draft.
 The engine application also exposes an explicit
 `sessionContentMode: "latest-saved-authoring"` option for a trusted reference
 authoring service. In that mode, the service assembles and validates a complete
-snapshot from the same saved sources used by its Tools. Running rooms remain
-immutable; a room adopts the cached latest snapshot only when a new room or
-lobby game session begins. Tool saves and unsaved drafts do not reset active
-rooms. Generated games default to `published-release`, so this authoring
-preview mode is never inherited accidentally.
+snapshot from the same saved sources used by its Tools. Saved Art and Stage or
+Controller Layout presentation changes hot-repin active rooms without resetting
+their current actions; gameplay-affecting Flow and constants changes remain a
+session boundary. Generated games remain `published-release` unless deliberately
+started through the development CLI, whose rapid-prototype default is
+`latest-saved-authoring`.
 An authoring application may supply `authoringRepository` as its game-owned
 default for GitHub persistence. Environment variables still take precedence,
 and generated games do not inherit the reference application's repository.
@@ -351,14 +352,15 @@ The generic component vocabulary and normalizers are available from
 `@pop-party/engine/art/components`. Games should use these exported surfaces
 instead of importing package-internal files.
 
-`@pop-party/engine/semantic-roles` defines the required bridge from generic
-engine behavior to game-owned art. A role target names a composition and may
+`@pop-party/engine/semantic-roles` defines bridges used only by built-in visual
+features. A role target names a composition and may
 continue through authored `instanceLabel` segments; it never names a legacy DOM
 selector or a fallback object. Bundle readiness validates all required roles,
 their stage/controller surface, and their terminal component kind against the
-published art manifest before the game can become ready. In particular, the
-player answer bubble and points origin are children of the mapped player widget,
-while the popup art and voting-card widget are independent mapped prefabs.
+published art manifest before the game can become ready. Generic player,
+controller-input, answer, correctness, points, VIP, and needs-input authority has
+no Art dependency. Games that want player visuals bind their own ordinary Layout
+elements and plugin renderers; copied reference Art has no engine semantics.
 Flow saves are complete replacements: omitted states and nested action arrays
 are rejected instead of being recovered from an older save. Stage execution
 likewise consumes the shared action registry and registered layout entities as

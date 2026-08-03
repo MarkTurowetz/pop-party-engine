@@ -14,14 +14,14 @@ describe("runtime semantic roles", () => {
     globalThis.__POP_PARTY_RUNTIME_CONFIG__ = {
       semanticRoles: {
         "engine.stage.votingCard": { compositionId: "game-voting-card" },
-        "engine.stage.playerPointsPopupContainer": {
+        "reference.stage.playerDecoration": {
           compositionId: "game-player-widget",
           instancePath: ["pointsOrigin"]
         }
       }
     };
     expect(runtimeSemanticCompositionId("engine.stage.votingCard")).toBe("game-voting-card");
-    expect(runtimeSemanticInstanceLabel("engine.stage.playerPointsPopupContainer")).toBe("pointsOrigin");
+    expect(runtimeSemanticInstanceLabel("reference.stage.playerDecoration")).toBe("pointsOrigin");
   });
 
   it("fails closed instead of substituting a hard-coded or legacy object", () => {

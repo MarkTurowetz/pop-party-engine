@@ -420,8 +420,7 @@ function findTextInputAndFill() {
   if (style.display === "none" || textState?.classList.contains("hidden")) {
     return { found: false, reason: "text input not visible" };
   }
-  const playerName = document.querySelector("#controllerPlayerBannerName")?.textContent?.trim()
-    || document.querySelector("#controllerPlayerName")?.textContent?.trim()
+  const playerName = document.querySelector("#controllerScreen")?.dataset.playerName?.trim()
     || "Player";
   textInput.value = `${playerName} Text response`;
   textInput.dispatchEvent(new Event("input", { bubbles: true }));

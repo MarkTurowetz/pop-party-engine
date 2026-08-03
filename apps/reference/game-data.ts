@@ -3,7 +3,7 @@
 // CommonJS (require + module.exports) — no client global. Every other shared/*.ts is
 // scope-isolated, so this module's top-level names don't collide in the shared compilation.
 const { availableFlowActionTypes } = require("../../shared/flow-action-registry");
-const { defaultPlayerPointPopupTimeline } = require("../../shared/player-point-popup-timeline");
+const { defaultPlayerPointPopupTimeline } = require("./player-point-popup-timeline");
 const { defaultLayoutTextFieldCompositions } = require("../../shared/layout-text-art");
 const { installDefaultLobbyWidgetCompositions } = require("../../shared/lobby-widget-art");
 const { installDefaultControllerButtonCompositions } = require("../../shared/controller-button-art");
@@ -150,7 +150,6 @@ const defaultGameFlow = {
 };
 
 const defaultPlayerColors = ["#22d3ee", "#60d394", "#ffe156", "#ff9e2c", "#ff4fa3", "#7c3aed", "#2458ff", "#ef4444", "#f97316"];
-const avatarShapes = ["rex", "stego", "trike", "raptor", "bronto", "ankylo"];
 const defaultGameConstants = {
   playerColors: defaultPlayerColors,
   craftingTimerDuration: 30,
@@ -220,7 +219,7 @@ const defaultControllerLayouts = {
     name: "Global Layout",
     hiddenInStates: false,
     elements: [
-      { id: "controllerPlayerBanner", name: "Player Banner", selector: "#controllerPlayerBanner", kind: "art", artCompositionId: "controller-player-banner", x: 195, y: 58, width: 338, height: 78, scale: 1, defaultAnimationState: "On", playerBannerWidgetVersion: 1 }
+      { id: "controllerplayerbanner", name: "Player Banner", selector: "", kind: "art", artCompositionId: "controller-player-banner", x: 195, y: 58, width: 338, height: 78, scale: 1, defaultAnimationState: "On" }
     ]
   },
   states: [
@@ -1595,7 +1594,6 @@ module.exports = {
   artGroups,
   availableFlowActionTypes,
   availableFlowTransitions,
-  avatarShapes,
   defaultControllerLayouts,
   defaultGameConstants,
   defaultGameFlow,
