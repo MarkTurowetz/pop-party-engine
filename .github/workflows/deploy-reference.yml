@@ -1,0 +1,95 @@
+name: deploy-reference
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Exact immutable engine version already published to npm
+        required: true
+        type: string
+      confirmation:
+        description: Type DEPLOY to authorize production and preview deployment
+        required: true
+        type: string
+
+concurrency:
+  group: pop-party-reference-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-reference:
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'DEPLOY'
+    runs-on: ubuntu-latest
+    env:
+      REFERENCE_PRODUCTION_URL: https://pop-party.onrender.com
+      RELEASE_OPERATION_KEY: engine-${{ inputs.release_version }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - run: npm ci
+      - run: npm run release:check -- "${{ inputs.release_version }}"
+
+      - name: Resolve the exact rendered application build
+        id: build
+        run: >-
+          node -e 'const fs=require("fs");
+          process.argv.push("--next");
+          const info=require("./build-version").buildInfo();
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `app_version=${info.version}\n`)'
+
+      - name: Atomically activate matching reference content and release coordinates
+        id: activate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_STATE_FILE: ${{ runner.temp }}/reference-release-activation.json
+        run: >-
+          node scripts/coordinate-reference-release.js activate
+          --engine-version "${{ inputs.release_version }}"
+          --content-root "apps/reference/content"
+          --operation-key "${RELEASE_OPERATION_KEY}"
+          --state-file "${RELEASE_STATE_FILE}"
+
+      - name: Trigger Render for the exact released commit
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: node scripts/trigger-render-deploy.js
+
+      - name: Verify the coordinated production release
+        id: verify
+        run: >-
+          node scripts/verify-production-release.js
+          --base-url "${REFERENCE_PRODUCTION_URL}"
+          --engine-version "${{ inputs.release_version }}"
+          --release-revision "${{ steps.activate.outputs.release_revision }}"
+          --app-version "${{ steps.build.outputs.app_version }}"
+
+      - name: Refresh and verify the reference preview
+        continue-on-error: true
+        env:
+          RENDER_PREVIEW_DEPLOY_HOOK_URL: ${{ secrets.RENDER_PREVIEW_DEPLOY_HOOK_URL }}
+        run: >-
+          node scripts/deploy-reference-preview.js
+          --base-url "https://pop-party-preview.onrender.com"
+          --release-authority-url "${REFERENCE_PRODUCTION_URL}"
+          --engine-version "${{ inputs.release_version }}"
+          --commit "${GITHUB_SHA}"
+
+      - name: Restore prior content and release coordinates after a failed deployment
+        if: ${{ failure() && steps.activate.outputs.changed == 'true' && steps.verify.outcome != 'success' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_STATE_FILE: ${{ runner.temp }}/reference-release-activation.json
+        run: >-
+          node scripts/coordinate-reference-release.js rollback
+          --operation-key "${RELEASE_OPERATION_KEY}"
+          --state-file "${RELEASE_STATE_FILE}"
