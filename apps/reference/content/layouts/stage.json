@@ -68,7 +68,7 @@
         "scale": 1.3,
         "rotation": 0,
         "tags": [],
-        "defaultAnimationState": "",
+        "defaultAnimationState": "On",
         "defaultText": "",
         "fontSize": 58,
         "autoFitText": false,

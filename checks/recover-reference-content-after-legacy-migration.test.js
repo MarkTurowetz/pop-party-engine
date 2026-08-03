@@ -22,7 +22,7 @@ describe("reference content rollback", () => {
       routeNodeCount: 5,
       stageLayoutCount: 10,
       controllerLayoutCount: 18,
-      artCompositionCount: 72,
+      artCompositionCount: 73,
       backgroundCompositionCount: 10,
       artAssetCount: 8
     });

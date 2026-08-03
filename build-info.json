@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1274",
+  "version": "1.0.17.1275",
   "baseVersion": "1.0.17",
-  "buildNumber": 1274,
-  "commit": "f1b0f3b3",
-  "branch": "codex/release-engine-1.4.1",
-  "generatedAt": "2026-08-03T06:04:39.508Z"
+  "buildNumber": 1275,
+  "commit": "3c3d85bf",
+  "branch": "codex/reference-game-avatars",
+  "generatedAt": "2026-08-03T07:50:24.699Z"
 }
