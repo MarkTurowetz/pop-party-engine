@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1279",
+  "version": "1.0.17.1280",
   "baseVersion": "1.0.17",
-  "buildNumber": 1279,
-  "commit": "c02d9cc2",
-  "branch": "codex/renderer-component-authority",
-  "generatedAt": "2026-08-03T10:27:14.561Z"
+  "buildNumber": 1280,
+  "commit": "71aecf33",
+  "branch": "codex/release-engine-1.4.3",
+  "generatedAt": "2026-08-03T10:33:36.465Z"
 }
