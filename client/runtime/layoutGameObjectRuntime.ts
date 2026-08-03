@@ -141,7 +141,13 @@ function renderLayoutArtInstance(element: Dict | null, host: El | null, options:
     }
   });
   if (isNewRenderer || layoutArtRenderSignatureByRenderer.get(renderer) !== renderSignature) {
-    renderer.render(components, canvas, { instant: true, timeline });
+    renderer.render(components, canvas, {
+      instant: true,
+      timeline,
+      compositionId: String(composition.id || element?.artCompositionId || ""),
+      componentOverrides: options.componentOverrides || {},
+      textOverrides: options.textOverrides || {}
+    });
     layoutArtRenderSignatureByRenderer.set(renderer, renderSignature);
   }
   const authoredSetupState = String(element?.defaultAnimationState || "").trim();

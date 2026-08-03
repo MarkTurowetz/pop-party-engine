@@ -420,6 +420,8 @@ module.exports = Object.freeze([
             { id: "name", kind: "text", source: "name", targetComponentId: "fixture-player-name" },
             { id: "score", kind: "text", source: "score", targetComponentId: "fixture-player-score" },
             { id: "avatar", kind: "text", source: "avatarId", targetComponentId: "fixture-player-avatar" },
+            { id: "avatarState", kind: "state", source: "avatarState", targetComponentId: "fixture-player-avatar-mc", playback: "stop" },
+            { id: "avatarTint", kind: "component", source: "avatarColor", targetComponentId: "fixture-player-avatar-sprite", property: "imageTint" },
             { id: "state", kind: "state", source: "state", playback: "stop" },
             {
               id: "rows", kind: "collection", source: "rows", targetComponentId: "fixture-player-rows",
@@ -445,6 +447,8 @@ module.exports = Object.freeze([
             name: player.name,
             score: String((index + 1) * 10 + count),
             avatarId: context.profiles[player.id]?.avatarId || "trike",
+            avatarState: count > 0 ? "Stego" : "Rex",
+            avatarColor: index === 0 ? "#ff4fa3" : "#4fd1ff",
             state: player.needsInput ? "Choosing Start" : "On",
             rows: [{ id: "main", cards: playerCards }]
           }))
@@ -578,6 +582,32 @@ module.exports = Object.freeze([
     ],
     tracks: []
   };
+  const fixtureAvatarTimeline = {
+    fps: 30,
+    frameCount: 2,
+    labels: [{ name: "Rex", frame: 0 }, { name: "Stego", frame: 1 }],
+    commandFrames: [0, 1],
+    commands: [
+      { id: "fixture-avatar-rex-stop", frame: 0, type: "stop" },
+      { id: "fixture-avatar-stego-stop", frame: 1, type: "stop" }
+    ],
+    tracks: [{
+      targetId: "fixture-player-avatar-sprite",
+      keyframes: [
+        { frame: 0, easing: "linear", props: { imageTint: "currentColor" } },
+        { frame: 1, easing: "linear", props: { imageTint: "#17131f" } }
+      ]
+    }]
+  };
+  artManifest.compositions["fixture-player-avatar-art"] = {
+    name: "Fixture Player Avatar Art", surface: "stage", compositionKind: "gameObject", isCustom: true,
+    canvas: { width: 80, height: 80 }, timeline: fixtureAvatarTimeline,
+    components: [{
+      id: "fixture-player-avatar-sprite", name: "Fixture Player Avatar Sprite", kind: "sprite",
+      x: 40, y: 40, width: 72, height: 72, imageDataUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Ccircle cx='5' cy='5' r='4' fill='black'/%3E%3C/svg%3E",
+      spriteRenderMode: "tinted", imageTint: "currentColor", defaultAnimationState: "On"
+    }]
+  };
   artManifest.compositions["fixture-card"] = {
     name: "Fixture Card", surface: "stage", compositionKind: "gameObject", isCustom: true,
     canvas: { width: 100, height: 140 },
@@ -601,6 +631,7 @@ module.exports = Object.freeze([
       { id: "fixture-player-name", name: "Fixture Player Name", kind: "text", x: 150, y: 18, width: 220, height: 28, defaultText: "PLAYER", fontSize: 20, fontColor: "#17131f", defaultAnimationState: "On" },
       { id: "fixture-player-score", name: "Fixture Player Score", kind: "text", x: 150, y: 48, width: 120, height: 28, defaultText: "0", fontSize: 20, fontColor: "#17131f", defaultAnimationState: "On" },
       { id: "fixture-player-avatar", name: "Fixture Player Avatar", kind: "text", x: 150, y: 76, width: 220, height: 24, defaultText: "trike", fontSize: 16, fontColor: "#17131f", defaultAnimationState: "On" },
+      { id: "fixture-player-avatar-mc", name: "Fixture Player Avatar MC", kind: "reference", artCompositionId: "fixture-player-avatar-art", x: 55, y: 55, width: 80, height: 80, defaultAnimationState: "Rex" },
       { id: "fixture-player-rows", name: "Fixture Player Rows", kind: "container", childDistribution: "vertical", x: 150, y: 130, width: 280, height: 150, fillColor: "transparent", defaultAnimationState: "On", children: [] }
     ]
   };
@@ -1425,6 +1456,8 @@ module.exports = Object.freeze([
         window.__fixturePlayerFirstRow = firstRow;
         window.__fixturePlayerFirstCard = firstCard;
         window.__fixturePlayerFirstCardRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(firstCard);
+        const avatarSprite = firstTile?.querySelector('[data-art-component-id="fixture-player-avatar-sprite"]');
+        window.__fixturePlayerAvatarSprite = avatarSprite;
         return {
           tiles: host?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length,
           firstName: firstTile?.querySelector('[data-art-component-id="fixture-player-name"]')?.textContent?.trim(),
@@ -1434,7 +1467,8 @@ module.exports = Object.freeze([
           firstCards: firstRow?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] > [data-game-plugin-renderer-collection-item="true"]').length,
           playerRendererPresent: Boolean(window.__fixturePlayerFirstRenderer),
           nestedRendererPresent: Boolean(window.__fixturePlayerFirstCardRenderer),
-          firstState: firstTile?.dataset.gamePluginRendererState
+          firstState: firstTile?.dataset.gamePluginRendererState,
+          avatarTint: avatarSprite ? getComputedStyle(avatarSprite).getPropertyValue("--component-sprite-tint").trim() : ""
         };
       }, { firstPlayerId: collectionPlayerOne.player.id, secondPlayerId: collectionPlayerTwo.player.id });
       await fetch(first.startup.localUrl + "/api/complete-action", {
@@ -1483,6 +1517,7 @@ module.exports = Object.freeze([
         const firstRow = firstTile?.querySelector('[data-game-plugin-renderer-nested-collection="rows"] > [data-game-plugin-renderer-item-key="main"]');
         const cards = Array.from(firstRow?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cards"] > [data-game-plugin-renderer-collection-item="true"]') || []);
         const retainedCard = firstRow?.querySelector('[data-game-plugin-renderer-item-key="a"]');
+        const avatarSprite = firstTile?.querySelector('[data-art-component-id="fixture-player-avatar-sprite"]');
         return {
           tileRetained: firstTile === window.__fixturePlayerFirstTile,
           playerRendererRetained: window.__fixturePlayerFirstRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(firstTile),
@@ -1492,7 +1527,9 @@ module.exports = Object.freeze([
           cardCount: cards.length,
           cardOrder: cards.map((card) => card.dataset.gamePluginRendererItemKey),
           score: firstTile?.querySelector('[data-art-component-id="fixture-player-score"]')?.textContent?.trim(),
-          tiles: host?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length
+          tiles: host?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length,
+          avatarSpriteRetained: avatarSprite === window.__fixturePlayerAvatarSprite,
+          avatarTint: avatarSprite ? getComputedStyle(avatarSprite).getPropertyValue("--component-sprite-tint").trim() : ""
         };
       }, collectionPlayerOne.player.id);
       await collectionStagePage.close();
@@ -3131,6 +3168,7 @@ module.exports = Object.freeze([
     || development.playerPresentationIdentityBefore?.firstCards !== 2
     || !development.playerPresentationIdentityBefore?.playerRendererPresent
     || !development.playerPresentationIdentityBefore?.nestedRendererPresent
+    || development.playerPresentationIdentityBefore?.avatarTint !== "#ff4fa3"
     || !development.playerPresentationReconcileState?.tileRetained
     || !development.playerPresentationReconcileState?.playerRendererRetained
     || !development.playerPresentationReconcileState?.rowRetained
@@ -3140,6 +3178,8 @@ module.exports = Object.freeze([
     || JSON.stringify(development.playerPresentationReconcileState?.cardOrder) !== JSON.stringify(["a", "d", "b"])
     || development.playerPresentationReconcileState?.score !== "11"
     || development.playerPresentationReconcileState?.tiles !== 2
+    || !development.playerPresentationReconcileState?.avatarSpriteRetained
+    || development.playerPresentationReconcileState?.avatarTint !== "#ff4fa3"
     || development.controllerProfileInteractions?.before?.avatarId !== "trike"
     || development.controllerProfileInteractions?.before?.accentId !== "sun"
     || development.controllerProfileInteractions?.before?.avatarControls !== 3

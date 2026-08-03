@@ -16,6 +16,10 @@ import { createActionCompletionBarrier } from "./actionCompletionBarrier";
 type Dict = Record<string, unknown>;
 type Component = Dict;
 type CanvasSize = { width?: number; height?: number; minX?: number; minY?: number } | undefined;
+type AuthoritativeBindingOverrides = {
+  componentOverrides?: Dict;
+  textOverrides?: Dict;
+};
 
 interface ArtComponentSchema {
   normalizeComponentKind: (kind?: unknown) => string;
@@ -348,6 +352,7 @@ class ArtObjectView {
   instanceId: string;
   getComposition: (id: string) => Dict | null;
   referencePath: Set<string>;
+  compositionId: string;
   componentPath: string[];
   component: Component | null = null;
   canvas: CanvasSize | null = null;
@@ -357,6 +362,7 @@ class ArtObjectView {
   label: HTMLElement;
   gameObject: Dict | null = null;
   visual: Dict | null = null;
+  afterTimelineFrame: (() => void) | null;
 
   constructor(options: Dict = {}) {
     this.document = (options.document as Document) || globalThis.document;
@@ -368,7 +374,11 @@ class ArtObjectView {
         ? (options.getComposition as (id: string) => Dict | null)
         : (id: string) => w().artComposition?.(id) || null;
     this.referencePath = options.referencePath instanceof Set ? (options.referencePath as Set<string>) : new Set();
+    this.compositionId = String(options.compositionId || "").trim();
     this.componentPath = Array.isArray(options.componentPath) ? (options.componentPath as string[]) : [];
+    this.afterTimelineFrame = typeof options.afterTimelineFrame === "function"
+      ? (options.afterTimelineFrame as () => void)
+      : null;
     this.element = this.document.createElement("div");
     this.image = this.document.createElement("img");
     this.image.className = "art-runtime-object-image";
@@ -401,6 +411,11 @@ class ArtObjectView {
     if (componentName) ids.add(componentName);
     if (instanceLabel) ids.add(instanceLabel);
     if (pathId) ids.add(pathId);
+    if (this.compositionId) {
+      for (const targetId of [componentId, componentName, instanceLabel]) {
+        if (targetId) ids.add(`${this.compositionId}/${targetId}`);
+      }
+    }
     return ids;
   }
 
@@ -440,7 +455,10 @@ class ArtObjectView {
           timeline: this.componentTimeline(),
           timelineApplySelf,
           timelineCanvas: this.canvas || null,
-          timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
+          timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => {
+            this.applyTimelineSnapshotToDescendants(snapshot);
+            this.afterTimelineFrame?.();
+          },
           timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail),
           timelineCommandDurationHandler: (command: TimelineCommand) => this.timelineCommandDuration(command)
         }
@@ -454,7 +472,10 @@ class ArtObjectView {
         timeline: this.componentTimeline(),
         timelineApplySelf,
         timelineCanvas: this.canvas || null,
-        timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => this.applyTimelineSnapshotToDescendants(snapshot),
+        timelineFrameHandler: (snapshot: TimelineFrameSnapshot) => {
+          this.applyTimelineSnapshotToDescendants(snapshot);
+          this.afterTimelineFrame?.();
+        },
         timelineCommandHandler: (detail: TimelineCommandEventDetail) => this.handleTimelineCommand(detail),
         timelineCommandDurationHandler: (command: TimelineCommand) => this.timelineCommandDuration(command)
       }
@@ -512,6 +533,37 @@ class ArtObjectView {
       if (!view) continue;
       const visual = view.createVisual() as { applyTimelineSnapshot?: (nextSnapshot: TimelineFrameSnapshot) => void } | null;
       visual?.applyTimelineSnapshot?.(snapshot);
+    }
+  }
+
+  applyAuthoritativeBindings(componentOverride: Dict = {}, textOverride?: unknown): void {
+    const component = this.component || {};
+    const hasTextOverride = textOverride !== undefined;
+    const hasDefaultTextOverride = Object.prototype.hasOwnProperty.call(componentOverride, "defaultText");
+    if (hasTextOverride || hasDefaultTextOverride) {
+      const text = String(hasTextOverride ? textOverride ?? "" : componentOverride.defaultText ?? "");
+      setLabelText(this.label, { ...component, defaultText: text }, text);
+    }
+    if (Object.prototype.hasOwnProperty.call(componentOverride, "fill")) {
+      const fill = String(componentOverride.fill ?? "transparent");
+      this.element.style.setProperty("--component-fill-color", fill);
+      this.element.style.setProperty("--component-fill-css", fill);
+    }
+    if (Object.prototype.hasOwnProperty.call(componentOverride, "imageTint")) {
+      this.element.style.setProperty("--component-sprite-tint", String(componentOverride.imageTint || "currentColor"));
+    }
+    if (Object.prototype.hasOwnProperty.call(componentOverride, "isShown")) {
+      this.element.style.display = componentOverride.isShown === false ? "none" : "";
+    }
+    if (Object.prototype.hasOwnProperty.call(componentOverride, "opacity")) {
+      const opacity = num(componentOverride.opacity, 1);
+      this.element.style.opacity = String(Math.max(0, Math.min(1, opacity)));
+    }
+    if (Object.prototype.hasOwnProperty.call(componentOverride, "rotation")) {
+      this.element.style.setProperty("--component-rotation", `${num(componentOverride.rotation)}deg`);
+    }
+    if (Object.prototype.hasOwnProperty.call(componentOverride, "scale")) {
+      this.element.style.setProperty("--component-scale", String(num(componentOverride.scale, 1)));
     }
   }
 
@@ -597,6 +649,7 @@ class ArtObjectView {
     const renderList =
       (referencedComposition?.components as Component[]) || distributedContainerChildren(this.component || {}, children || []);
     const childReferencePath = referencedComposition ? new Set([...this.referencePath, referencedId]) : this.referencePath;
+    const childCompositionId = referencedComposition ? referencedId : this.compositionId;
     const counts = new Map<string, number>();
     const keyedChildren = renderList.map((child, index) => ({ child, index, key: artComponentViewKey(child, index, counts) }));
     const desiredKeys = new Set(keyedChildren.map((child) => child.key));
@@ -609,8 +662,10 @@ class ArtObjectView {
           gameObjectApi: this.gameObjectApi,
           getComposition: this.getComposition,
           referencePath: childReferencePath,
+          compositionId: childCompositionId,
           componentPath: [...this.componentPath, String(child.id || "").trim()].filter(Boolean),
           instanceId: `${this.instanceId}/${key}`,
+          afterTimelineFrame: this.afterTimelineFrame,
           component: child,
           canvas: childCanvas,
           layer: { index, total: renderList.length }
@@ -618,6 +673,7 @@ class ArtObjectView {
         this.children.set(key, view);
         view.initialize();
       } else {
+        view.compositionId = childCompositionId;
         view.update(child, childCanvas, { index, total: renderList.length, isRootContainer: false });
       }
       this.element.appendChild(view.element);
@@ -710,6 +766,9 @@ class ArtObjectTreeRenderer {
   views = new Map<string, ArtObjectView>();
   rootTimelinePlayer: TimelinePlayer | null = null;
   rootTimelineSignature = "";
+  authoritativeComponentOverrides: Dict = {};
+  authoritativeTextOverrides: Dict = {};
+  applyingAuthoritativeBindings = false;
 
   constructor(options: Dict = {}) {
     this.host = options.host as HTMLElement | undefined;
@@ -732,6 +791,47 @@ class ArtObjectTreeRenderer {
       const view = this.viewForComponentId(targetId);
       const visual = view?.createVisual() as { applyTimelineSnapshot?: (nextSnapshot: TimelineFrameSnapshot) => void } | null | undefined;
       visual?.applyTimelineSnapshot?.(snapshot);
+    }
+    this.applyAuthoritativeBindings();
+  }
+
+  bindingViewForTarget(targetId: string): ArtObjectView | null {
+    return this.viewForComponentId(targetId);
+  }
+
+  setAuthoritativeBindings(overrides: AuthoritativeBindingOverrides = {}, apply = true): void {
+    this.authoritativeComponentOverrides = (overrides.componentOverrides && typeof overrides.componentOverrides === "object")
+      ? overrides.componentOverrides
+      : {};
+    this.authoritativeTextOverrides = (overrides.textOverrides && typeof overrides.textOverrides === "object")
+      ? overrides.textOverrides
+      : {};
+    if (apply) this.applyAuthoritativeBindings();
+  }
+
+  applyAuthoritativeBindings(): void {
+    if (this.applyingAuthoritativeBindings) return;
+    this.applyingAuthoritativeBindings = true;
+    try {
+      const componentOverrides = this.authoritativeComponentOverrides || {};
+      const textOverrides = this.authoritativeTextOverrides || {};
+      const targets = new Set([
+        ...Object.keys(componentOverrides),
+        ...Object.keys(textOverrides)
+      ]);
+      for (const targetId of targets) {
+        const view = this.bindingViewForTarget(targetId);
+        if (!view) continue;
+        const componentOverride = componentOverrides[targetId];
+        view.applyAuthoritativeBindings(
+          componentOverride && typeof componentOverride === "object" ? componentOverride as Dict : {},
+          Object.prototype.hasOwnProperty.call(textOverrides, targetId)
+            ? textOverrides[targetId]
+            : undefined
+        );
+      }
+    } finally {
+      this.applyingAuthoritativeBindings = false;
     }
   }
 
@@ -763,6 +863,10 @@ class ArtObjectTreeRenderer {
 
   render(components: Component[] = [], canvas?: CanvasSize, options: Dict = {}): void {
     if (!this.host) return;
+    this.setAuthoritativeBindings({
+      componentOverrides: options.componentOverrides as Dict | undefined,
+      textOverrides: options.textOverrides as Dict | undefined
+    }, false);
     this.updateRootTimeline((options.timeline || null) as TimelineDocument | null);
     const counts = new Map<string, number>();
     const keyedComponents = (components || []).map((component, index) => ({
@@ -779,8 +883,10 @@ class ArtObjectTreeRenderer {
           visualAnimation: this.visualAnimation,
           gameObjectApi: this.gameObjectApi,
           getComposition: this.getComposition,
+          compositionId: String(options.compositionId || "").trim(),
           componentPath: [String(component.id || "").trim()].filter(Boolean),
           instanceId: `${this.instanceId}/${key}`,
+          afterTimelineFrame: () => this.applyAuthoritativeBindings(),
           component,
           canvas,
           layer: { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) }
@@ -794,6 +900,7 @@ class ArtObjectTreeRenderer {
         view.update(component, canvas, { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) });
         view.initialize();
       } else {
+        view.compositionId = String(options.compositionId || "").trim();
         view.update(component, canvas, { index, total: (components || []).length, isRootContainer: isArtRootContainer(component, components) });
       }
       this.host.appendChild(view.element);
@@ -804,6 +911,7 @@ class ArtObjectTreeRenderer {
       view.removeImmediately();
     }
     this.syncRootTimelineFrame();
+    this.applyAuthoritativeBindings();
   }
 
   dispose(): void {

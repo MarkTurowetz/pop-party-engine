@@ -533,6 +533,79 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(appliedFrames).toEqual([7]);
   });
 
+  it("keeps component bindings authoritative after repeated ancestor lifecycle frames", () => {
+    const properties = new Map<string, string>();
+    const sprite = {
+      applyTimelineSnapshot: () => properties.set("--component-sprite-tint", "currentColor")
+    };
+    const boundView = {
+      createVisual: () => sprite,
+      applyAuthoritativeBindings: (overrides: Record<string, unknown>) => {
+        properties.set("--component-sprite-tint", String(overrides.imageTint));
+      }
+    };
+    const rootView = {
+      viewForComponentId: (id: string) => id === "player-avatar-sprite" ? boundView : null
+    };
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      views: Map<string, unknown>;
+      authoritativeComponentOverrides: Record<string, unknown>;
+      authoritativeTextOverrides: Record<string, unknown>;
+      applyingAuthoritativeBindings: boolean;
+      applyTimelineSnapshotToViews: (snapshot: unknown) => void;
+    };
+    renderer.views = new Map([["avatar", rootView]]);
+    renderer.authoritativeComponentOverrides = {
+      "player-avatar-sprite": { imageTint: "#ff4fa3" }
+    };
+    renderer.authoritativeTextOverrides = {};
+    renderer.applyingAuthoritativeBindings = false;
+
+    renderer.applyTimelineSnapshotToViews({
+      frame: 1,
+      targets: { "player-avatar-sprite": { imageTint: "currentColor" } }
+    });
+    expect(properties.get("--component-sprite-tint")).toBe("#ff4fa3");
+
+    renderer.applyTimelineSnapshotToViews({
+      frame: 2,
+      targets: { "player-avatar-sprite": { imageTint: "#17131f" } }
+    });
+    expect(properties.get("--component-sprite-tint")).toBe("#ff4fa3");
+  });
+
+  it("resolves qualified binding targets only within their owning composition", () => {
+    const nestedText = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      compositionId: string;
+      componentPath: string[];
+      children: Map<string, unknown>;
+    };
+    nestedText.component = { id: "text" };
+    nestedText.compositionId = "prefab-layout-text-field-text";
+    nestedText.componentPath = ["layout-text-field-text", "text"];
+    nestedText.children = new Map();
+    const root = Object.create(PartyGameArtObject.ArtObjectView.prototype) as {
+      component: { id: string };
+      compositionId: string;
+      componentPath: string[];
+      children: Map<string, unknown>;
+    };
+    root.component = { id: "layout-text-field-text" };
+    root.compositionId = "layout-text-field";
+    root.componentPath = ["layout-text-field-text"];
+    root.children = new Map([["text", nestedText]]);
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      views: Map<string, unknown>;
+      bindingViewForTarget: (targetId: string) => unknown;
+    };
+    renderer.views = new Map([["layout-text-field-text", root]]);
+
+    expect(renderer.bindingViewForTarget("prefab-layout-text-field-text/text")).toBe(nestedText);
+    expect(renderer.bindingViewForTarget("layout-text-field/text")).toBeNull();
+    expect(renderer.bindingViewForTarget("text")).toBe(nestedText);
+  });
+
   it("does not stop an active root timeline when identical authored data is reconciled", () => {
     const timeline = {
       fps: 30,
