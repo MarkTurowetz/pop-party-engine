@@ -70,13 +70,18 @@ describe("game plugin renderer runtime", () => {
         id: "fixture.context",
         surface: "controller",
         target: { layoutElementId: "round-context", layoutScope: "layer", layoutLayerId: "game-context" },
-        bindings: [{ id: "text", kind: "text", source: "label", targetComponentId: "text" }]
+        bindings: [
+          { id: "text", kind: "text", source: "label", targetComponentId: "text" },
+          { id: "tint", kind: "component", source: "tint", targetComponentId: "avatar-sprite", property: "imageTint" },
+          { id: "state", kind: "state", source: "state", targetComponentId: "avatar", playback: "stop" }
+        ]
       }] } }) })
     } as unknown as Document;
     const element = { id: "round-context", kind: "art", artCompositionId: "round-context" };
     const target = { dataset: { controllerLayoutVisibilityKey: "layer:game-context:round-context" } } as unknown as HTMLElement;
     const controllerLayoutTargetByElementId = vi.fn(() => target);
-    const renderControllerArtInstance = vi.fn();
+    const stopAtComponent = vi.fn();
+    const renderControllerArtInstance = vi.fn(() => ({ stopAtComponent }));
     Object.assign(globalThis, {
       controllerLayouts: { layers: [{ id: "game-context", elements: [element] }] },
       controllerLayoutTargetByElementId,
@@ -84,7 +89,7 @@ describe("game plugin renderer runtime", () => {
     });
 
     renderGamePluginSurface("controller", {
-      gamePlugin: { viewModels: { "fixture.context": { label: "Round 4" } } }
+      gamePlugin: { viewModels: { "fixture.context": { label: "Round 4", tint: "#36c96b", state: "Stego" } } }
     }, layerDocument);
 
     expect(controllerLayoutTargetByElementId).toHaveBeenCalledWith("round-context", "layer:game-context");
@@ -92,8 +97,12 @@ describe("game plugin renderer runtime", () => {
       element,
       target,
       "layer:game-context:round-context",
-      { textOverrides: { text: "Round 4" }, componentOverrides: {} }
+      {
+        textOverrides: { text: "Round 4" },
+        componentOverrides: { "avatar-sprite": { imageTint: "#36c96b" } }
+      }
     );
+    expect(stopAtComponent).toHaveBeenCalledWith("avatar", "Stego", { instant: true });
   });
 
 });

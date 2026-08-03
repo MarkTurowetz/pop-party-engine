@@ -516,6 +516,10 @@ describe("PartyGameLayoutGameObjects (ported layout-game-object-runtime)", () =>
       );
       expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("defaultAnimation");
       expect((renderCalls[0] as unknown[])[2]).not.toHaveProperty("respectDefaultAnimationState");
+      expect((renderCalls[0] as unknown[])[2]).toMatchObject({
+        componentOverrides: {},
+        textOverrides: { text: "Updated through label" }
+      });
       expect(playCalls).toEqual([]);
 
       root.dataset.visualState = "shown";
