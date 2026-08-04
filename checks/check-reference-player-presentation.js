@@ -137,7 +137,11 @@ async function main() {
       throw new Error(`Controller presentation did not become ready: ${JSON.stringify(diagnostic)}`, { cause: error });
     }
     const ava = await controllerPage.evaluate(() => ({ player: window.controllerState.player }));
-    const ben = await postJson(baseUrl, "/api/join", { stageCode: "AVTR", playerName: "BEN" });
+    const benControllerPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    benControllerPage.on("pageerror", (error) => browserErrors.push(`BEN controller: ${error.message}`));
+    await benControllerPage.goto(`${baseUrl}/controller?stage=AVTR&name=BEN&join=1`, { waitUntil: "load" });
+    await benControllerPage.waitForFunction(() => window.controllerState?.player?.name === "BEN", null, { timeout: 15_000 });
+    const ben = await benControllerPage.evaluate(() => ({ player: window.controllerState.player }));
 
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     page.on("pageerror", (error) => browserErrors.push(`stage: ${error.message}`));
@@ -352,14 +356,41 @@ async function main() {
       && response.request().method() === "POST"
     ));
     await controllerPage.locator('[data-game-plugin-controller-interaction="reference.avatarProfile"][data-game-plugin-input-binding="saveAvatar"]').click();
-    await sameAvatarResponse;
+    const sameAvatarHttpResponse = await sameAvatarResponse;
+    const sameAvatarResponsePayload = await sameAvatarHttpResponse.json();
+    try {
+      await controllerPage.waitForFunction(() => (
+        document.querySelector('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]')?.getAttribute("aria-expanded") === "false"
+        && [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"]')]
+          .every((control) => !control.disabled)
+      ), null, { timeout: 15_000 });
+    } catch (error) {
+      const diagnostic = await controllerPage.evaluate(() => ({
+        expanded: document.querySelector('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]')?.getAttribute("aria-expanded"),
+        controls: [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"]')]
+          .map((control) => ({
+            binding: control.getAttribute("data-game-plugin-input-binding"),
+            option: control.getAttribute("data-game-plugin-input-option"),
+            disabled: control.disabled,
+            ariaDisabled: control.getAttribute("aria-disabled")
+          })),
+        interaction: (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
+          .find((item) => item.id === "reference.avatarProfile")
+      }));
+      throw new Error(`Same-avatar submission did not settle: ${JSON.stringify({ status: sameAvatarHttpResponse.status(), payload: sameAvatarResponsePayload, diagnostic })}`, { cause: error });
+    }
     await controllerPage.locator('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]').click();
     await controllerPage.waitForFunction(() => (
-      [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"]')]
+      document.querySelector('[data-game-plugin-controller-interaction-trigger="reference.avatarProfile"]')?.getAttribute("aria-expanded") === "true"
+      && [...document.querySelectorAll('[data-game-plugin-controller-interaction="reference.avatarProfile"]')]
         .every((control) => !control.disabled)
-    ));
+    ), null, { timeout: 15_000 });
 
-    const cal = await postJson(baseUrl, "/api/join", { stageCode: "AVTR", playerName: "CAL" });
+    const calControllerPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    calControllerPage.on("pageerror", (error) => browserErrors.push(`CAL controller: ${error.message}`));
+    await calControllerPage.goto(`${baseUrl}/controller?stage=AVTR&name=CAL&join=1`, { waitUntil: "load" });
+    await calControllerPage.waitForFunction(() => window.controllerState?.player?.name === "CAL", null, { timeout: 15_000 });
+    const cal = await calControllerPage.evaluate(() => ({ player: window.controllerState.player }));
     try {
       await page.waitForFunction((playerId) => {
         const model = window.currentStageState?.lobby?.gamePlugin?.viewModels?.["reference.players"]

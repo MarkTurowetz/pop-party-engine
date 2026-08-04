@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1283",
+  "version": "1.0.17.1284",
   "baseVersion": "1.0.17",
-  "buildNumber": 1283,
-  "commit": "484d6db0",
+  "buildNumber": 1284,
+  "commit": "026cad83",
   "branch": "codex/reference-avatar-picker-menu",
-  "generatedAt": "2026-08-04T00:09:14.004Z"
+  "generatedAt": "2026-08-04T00:22:46.506Z"
 }
