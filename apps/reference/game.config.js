@@ -94,7 +94,8 @@ function avatarChoiceBindings() {
     layoutElementId: `reference-avatar-${avatar.id}`,
     field: "avatarId",
     optionIndex: index,
-    autoSubmit: true
+    interactionTargetComponentId: "controller-avatar-button-interaction-ref",
+    autoSubmit: false
   }));
 }
 
@@ -114,13 +115,12 @@ const referencePlugin = defineGamePlugin({
         source: "players",
         item: {
           keySource: "id",
-          artCompositionId: "game-object-reference-player-presentation",
+          artCompositionId: "prefab-player-widget-mc",
           bindings: [
             {
               id: "widgetLifecycle",
               kind: "state",
               source: "widgetLifecycleState",
-              targetComponentId: "playerWidgetMC",
               playback: "stop"
             },
             {
@@ -290,7 +290,20 @@ const referencePlugin = defineGamePlugin({
       controller: {
         layoutScope: "layer",
         layoutLayerId: "reference-avatar-picker",
-        bindings: avatarChoiceBindings()
+        disclosure: {
+          triggerLayoutElementId: "controllerplayerbanner",
+          triggerLayoutScope: "global",
+          ariaLabel: "Choose avatar"
+        },
+        bindings: [
+          ...avatarChoiceBindings(),
+          {
+            id: "saveAvatar",
+            kind: "submit",
+            layoutElementId: "reference-avatar-done",
+            labelSource: "doneLabel"
+          }
+        ]
       },
       available(context) {
         return context.viewer.active && context.phase === "lobby";
@@ -299,6 +312,7 @@ const referencePlugin = defineGamePlugin({
         const avatar = selectedAvatar(context.viewer.id, context.profile);
         return {
           avatarId: avatar.id,
+          doneLabel: "Done",
           options: REFERENCE_AVATARS.map((option) => ({ id: option.id, label: option.label }))
         };
       },

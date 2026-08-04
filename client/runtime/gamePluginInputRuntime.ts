@@ -19,6 +19,7 @@ type InputBinding = {
   source?: string;
   labelSource?: string;
   targetComponentId?: string;
+  interactionTargetComponentId?: string;
   autoSubmit?: boolean;
   submitValues?: SubmitValues;
   holdSubmit?: { seconds: number; submitValues: SubmitValues };
@@ -77,6 +78,8 @@ export function createGamePluginInputView(options: {
   layoutScope?: string;
   prepareLayout?: boolean;
   retainControlsAcrossVisits?: boolean;
+  persistentSubmissions?: boolean;
+  onSubmitted?: () => void;
 }) {
   const controlScope = String(options.controlScope || "flow");
   const controlScopeSelector = `[data-game-plugin-input-scope="${cssEscape(controlScope)}"]`;
@@ -180,10 +183,10 @@ export function createGamePluginInputView(options: {
         );
         return;
       }
-      if (!hostChanged) return;
-      (runtime().setControllerPluginInputChoiceState as ((target: HTMLElement, selected: boolean) => unknown) | undefined)?.(
+      if (hostChanged) (runtime().setControllerPluginInputChoiceState as ((target: HTMLElement, selected: boolean, componentId?: string) => unknown) | undefined)?.(
         host,
-        hostSelected
+        hostSelected,
+        controlBindings.get(button)?.interactionTargetComponentId
       );
       return;
     }
@@ -225,6 +228,21 @@ export function createGamePluginInputView(options: {
 
   function cancelAllHolds(): void {
     for (const button of Array.from(activeHolds.keys())) cancelHold(button);
+  }
+
+  function setSubmissionPending(pending: boolean, input: Dict): void {
+    submitting = pending;
+    document.querySelectorAll<HTMLInputElement | HTMLButtonElement>(`[data-game-plugin-input-binding]${controlScopeSelector}`)
+      .forEach((control) => {
+        const unavailable = control.dataset.gamePluginInputDisabled === "true"
+          || control.dataset.gamePluginInputStale === "true";
+        control.disabled = pending || input.submitted === true || unavailable;
+        if (control instanceof HTMLButtonElement && control.dataset.gamePluginChoiceCollectionItem === "true") {
+          control.dataset.gamePluginInputSubmitted = pending || input.submitted === true ? "true" : "false";
+          control.setAttribute("aria-disabled", control.disabled ? "true" : "false");
+          applyCollectionVisualState(control);
+        }
+      });
   }
 
   function collectionVisualState(button: HTMLButtonElement): string {
@@ -414,6 +432,9 @@ export function createGamePluginInputView(options: {
       }
     }
     if (!button.parentElement) target.host.appendChild(button);
+    if (binding.kind === "choice") {
+      setChoiceSelected(button, values.get(String(binding.field || "")) === button.dataset.gamePluginInputOption);
+    }
   }
 
   function collectionOptions(binding: InputBinding, input: Dict, model: unknown): Array<{ id: string; label: string; disabled: boolean }> {
@@ -635,26 +656,19 @@ export function createGamePluginInputView(options: {
     });
     const submitNow = (overrides: SubmitValues = {}) => {
       if (input.submitted === true || submitting) return;
-      submitting = true;
       cancelAllHolds();
-      document.querySelectorAll<HTMLInputElement | HTMLButtonElement>(`[data-game-plugin-input-binding]${controlScopeSelector}`)
-        .forEach((control) => {
-          control.disabled = true;
-          if (control instanceof HTMLButtonElement && control.dataset.gamePluginChoiceCollectionItem === "true") {
-            control.dataset.gamePluginInputSubmitted = "true";
-            control.setAttribute("aria-disabled", "true");
-            applyCollectionVisualState(control);
-          }
-        });
+      setSubmissionPending(true, input);
       const payload = Object.fromEntries(manifest.submission.map((field) => [field.id, overrides[field.id] ?? values.get(field.id)]));
       void options.submit(String(input.actionId), Number(input.visitId || 0), payload, submissionId())
         .then((result) => {
+          if (options.persistentSubmissions === true) setSubmissionPending(false, input);
           const nextLobby = (result as Dict | null)?.lobby;
           if (nextLobby) options.renderState(nextLobby as Dict);
-          else submitting = false;
+          else setSubmissionPending(false, input);
+          options.onSubmitted?.();
         })
         .catch(() => {
-          submitting = false;
+          setSubmissionPending(false, input);
         });
     };
     for (const binding of availableBindings.filter((candidate) => candidate.kind === "choiceCollection")) {

@@ -50,7 +50,7 @@ describe("reference application composition", () => {
       .toEqual(Object.fromEntries(model.players.map((player) => [player.id, player.avatarState])));
 
     const collection = game.registrations.stageRenderers[0].value.bindings[0];
-    expect(collection.item.artCompositionId).toBe("game-object-reference-player-presentation");
+    expect(collection.item.artCompositionId).toBe("prefab-player-widget-mc");
     expect(collection.item.bindings).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "avatar", kind: "state", playback: "stop" }),
       expect.objectContaining({ id: "inputStatus", kind: "state" }),

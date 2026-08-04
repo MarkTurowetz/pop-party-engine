@@ -10,8 +10,8 @@
   "files": [
     {
       "path": "art/manifest.json",
-      "sha256": "6b6ca043c741239d336af066b3259d15191702c3d222b7475590f09a2f405f3b",
-      "bytes": 377653
+      "sha256": "5aa5907799c5f5a062362c7d41faf3d0288106e22688b14381619b6810757e08",
+      "bytes": 381826
     },
     {
       "path": "audio/host-audios.json",
@@ -94,5 +94,5 @@
       "bytes": 1662
     }
   ],
-  "rootHash": "e60f0efd93c43e0af316cb0951f52099cc898fd7c06b6d2033dec455760cdfd9"
+  "rootHash": "90438eaf56e1ee1a59e7805b612e03f987a8cca385c53a8f4c27f72134de4825"
 }

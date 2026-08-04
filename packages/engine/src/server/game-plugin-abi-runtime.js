@@ -511,6 +511,7 @@ function controllerInteractionManifest(registration) {
     controller: Object.freeze({
       layoutScope: String(config.controller.layoutScope),
       layoutLayerId: String(config.controller.layoutLayerId || ""),
+      disclosure: config.controller.disclosure === undefined ? undefined : Object.freeze(cloneJson(config.controller.disclosure)),
       bindings: Object.freeze(config.controller.bindings.map((binding) => Object.freeze(cloneJson(binding))))
     })
   });

@@ -1141,6 +1141,416 @@
         ]
       }
     },
+    "controller-avatar-picker-panel": {
+      "name": "Reference Avatar Picker Panel",
+      "description": "Reference-app avatar picker panel. The background is the lowest and only visual layer.",
+      "surface": "controller",
+      "compositionKind": "gameObject",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 370,
+        "height": 430
+      },
+      "components": [
+        {
+          "id": "avatar-picker-panel-background",
+          "name": "Background",
+          "instanceLabel": "background",
+          "kind": "shape",
+          "x": 185,
+          "y": 215,
+          "width": 358,
+          "height": 418,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "shapeStyle": "rounded",
+          "fillColor": "#fffdf4",
+          "fillCss": "",
+          "borderColor": "#17131f",
+          "borderWidth": 6,
+          "borderRadius": 30
+        }
+      ],
+      "updatedAt": null,
+      "timeline": {
+        "fps": 30,
+        "frameCount": 2,
+        "labels": [
+          { "name": "Off", "frame": 0 },
+          { "name": "On", "frame": 1 }
+        ],
+        "commandFrames": [0, 1],
+        "commands": [
+          { "frame": 0, "type": "stop", "id": "stop-off" },
+          { "frame": 0, "type": "setVisible", "target": "false" },
+          { "frame": 1, "type": "stop", "id": "stop-on" },
+          { "frame": 1, "type": "setVisible", "target": "true" }
+        ],
+        "tracks": []
+      }
+    },
+    "controller-avatar-icon-rex": {
+      "name": "Reference Rex Avatar Icon",
+      "description": "Reference-app Rex avatar picker icon.",
+      "surface": "controller",
+      "compositionKind": "gameObject",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 70,
+        "height": 70
+      },
+      "components": [
+        {
+          "id": "avatar-sprite",
+          "name": "Rex Avatar",
+          "instanceLabel": "avatarSprite",
+          "kind": "sprite",
+          "x": 35,
+          "y": 35,
+          "width": 70,
+          "height": 70,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "imageAssetId": "avatar-rex",
+          "imageObjectFit": "contain",
+          "imageTint": "#e3c6eb",
+          "spriteRenderMode": "tinted"
+        }
+      ],
+      "updatedAt": null,
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-default"
+          }
+        ],
+        "tracks": []
+      }
+    },
+    "controller-avatar-icon-stego": {
+      "name": "Reference Stego Avatar Icon",
+      "description": "Reference-app Stego avatar picker icon.",
+      "surface": "controller",
+      "compositionKind": "gameObject",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 70,
+        "height": 70
+      },
+      "components": [
+        {
+          "id": "avatar-sprite",
+          "name": "Stego Avatar",
+          "instanceLabel": "avatarSprite",
+          "kind": "sprite",
+          "x": 35,
+          "y": 35,
+          "width": 70,
+          "height": 70,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "imageAssetId": "avatar-stego",
+          "imageObjectFit": "contain",
+          "imageTint": "#60d394",
+          "spriteRenderMode": "tinted"
+        }
+      ],
+      "updatedAt": null,
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-default"
+          }
+        ],
+        "tracks": []
+      }
+    },
+    "controller-avatar-icon-trike": {
+      "name": "Reference Trike Avatar Icon",
+      "description": "Reference-app Trike avatar picker icon.",
+      "surface": "controller",
+      "compositionKind": "gameObject",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 70,
+        "height": 70
+      },
+      "components": [
+        {
+          "id": "avatar-sprite",
+          "name": "Trike Avatar",
+          "instanceLabel": "avatarSprite",
+          "kind": "sprite",
+          "x": 35,
+          "y": 35,
+          "width": 70,
+          "height": 70,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "imageAssetId": "avatar-trike",
+          "imageObjectFit": "contain",
+          "imageTint": "#ffe156",
+          "spriteRenderMode": "tinted"
+        }
+      ],
+      "updatedAt": null,
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-default"
+          }
+        ],
+        "tracks": []
+      }
+    },
+    "controller-avatar-icon-raptor": {
+      "name": "Reference Raptor Avatar Icon",
+      "description": "Reference-app Raptor avatar picker icon.",
+      "surface": "controller",
+      "compositionKind": "gameObject",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 70,
+        "height": 70
+      },
+      "components": [
+        {
+          "id": "avatar-sprite",
+          "name": "Raptor Avatar",
+          "instanceLabel": "avatarSprite",
+          "kind": "sprite",
+          "x": 35,
+          "y": 35,
+          "width": 70,
+          "height": 70,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "imageAssetId": "avatar-raptor",
+          "imageObjectFit": "contain",
+          "imageTint": "#ff9e2c",
+          "spriteRenderMode": "tinted"
+        }
+      ],
+      "updatedAt": null,
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-default"
+          }
+        ],
+        "tracks": []
+      }
+    },
+    "controller-avatar-icon-bronto": {
+      "name": "Reference Bronto Avatar Icon",
+      "description": "Reference-app Bronto avatar picker icon.",
+      "surface": "controller",
+      "compositionKind": "gameObject",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 70,
+        "height": 70
+      },
+      "components": [
+        {
+          "id": "avatar-sprite",
+          "name": "Bronto Avatar",
+          "instanceLabel": "avatarSprite",
+          "kind": "sprite",
+          "x": 35,
+          "y": 35,
+          "width": 70,
+          "height": 70,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "imageAssetId": "avatar-bronto",
+          "imageObjectFit": "contain",
+          "imageTint": "#ff4fa3",
+          "spriteRenderMode": "tinted"
+        }
+      ],
+      "updatedAt": null,
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-default"
+          }
+        ],
+        "tracks": []
+      }
+    },
+    "controller-avatar-icon-cleo": {
+      "name": "Reference Cleo Avatar Icon",
+      "description": "Reference-app Cleo avatar picker icon.",
+      "surface": "controller",
+      "compositionKind": "gameObject",
+      "isCustom": true,
+      "timelineArchitectureVersion": 2,
+      "canvas": {
+        "width": 70,
+        "height": 70
+      },
+      "components": [
+        {
+          "id": "avatar-sprite",
+          "name": "Cleo Avatar",
+          "instanceLabel": "avatarSprite",
+          "kind": "sprite",
+          "x": 35,
+          "y": 35,
+          "width": 70,
+          "height": 70,
+          "scale": 1,
+          "rotation": 0,
+          "opacity": 1,
+          "brightness": 1,
+          "visible": true,
+          "editorHidden": false,
+          "transformOrigin": "center",
+          "locked": false,
+          "defaultAnimationState": "",
+          "imageAssetId": "avatar-ankylo",
+          "imageObjectFit": "contain",
+          "imageTint": "#7c3aed",
+          "spriteRenderMode": "tinted"
+        }
+      ],
+      "updatedAt": null,
+      "timeline": {
+        "fps": 30,
+        "frameCount": 1,
+        "labels": [
+          {
+            "name": "Default",
+            "frame": 0
+          }
+        ],
+        "commandFrames": [
+          0
+        ],
+        "commands": [
+          {
+            "frame": 0,
+            "type": "stop",
+            "id": "stop-default"
+          }
+        ],
+        "tracks": []
+      }
+    },
     "controller-primary-button": {
       "name": "Controller Primary Button",
       "description": "Lifecycle wrapper for Controller Primary Button.",
@@ -9028,66 +9438,11 @@
         ]
       }
     },
-    "game-object-reference-player-presentation": {
-      "name": "Reference Player Presentation",
-      "description": "Reference-game-owned player presentation composed from the project's local Player Widget MC prefab.",
-      "surface": "stage",
-      "compositionKind": "gameObject",
-      "isCustom": true,
-      "timelineArchitectureVersion": 2,
-      "canvas": {
-        "width": 300,
-        "height": 370
-      },
-      "components": [
-        {
-          "id": "player-widget-mc",
-          "name": "Player Widget MC",
-          "instanceLabel": "playerWidgetMC",
-          "kind": "reference",
-          "x": 150,
-          "y": 185,
-          "scale": 1,
-          "rotation": 0,
-          "opacity": 1,
-          "brightness": 1,
-          "visible": true,
-          "editorHidden": false,
-          "transformOrigin": "center",
-          "locked": false,
-          "defaultAnimationState": "On",
-          "artCompositionId": "prefab-player-widget-mc",
-          "referenceSizeMode": "intrinsic"
-        }
-      ],
-      "updatedAt": "2026-08-03T08:00:00.000Z",
-      "timeline": {
-        "fps": 30,
-        "frameCount": 1,
-        "labels": [
-          {
-            "name": "Default",
-            "frame": 0
-          }
-        ],
-        "commandFrames": [
-          0
-        ],
-        "commands": [
-          {
-            "frame": 0,
-            "type": "stop",
-            "id": "stop-0"
-          }
-        ],
-        "tracks": []
-      }
-    },
     "prefab-player-widget-mc": {
       "name": "Player Widget MC",
       "description": "Reusable player composite with independently addressable bubble, player avatar, name, and VIP instances.",
       "surface": "stage",
-      "compositionKind": "prefab",
+      "compositionKind": "gameObject",
       "isCustom": true,
       "timelineArchitectureVersion": 2,
       "canvas": {
@@ -9172,14 +9527,12 @@
           "referenceSizeMode": "intrinsic"
         },
         {
-          "id": "point-popup-container",
-          "name": "Point Popup Container",
-          "instanceLabel": "pointPopupContainer",
-          "kind": "container",
+          "id": "reference-player-point-popup",
+          "name": "Point Popup",
+          "instanceLabel": "referencePlayerPointPopup",
+          "kind": "reference",
           "x": 150,
           "y": 180,
-          "width": 154,
-          "height": 64,
           "scale": 1,
           "rotation": 0,
           "opacity": 1,
@@ -9188,14 +9541,9 @@
           "editorHidden": false,
           "transformOrigin": "center",
           "locked": false,
-          "defaultAnimationState": "",
-          "childDistribution": "none",
-          "shapeStyle": "rectangle",
-          "fillColor": "transparent",
-          "fillCss": "",
-          "borderColor": "transparent",
-          "borderWidth": 0,
-          "borderRadius": 0
+          "defaultAnimationState": "Off",
+          "artCompositionId": "player-point-popup",
+          "referenceSizeMode": "intrinsic"
         }
       ],
       "updatedAt": "2026-07-14T23:12:00.000Z",
@@ -13596,8 +13944,7 @@
           "composition:prefab-untitled-prefab-2",
           "composition:player-vip-widget",
           "composition:prefab-player-avatar-mc",
-          "composition:prefab-player-widget-mc",
-          "composition:game-object-reference-player-presentation"
+          "composition:prefab-player-widget-mc"
         ],
         "folder-b5fd5048-989e-4076-917e-f37779efddbb": [
           "composition:stage-code-panel",

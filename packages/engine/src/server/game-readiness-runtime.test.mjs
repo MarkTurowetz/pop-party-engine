@@ -204,6 +204,7 @@ describe("game readiness runtime", () => {
         controller: {
           layoutScope: "layer",
           layoutLayerId: "profile-picker",
+          disclosure: { triggerLayoutElementId: "player-banner", triggerLayoutScope: "global" },
           bindings: [{
             id: "avatars",
             kind: "choiceCollection",
@@ -227,6 +228,7 @@ describe("game readiness runtime", () => {
     const gameData = {
       defaultStageLayouts: { states: [] },
       defaultControllerLayouts: {
+        global: { elements: [{ id: "player-banner", kind: "art", artCompositionId: "player-banner" }] },
         layers: [{ id: "profile-picker", elements: [{ id: "avatar-options", kind: "collection" }] }],
         states: []
       },
@@ -235,6 +237,11 @@ describe("game readiness runtime", () => {
         surface: "controller",
         compositionKind: "gameObject",
         components: [{ id: "label", kind: "text" }]
+      }, {
+        id: "player-banner",
+        surface: "controller",
+        compositionKind: "gameObject",
+        components: []
       }]
     };
     const validateRelease = createGameReleaseValidator({ gameDefinition: game, engineVersion: "1.0.0" });
