@@ -79,6 +79,8 @@ services:
         value: heads/game-drafts/
       - key: PARTY_GAME_RELEASE_REF
         value: heads/game-releases
+      - key: PARTY_GAME_PREVIEW_RELEASE_REF
+        value: heads/game-releases-preview
       - key: PARTY_GAME_CONTENT_GITHUB_APP_ID
         sync: false
       - key: PARTY_GAME_CONTENT_GITHUB_INSTALLATION_ID

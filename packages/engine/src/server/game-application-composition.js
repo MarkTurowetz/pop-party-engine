@@ -225,6 +225,7 @@ const DEPLOYMENT_CHANNEL = String(
   process.env.PARTY_GAME_DEPLOYMENT_CHANNEL
     || (process.env.RENDER ? "production" : "development")
 ).trim().toLowerCase() || "development";
+const CONTENT_STORE_ENVIRONMENT = options.contentStoreEnvironment || process.env;
 const adminAudit = createAdminAuditRuntime();
 const adminAuth = createAdminAuthRuntime({
   mode: ADMIN_AUTH_MODE,
@@ -237,7 +238,7 @@ const adminAuth = createAdminAuthRuntime({
   audit: (req, event) => adminAudit.record(req, event)
 });
 const contentEnvironment = createContentStoreEnvironmentRuntime({
-  env: process.env,
+  env: CONTENT_STORE_ENVIRONMENT,
   isProduction: process.env.NODE_ENV === "production",
   adminAuthMode: ADMIN_AUTH_MODE,
   validateSnapshot: (snapshot) => {

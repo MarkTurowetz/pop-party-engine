@@ -36,6 +36,7 @@ function parseArguments(argv) {
     engineVersion: "",
     operationKey: "",
     releaseRef: "heads/game-releases",
+    sourceReleaseRef: "",
     contentRoot: "",
     stateFile: ""
   };
@@ -49,11 +50,13 @@ function parseArguments(argv) {
     if (argument === "--engine-version") result.engineVersion = String(values[++index] || "");
     else if (argument === "--operation-key") result.operationKey = String(values[++index] || "");
     else if (argument === "--release-ref") result.releaseRef = String(values[++index] || "");
+    else if (argument === "--source-release-ref") result.sourceReleaseRef = String(values[++index] || "");
     else if (argument === "--content-root") result.contentRoot = String(values[++index] || "");
     else if (argument === "--state-file") result.stateFile = String(values[++index] || "");
     else throw new Error(`Unknown argument: ${argument}`);
   }
   result.releaseRef = normalizeRef(result.releaseRef);
+  if (result.sourceReleaseRef) result.sourceReleaseRef = normalizeRef(result.sourceReleaseRef);
   requiredIdempotencyKey(result.operationKey);
   if (!result.stateFile) throw new Error("Missing required --state-file");
   if (result.command === "activate" && !exactVersionPattern.test(result.engineVersion)) {
@@ -71,8 +74,11 @@ function validateReleaseRecord(release) {
   return Object.freeze({ ...release });
 }
 
-async function loadReleaseState(git, releaseRef) {
-  const ref = await git.getRef(releaseRef);
+async function loadReleaseState(git, releaseRef, sourceReleaseRef = "") {
+  let ref = await git.getRef(releaseRef);
+  if (!ref?.sha && sourceReleaseRef) {
+    ref = await git.ensureRef(releaseRef, sourceReleaseRef);
+  }
   if (!ref?.sha) throw new Error(`Release reference does not exist: ${releaseRef}`);
   const commit = await git.getCommit(ref.sha);
   const entries = new Map((await git.readTree(commit.treeSha)).map((entry) => [entry.path, entry]));
@@ -134,7 +140,7 @@ async function commitReleaseState({ git, releaseRef, state, release, revisions, 
 }
 
 async function activateReferenceRelease(options) {
-  const state = await loadReleaseState(options.git, options.releaseRef);
+  const state = await loadReleaseState(options.git, options.releaseRef, options.sourceReleaseRef);
   const game = options.gameDefinition;
   if (!game?.gameId || !game?.version || !game?.engineCompatibility) {
     throw new Error("Reference game definition is incomplete");
@@ -293,6 +299,7 @@ async function runCommand(options) {
     return activateReferenceRelease({
       git: options.git,
       releaseRef: options.arguments.releaseRef,
+      sourceReleaseRef: options.arguments.sourceReleaseRef,
       engineVersion: options.arguments.engineVersion,
       operationKey: options.arguments.operationKey,
       gameDefinition: options.gameDefinition,

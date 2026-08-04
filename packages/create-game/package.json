@@ -1,6 +1,6 @@
 {
   "name": "@pop-party/create-game",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Create an independent Pop Party game pinned to an exact engine version.",
   "license": "MIT",
   "repository": {

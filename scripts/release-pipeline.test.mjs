@@ -37,7 +37,7 @@ function jsonBytes(value) {
 }
 
 function gitFixture(initialRelease) {
-  let refSha = "commit-1";
+  const refs = new Map([["heads/game-releases", "commit-1"]]);
   let counter = 1;
   let currentEntries = [
     { path: "active-release.json", sha: "active-1" },
@@ -55,11 +55,20 @@ function gitFixture(initialRelease) {
   ]);
   let pendingEntries = null;
   return {
-    async getRef() {
-      return { ref: "heads/game-releases", sha: refSha };
+    async getRef(ref = "heads/game-releases") {
+      const sha = refs.get(ref);
+      return sha ? { ref, sha } : null;
     },
-    async getCommit() {
-      return { sha: refSha, treeSha: `tree-${counter}` };
+    async ensureRef(ref, baseRef) {
+      const existing = refs.get(ref);
+      if (existing) return { ref, sha: existing };
+      const baseSha = refs.get(baseRef);
+      if (!baseSha) throw new Error(`missing base ref ${baseRef}`);
+      refs.set(ref, baseSha);
+      return { ref, sha: baseSha };
+    },
+    async getCommit(sha) {
+      return { sha, treeSha: `tree-${counter}` };
     },
     async readTree() {
       return currentEntries;
@@ -79,15 +88,15 @@ function gitFixture(initialRelease) {
     async createCommit() {
       return `commit-${++counter}`;
     },
-    async updateRefCas(_ref, expected, next) {
-      if (expected !== refSha) throw new Error("fixture CAS conflict");
-      refSha = next;
+    async updateRefCas(ref, expected, next) {
+      if (expected !== refs.get(ref)) throw new Error("fixture CAS conflict");
+      refs.set(ref, next);
       currentEntries = pendingEntries;
     },
-    current() {
+    current(ref = "heads/game-releases") {
       const entries = new Map(currentEntries.map((entry) => [entry.path, entry.sha]));
       return {
-        refSha,
+        refSha: refs.get(ref),
         release: JSON.parse(blobs.get(entries.get("active-release.json")).toString("utf8")),
         revisions: JSON.parse(blobs.get(entries.get("published-revisions.json")).toString("utf8"))
       };
@@ -164,6 +173,35 @@ describe("reference release coordination", () => {
       contentRevision: "content-123",
       release: { releaseRevision: current.release.releaseRevision }
     });
+  });
+
+  it("initializes an isolated Preview release ref from Production before advancing it", async () => {
+    const initial = createReleaseRecord({
+      gameId: "pop-party-reference",
+      gameBuild: "1.0.17",
+      engineVersion: "1.4.3",
+      pluginVersion: "1.0.17",
+      contentRevision: "content-preview"
+    });
+    const git = gitFixture(initial);
+    const activation = await activateReferenceRelease({
+      git,
+      releaseRef: "heads/game-releases-preview",
+      sourceReleaseRef: "heads/game-releases",
+      engineVersion: "1.4.4",
+      operationKey: "engine-preview-1.4.4-build-1288",
+      gameDefinition: {
+        gameId: "pop-party-reference",
+        version: "1.0.17",
+        engineCompatibility: "1.4.4"
+      }
+    });
+    expect(activation.changed).toBe(true);
+    expect(git.current("heads/game-releases-preview").release).toMatchObject({
+      engineVersion: "1.4.4",
+      contentRevision: "content-preview"
+    });
+    expect((await git.getRef("heads/game-releases")).sha).toBe("commit-1");
   });
 
   it("atomically activates the checked-in reference bundle with the engine coordinates", async () => {
@@ -322,11 +360,13 @@ describe("reference preview deployment", () => {
       "--base-url", "https://preview.example.com",
       "--release-authority-url", "https://production.example.com",
       "--engine-version", "1.3.19",
+      "--release-revision", "f".repeat(64),
       "--commit", "a".repeat(40)
     ])).toMatchObject({
       baseUrl: "https://preview.example.com",
       releaseAuthorityUrl: "https://production.example.com",
       engineVersion: "1.3.19",
+      releaseRevision: "f".repeat(64),
       commit: "a".repeat(40)
     });
     expect(() => parsePreviewArguments([
@@ -335,6 +375,56 @@ describe("reference preview deployment", () => {
       "--engine-version", "1.3.19",
       "--commit", "a".repeat(40)
     ])).toThrow(/HTTPS/);
+  });
+
+  it("requires the isolated Preview release revision when one is supplied", () => {
+    const commit = "a".repeat(40);
+    const releaseRevision = "f".repeat(64);
+    expect(previewChecks({
+      ok: true,
+      application: { channel: "preview", commit: commit.slice(0, 8) },
+      game: { engineCompatibility: "1.4.4" },
+      engine: { version: "1.4.4" },
+      release: { engineVersion: "1.4.4", releaseRevision }
+    }, { commit, engineVersion: "1.4.4", releaseRevision })).toMatchObject({
+      releaseRevision: true
+    });
+  });
+
+  it("deploys a coordinated isolated Preview ref without consulting the old live authority", async () => {
+    const commit = "b".repeat(40);
+    const releaseRevision = "e".repeat(64);
+    const fetchImpl = vi.fn(async (url) => {
+      if (String(url).includes("api.render.com")) {
+        return response({ json: { deploy: { id: "dep-isolated-preview" } } });
+      }
+      return response({
+        json: {
+          ok: true,
+          application: { channel: "preview", commit: commit.slice(0, 8) },
+          game: { engineCompatibility: "1.4.4" },
+          engine: { version: "1.4.4" },
+          release: { engineVersion: "1.4.4", releaseRevision }
+        }
+      });
+    });
+    await expect(deployReferencePreview({
+      baseUrl: "https://preview.example.com",
+      releaseAuthorityUrl: "https://preview.example.com",
+      engineVersion: "1.4.4",
+      releaseRevision,
+      commit,
+      hookUrl: "https://api.render.com/deploy/srv-preview?key=secret",
+      timeoutMs: 100,
+      authorityTimeoutMs: 100,
+      intervalMs: 10,
+      fetchImpl
+    })).resolves.toMatchObject({
+      ok: true,
+      deployed: true,
+      deployId: "dep-isolated-preview"
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("requires the preview channel, exact commit, and coordinated engine", () => {
