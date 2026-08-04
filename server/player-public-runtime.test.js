@@ -31,4 +31,26 @@ describe("player public input state", () => {
     expect(result.needsInput).toBe(true);
     expect(result.answer).toBeNull();
   });
+
+  it("does not expose an in-progress core input to a late non-recipient", () => {
+    const choiceInputPayload = vi.fn(() => ({ actionId: "choice" }));
+    const runtime = createPlayerPublicRuntime({ choiceInputPayload });
+    const room = {
+      choiceInputActionId: "choice",
+      choiceInputAnswers: new Map(),
+      choiceInputMode: "submitOnce",
+      controllerInputRecipientIds: new Set(["p1"]),
+      displayedPlayerAnswers: new Map(),
+      hiddenPlayerAnswerIds: new Set(),
+      textInputActionId: "",
+      microphoneAccessActionId: "",
+      gamePluginInputActionId: "",
+      vipPlayerId: "p1"
+    };
+
+    const result = runtime.publicPlayer({ active: true, id: "late", name: "Late" }, room, { id: "choice" });
+
+    expect(result.needsInput).toBe(false);
+    expect(result.input).toBeNull();
+  });
 });

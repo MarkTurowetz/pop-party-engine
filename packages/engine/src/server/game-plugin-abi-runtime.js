@@ -2,6 +2,11 @@
 
 const { createRuntimeFault } = require("./runtime-fault-runtime");
 const { writeScopePath } = require("./subroutine-interface-runtime");
+const {
+  playerControllerIsConnected,
+  playerIsJoined
+} = require("./player-presence-runtime");
+const { playerIsControllerInputRecipient } = require("./input-state-runtime");
 
 const SAFE_COMPONENT_PROPERTIES = new Set([
   "defaultText",
@@ -183,7 +188,9 @@ function playerNeedsInput(player, room, currentAction) {
   const needsPlugin = hasPluginInput
     && room.gamePluginInputRecipientIds?.has(player.id) === true
     && !room.gamePluginInputSubmissions?.has(player.id);
-  return player.active !== false && (needsChoice || needsText || needsMicrophone || needsPlugin);
+  const hasCoreInput = hasChoiceInput || hasTextInput || hasMicrophoneInput;
+  const isCoreRecipient = !hasCoreInput || playerIsControllerInputRecipient(room, player.id);
+  return playerIsJoined(player) && ((isCoreRecipient && (needsChoice || needsText || needsMicrophone)) || needsPlugin);
 }
 
 function displayedAnswerSnapshot(player, room) {
@@ -206,7 +213,7 @@ function publicPlayerSnapshot(player, room, currentAction = null) {
   return Object.freeze({
     id: String(player.id || ""),
     name: String(player.name || ""),
-    active: player.active !== false,
+    active: playerIsJoined(player),
     isVip: String(room.vipPlayerId || "") === String(player.id || ""),
     points: Number(player.points || 0),
     pendingPoints: Number(player.pendingPoints || 0),
@@ -256,7 +263,7 @@ function publicPluginProfiles(room, registrations) {
     const projected = {};
     for (const [playerId, profile] of Object.entries(namespaceProfiles)) {
       const player = room.players?.get?.(playerId);
-      if (!player || player.active === false) continue;
+      if (!playerIsJoined(player)) continue;
       const selected = {};
       for (const field of fields) {
         if (Object.prototype.hasOwnProperty.call(profile, field)) selected[field] = cloneJson(profile[field]);
@@ -285,7 +292,7 @@ function writePluginOutput(room, variableName, value) {
 
 function createGameActionExecutor({
   actionRegistrations = [],
-  activePlayers = (room) => Array.from(room.players?.values?.() || []).filter((player) => player.active !== false),
+  activePlayers = (room) => Array.from(room.players?.values?.() || []).filter(playerIsJoined),
   broadcastLobby = () => {}
 } = {}) {
   const registrationById = new Map(actionRegistrations.map((registration) => [registration.id, registration]));
@@ -519,7 +526,7 @@ function controllerInteractionManifest(registration) {
 
 function createGameControllerInteractionRuntime({
   registrations = [],
-  activePlayers = (room) => Array.from(room.players?.values?.() || []).filter((player) => player.active !== false),
+  activePlayers = (room) => Array.from(room.players?.values?.() || []).filter(playerIsJoined),
   broadcastLobby = () => {}
 } = {}) {
   const registrationById = new Map(registrations.map((registration) => [registration.id, registration]));
@@ -557,7 +564,7 @@ function createGameControllerInteractionRuntime({
 
   function privatePayload(room, registration, playerId) {
     const player = room.players?.get(String(playerId || ""));
-    if (!player || player.active === false) return null;
+    if (!playerIsJoined(player)) return null;
     const context = readContext(room, registration, player);
     const available = registration.value.available(context);
     if (available && typeof available.then === "function") throw new Error("available functions must be synchronous");
@@ -630,7 +637,7 @@ function createGameControllerInteractionRuntime({
     if (!registration) return { status: 409, error: "No game-owned controller interaction is active", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INACTIVE" };
     const actorId = String(playerId || "");
     const actor = room.players?.get(actorId);
-    if (!actor || actor.active === false) return { status: 403, error: "This player is not eligible for the controller interaction", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INELIGIBLE" };
+    if (!playerIsJoined(actor)) return { status: 403, error: "This player is not eligible for the controller interaction", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INELIGIBLE" };
     const submittedId = String(request.submissionId || "");
     if (!submittedId || submittedId.length > 128) {
       return { status: 422, error: "Controller interaction submissions require a valid submission identity", errorCode: "GAME_PLUGIN_CONTROLLER_INTERACTION_INVALID" };
@@ -789,7 +796,7 @@ function validateInputPayload(config, viewModel, rawPayload) {
 
 function createGameInputRuntime({
   inputRegistrations = [],
-  activePlayers = (room) => Array.from(room.players?.values?.() || []).filter((player) => player.active !== false),
+  activePlayers = (room) => Array.from(room.players?.values?.() || []).filter(playerIsJoined),
   currentRoomAction,
   jumpToAction,
   broadcastLobby = () => {}
@@ -856,7 +863,7 @@ function createGameInputRuntime({
     if (config.completion === "anyRecipient") return submitted.size > 0 && complete(room, action, registration);
     const recipients = Array.from(room.gamePluginInputRecipientIds || []);
     const required = config.disconnect === "completeRemaining"
-      ? recipients.filter((id) => room.players?.get(id)?.active !== false)
+      ? recipients.filter((id) => playerControllerIsConnected(room.players?.get(id)))
       : recipients;
     return (required.length === 0 || required.every((id) => submitted.has(id))) && complete(room, action, registration);
   }
@@ -876,8 +883,10 @@ function createGameInputRuntime({
     try {
       const selected = registration.value.recipients(scopedReadContext(room, registration), Object.freeze(cloneJson(action, {})));
       if (!Array.isArray(selected)) throw new Error("recipients must return an array of player IDs");
-      const activeIds = new Set(activePlayers(room).map((player) => String(player.id || "")));
-      const recipientIds = [...new Set(selected.map((id) => String(id || "")).filter((id) => activeIds.has(id)))];
+      const connectedIds = new Set(activePlayers(room)
+        .filter(playerControllerIsConnected)
+        .map((player) => String(player.id || "")));
+      const recipientIds = [...new Set(selected.map((id) => String(id || "")).filter((id) => connectedIds.has(id)))];
       if (!recipientIds.length) throw new Error("recipients returned no active players");
       room.controllerInputVisitCounter = Math.max(0, Number(room.controllerInputVisitCounter || 0)) + 1;
       room.gamePluginInputActionId = String(action.id || "");
@@ -1016,10 +1025,13 @@ function createGameInputRuntime({
     }
   }
 
-  function playerDisconnected(room) {
+  function playerDisconnected(room, disconnectedPlayerId = "") {
     const action = currentRoomAction(room);
     const registration = registrationById.get(action?.type);
-    if (!registration || !room.gamePluginInputActionId) return false;
+    const playerId = String(disconnectedPlayerId || Array.from(room.gamePluginInputRecipientIds || [])
+      .find((id) => !playerControllerIsConnected(room.players?.get(id))) || "");
+    if (!registration || !room.gamePluginInputActionId || !room.gamePluginInputRecipientIds?.has?.(playerId)) return false;
+    if (room.gamePluginInputSubmissions?.has?.(playerId)) return false;
     if (registration.value.disconnect === "fault") {
       fail(room, action, "GAME_PLUGIN_INPUT_PLAYER_DISCONNECTED", `A required player disconnected during "${registration.id}"`);
       return true;

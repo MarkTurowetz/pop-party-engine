@@ -7,6 +7,7 @@ const {
 } = require("./stored-player-answers-runtime");
 const { resetGameSessionState } = require("./game-session-reset-runtime");
 const { createRuntimeFault } = require("./runtime-fault-runtime");
+const { removePlayerFromRoom } = require("./player-presence-runtime");
 
 const VOTING_CARD_ACTION_TYPES = new Set([
   "setVotingCardsShown",
@@ -261,11 +262,7 @@ function createRoomPhaseRuntime({
   function quitRoomToLobby(room) {
     enterLobbyPhase(room);
     room.wipeShown = false;
-    for (const player of room.players.values()) {
-      player.active = false;
-      player.kickedFromGame = true;
-      player.lastSeen = Date.now();
-    }
+    for (const player of [...room.players.values()]) removePlayerFromRoom(room, player.id, { kicked: true });
     room.vipPlayerId = "";
     room.startToken = "";
     broadcastLobby(room);

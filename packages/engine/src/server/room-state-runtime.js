@@ -18,6 +18,8 @@ function createDefaultRoom(stageCode) {
     gameSessionId: 0,
     momentVisitId: 0,
     controllerInputVisitCounter: 0,
+    controllerInputRecipientIds: new Set(),
+    controllerInputUnavailablePlayerIds: new Set(),
     countdownStartedAt: 0,
     countdownEndsAt: 0,
     countdownRemainingMs: 0,

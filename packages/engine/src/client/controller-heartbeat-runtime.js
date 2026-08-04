@@ -5,6 +5,7 @@ function createControllerHeartbeatRuntime(options) {
     applyLayoutForPhase,
     clearIntervalImpl = globalThis.clearInterval.bind(globalThis),
     elements,
+    eventTarget = globalThis,
     getJoinButton,
     getControllerState,
     hideViews,
@@ -14,7 +15,8 @@ function createControllerHeartbeatRuntime(options) {
     setControllerState,
     setIntervalImpl = globalThis.setInterval.bind(globalThis),
     setText,
-    showView
+    showView,
+    visibilityTarget = globalThis.document
   } = options;
 
   const writeText = typeof setText === "function"
@@ -24,10 +26,31 @@ function createControllerHeartbeatRuntime(options) {
   let timer = null;
   let polling = false;
   let runId = 0;
+  let listening = false;
+
+  function pollWhenForegrounded() {
+    if (visibilityTarget?.visibilityState && visibilityTarget.visibilityState !== "visible") return;
+    void pollHeartbeat();
+  }
+
+  function attachForegroundListeners() {
+    if (listening) return;
+    eventTarget?.addEventListener?.("focus", pollWhenForegrounded);
+    visibilityTarget?.addEventListener?.("visibilitychange", pollWhenForegrounded);
+    listening = true;
+  }
+
+  function detachForegroundListeners() {
+    if (!listening) return;
+    eventTarget?.removeEventListener?.("focus", pollWhenForegrounded);
+    visibilityTarget?.removeEventListener?.("visibilitychange", pollWhenForegrounded);
+    listening = false;
+  }
 
   function stop() {
     if (timer !== null) clearIntervalImpl(timer);
     timer = null;
+    detachForegroundListeners();
     runId += 1;
   }
 
@@ -58,6 +81,7 @@ function createControllerHeartbeatRuntime(options) {
 
   function start() {
     stop();
+    attachForegroundListeners();
     timer = setIntervalImpl(pollHeartbeat, intervalMs);
   }
 

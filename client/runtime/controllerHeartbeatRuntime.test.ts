@@ -95,4 +95,29 @@ describe("createControllerHeartbeatRuntime (ported)", () => {
     expect(setText).toHaveBeenCalledWith(runtimeOptions.elements.meta, "Reconnecting to lobby");
     expect(runtimeOptions.setControllerState).not.toHaveBeenCalled();
   });
+
+  it("supplements the interval with an immediate visible/focus heartbeat", async () => {
+    const runtimeOptions = options();
+    const eventTarget = new EventTarget();
+    const visibilityTarget = new EventTarget() as EventTarget & { visibilityState: string };
+    visibilityTarget.visibilityState = "hidden";
+    runtimeOptions.getControllerState = () => ({ playerId: "p1" });
+    runtimeOptions.eventTarget = eventTarget;
+    runtimeOptions.visibilityTarget = visibilityTarget as unknown as Document;
+    runtimeOptions.setIntervalImpl = vi.fn(() => 1);
+    runtimeOptions.clearIntervalImpl = vi.fn();
+    const runtime = createControllerHeartbeatRuntime(runtimeOptions);
+
+    runtime.start();
+    visibilityTarget.dispatchEvent(new Event("visibilitychange"));
+    expect(runtimeOptions.sendHeartbeat).not.toHaveBeenCalled();
+    visibilityTarget.visibilityState = "visible";
+    visibilityTarget.dispatchEvent(new Event("visibilitychange"));
+    await vi.waitFor(() => expect(runtimeOptions.sendHeartbeat).toHaveBeenCalledTimes(1));
+    eventTarget.dispatchEvent(new Event("focus"));
+    await vi.waitFor(() => expect(runtimeOptions.sendHeartbeat).toHaveBeenCalledTimes(2));
+    runtime.stop();
+    eventTarget.dispatchEvent(new Event("focus"));
+    expect(runtimeOptions.sendHeartbeat).toHaveBeenCalledTimes(2);
+  });
 });

@@ -1074,6 +1074,39 @@ module.exports = Object.freeze([
         document.querySelectorAll('[data-game-plugin-controller-interaction="generated-fixture.avatarProfile"]').length === 3
         && document.querySelectorAll('[data-game-plugin-controller-interaction="generated-fixture.privateAccent"]').length === 2
       ), null, { timeout: 15_000 })));
+      const leavingController = await browser.newPage();
+      await leavingController.goto(first.startup.localUrl + "/controller?stage=RCOL&name=Leaving%20Player&join=1", { waitUntil: "load" });
+      await leavingController.waitForFunction(() => Boolean(window.controllerState?.player?.id), null, { timeout: 15_000 });
+      const leavingPlayerId = await leavingController.evaluate(() => window.controllerState.player.id);
+      await collectionStagePage.waitForFunction((playerId) => Boolean(document.querySelector(
+        '[data-stage-layout-element-id="fixture-players"] > [data-game-plugin-renderer-item-key="' + CSS.escape(playerId) + '"]'
+      )), leavingPlayerId, { timeout: 15_000 });
+      const explicitLeaveStatus = await leavingController.evaluate(async () => {
+        const state = window.controllerState;
+        const response = await fetch("/api/leave", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-stage-code": String(state.stageCode || ""),
+            "x-player-id": String(state.playerId || ""),
+            "x-player-capability": String(state.playerCapability || "")
+          },
+          body: JSON.stringify({ stageCode: state.stageCode, playerId: state.playerId })
+        });
+        return response.status;
+      });
+      await collectionStagePage.waitForFunction((playerId) => !document.querySelector(
+        '[data-stage-layout-element-id="fixture-players"] > [data-game-plugin-renderer-item-key="' + CSS.escape(playerId) + '"]'
+      ), leavingPlayerId, { timeout: 15_000 });
+      await leavingController.close();
+      const explicitLeaveResult = await collectionStagePage.evaluate((playerId) => ({
+        status: 200,
+        removed: !document.querySelector(
+          '[data-stage-layout-element-id="fixture-players"] > [data-game-plugin-renderer-item-key="' + CSS.escape(playerId) + '"]'
+        ),
+        playerCount: window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.playerPresentations"]?.players?.length
+      }), leavingPlayerId);
+      explicitLeaveResult.status = explicitLeaveStatus;
       const profileInteractionBefore = await collectionControllerOne.evaluate(() => {
         const interactions = window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [];
         const avatar = interactions.find((item) => item.id === "generated-fixture.avatarProfile");
@@ -1102,12 +1135,46 @@ module.exports = Object.freeze([
         const item = document.querySelector('[data-stage-layout-element-id="fixture-players"] [data-game-plugin-renderer-item-key="' + CSS.escape(playerId) + '"]');
         window.__fixtureProfilePlayerItem = item;
         window.__fixtureProfilePlayerRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(item);
+        window.__fixtureProfilePlayerTimeline = window.__fixtureProfilePlayerRenderer?.rootTimelinePlayer;
+        window.__fixturePresenceFrameProbe = { running: true, frames: 0, last: performance.now(), maxGap: 0 };
+        const probe = (now) => {
+          const state = window.__fixturePresenceFrameProbe;
+          if (!state?.running) return;
+          state.maxGap = Math.max(state.maxGap, now - state.last);
+          state.last = now;
+          state.frames += 1;
+          requestAnimationFrame(probe);
+        };
+        requestAnimationFrame(probe);
         return {
           applyCount: Number(window.__popPartyStageMetrics?.applyCount || 0),
           avatarText: item?.querySelector('[data-art-component-id="fixture-player-avatar"]')?.textContent?.trim()?.toLowerCase(),
-          surfaceRevision: window.currentStageState?.surfaceRevision
+          surfaceRevision: window.currentStageState?.surfaceRevision,
+          vipPlayerId: window.currentStageState?.vipPlayerId
         };
       }, collectionPlayerOne.player.id);
+      const frozenControllerSession = await collectionControllerOne.context().newCDPSession(collectionControllerOne);
+      await frozenControllerSession.send("Page.setWebLifecycleState", { state: "frozen" });
+      await collectionStagePage.waitForTimeout(12_500);
+      const backgroundPresenceResult = await collectionStagePage.evaluate((playerId) => {
+        const item = document.querySelector('[data-stage-layout-element-id="fixture-players"] [data-game-plugin-renderer-item-key="' + CSS.escape(playerId) + '"]');
+        const renderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(item);
+        window.__fixturePresenceFrameProbe.running = false;
+        return {
+          applyCount: Number(window.__popPartyStageMetrics?.applyCount || 0),
+          surfaceRevision: window.currentStageState?.surfaceRevision,
+          vipPlayerId: window.currentStageState?.vipPlayerId,
+          playerCount: window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.playerPresentations"]?.players?.length,
+          itemRetained: window.__fixtureProfilePlayerItem === item,
+          rendererRetained: window.__fixtureProfilePlayerRenderer === renderer,
+          timelineRetained: window.__fixtureProfilePlayerTimeline === renderer?.rootTimelinePlayer,
+          measuredFrames: window.__fixturePresenceFrameProbe.frames,
+          maxFrameGap: window.__fixturePresenceFrameProbe.maxGap
+        };
+      }, collectionPlayerOne.player.id);
+      await frozenControllerSession.send("Page.setWebLifecycleState", { state: "active" });
+      await collectionControllerOne.waitForFunction(() => window.controllerState?.player?.id, null, { timeout: 15_000 });
+      await frozenControllerSession.detach();
       const privateAccentControl = collectionControllerOne.locator(
         '[data-game-plugin-controller-interaction="generated-fixture.privateAccent"][data-game-plugin-input-option="moon"]'
       );
@@ -2956,6 +3023,7 @@ module.exports = Object.freeze([
         playerPresentationIdentityBefore,
         playerPresentationReconcileState,
         controllerProfileInteractions: {
+          backgroundPresence: backgroundPresenceResult,
           before: profileInteractionBefore,
           secondBefore: secondProfileInteractionBefore,
           retainedHold: retainedPersistentHold,
@@ -2967,6 +3035,7 @@ module.exports = Object.freeze([
           staleSubmission: staleProfileSubmission,
           stageBefore: profileStageBefore
         },
+        explicitLeaveResult,
         persistentLayerReloaded: secondControllerLayouts.layouts.layers
           ?.some((layer) => layer.id === "fixture-persistent-context" && layer.zIndex === 150),
         rendererManifestVisible: stageHtml.includes("generated-fixture.stageCounter")
@@ -3188,6 +3257,15 @@ module.exports = Object.freeze([
     || development.controllerProfileInteractions?.before?.avatarControls !== 3
     || development.controllerProfileInteractions?.before?.accentControls !== 2
     || !development.controllerProfileInteractions?.before?.vipStartPresent
+    || development.controllerProfileInteractions?.backgroundPresence?.applyCount !== development.controllerProfileInteractions?.stageBefore?.applyCount
+    || development.controllerProfileInteractions?.backgroundPresence?.surfaceRevision !== development.controllerProfileInteractions?.stageBefore?.surfaceRevision
+    || development.controllerProfileInteractions?.backgroundPresence?.vipPlayerId !== development.controllerProfileInteractions?.stageBefore?.vipPlayerId
+    || development.controllerProfileInteractions?.backgroundPresence?.playerCount !== 2
+    || !development.controllerProfileInteractions?.backgroundPresence?.itemRetained
+    || !development.controllerProfileInteractions?.backgroundPresence?.rendererRetained
+    || !development.controllerProfileInteractions?.backgroundPresence?.timelineRetained
+    || development.controllerProfileInteractions?.backgroundPresence?.measuredFrames < 2
+    || development.controllerProfileInteractions?.backgroundPresence?.maxFrameGap >= 500
     || development.controllerProfileInteractions?.secondBefore?.avatarId !== "trike"
     || development.controllerProfileInteractions?.secondBefore?.accentId !== "sun"
     || development.controllerProfileInteractions?.secondBefore?.publicProfiles !== undefined
@@ -3206,6 +3284,9 @@ module.exports = Object.freeze([
     || development.controllerProfileInteractions?.staleSubmission?.accepted !== false
     || development.controllerProfileInteractions?.staleSubmission?.code !== "GAME_PLUGIN_CONTROLLER_INTERACTION_STALE"
     || development.controllerProfileInteractions?.staleSubmission?.status !== 409
+    || development.explicitLeaveResult?.status !== 200
+    || !development.explicitLeaveResult?.removed
+    || development.explicitLeaveResult?.playerCount !== 2
     || !development.persistentLayerReloaded
     || !development.rendererManifestVisible
     || development.pluginViewModel !== "2"
@@ -3390,6 +3471,7 @@ module.exports = Object.freeze([
   }
   console.log(`Renderer collection browser evidence: flat ${development.collectionIdentityBefore.flatCardVisibility.width.toFixed(1)}x${development.collectionIdentityBefore.flatCardVisibility.height.toFixed(1)}, nested ${development.collectionIdentityBefore.nestedCardVisibility.width.toFixed(1)}x${development.collectionIdentityBefore.nestedCardVisibility.height.toFixed(1)}, fallback hidden ${development.collectionIdentityBefore.fallbackHidden}.`);
   console.log(`Stage projection browser evidence: private applies ${development.stageBeforePartialSubmission.applyCount}->${development.stageAfterPartialSubmission.applyCount}, public burst max frame gap ${development.stageAfterTransitionBurst.maxFrameGap.toFixed(1)}ms, max apply ${development.stageAfterTransitionBurst.maxApplyDuration.toFixed(1)}ms, layout reflows ${development.stageAfterTransitionBurst.layoutApplyCount}.`);
+  console.log(`Background controller evidence: Stage applies stayed ${development.controllerProfileInteractions.backgroundPresence.applyCount}, player/renderer/timeline retained, max frame gap ${development.controllerProfileInteractions.backgroundPresence.maxFrameGap.toFixed(1)}ms.`);
   console.log(`Controller projection browser evidence: start ${development.vipControllerJourney.startSurface}, Next ${development.vipControllerJourney.advanceSurfaces.join("/")}, crafting choices ${development.vipControllerJourney.craftingChoice.optionCount}.`);
   const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });
   if (!migrationPreview.includes("Migration preview valid: level 0 -> 0") || !migrationPreview.includes("Changed paths: (none)")) {

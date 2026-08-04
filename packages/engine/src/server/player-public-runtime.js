@@ -1,5 +1,8 @@
 "use strict";
 
+const { playerIsJoined } = require("./player-presence-runtime");
+const { playerIsControllerInputRecipient } = require("./input-state-runtime");
+
 function createPlayerPublicRuntime({ choiceInputPayload }) {
   function publicPlayer(player, room, currentAction = null) {
     const choiceAnswer = room.choiceInputAnswers?.get(player.id) || null;
@@ -27,6 +30,8 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     const needsPluginInput = hasActivePluginInput
       && room.gamePluginInputRecipientIds?.has(player.id) === true
       && !room.gamePluginInputSubmissions?.has(player.id);
+    const hasCoreInput = hasActiveChoiceInput || hasActiveTextInput || hasActiveMicrophoneAccess;
+    const isCoreRecipient = !hasCoreInput || playerIsControllerInputRecipient(room, player.id);
     const serializeAnswer = (value) => value ? {
       optionIndex: value.optionIndex,
       originalOptionIndex: value.originalOptionIndex,
@@ -40,13 +45,15 @@ function createPlayerPublicRuntime({ choiceInputPayload }) {
     return {
       id: player.id,
       name: player.name,
-      active: player.active,
+      // Public `active` is the durable joined/roster semantic retained for the
+      // plugin ABI. Controller heartbeat availability stays server-private.
+      active: playerIsJoined(player),
       joinedAt: player.joinedAt,
       points: Number(player.points || 0),
       pendingPoints: Number(player.pendingPoints || 0),
       isVip: player.id === room.vipPlayerId,
-      needsInput: player.active === true && (needsChoiceInput || needsTextInput || needsMicrophoneAccess || needsPluginInput),
-      input: choiceInputPayload(room, currentAction, player),
+      needsInput: playerIsJoined(player) && ((isCoreRecipient && (needsChoiceInput || needsTextInput || needsMicrophoneAccess)) || needsPluginInput),
+      input: isCoreRecipient ? choiceInputPayload(room, currentAction, player) : null,
       answer: serializeAnswer(answer),
       displayedAnswer: serializeAnswer(displayedAnswer)
     };

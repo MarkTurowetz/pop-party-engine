@@ -422,12 +422,13 @@ const {
 
 const {
   activePlayers,
+  joinedPlayers,
   selectVip
 } = createPlayerStateRuntime({
   randomToken
 });
 const gameRendererRuntime = createGameRendererRuntime({
-  activePlayers,
+  activePlayers: joinedPlayers,
   currentAction: (room) => _currentRoomActionFn?.(room) || null,
   stageRenderers: runtimeGameDefinition.registrations.stageRenderers,
   controllerRenderers: runtimeGameDefinition.registrations.controllerRenderers,
@@ -450,8 +451,11 @@ const {
   clearChoiceInput,
   clearMicrophoneAccessInput,
   clearTextInput,
-  flowEventTargetForAction
-} = createInputStateRuntime({ activePlayers });
+  flowEventTargetForAction,
+  inputRecipientPlayers,
+  playerDisconnected: markCoreInputPlayerDisconnected,
+  playerReconnected: markCoreInputPlayerReconnected
+} = createInputStateRuntime({ joinedPlayers });
 
 const {
   flowActionTarget,
@@ -1413,6 +1417,7 @@ const {
   cleanChoiceOptions,
   clearDisplayedPlayerAnswers,
   clearPlayerAnswerData,
+  joinedPlayers,
   normalizeCharacterLimit,
   normalizeChoiceInputMode,
   triviaContentForAction
@@ -1420,7 +1425,7 @@ const {
 
 const gameInputRuntime = createGameInputRuntime({
   inputRegistrations: pluginInputRegistrations,
-  activePlayers,
+  activePlayers: joinedPlayers,
   currentRoomAction,
   jumpToAction,
   broadcastLobby
@@ -1429,7 +1434,7 @@ _clearGamePluginInputFn = gameInputRuntime.clear;
 
 const controllerInteractionRuntime = createGameControllerInteractionRuntime({
   registrations: pluginControllerInteractionRegistrations,
-  activePlayers,
+  activePlayers: joinedPlayers,
   broadcastLobby
 });
 
@@ -1457,6 +1462,7 @@ const {
   gamePluginViewModels: gameRendererRuntime.viewModels,
   gamePluginInputPayload: gameInputRuntime.payloadForViewer,
   gamePluginControllerInteractionsPayload: controllerInteractionRuntime.payloadsForViewer,
+  inputRecipientPlayers,
   ensureGamePluginInput: gameInputRuntime.ensure,
   scheduleRoomSubActions,
   scheduleMicrophoneAccessAdvance,
@@ -1502,6 +1508,20 @@ const {
   sendJson
 });
 
+function handlePlayerDisconnected(room, playerId) {
+  const coreInputCompleted = markCoreInputPlayerDisconnected(room, playerId);
+  const pluginInputHandled = gameInputRuntime.playerDisconnected(room, playerId);
+  if (coreInputCompleted) {
+    if (room.microphoneAccessActionId) scheduleMicrophoneAccessAdvance(room);
+    else scheduleAnswersSubmittedAdvance(room);
+  }
+  return coreInputCompleted || pluginInputHandled;
+}
+
+function handlePlayerReconnected(room, playerId) {
+  return markCoreInputPlayerReconnected(room, playerId);
+}
+
 const {
   handleHeartbeat,
   handleJoin,
@@ -1514,7 +1534,8 @@ const {
   lobbyPayload,
   normalizePlayerId,
   normalizeStageCode,
-  onPlayerDisconnected: gameInputRuntime.playerDisconnected,
+  onPlayerDisconnected: handlePlayerDisconnected,
+  onPlayerReconnected: handlePlayerReconnected,
   publicPlayer,
   readJson,
   runtimeCapabilities,
@@ -1723,11 +1744,9 @@ const {
 const {
   sweepInactivePlayers
 } = createInactivePlayerSweepRuntime({
-  broadcastLobby,
   controllerTimeoutMs: CONTROLLER_TIMEOUT_MS,
-  onPlayerDisconnected: gameInputRuntime.playerDisconnected,
-  rooms,
-  selectVip
+  onPlayerDisconnected: handlePlayerDisconnected,
+  rooms
 });
 
 async function initializeAuthoritativeToolSources() {

@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  playerControllerIsConnected,
+  removePlayerFromRoom
+} = require("./player-presence-runtime");
+
 function resetGameSessionState(room) {
   if (room.gamePluginInputTimeoutId) clearTimeout(room.gamePluginInputTimeoutId);
   room.gameSessionId = Math.max(0, Number(room.gameSessionId || 0)) + 1;
@@ -18,6 +23,8 @@ function resetGameSessionState(room) {
   room.gamePluginInputRecipientIds = new Set();
   room.gamePluginInputSubmissions = new Map();
   room.gamePluginInputTimeoutId = null;
+  room.controllerInputRecipientIds = new Set();
+  room.controllerInputUnavailablePlayerIds = new Set();
   room.triviaPromptText = "";
   room.G = {};
   room.localVariables = {};
@@ -65,13 +72,14 @@ function resetGameSessionState(room) {
   room.lastVotingSourceFallbackUsed = false;
   room.lastVotingPrepare = null;
   room.microphoneAccessGrantedPlayerIds = new Set();
-  for (const player of room.players?.values?.() || []) {
+  for (const player of [...(room.players?.values?.() || [])]) {
     player.points = 0;
     player.pendingPoints = 0;
-    // Connected controllers retain their identity into the new session.
-    // Players that were already disconnected keep their old session marker,
-    // preventing a stale controller from being resurrected in a later game.
-    if (player.active) player.gameSessionId = room.gameSessionId;
+    // A new game session is the explicit durable eviction boundary: connected
+    // controllers retain identity, while unavailable roster entries are removed
+    // so the short heartbeat lease never becomes an unbounded zombie store.
+    if (playerControllerIsConnected(player)) player.gameSessionId = room.gameSessionId;
+    else removePlayerFromRoom(room, player.id, { kicked: true });
   }
 }
 

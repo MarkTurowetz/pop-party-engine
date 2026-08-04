@@ -7,6 +7,9 @@ const { createPlayerSessionHandlersRuntime } = require("./player-session-handler
 function createHarness(room, payload) {
   const response = {};
   const sendJson = vi.fn((_res, status, body) => Object.assign(response, { status, body }));
+  const broadcastLobby = vi.fn();
+  const onPlayerDisconnected = vi.fn();
+  const onPlayerReconnected = vi.fn();
   let generatedPlayerIndex = 0;
   const runtimeCapabilities = {
     publicStatus: () => ({ mode: "legacy" }),
@@ -18,7 +21,7 @@ function createHarness(room, payload) {
     issuePlayerCapability: (_room, playerId) => `cap-${playerId}`
   };
   const runtime = createPlayerSessionHandlersRuntime({
-    broadcastLobby: vi.fn(),
+    broadcastLobby,
     cleanPlayerName: (value) => String(value || "").trim(),
     gameConstants: () => ({ playerColors: ["#ff4fa3"] }),
     getExistingRoom: () => room,
@@ -26,6 +29,8 @@ function createHarness(room, payload) {
     lobbyPayload: () => ({ gameSessionId: room.gameSessionId }),
     normalizePlayerId: (value) => String(value || ""),
     normalizeStageCode: (value) => String(value || ""),
+    onPlayerDisconnected,
+    onPlayerReconnected,
     publicPlayer: (player) => ({ id: player.id, name: player.name }),
     randomArrayItem: (items) => items[0],
     readJson: async () => payload,
@@ -33,7 +38,7 @@ function createHarness(room, payload) {
     selectVip: vi.fn(),
     sendJson
   });
-  return { response, runtime };
+  return { broadcastLobby, onPlayerDisconnected, onPlayerReconnected, response, runtime };
 }
 
 describe("player session identity", () => {
@@ -46,7 +51,7 @@ describe("player session identity", () => {
       gameSessionId: 7
     };
     const room = { gameSessionId: 7, players: new Map([[player.id, player]]) };
-    const { response, runtime } = createHarness(room, { stageCode: "ABCD", playerId: "p1", gameSessionId: 7 });
+    const { broadcastLobby, onPlayerReconnected, response, runtime } = createHarness(room, { stageCode: "ABCD", playerId: "p1", gameSessionId: 7 });
 
     await runtime.handleHeartbeat({}, {});
 
@@ -54,7 +59,9 @@ describe("player session identity", () => {
       status: 200,
       body: { player: { id: "p1", name: "Ava" } }
     });
-    expect(player).toMatchObject({ active: true, gameSessionId: 7 });
+    expect(player).toMatchObject({ active: true, joined: true, controllerConnected: true, gameSessionId: 7 });
+    expect(onPlayerReconnected).toHaveBeenCalledWith(room, player.id);
+    expect(broadcastLobby).not.toHaveBeenCalled();
   });
 
   it("rejects an inactive controller after a new game session has started", async () => {
@@ -94,5 +101,58 @@ describe("player session identity", () => {
       active: true,
       gameSessionId: 8
     });
+  });
+
+  it("durably removes an explicitly leaving player and republishes the roster", async () => {
+    const player = {
+      id: "p1",
+      name: "Ava",
+      active: true,
+      joined: true,
+      controllerConnected: true,
+      gameSessionId: 7
+    };
+    const room = {
+      gameSessionId: 7,
+      players: new Map([[player.id, player]]),
+      playerCapabilityHashes: new Map([[player.id, "hash"]]),
+      surfaceProjections: { controllers: new Map([[player.id, { revision: 2 }]]) }
+    };
+    const { broadcastLobby, onPlayerDisconnected, response, runtime } = createHarness(room, {
+      stageCode: "ABCD",
+      playerId: player.id
+    });
+
+    await runtime.handleLeave({}, {});
+
+    expect(response.status).toBe(200);
+    expect(room.players.has(player.id)).toBe(false);
+    expect(room.playerCapabilityHashes.has(player.id)).toBe(false);
+    expect(room.surfaceProjections.controllers.has(player.id)).toBe(false);
+    expect(onPlayerDisconnected).toHaveBeenCalledWith(room, player.id);
+    expect(broadcastLobby).toHaveBeenCalledWith(room);
+  });
+
+  it("does not let a duplicate session rename an existing durable identity", async () => {
+    const player = {
+      id: "p1",
+      name: "Ava",
+      active: true,
+      joined: true,
+      controllerConnected: false,
+      gameSessionId: 7
+    };
+    const room = { gameSessionId: 7, players: new Map([[player.id, player]]) };
+    const { response, runtime } = createHarness(room, {
+      stageCode: "ABCD",
+      playerId: player.id,
+      playerName: "Imposter"
+    });
+
+    await runtime.handleJoin({}, {});
+
+    expect(response.status).toBe(200);
+    expect(response.body.player.id).not.toBe(player.id);
+    expect(room.players.get(player.id).name).toBe("Ava");
   });
 });

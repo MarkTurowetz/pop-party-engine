@@ -1,26 +1,25 @@
 "use strict";
 
+const {
+  markPlayerControllerDisconnected,
+  playerControllerIsConnected
+} = require("./player-presence-runtime");
+
 function createInactivePlayerSweepRuntime({
   broadcastLobby,
   controllerTimeoutMs,
   onPlayerDisconnected = () => {},
   rooms,
-  selectVip
+  now = Date.now
 }) {
   function sweepInactivePlayers() {
-    const now = Date.now();
+    const sweptAt = now();
     for (const room of rooms.values()) {
-      let changed = false;
       for (const player of room.players.values()) {
-        if (player.active && now - player.lastSeen > controllerTimeoutMs) {
-          player.active = false;
+        if (playerControllerIsConnected(player) && sweptAt - player.lastSeen > controllerTimeoutMs) {
+          markPlayerControllerDisconnected(player, sweptAt);
           onPlayerDisconnected(room, player.id);
-          changed = true;
         }
-      }
-      if (changed) {
-        selectVip(room);
-        broadcastLobby(room);
       }
     }
   }

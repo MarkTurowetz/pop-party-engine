@@ -1,6 +1,33 @@
 "use strict";
 
-function createInputStateRuntime({ activePlayers }) {
+const { playerControllerIsConnected } = require("./player-presence-runtime");
+
+function setControllerInputRecipients(room, players) {
+  room.controllerInputRecipientIds = new Set((players || []).map((player) => String(player.id || "")).filter(Boolean));
+  room.controllerInputUnavailablePlayerIds = new Set(
+    (players || []).filter((player) => !playerControllerIsConnected(player)).map((player) => String(player.id || ""))
+  );
+}
+
+function clearControllerInputRecipients(room) {
+  room.controllerInputRecipientIds = new Set();
+  room.controllerInputUnavailablePlayerIds = new Set();
+}
+
+function playerIsControllerInputRecipient(room, playerId) {
+  if (!(room.controllerInputRecipientIds instanceof Set)) return true;
+  return room.controllerInputRecipientIds.has(String(playerId || ""));
+}
+
+function playerIsControllerInputAvailable(room, playerId) {
+  const id = String(playerId || "");
+  if (!playerIsControllerInputRecipient(room, id)) return false;
+  if (room.controllerInputUnavailablePlayerIds?.has?.(id) === true) return false;
+  return playerControllerIsConnected(room.players?.get?.(id));
+}
+
+function createInputStateRuntime({ joinedPlayers = null, activePlayers = null }) {
+  const rosterPlayers = joinedPlayers || activePlayers;
   function clearAnswersSubmittedAdvanceTimer(room) {
     if (room.answersSubmittedAdvanceTimerId) clearTimeout(room.answersSubmittedAdvanceTimerId);
     room.answersSubmittedAdvanceTimerId = null;
@@ -26,6 +53,7 @@ function createInputStateRuntime({ activePlayers }) {
     } else {
       room.choiceInputAnswers = new Map();
     }
+    clearControllerInputRecipients(room);
   }
 
   function clearTextInput(room) {
@@ -46,6 +74,7 @@ function createInputStateRuntime({ activePlayers }) {
     } else {
       room.textInputDrafts = new Map();
     }
+    clearControllerInputRecipients(room);
   }
 
   function clearMicrophoneAccessInput(room) {
@@ -60,9 +89,21 @@ function createInputStateRuntime({ activePlayers }) {
     } else {
       room.microphoneAccessAnswers = new Map();
     }
+    clearControllerInputRecipients(room);
   }
 
-  function microphoneAccessPlayers(room, players = activePlayers(room)) {
+  function inputRecipientPlayers(room) {
+    const ids = room.controllerInputRecipientIds instanceof Set
+      ? room.controllerInputRecipientIds
+      : new Set((rosterPlayers?.(room) || []).map((player) => player.id));
+    return [...ids].map((id) => room.players?.get?.(id)).filter(Boolean);
+  }
+
+  function availableInputRecipientPlayers(room) {
+    return inputRecipientPlayers(room).filter((player) => playerIsControllerInputAvailable(room, player.id));
+  }
+
+  function microphoneAccessPlayers(room, players = availableInputRecipientPlayers(room)) {
     if (room.microphoneAccessMode === "all") return players;
     const vip = players.find((player) => player.id === room.vipPlayerId) || null;
     return vip ? [vip] : [];
@@ -72,30 +113,46 @@ function createInputStateRuntime({ activePlayers }) {
     return room.microphoneAccessAnswers?.get(playerId)?.done === true;
   }
 
-  function allActivePlayersHaveSubmittedInput(room) {
-    const active = activePlayers(room);
-    if (!active.length) return false;
+  function allInputRecipientsHaveSubmitted(room) {
+    const recipients = inputRecipientPlayers(room);
+    if (!recipients.length) return false;
+    const available = availableInputRecipientPlayers(room);
     if (room.microphoneAccessActionId) {
-      const requiredPlayers = microphoneAccessPlayers(room, active);
-      return Boolean(requiredPlayers.length) && requiredPlayers.every((player) => playerHasMicrophoneAccess(room, player.id));
+      const requiredPlayers = microphoneAccessPlayers(room, available);
+      return requiredPlayers.every((player) => playerHasMicrophoneAccess(room, player.id));
     }
     if (room.votingInputActionId) {
-      return active.every((player) => {
+      return available.every((player) => {
         const eligibleCards = (room.votingCards || []).filter((card) => card && card.authorPlayerId !== player.id);
         return !eligibleCards.length || room.votingAnswers.has(player.id);
       });
     }
     if (room.textInputActionId) {
       if (room.textInputMode === "voiceVip") {
-        const vip = active.find((player) => player.id === room.vipPlayerId) || null;
-        return Boolean(vip) && room.textInputAnswers.get(vip.id)?.done === true;
+        const vip = available.find((player) => player.id === room.vipPlayerId) || null;
+        return !vip || room.textInputAnswers.get(vip.id)?.done === true;
       }
-      return active.every((player) => room.textInputAnswers.get(player.id)?.done === true);
+      return available.every((player) => room.textInputAnswers.get(player.id)?.done === true);
     }
     if (room.choiceInputActionId) {
-      return active.every((player) => room.choiceInputAnswers.has(player.id));
+      return available.every((player) => room.choiceInputAnswers.has(player.id));
     }
     return false;
+  }
+
+  function playerDisconnected(room, playerId) {
+    const id = String(playerId || "");
+    if (!playerIsControllerInputRecipient(room, id)) return false;
+    if (!(room.controllerInputUnavailablePlayerIds instanceof Set)) room.controllerInputUnavailablePlayerIds = new Set();
+    room.controllerInputUnavailablePlayerIds.add(id);
+    return allInputRecipientsHaveSubmitted(room);
+  }
+
+  function playerReconnected(room, playerId) {
+    const id = String(playerId || "");
+    if (!playerIsControllerInputRecipient(room, id)) return false;
+    room.controllerInputUnavailablePlayerIds?.delete?.(id);
+    return true;
   }
 
   function flowEventTargetForAction(action, eventType) {
@@ -113,14 +170,24 @@ function createInputStateRuntime({ activePlayers }) {
   }
 
   return {
-    allActivePlayersHaveSubmittedInput,
+    allActivePlayersHaveSubmittedInput: allInputRecipientsHaveSubmitted,
+    allInputRecipientsHaveSubmitted,
     clearActiveInputFlowEvent,
     clearAnswersSubmittedAdvanceTimer,
     clearChoiceInput,
     clearMicrophoneAccessInput,
     clearTextInput,
-    flowEventTargetForAction
+    flowEventTargetForAction,
+    inputRecipientPlayers,
+    playerDisconnected,
+    playerReconnected
   };
 }
 
-module.exports = { createInputStateRuntime };
+module.exports = {
+  clearControllerInputRecipients,
+  createInputStateRuntime,
+  playerIsControllerInputAvailable,
+  playerIsControllerInputRecipient,
+  setControllerInputRecipients
+};

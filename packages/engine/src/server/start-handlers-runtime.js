@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  markPlayerControllerConnected,
+  playerIsJoined
+} = require("./player-presence-runtime");
+
 function createStartHandlersRuntime({
   broadcastLobby,
   enterLobbyPhase,
@@ -27,10 +32,11 @@ function createStartHandlersRuntime({
     const player = room?.players.get(playerId);
     selectVip(room || { players: new Map(), vipPlayerId: "" });
 
-    if (!room || !player || !player.active) {
+    if (!room || !player || !playerIsJoined(player)) {
       sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
       return;
     }
+    markPlayerControllerConnected(player);
     if (room.vipPlayerId !== playerId) {
       sendJson(res, 403, { ok: false, error: "Only the VIP can start the game" });
       return;
@@ -67,10 +73,11 @@ function createStartHandlersRuntime({
     const player = room?.players.get(playerId);
     selectVip(room || { players: new Map(), vipPlayerId: "" });
 
-    if (!room || !player || !player.active) {
+    if (!room || !player || !playerIsJoined(player)) {
       sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
       return;
     }
+    markPlayerControllerConnected(player);
     if (room.vipPlayerId !== playerId) {
       sendJson(res, 403, { ok: false, error: "Only the VIP can cancel the start" });
       return;

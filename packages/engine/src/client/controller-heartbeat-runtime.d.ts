@@ -2,6 +2,7 @@ export interface ControllerHeartbeatOptions {
   applyLayoutForPhase: (phase: string) => void;
   clearIntervalImpl?: (timer: unknown) => void;
   elements: { meta: HTMLElement } & Record<string, HTMLElement>;
+  eventTarget?: Pick<typeof globalThis, "addEventListener" | "removeEventListener">;
   getJoinButton: () => HTMLButtonElement;
   getControllerState: () => unknown;
   hideViews: () => void;
@@ -12,6 +13,7 @@ export interface ControllerHeartbeatOptions {
   setIntervalImpl?: (callback: () => void, intervalMs: number) => unknown;
   setText?: (target: HTMLElement, value: unknown) => void;
   showView: (viewId: string) => void;
+  visibilityTarget?: Pick<Document, "addEventListener" | "removeEventListener" | "visibilityState">;
 }
 
 export interface ControllerHeartbeatRuntime {

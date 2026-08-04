@@ -92,7 +92,9 @@ concepts into focused modules.
   - `network-urls-runtime.js` owns LAN URL discovery for startup logging.
   - `player-public-runtime.js` owns player serialization for lobby/controller payloads.
   - `player-session-handlers-runtime.js` owns join, heartbeat, and leave endpoints.
-  - `player-state-runtime.js` owns active-player filtering and VIP selection.
+  - `player-presence-runtime.js` owns durable joined membership, ephemeral Controller availability,
+    compatibility with the public `active` roster field, and explicit removal cleanup.
+  - `player-state-runtime.js` owns joined-player filtering and durable VIP selection.
   - `room-action-effects-runtime.js` owns one-time room action-effect dispatch; effect behavior
     lives on descriptors in `shared/flow-action-registry.js`.
   - `room-state-runtime.js` owns default room construction and room lookup helpers.
@@ -286,6 +288,12 @@ concepts into focused modules.
     possible presentation without making its compositions part of the engine ABI. Player-related
     Flow state actions still complete safely when no renderer is registered. Private Controller
     input models remain unavailable to Stage and to other viewers.
+  - Joined roster identity is durable across the short Controller heartbeat lease. Timer suspension,
+    backgrounding, and transient network loss update only server-private `controllerConnected`
+    availability; they do not change the Stage player projection, VIP, or keyed renderer identity.
+    Core and plugin input visits snapshot recipient IDs separately and apply disconnect policy to
+    availability without deleting identity. Explicit leave/kick and the next game-session reset are
+    durable eviction boundaries and clean up player capabilities, private projections, and profiles.
   - Controller Layout supports named persistent layers in addition to Global and the active state.
     Each layer has a normalized ID and explicit z-index, remains mounted across active-state visits,
     and can be hidden per state without clearing its DOM node, Art renderer, or timeline. Runtime
