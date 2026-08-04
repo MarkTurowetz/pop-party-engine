@@ -45,7 +45,7 @@ describe("live prototype room content", () => {
       { reset: true }
     );
 
-    expect(result).toEqual({ deferred: true });
+    expect(result).toEqual({ changed: false, deferred: true });
     expect(room.phase).toBe("voting-moment");
     expect(room.contentSnapshot).toBe(originalSnapshot);
     expect(room.gameData.title).toBe("Active game content");
@@ -74,7 +74,7 @@ describe("live prototype room content", () => {
       { reset: true }
     );
 
-    expect(result).toEqual({ deferred: false });
+    expect(result).toEqual({ changed: true, deferred: false });
     expect(room.contentSnapshot).toBe(snapshot);
     expect(room.gameData.title).toBe("New preview content");
     expect(enterLobbyPhase).toHaveBeenCalledOnce();
@@ -101,7 +101,7 @@ describe("live prototype room content", () => {
       { reset: false, hotReload: true }
     );
 
-    expect(result).toEqual({ deferred: false, hotReloaded: true });
+    expect(result).toEqual({ changed: true, deferred: false, hotReloaded: true });
     expect(room).toMatchObject({
       phase: "active-play",
       momentVisitId: 17,
@@ -130,7 +130,7 @@ describe("live prototype room content", () => {
       { reset: true }
     );
 
-    expect(result).toEqual({ deferred: false });
+    expect(result).toEqual({ changed: false, deferred: false });
     expect(room.contentSnapshot).toBe(snapshot);
     expect(enterLobbyPhase).not.toHaveBeenCalled();
     expect(broadcastLobby).not.toHaveBeenCalled();
@@ -154,7 +154,7 @@ describe("live prototype room content", () => {
       { reset: true, deferUntilNextSession: true }
     );
 
-    expect(result).toEqual({ deferred: true });
+    expect(result).toEqual({ changed: false, deferred: true });
     expect(room.contentSnapshot).toBe(workingSnapshot);
     expect(room.gameData.title).toBe("Visible authored preview");
     expect(enterLobbyPhase).not.toHaveBeenCalled();

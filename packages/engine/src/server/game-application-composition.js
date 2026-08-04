@@ -553,6 +553,7 @@ const {
 });
 
 async function broadcastArtAssetsChanged(payload) {
+  let roomContentBroadcast = false;
   if (authoringSessionContent) {
     try {
       await authoringSessionContent.refresh();
@@ -560,14 +561,22 @@ async function broadcastArtAssetsChanged(payload) {
         authoringSessionContent.prepareLobbySession(room);
         broadcastLobby(room);
       }
+      roomContentBroadcast = true;
     } catch (error) {
       // The saved authoring data remains durable. A new session will fail
       // closed with the same diagnostic instead of reusing the older cache.
     }
   }
+  if (roomContentBroadcast) return;
   for (const room of rooms.values()) {
     for (const client of room.stageClients) {
-      sendSse(client, "artAssetsChanged", payload);
+      sendSse(client, "artAssetsChanged", {
+        ...payload,
+        // This token identifies the Art payload, not the room projection. A
+        // room can intentionally stay pinned while a genuine Art edit hot
+        // reloads into its renderer.
+        contentRevision: String(payload?.contentRevision || payload?.updatedAt || "")
+      });
     }
   }
 }
@@ -1227,9 +1236,14 @@ const {
   normalizeArtOrganization,
   normalizeStageLayouts,
   onDraftChanged: livePrototypeWorkspace
-    ? ({ req }) => livePrototypeWorkspace.applyDraft(
-        String(req.headers["x-pop-party-authoring-session"] || "")
-      )
+    ? async ({ req }) => ({
+        ...(await livePrototypeWorkspace.applyDraft(
+          String(req.headers["x-pop-party-authoring-session"] || "")
+        )),
+        // The room-content runtime already broadcasts the new content revision.
+        // A second Art event would reload the same Stage presentation twice.
+        artAssetsChangedHandled: true
+      })
     : null,
   readGameFlow,
   readJson,

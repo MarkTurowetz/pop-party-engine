@@ -1,5 +1,14 @@
 "use strict";
 
+const { isDeepStrictEqual } = require("node:util");
+
+const ART_DRAFT_KEYS = Object.freeze([
+  "artCompositions",
+  "artOrganization",
+  "artAssetReplacements",
+  "artDeletedCompositionIds"
+]);
+
 function createLocalDraftRuntime({
   broadcastLobby,
   clearActionTimer,
@@ -141,9 +150,10 @@ function createLocalDraftRuntime({
     )) return;
 
     syncDraftLayoutsToFlow();
+    let draftChangeResult = null;
     if (typeof onDraftChanged === "function") {
       try {
-        await onDraftChanged({ payload, req });
+        draftChangeResult = await onDraftChanged({ payload, req });
       } catch (error) {
         restoreLocalDraftStore(previousDraft);
         const authoringBoundary = isAuthoringSessionBoundaryError(error);
@@ -159,8 +169,9 @@ function createLocalDraftRuntime({
         return;
       }
     }
-    broadcastDraftChange(payload);
-    if (
+    const draftChanged = !isDeepStrictEqual(previousDraft, localDraftStore);
+    if (draftChanged) broadcastDraftChange(payload);
+    const containsArtMutation = Boolean(
       payload.artCompositions ||
       payload.clearArtCompositions ||
       payload.artOrganization ||
@@ -169,8 +180,23 @@ function createLocalDraftRuntime({
       payload.clearArtAssetReplacements
       || payload.artDeletedCompositionIds
       || payload.clearArtDeletedCompositionIds
+    );
+    const artDraftChanged = ART_DRAFT_KEYS.some((key) => (
+      !isDeepStrictEqual(previousDraft[key], localDraftStore[key])
+    ));
+    if (
+      containsArtMutation
+      && artDraftChanged
+      && draftChangeResult?.artAssetsChangedHandled !== true
+      && draftChangeResult?.roomContentChanged !== false
     ) {
-      onArtAssetsChanged({ type: "art-draft", updatedAt: new Date().toISOString() });
+      onArtAssetsChanged({
+        type: "art-draft",
+        updatedAt: new Date().toISOString(),
+        ...(draftChangeResult?.workingRevision
+          ? { contentRevision: String(draftChangeResult.workingRevision) }
+          : {})
+      });
     }
     sendLocalDraft(res);
   }

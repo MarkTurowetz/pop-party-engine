@@ -66,7 +66,8 @@ function browserWindow() {
     listeners,
     storage,
     win,
-    heartbeat: () => intervalHandler?.()
+    heartbeat: () => intervalHandler?.(),
+    focus: () => listeners.get("focus")?.({ type: "focus" } as Event)
   };
 }
 
@@ -408,5 +409,27 @@ describe("live prototype browser workspace", () => {
       phase: "saved-local",
       localRevision: "browser-models"
     });
+  });
+
+  it("checks the authoring lease immediately when a suspended browser regains focus", async () => {
+    const postJson = vi.fn(async (path: string) => (
+      path.endsWith("/session") || path.endsWith("/heartbeat")
+        ? sessionResponse()
+        : { ok: true }
+    ));
+    const browser = browserWindow();
+    const workspace = await beginLivePrototypeWorkspace(
+      { postJson } as unknown as ApiClient,
+      browser.win,
+      memoryCheckpointStore().store
+    );
+
+    browser.focus();
+    await vi.waitFor(() => expect(
+      postJson.mock.calls.filter(([path]) => path.endsWith("/heartbeat"))
+    ).toHaveLength(1));
+
+    workspace?.dispose();
+    expect(browser.win.removeEventListener).toHaveBeenCalledWith("focus", expect.any(Function));
   });
 });
