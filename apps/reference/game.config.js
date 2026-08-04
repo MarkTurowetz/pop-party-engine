@@ -50,7 +50,14 @@ function answerPresentation(displayedAnswer) {
   if (displayedAnswer.hidden === true) {
     return {
       answerText: String(displayedAnswer.text || ""),
-      answerSemanticState: "Default",
+      // The semantic leaf must keep its authored correctness color while the
+      // lifecycle wrapper plays Disappear. Default is selected only after the
+      // displayed answer is removed and the wrapper is safely Off.
+      answerSemanticState: displayedAnswer.correct === true
+        ? "Correct"
+        : displayedAnswer.correct === false
+          ? "Incorrect"
+          : "Default",
       answerLifecycleState: "Disappear"
     };
   }

@@ -680,12 +680,10 @@ const flowActionDefinitions: FlowActionDefinition[] = [
         room.playerAnswersShown = shouldShow;
         if (shouldShow) room.hiddenPlayerAnswerIds.clear();
         else {
-          context.clearDisplayedCorrectnessForPlayers(room, targetPlayerIds);
           for (const playerId of targetPlayerIds) room.hiddenPlayerAnswerIds.add(playerId);
         }
       } else {
         room.playerAnswersShown = true;
-        if (!shouldShow) context.clearDisplayedCorrectnessForPlayers(room, targetPlayerIds);
         for (const playerId of targetPlayerIds) {
           if (shouldShow) room.hiddenPlayerAnswerIds.delete(playerId);
           else room.hiddenPlayerAnswerIds.add(playerId);

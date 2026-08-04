@@ -1,5 +1,13 @@
 "use strict";
 
+const {
+  markPlayerControllerDisconnected,
+  markPlayerJoined,
+  playerControllerIsConnected,
+  playerIsJoined,
+  removePlayerFromRoom
+} = require("./player-presence-runtime");
+
 function createPlayerSessionHandlersRuntime({
   broadcastLobby,
   cleanPlayerName,
@@ -9,6 +17,7 @@ function createPlayerSessionHandlersRuntime({
   normalizePlayerId,
   normalizeStageCode,
   onPlayerDisconnected = () => {},
+  onPlayerReconnected = () => {},
   publicPlayer,
   readJson,
   runtimeCapabilities,
@@ -52,19 +61,23 @@ function createPlayerSessionHandlersRuntime({
       player = null;
     }
     const staleDisconnectedPlayer = player
-      && !player.active
+      && !playerIsJoined(player)
       && Number(player.gameSessionId || 0) !== Number(room.gameSessionId || 0);
-    if (player && (staleDisconnectedPlayer || (player.active && player.name !== playerName))) {
+    if (player && (staleDisconnectedPlayer || player.name !== playerName)) {
       const identity = runtimeCapabilities.newPlayerIdentity(room);
       playerId = identity.playerId;
       playerCapability = identity.playerCapability;
       player = null;
     }
 
-    if (!player) {
+    const isNewPlayer = !player;
+    const wasJoined = playerIsJoined(player);
+    if (isNewPlayer) {
       player = {
         id: playerId,
         name: playerName,
+        joined: true,
+        controllerConnected: true,
         active: true,
         kickedFromGame: false,
         points: 0,
@@ -76,16 +89,16 @@ function createPlayerSessionHandlersRuntime({
       room.players.set(playerId, player);
     } else {
       player.name = playerName;
-      player.active = true;
-      player.kickedFromGame = false;
-      player.lastSeen = Date.now();
+      const reconnected = !playerControllerIsConnected(player);
+      markPlayerJoined(player);
       player.gameSessionId = Number(room.gameSessionId || 0);
       if (!playerCapability) playerCapability = runtimeCapabilities.issuePlayerCapability(room, playerId);
+      if (reconnected) onPlayerReconnected(room, playerId);
     }
 
     if (!playerCapability) playerCapability = runtimeCapabilities.issuePlayerCapability(room, playerId);
     selectVip(room);
-    broadcastLobby(room);
+    if (isNewPlayer || !wasJoined) broadcastLobby(room);
     sendJson(res, 200, { ok: true, playerCapability, player: publicPlayer(player, room), lobby: lobbyPayload(room, playerId) });
   }
 
@@ -103,24 +116,22 @@ function createPlayerSessionHandlersRuntime({
     const room = getExistingRoom(stageCode);
     const player = room?.players.get(playerId);
     if (!room || !player) {
-      sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
+      sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "Player is no longer in this lobby" });
       return;
     }
     if (player.kickedFromGame) {
       sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "Player was returned to the join screen" });
       return;
     }
-    if (!player.active && Number(player.gameSessionId || 0) !== Number(room.gameSessionId || 0)) {
+    if (Number(player.gameSessionId || 0) !== Number(room.gameSessionId || 0)) {
       sendJson(res, 409, { ok: false, errorCode: "KICKED_TO_LOBBY", error: "This controller belongs to an earlier game session" });
       return;
     }
 
-    const wasInactive = !player.active;
-    player.active = true;
-    player.lastSeen = Date.now();
+    const reconnected = !playerControllerIsConnected(player);
+    markPlayerJoined(player);
     player.gameSessionId = Number(room.gameSessionId || 0);
-    selectVip(room);
-    if (wasInactive) broadcastLobby(room);
+    if (reconnected) onPlayerReconnected(room, playerId);
     sendJson(res, 200, { ok: true, player: publicPlayer(player, room), lobby: lobbyPayload(room, playerId) });
   }
 
@@ -142,13 +153,11 @@ function createPlayerSessionHandlersRuntime({
       return;
     }
 
-    if (player.active) {
-      player.active = false;
-      player.lastSeen = Date.now();
-      selectVip(room);
-      onPlayerDisconnected(room, playerId);
-      broadcastLobby(room);
-    }
+    markPlayerControllerDisconnected(player);
+    onPlayerDisconnected(room, playerId);
+    removePlayerFromRoom(room, playerId);
+    selectVip(room);
+    broadcastLobby(room);
     sendJson(res, 200, { ok: true });
   }
 

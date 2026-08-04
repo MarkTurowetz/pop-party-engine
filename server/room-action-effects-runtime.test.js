@@ -31,6 +31,37 @@ function delayedControllerLayoutParent(seconds = 2) {
 }
 
 describe("scheduled room sub-action effects", () => {
+  it("retains displayed correctness while an answer lifecycle disappears", () => {
+    const clearDisplayedCorrectnessForPlayers = vi.fn();
+    const runtime = createRoomActionEffectsRuntime({
+      activePlayers: () => [{ id: "p1" }],
+      clearDisplayedCorrectnessForPlayers,
+      filteredPlayerIds: () => ["p1"],
+      hasAppliedActionEffect: () => false,
+      markAppliedActionEffect: vi.fn(),
+      normalizePlayerFilter: (value) => value || "all",
+      resetGameSessionState: vi.fn()
+    });
+    const room = {
+      displayedAnswerCorrectness: new Map([["p1", false]]),
+      displayedPlayerAnswers: new Map([["p1", { text: "Wrong", correct: false }]]),
+      hiddenPlayerAnswerIds: new Set(),
+      playerAnswerGroups: { all: ["p1"], correct: [], wrong: ["p1"] }
+    };
+
+    runtime.applyRoomActionEffects(room, {
+      id: "hide-wrong",
+      type: "setPlayerAnswersShown",
+      isShown: false,
+      playerFilter: "wrong"
+    });
+
+    expect(room.hiddenPlayerAnswerIds.has("p1")).toBe(true);
+    expect(room.displayedAnswerCorrectness.get("p1")).toBe(false);
+    expect(room.displayedPlayerAnswers.get("p1").correct).toBe(false);
+    expect(clearDisplayedCorrectnessForPlayers).not.toHaveBeenCalled();
+  });
+
   it("evaluates Log Value against the current local subroutine scope", () => {
     const markAppliedActionEffect = vi.fn();
     const runtime = createRoomActionEffectsRuntime({

@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1284",
+  "version": "1.0.17.1285",
   "baseVersion": "1.0.17",
-  "buildNumber": 1284,
-  "commit": "026cad83",
-  "branch": "codex/reference-avatar-picker-menu",
-  "generatedAt": "2026-08-04T00:22:46.506Z"
+  "buildNumber": 1285,
+  "commit": "dc46b324",
+  "branch": "codex/durable-player-presence-answer-disappear",
+  "generatedAt": "2026-08-04T09:10:30.904Z"
 }

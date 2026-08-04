@@ -1,5 +1,7 @@
 "use strict";
 
+const { markPlayerControllerConnected, playerIsJoined } = require("./player-presence-runtime");
+
 function createGamePluginControllerInteractionHandlersRuntime({
   controllerInteractionRuntime,
   getExistingRoom,
@@ -25,10 +27,11 @@ function createGamePluginControllerInteractionHandlersRuntime({
       sendJson(res, 404, { ok: false, error: "Player is not in this lobby", errorCode: "PLAYER_NOT_FOUND" });
       return;
     }
-    if (player.kickedFromGame || player.active === false) {
+    if (!playerIsJoined(player)) {
       sendJson(res, 409, { ok: false, error: "This controller is no longer active", errorCode: "PLAYER_INACTIVE" });
       return;
     }
+    markPlayerControllerConnected(player);
     const result = controllerInteractionRuntime.submit(room, playerId, payload);
     if (result.status !== 200) {
       sendJson(res, result.status, { ok: false, error: result.error, errorCode: result.errorCode });

@@ -11,6 +11,7 @@ const root = path.resolve(__dirname, "..");
 const host = "127.0.0.1";
 const referenceFlow = require(path.join(root, "apps/reference/content/flow.json"));
 const referenceArt = require(path.join(root, "apps/reference/content/art/manifest.json"));
+const referencePrompts = require(path.join(root, "apps/reference/content/prompts/prompts.json")).prompts;
 
 function feedbackFixtureFlow() {
   const flow = structuredClone(referenceFlow);
@@ -30,7 +31,7 @@ function feedbackFixtureFlow() {
   const reveal = crafting.actions.find((action) => action.type === "revealPlayerAnswerCorrectness");
   reveal.timing.seconds = 0.65;
   const hideWrong = crafting.actions.find((action) => action.type === "setPlayerAnswersShown" && action.playerFilter === "wrong");
-  hideWrong.playerFilter = "votingWinner";
+  hideWrong.timing.seconds = 1;
   const points = crafting.actions.find((action) => action.type === "showPoints");
   points.playerFilter = "all";
   points.points = 200;
@@ -475,7 +476,52 @@ async function main() {
       }));
       throw new Error(`Feedback Controller did not receive trivia choices: ${JSON.stringify(diagnostic)}`, { cause: error });
     }
-    await feedbackController.locator('[data-option-id^="choice."]').first().click();
+    const wrongOption = await feedbackController.evaluate((prompts) => {
+      const input = window.controllerState?.lobby?.input;
+      const fixture = prompts.find((item) => item.prompt === input?.prompt);
+      const correctText = fixture?.options?.[fixture.correctAnswerIndex];
+      return input?.options?.find((option) => option.text !== correctText) || null;
+    }, referencePrompts);
+    assert.ok(wrongOption, "The feedback fixture could not select a deterministic wrong answer");
+    await feedbackStage.evaluate((playerId) => {
+      const item = document.querySelector(
+        `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"]`
+      );
+      const renderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(item);
+      window.__feedbackAnswerIdentity = {
+        item,
+        renderer,
+        wrapperTimeline: renderer?.viewForComponentId?.("player-answer-bubble-mc")?.createVisual?.()?.timelinePlayer,
+        semanticTimeline: renderer?.viewForComponentId?.("playerAnswerBubble")?.createVisual?.()?.timelinePlayer
+      };
+      window.__feedbackAnswerSamples = [];
+      const sample = () => {
+        if (!window.__feedbackAnswerSampling) return;
+        const stageState = window.currentStageState?.lobby || window.currentStageState;
+        const model = stageState?.gamePlugin?.viewModels?.["reference.players"]?.players?.find((player) => player.id === playerId);
+        const currentRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(item);
+        const wrapperView = currentRenderer?.viewForComponentId?.("player-answer-bubble-mc");
+        const semanticView = currentRenderer?.viewForComponentId?.("playerAnswerBubble");
+        const wrapperVisual = wrapperView?.createVisual?.();
+        const semanticVisual = semanticView?.createVisual?.();
+        const card = item?.querySelector('[data-art-component-id="answer-bubble-card"]');
+        window.__feedbackAnswerSamples.push({
+          lifecycle: model?.answerLifecycleState,
+          semantic: model?.answerSemanticState,
+          wrapperFrame: wrapperVisual?.timelinePlayer?.currentFrame,
+          semanticFrame: semanticVisual?.timelinePlayer?.currentFrame,
+          wrapperVisible: wrapperView?.isVisible?.() === true,
+          fill: card ? getComputedStyle(card).backgroundColor : "",
+          text: item?.querySelector('[data-art-component-id="answer-text"]')?.textContent?.trim() || ""
+        });
+        requestAnimationFrame(sample);
+      };
+      window.__feedbackAnswerSampling = true;
+      requestAnimationFrame(sample);
+    }, feedbackPlayerId);
+    await feedbackController.evaluate((optionIndex) => {
+      document.querySelector(`[data-option-id="choice.${optionIndex}"]`)?.click();
+    }, wrongOption.index);
     await feedbackStage.waitForFunction((playerId) => {
       const model = window.currentStageState?.lobby?.gamePlugin?.viewModels?.["reference.players"]
         || window.currentStageState?.gamePlugin?.viewModels?.["reference.players"];
@@ -484,16 +530,26 @@ async function main() {
         `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"]`
       );
       const answerText = item?.querySelector('[data-art-component-id="answer-text"]');
-      const popup = item?.querySelector('[data-art-component-id="reference-player-point-popup"]');
-      const popupRect = popup?.getBoundingClientRect();
       return player?.answerLifecycleState === "Update"
-        && ["Correct", "Incorrect"].includes(player?.answerSemanticState)
-        && player?.pointPopupState === "Popup"
-        && player?.pointLabel === "+200"
+        && player?.answerSemanticState === "Incorrect"
         && Boolean(answerText?.textContent?.trim())
-        && popupRect?.width > 0
-        && popupRect?.height > 0
-        && getComputedStyle(popup).display !== "none";
+        && getComputedStyle(item?.querySelector('[data-art-component-id="answer-bubble-card"]')).backgroundColor === "rgb(255, 92, 69)";
+    }, feedbackPlayerId, { timeout: 15_000 });
+    const feedbackRevealResult = await feedbackStage.evaluate((playerId) => {
+      const item = document.querySelector(
+        `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"]`
+      );
+      return { answer: item?.querySelector('[data-art-component-id="answer-text"]')?.textContent?.trim() || "" };
+    }, feedbackPlayerId);
+    await feedbackStage.waitForFunction((playerId) => {
+      const stageState = window.currentStageState?.lobby || window.currentStageState;
+      const model = stageState?.gamePlugin?.viewModels?.["reference.players"]?.players?.find((player) => player.id === playerId);
+      const popup = document.querySelector(
+        `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"] [data-art-component-id="reference-player-point-popup"]`
+      );
+      const rect = popup?.getBoundingClientRect();
+      return model?.pointPopupState === "Popup" && model?.pointLabel === "+200"
+        && rect?.width > 0 && rect?.height > 0 && getComputedStyle(popup).display !== "none";
     }, feedbackPlayerId, { timeout: 15_000 });
     const feedbackResult = await feedbackStage.evaluate((playerId) => {
       const model = window.currentStageState?.lobby?.gamePlugin?.viewModels?.["reference.players"]
@@ -503,6 +559,10 @@ async function main() {
         `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"]`
       );
       const popup = item.querySelector('[data-art-component-id="reference-player-point-popup"]');
+      const renderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(item);
+      const wrapperView = renderer?.viewForComponentId?.("player-answer-bubble-mc");
+      const semanticView = renderer?.viewForComponentId?.("playerAnswerBubble");
+      window.__feedbackAnswerSampling = false;
       return {
         answer: item.querySelector('[data-art-component-id="answer-text"]')?.textContent?.trim() || "",
         answerSemanticState: player.answerSemanticState,
@@ -510,16 +570,55 @@ async function main() {
         pointText: item.querySelector('[data-art-component-id="point-text"]')?.textContent?.trim() || "",
         pointShadow: item.querySelector('[data-art-component-id="point-shadow"]')?.textContent?.trim() || "",
         pointPopupState: player.pointPopupState,
-        popupVisible: popup && getComputedStyle(popup).display !== "none" && popup.getBoundingClientRect().width > 0
+        popupVisible: popup && getComputedStyle(popup).display !== "none" && popup.getBoundingClientRect().width > 0,
+        wrapperFrame: wrapperView?.createVisual?.()?.timelinePlayer?.currentFrame,
+        wrapperVisible: wrapperView?.isVisible?.() === true,
+        semanticFrame: semanticView?.createVisual?.()?.timelinePlayer?.currentFrame,
+        identityRetained: window.__feedbackAnswerIdentity.item === item
+          && window.__feedbackAnswerIdentity.renderer === renderer
+          && window.__feedbackAnswerIdentity.wrapperTimeline === wrapperView?.createVisual?.()?.timelinePlayer
+          && window.__feedbackAnswerIdentity.semanticTimeline === semanticView?.createVisual?.()?.timelinePlayer,
+        samples: window.__feedbackAnswerSamples
       };
     }, feedbackPlayerId);
-    assert.ok(feedbackResult.answer, "The answer bubble did not receive the submitted answer text");
-    assert.match(feedbackResult.answerSemanticState, /^(Correct|Incorrect)$/, "The answer bubble did not receive correctness state");
-    assert.equal(feedbackResult.answerLifecycleState, "Update", "The answer bubble did not receive its reveal lifecycle state");
+    assert.ok(feedbackRevealResult.answer, "The answer bubble did not receive the submitted answer text");
+    assert.equal(feedbackResult.answerSemanticState, "Incorrect", "The hidden wrong answer lost its semantic state");
+    assert.equal(feedbackResult.answerLifecycleState, "Disappear", "The completed answer did not retain Disappear while hidden");
+    assert.equal(feedbackResult.wrapperFrame, 32, "The answer wrapper did not reach its authored hidden Disappear frame");
+    assert.equal(feedbackResult.wrapperVisible, false, "The answer wrapper remained visible after Disappear");
+    assert.equal(feedbackResult.semanticFrame, 2, "The semantic leaf did not remain parked on Incorrect while hidden");
+    assert.equal(feedbackResult.identityRetained, true, "Answer Disappear rebuilt its DOM, renderer, or timeline identity");
+    const visibleDisappearSamples = feedbackResult.samples.filter((sample) => (
+      sample.lifecycle === "Disappear" && sample.wrapperVisible && Number(sample.wrapperFrame) < 32
+    ));
+    assert.ok(visibleDisappearSamples.length > 0, "No visible Disappear frames were sampled");
+    assert.ok(visibleDisappearSamples.every((sample) => (
+      sample.semantic === "Incorrect" && sample.semanticFrame === 2 && sample.fill === "rgb(255, 92, 69)"
+    )), `Wrong-answer semantics flashed during Disappear: ${JSON.stringify(visibleDisappearSamples)}`);
+    assert.ok(feedbackResult.samples.some((sample) => (
+      sample.lifecycle === "Disappear" && Number(sample.wrapperFrame) === 32 && sample.wrapperVisible === false
+    )), "The rendered wrong answer did not reach the hidden end of Disappear");
     assert.equal(feedbackResult.pointText, "+200", "The points popup text did not bind the pending award");
     assert.equal(feedbackResult.pointShadow, "+200", "The points popup shadow did not bind the pending award");
     assert.equal(feedbackResult.pointPopupState, "Popup", "The points popup timeline was not requested");
     assert.equal(feedbackResult.popupVisible, true, "The points popup Art remained hidden during its authored animation");
+    await feedbackStage.waitForFunction((playerId) => {
+      const stageState = window.currentStageState?.lobby || window.currentStageState;
+      const model = stageState?.gamePlugin?.viewModels?.["reference.players"]?.players?.find((player) => player.id === playerId);
+      return model?.answerLifecycleState === "Off" && model?.answerSemanticState === "Default" && model?.answerText === "";
+    }, feedbackPlayerId, { timeout: 15_000 });
+    const cleanNextAnswerState = await feedbackStage.evaluate((playerId) => {
+      const item = document.querySelector(
+        `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"]`
+      );
+      const renderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(item);
+      return {
+        semanticFrame: renderer?.viewForComponentId?.("playerAnswerBubble")?.createVisual?.()?.timelinePlayer?.currentFrame,
+        wrapperVisible: renderer?.viewForComponentId?.("player-answer-bubble-mc")?.isVisible?.() === true
+      };
+    }, feedbackPlayerId);
+    assert.equal(cleanNextAnswerState.semanticFrame, 0, "The next answer did not initialize on Default while hidden");
+    assert.equal(cleanNextAnswerState.wrapperVisible, false, "The next answer initialization exposed its Default state");
     assert.deepEqual(browserErrors, [], `Reference player presentation emitted browser errors: ${browserErrors.join("; ")}`);
     console.log("Reference-game-owned avatars, Controller picker/banner, answer feedback, and points popup rendered in Chromium.");
   } catch (error) {

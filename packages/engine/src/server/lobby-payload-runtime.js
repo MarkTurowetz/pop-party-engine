@@ -1,5 +1,7 @@
 "use strict";
 
+const { playerIsControllerInputRecipient } = require("./input-state-runtime");
+
 function createLobbyPayloadRuntime({
   activePlayers,
   allActivePlayersHaveSubmittedInput,
@@ -10,6 +12,7 @@ function createLobbyPayloadRuntime({
   gamePluginViewModels = () => ({}),
   gamePluginInputPayload = () => null,
   gamePluginControllerInteractionsPayload = () => [],
+  inputRecipientPlayers = activePlayers,
   ensureGamePluginInput = () => false,
   gameConstants,
   microphoneAccessPayload,
@@ -70,6 +73,7 @@ function createLobbyPayloadRuntime({
     const microphoneAccess = microphoneAccessPayload(room, currentAction);
     if (!runtimeFault) ensureGamePluginInput(room, currentAction);
     const gamePluginInput = runtimeFault ? null : gamePluginInputPayload(room, currentAction, viewerPlayerId);
+    const viewerReceivesCoreInput = !viewerPlayerId || playerIsControllerInputRecipient(room, viewerPlayerId);
     if (!runtimeFault && microphoneAccess && allActivePlayersHaveSubmittedInput(room)) {
       scheduleMicrophoneAccessAdvance(room);
     }
@@ -102,9 +106,9 @@ function createLobbyPayloadRuntime({
       debugLog: room.debugLog && typeof room.debugLog === "object"
         ? { ...room.debugLog }
         : null,
-      input,
-      textInput,
-      microphoneAccess,
+      input: viewerReceivesCoreInput ? input : null,
+      textInput: viewerReceivesCoreInput ? textInput : null,
+      microphoneAccess: viewerReceivesCoreInput ? microphoneAccess : null,
       craftingTimer: craftingTimerPayload(room),
       lastDecisionTrace: room.lastDecisionTrace,
       currentRound: room.currentRound || 1,
@@ -139,7 +143,9 @@ function createLobbyPayloadRuntime({
   function debugActionPayload(room, currentAction) {
     const flowStateId = room.flowStateId || room.phase;
     const state = runtimeGameFlow(room).states.find((item) => item.id === flowStateId) || null;
-    const players = activePlayers(room);
+    const players = room.choiceInputActionId || room.textInputActionId || room.microphoneAccessActionId
+      ? inputRecipientPlayers(room)
+      : activePlayers(room);
     let submittedInputCount = 0;
     if (room.votingInputActionId) {
       submittedInputCount = players.filter((player) => room.votingAnswers?.has(player.id)).length;

@@ -14,15 +14,24 @@ const {
   microphoneAccessActionConfig,
   normalizeMicrophoneAccessMode
 } = require("../shared/microphone-access-action-config");
+const { playerIsJoined } = require("./player-presence-runtime");
+const { setControllerInputRecipients } = require("./input-state-runtime");
 
 function createControllerInputPayloadRuntime({
   cleanChoiceOptions,
   clearDisplayedPlayerAnswers,
   clearPlayerAnswerData,
+  joinedPlayers = (room) => Array.from(room.players?.values?.() || []).filter(playerIsJoined),
   normalizeCharacterLimit,
   normalizeChoiceInputMode,
   triviaContentForAction
 }) {
+  function recipientsForMode(room, mode) {
+    const players = joinedPlayers(room);
+    if (mode !== "voiceVip" && mode !== "vip") return players;
+    return players.filter((player) => player.id === room.vipPlayerId);
+  }
+
   function beginControllerInputVisit(room) {
     room.controllerInputVisitCounter = Math.max(0, Number(room.controllerInputVisitCounter || 0)) + 1;
     return room.controllerInputVisitCounter;
@@ -47,6 +56,7 @@ function createControllerInputPayloadRuntime({
       room.votingInputActionId = action.id;
       room.votingInputPrompt = room.choiceInputPrompt;
       room.votingAnswers = new Map();
+      setControllerInputRecipients(room, recipientsForMode(room, "all"));
       return;
     }
     clearDisplayedPlayerAnswers(room);
@@ -63,6 +73,7 @@ function createControllerInputPayloadRuntime({
     room.choiceInputMode = normalizeChoiceInputMode(action.inputMode);
     room.choiceInputLocked = action.locked === true;
     room.choiceInputAnswers = new Map();
+    setControllerInputRecipients(room, recipientsForMode(room, "all"));
   }
 
   function choiceInputPayload(room, currentAction, player = null) {
@@ -114,6 +125,7 @@ function createControllerInputPayloadRuntime({
     room.textInputCharacterLimit = normalizeCharacterLimit(action.characterLimit);
     room.textInputAnswers = new Map();
     room.textInputDrafts = new Map();
+    setControllerInputRecipients(room, recipientsForMode(room, room.textInputMode));
   }
 
   function applyMicrophoneAccessAction(room, action) {
@@ -126,6 +138,7 @@ function createControllerInputPayloadRuntime({
     room.microphoneAccessButtonLabel = action.buttonLabel || config.buttonLabel;
     room.microphoneAccessMode = normalizeMicrophoneAccessMode(action.microphoneAccessMode || config.mode);
     room.microphoneAccessAnswers = new Map();
+    setControllerInputRecipients(room, recipientsForMode(room, room.microphoneAccessMode));
   }
 
   function microphoneAccessPayload(room, currentAction) {

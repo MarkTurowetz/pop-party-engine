@@ -57,4 +57,44 @@ describe("reference application composition", () => {
       expect.objectContaining({ id: "name", kind: "text", targetComponentId: "nameText" })
     ]));
   });
+
+  it("retains correctness semantics through Disappear and resets only while Off", () => {
+    const game = require("./game.config");
+    const { createGameRendererRuntime } = require("@pop-party/engine/server");
+    const runtime = createGameRendererRuntime({ stageRenderers: game.registrations.stageRenderers });
+    const player = { id: "player-a", name: "AVA", active: true };
+    const room = {
+      phase: "round",
+      flowStateId: "round",
+      vipPlayerId: "player-a",
+      gamePluginState: { reference: {} },
+      flowVariables: {},
+      localVariables: {},
+      players: new Map([[player.id, player]]),
+      displayedPlayerAnswers: new Map([[player.id, { text: "Wrong", correct: false, done: true }]]),
+      hiddenPlayerAnswerIds: new Set([player.id])
+    };
+
+    expect(runtime.viewModels(room)["reference.players"].players[0]).toMatchObject({
+      answerSemanticState: "Incorrect",
+      answerLifecycleState: "Disappear"
+    });
+    room.displayedPlayerAnswers.set(player.id, { text: "Right", correct: true, done: true });
+    expect(runtime.viewModels(room)["reference.players"].players[0]).toMatchObject({
+      answerSemanticState: "Correct",
+      answerLifecycleState: "Disappear"
+    });
+    room.displayedPlayerAnswers.clear();
+    room.hiddenPlayerAnswerIds.clear();
+    expect(runtime.viewModels(room)["reference.players"].players[0]).toMatchObject({
+      answerSemanticState: "Default",
+      answerLifecycleState: "Off"
+    });
+    room.displayedPlayerAnswers.set(player.id, { text: "Next", correct: null, done: true });
+    expect(runtime.viewModels(room)["reference.players"].players[0]).toMatchObject({
+      answerText: "Next",
+      answerSemanticState: "Default",
+      answerLifecycleState: "Appear"
+    });
+  });
 });

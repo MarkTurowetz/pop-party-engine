@@ -4,6 +4,14 @@ const { isChoiceInputAction } = require("../shared/choice-input-action-config");
 const { isMicrophoneAccessAction } = require("../shared/microphone-access-action-config");
 const { isTextAnswerAction } = require("./text-answer-action-runtime");
 const { deletePlayerAnswerRecord, storePlayerAnswerRecord } = require("./stored-player-answers-runtime");
+const {
+  markPlayerControllerConnected,
+  playerIsJoined
+} = require("./player-presence-runtime");
+const {
+  playerIsControllerInputAvailable,
+  playerIsControllerInputRecipient
+} = require("./input-state-runtime");
 
 function controllerInputStaleError(payload, room, inputVisitId, label) {
   if (payload.gameSessionId !== undefined && Number(payload.gameSessionId) !== Number(room.gameSessionId || 0)) {
@@ -53,9 +61,11 @@ function createControllerSubmitHandlersRuntime({
     const playerId = normalizePlayerId(payload.playerId);
     const room = getExistingRoom(stageCode);
     const player = room?.players.get(playerId);
-    if (!room || !player || !player.active) {
+    if (!room || !player || !playerIsJoined(player)) {
       return { status: 404, error: "Player is not in this lobby" };
     }
+    markPlayerControllerConnected(player);
+    room.controllerInputUnavailablePlayerIds?.delete?.(playerId);
     if (roomIsPaused(room)) {
       return { status: 423, error: "Game is paused" };
     }
@@ -68,6 +78,9 @@ function createControllerSubmitHandlersRuntime({
       return { status: 409, error: "No active text input" };
     }
     applyTextInputAction(room, currentAction);
+    if (!playerIsControllerInputRecipient(room, playerId)) {
+      return { status: 403, error: "Player is not a recipient for this text input" };
+    }
     if (room.textInputMode === "voiceVip" && player.id !== room.vipPlayerId) {
       return { status: 403, error: "Only the VIP can submit this voice answer" };
     }
@@ -114,7 +127,7 @@ function createControllerSubmitHandlersRuntime({
     let finalizedCount = 0;
     for (const [playerId, draft] of drafts.entries()) {
       const player = room.players?.get?.(playerId);
-      if (!player?.active || room.textInputAnswers?.get?.(playerId)?.done === true) continue;
+      if (!playerIsControllerInputAvailable(room, playerId) || room.textInputAnswers?.get?.(playerId)?.done === true) continue;
       const submittedText = cleanSubmittedText(draft?.text, room.textInputCharacterLimit || 240);
       if (!submittedText) continue;
       storeTextAnswer(room, playerId, submittedText);
@@ -137,10 +150,12 @@ function createControllerSubmitHandlersRuntime({
     const playerId = normalizePlayerId(payload.playerId);
     const room = getExistingRoom(stageCode);
     const player = room?.players.get(playerId);
-    if (!room || !player || !player.active) {
+    if (!room || !player || !playerIsJoined(player)) {
       sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
       return;
     }
+    markPlayerControllerConnected(player);
+    room.controllerInputUnavailablePlayerIds?.delete?.(playerId);
     if (rejectIfPaused(room, res)) return;
 
     const currentAction = resolveRoomActionText(currentRoomAction(room), room);
@@ -149,6 +164,10 @@ function createControllerSubmitHandlersRuntime({
       return;
     }
     applyChoiceInputAction(room, currentAction);
+    if (!playerIsControllerInputRecipient(room, playerId)) {
+      sendJson(res, 403, { ok: false, error: "Player is not a recipient for this choice input" });
+      return;
+    }
     if (payload.actionId && payload.actionId !== room.choiceInputActionId) {
       sendJson(res, 409, { ok: false, error: "Choice input is stale" });
       return;
@@ -268,10 +287,12 @@ function createControllerSubmitHandlersRuntime({
     const playerId = normalizePlayerId(payload.playerId);
     const room = getExistingRoom(stageCode);
     const player = room?.players.get(playerId);
-    if (!room || !player || !player.active) {
+    if (!room || !player || !playerIsJoined(player)) {
       sendJson(res, 404, { ok: false, error: "Player is not in this lobby" });
       return;
     }
+    markPlayerControllerConnected(player);
+    room.controllerInputUnavailablePlayerIds?.delete?.(playerId);
     if (rejectIfPaused(room, res)) return;
 
     const currentAction = resolveRoomActionText(currentRoomAction(room), room);
@@ -280,6 +301,10 @@ function createControllerSubmitHandlersRuntime({
       return;
     }
     applyMicrophoneAccessAction(room, currentAction);
+    if (!playerIsControllerInputRecipient(room, playerId)) {
+      sendJson(res, 403, { ok: false, error: "Player is not a recipient for this microphone input" });
+      return;
+    }
     if (payload.actionId && payload.actionId !== room.microphoneAccessActionId) {
       sendJson(res, 409, { ok: false, error: "Microphone access input is stale" });
       return;

@@ -73,5 +73,6 @@ describe("resetGameSessionState", () => {
     expect(player).toMatchObject({ id: "p1", name: "Ava", points: 0, pendingPoints: 0 });
     expect(player.gameSessionId).toBe(5);
     expect(disconnectedPlayer).toMatchObject({ points: 0, pendingPoints: 0, gameSessionId: 4 });
+    expect(room.players.has(disconnectedPlayer.id)).toBe(false);
   });
 });
