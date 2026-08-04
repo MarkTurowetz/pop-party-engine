@@ -360,9 +360,35 @@ async function main() {
     ));
 
     const cal = await postJson(baseUrl, "/api/join", { stageCode: "AVTR", playerName: "CAL" });
-    await page.waitForFunction(() =>
-      document.querySelectorAll('[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-collection-item="true"]').length === 3
-    );
+    try {
+      await page.waitForFunction((playerId) => {
+        const model = window.currentStageState?.lobby?.gamePlugin?.viewModels?.["reference.players"]
+          || window.currentStageState?.gamePlugin?.viewModels?.["reference.players"];
+        const items = document.querySelectorAll(
+          '[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-collection-item="true"]'
+        );
+        return model?.players?.some((player) => player.id === playerId)
+          && items.length === 3
+          && document.querySelector(
+            `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(playerId)}"]`
+          );
+      }, cal.player.id, { timeout: 60_000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => {
+        const model = window.currentStageState?.lobby?.gamePlugin?.viewModels?.["reference.players"]
+          || window.currentStageState?.gamePlugin?.viewModels?.["reference.players"];
+        return {
+          revision: window.currentStageState?.revision,
+          surfaceRevision: window.currentStageState?.surfaceRevision,
+          modelPlayerIds: model?.players?.map((player) => player.id) || [],
+          renderedPlayerIds: [...document.querySelectorAll(
+            '[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-collection-item="true"]'
+          )].map((item) => item.getAttribute("data-game-plugin-renderer-item-key")),
+          stageMetrics: window.__popPartyStageMetrics
+        };
+      });
+      throw new Error(`The live Stage did not reconcile the newly joined player: ${JSON.stringify(diagnostic)}`, { cause: error });
+    }
     const after = await page.evaluate((calId) => ({
       retained: window.__referenceFirstPlayerItem === document.querySelector(
         `[data-stage-layout-element-id="gameplayerpresentation"] > [data-game-plugin-renderer-item-key="${CSS.escape(window.__referenceFirstPlayerItem?.dataset.gamePluginRendererItemKey || "")}"]`

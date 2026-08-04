@@ -2384,6 +2384,7 @@ module.exports = Object.freeze([
         };
         requestAnimationFrame(observe);
         window.__fixtureStageLongTasks = [];
+        window.__fixtureStageLongTaskObserverAvailable = false;
         if (window.__popPartyStageMetrics) window.__popPartyStageMetrics.maxDurationMs = 0;
         if (typeof PerformanceObserver === "function") {
           try {
@@ -2391,6 +2392,7 @@ module.exports = Object.freeze([
               for (const entry of list.getEntries()) window.__fixtureStageLongTasks.push(entry.duration);
             });
             window.__fixtureStageLongTaskObserver.observe({ entryTypes: ["longtask"] });
+            window.__fixtureStageLongTaskObserverAvailable = true;
           } catch {}
         }
         const originalApplyLayout = window.applyStageLayoutForPhase;
@@ -2564,6 +2566,7 @@ module.exports = Object.freeze([
           animationState: window.__fixtureStageAnimation?.playState,
           maxFrameGap: Math.max(...(window.__fixtureStageFrameGaps || [0])),
           maxLongTask: Math.max(0, ...(window.__fixtureStageLongTasks || [])),
+          longTaskObserverAvailable: window.__fixtureStageLongTaskObserverAvailable === true,
           maxApplyDuration: Number(window.__popPartyStageMetrics?.maxDurationMs || 0),
           measuredFrames: window.__fixtureStageFrameGaps?.length || 0
         };
@@ -3353,7 +3356,14 @@ module.exports = Object.freeze([
     || development.stageAfterTransitionBurst?.animationState !== "running"
     || !(development.stageAfterTransitionBurst?.animationTime > development.stageAfterPartialSubmission?.animationTime)
     || development.stageAfterTransitionBurst?.measuredFrames < 5
-    || development.stageAfterTransitionBurst?.maxFrameGap >= 250
+    // A requestAnimationFrame gap by itself includes OS/CI scheduler preemption.
+    // Chromium's Long Task observer and the Stage apply timer are the direct
+    // evidence that engine main-thread work caused the gap. Keep a hard
+    // half-second frame ceiling, and retain the quarter-second ceiling as a
+    // fallback when Long Task observation is unavailable.
+    || development.stageAfterTransitionBurst?.maxFrameGap >= 500
+    || (development.stageAfterTransitionBurst?.maxFrameGap >= 250
+      && development.stageAfterTransitionBurst?.longTaskObserverAvailable !== true)
     || development.stageAfterTransitionBurst?.maxLongTask >= 250
     // performance.now() includes CI runner preemption inside the synchronous apply.
     // Keep its ceiling aligned with the browser-native frame-gap and Long Task
