@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1286",
+  "version": "1.0.17.1287",
   "baseVersion": "1.0.17",
-  "buildNumber": 1286,
-  "commit": "4a7d0d18",
-  "branch": "codex/stable-lobby-art-recovery",
-  "generatedAt": "2026-08-04T18:05:44.842Z"
+  "buildNumber": 1287,
+  "commit": "09aba45e",
+  "branch": "codex/release-engine-1.4.4",
+  "generatedAt": "2026-08-04T19:09:55.126Z"
 }

@@ -56,10 +56,13 @@ concepts into focused modules.
 - Reference application deployment
   - The persistent Preview service is the everyday code-testing lane. A successful `main`
     check deploys its exact commit without publishing npm packages or changing production.
-  - The Production service retains the immutable npm/GitHub/content release tuple and its
-    protected manual approval. A production release refreshes Preview after coordinating a
-    new engine version so the two services cannot remain engine-incompatible.
-  - Engine-only coordination preserves the active authored content revision. Checked-in
+  - Preview and Production use independent release-coordinate refs. The first protected
+    package release initializes `game-releases-preview` from `game-releases`, then Preview
+    advances independently while preserving the active authored content revision.
+  - Immutable npm/GitHub publication opts only Preview into the new engine by default. Games
+    keep exact package pins and adopt releases explicitly. Production retains its prior
+    engine/content tuple until a separate protected promotion input is approved.
+  - Engine-only coordination preserves each lane's active authored content revision. Checked-in
     reference content is activated only when an operator explicitly supplies a content root.
   - `/api/health` exposes the non-secret application version, commit, branch, and deployment
     channel used by exact-commit preview verification.

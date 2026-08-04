@@ -45,6 +45,11 @@ function checkReleaseReadiness(version = process.argv[2]) {
     "package-manager-cache: false",
     "scripts/publish-public-package.js --package ./packages/engine",
     "scripts/publish-public-package.js --package ./packages/create-game",
+    "promote_production",
+    "inputs.promote_production == true",
+    "heads/game-releases-preview",
+    "--source-release-ref",
+    "--release-revision",
     "scripts/coordinate-reference-release.js activate",
     "scripts/trigger-render-deploy.js",
     "scripts/verify-production-release.js",
@@ -90,7 +95,9 @@ function checkReleaseReadiness(version = process.argv[2]) {
     "name: pop-party-preview",
     "key: PARTY_GAME_DEPLOYMENT_CHANNEL",
     "value: production",
-    "value: preview"
+    "value: preview",
+    "key: PARTY_GAME_PREVIEW_RELEASE_REF",
+    "value: heads/game-releases-preview"
   ]) {
     if (!renderBlueprint.includes(contract)) throw new Error(`Render Blueprint is missing: ${contract}`);
   }

@@ -36,6 +36,7 @@ function parseArguments(argv) {
     releaseAuthorityUrl: "",
     engineVersion: "",
     commit: "",
+    releaseRevision: "",
     timeoutMs: 8 * 60 * 1000,
     authorityTimeoutMs: 2 * 60 * 1000,
     intervalMs: 5 * 1000
@@ -46,6 +47,7 @@ function parseArguments(argv) {
     else if (argument === "--release-authority-url") result.releaseAuthorityUrl = String(argv[++index] || "");
     else if (argument === "--engine-version") result.engineVersion = String(argv[++index] || "");
     else if (argument === "--commit") result.commit = String(argv[++index] || "");
+    else if (argument === "--release-revision") result.releaseRevision = String(argv[++index] || "");
     else if (argument === "--timeout-ms") result.timeoutMs = Number(argv[++index] || 0);
     else if (argument === "--authority-timeout-ms") result.authorityTimeoutMs = Number(argv[++index] || 0);
     else if (argument === "--interval-ms") result.intervalMs = Number(argv[++index] || 0);
@@ -55,6 +57,9 @@ function parseArguments(argv) {
   result.releaseAuthorityUrl = httpsBaseUrl(result.releaseAuthorityUrl, "Release authority");
   result.engineVersion = exactEngineVersion(result.engineVersion);
   result.commit = exactCommit(result.commit);
+  if (result.releaseRevision && !/^[0-9a-f]{64}$/i.test(result.releaseRevision)) {
+    throw new Error("Preview deployment requires an exact release revision");
+  }
   result.timeoutMs = positiveNumber(result.timeoutMs, "--timeout-ms", 1000);
   result.authorityTimeoutMs = positiveNumber(result.authorityTimeoutMs, "--authority-timeout-ms", 1000);
   result.intervalMs = positiveNumber(result.intervalMs, "--interval-ms", 1);
@@ -95,14 +100,18 @@ async function waitForHealth(options) {
 
 function previewChecks(health, options) {
   const servedCommit = String(health?.application?.commit || "").toLowerCase();
-  return Object.freeze({
+  const checks = {
     healthy: health?.ok === true,
     channel: health?.application?.channel === "preview",
     commit: servedCommit.length >= 7 && options.commit.startsWith(servedCommit),
     gameEngine: health?.game?.engineCompatibility === options.engineVersion,
     runtimeEngine: health?.engine?.version === options.engineVersion,
     releaseEngine: health?.release?.engineVersion === options.engineVersion
-  });
+  };
+  if (options.releaseRevision) {
+    checks.releaseRevision = health?.release?.releaseRevision === options.releaseRevision;
+  }
+  return Object.freeze(checks);
 }
 
 async function verifyPreviewDeployment(options) {
@@ -132,23 +141,25 @@ async function verifyPreviewDeployment(options) {
 
 async function deployReferencePreview(options) {
   const fetchImpl = options.fetchImpl || fetch;
-  const authority = await waitForHealth({
-    baseUrl: options.releaseAuthorityUrl,
-    timeoutMs: options.authorityTimeoutMs,
-    intervalMs: options.intervalMs,
-    fetchImpl,
-    now: options.now,
-    wait: options.wait
-  });
-  const activeEngineVersion = String(authority?.release?.engineVersion || "");
-  if (activeEngineVersion !== options.engineVersion) {
-    return Object.freeze({
-      ok: true,
-      deployed: false,
-      reason: "release-coordinate-pending",
-      activeEngineVersion,
-      requestedEngineVersion: options.engineVersion
+  if (!options.releaseRevision) {
+    const authority = await waitForHealth({
+      baseUrl: options.releaseAuthorityUrl,
+      timeoutMs: options.authorityTimeoutMs,
+      intervalMs: options.intervalMs,
+      fetchImpl,
+      now: options.now,
+      wait: options.wait
     });
+    const activeEngineVersion = String(authority?.release?.engineVersion || "");
+    if (activeEngineVersion !== options.engineVersion) {
+      return Object.freeze({
+        ok: true,
+        deployed: false,
+        reason: "release-coordinate-pending",
+        activeEngineVersion,
+        requestedEngineVersion: options.engineVersion
+      });
+    }
   }
   const trigger = await triggerRenderDeploy({
     hookUrl: options.hookUrl,
@@ -159,6 +170,7 @@ async function deployReferencePreview(options) {
     baseUrl: options.baseUrl,
     engineVersion: options.engineVersion,
     commit: options.commit,
+    releaseRevision: options.releaseRevision,
     timeoutMs: options.timeoutMs,
     intervalMs: options.intervalMs,
     fetchImpl,

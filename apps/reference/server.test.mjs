@@ -9,6 +9,23 @@ describe("reference application composition", () => {
     expect(application.startReferenceApplication).toBeTypeOf("function");
   });
 
+  it("isolates Preview release coordinates while preserving Production authority", () => {
+    const { referenceContentStoreEnvironment } = require("./server");
+    const production = {
+      PARTY_GAME_DEPLOYMENT_CHANNEL: "production",
+      PARTY_GAME_RELEASE_REF: "heads/game-releases"
+    };
+    expect(referenceContentStoreEnvironment(production)).toBe(production);
+    expect(referenceContentStoreEnvironment({
+      PARTY_GAME_DEPLOYMENT_CHANNEL: "preview",
+      PARTY_GAME_RELEASE_REF: "heads/game-releases"
+    })).toMatchObject({ PARTY_GAME_RELEASE_REF: "heads/game-releases-preview" });
+    expect(referenceContentStoreEnvironment({
+      PARTY_GAME_DEPLOYMENT_CHANNEL: "preview",
+      PARTY_GAME_PREVIEW_RELEASE_REF: "heads/custom-preview-releases"
+    })).toMatchObject({ PARTY_GAME_RELEASE_REF: "heads/custom-preview-releases" });
+  });
+
   it("projects public players into the reference game's local avatar presentation", () => {
     const game = require("./game.config");
     const { createGameRendererRuntime } = require("@pop-party/engine/server");

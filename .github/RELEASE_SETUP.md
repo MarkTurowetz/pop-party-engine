@@ -39,7 +39,9 @@ its tracked authoring seed and immutable content bundle under `apps/reference`.
 To release, commit the exact same version to both public package manifests and
 the reference app's exact engine dependency, merge that version change to
 `main`, then manually dispatch `publish` with the version and confirmation
-`PUBLISH`.
+`PUBLISH`. Leave `promote_production` disabled for the normal immutable package
+release; games and the reference Preview opt in independently. Enable it only
+with separate authorization to promote the reference Production deployment.
 
 The protected workflow owns the complete sequence:
 
@@ -47,15 +49,17 @@ The protected workflow owns the complete sequence:
 2. publish both immutable npm packages, or verify byte-for-byte package content
    when an interrupted workflow is rerun;
 3. create or verify the immutable GitHub release;
-4. advance only the reference release coordinates on `game-releases`, retaining
-   the exact active content revision through a compare-and-swap update;
-5. trigger Render for the exact released commit; and
-6. verify production health, engine version, release revision, and rendered
-   application build.
+4. initialize and advance only the isolated Preview coordinates on
+   `game-releases-preview`, retaining the exact active content revision through
+   a compare-and-swap update;
+5. trigger Preview Render for the exact released commit and verify its health,
+   engine version, release revision, and application build; and
+6. only when `promote_production` is explicitly enabled, independently advance
+   `game-releases`, deploy Production, and verify its complete tuple.
 
-If Render cannot be triggered or production does not converge, the workflow
-writes a compensating release record that restores the previous engine
-coordinates. It never rewinds `game-releases` and refuses to overwrite a
+If either Render lane cannot be triggered or does not converge, the workflow
+writes a compensating record on that lane's release ref to restore its previous
+engine coordinates. It never rewinds a release ref and refuses to overwrite a
 concurrent Tool save or release mutation.
 
 The workflow uses GitHub OIDC and npm provenance; no long-lived npm token

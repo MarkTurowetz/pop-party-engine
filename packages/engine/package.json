@@ -1,6 +1,6 @@
 {
   "name": "@pop-party/engine",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Public runtime and authoring infrastructure for Pop Party games.",
   "license": "MIT",
   "repository": {

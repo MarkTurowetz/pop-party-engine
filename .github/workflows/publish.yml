@@ -11,6 +11,11 @@ on:
         description: Type PUBLISH to authorize the irreversible npm release
         required: true
         type: string
+      promote_production:
+        description: Also opt the reference Production deployment into this release
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: pop-party-publication
@@ -71,6 +76,7 @@ jobs:
 
   deploy-reference:
     needs: publish
+    if: inputs.promote_production == true
     runs-on: ubuntu-latest
     env:
       REFERENCE_PRODUCTION_URL: https://pop-party.onrender.com
@@ -120,17 +126,6 @@ jobs:
           --release-revision "${{ steps.activate.outputs.release_revision }}"
           --app-version "${{ steps.build.outputs.app_version }}"
 
-      - name: Refresh the reference preview after release coordination
-        continue-on-error: true
-        env:
-          RENDER_PREVIEW_DEPLOY_HOOK_URL: ${{ secrets.RENDER_PREVIEW_DEPLOY_HOOK_URL }}
-        run: >-
-          node scripts/deploy-reference-preview.js
-          --base-url "https://pop-party-preview.onrender.com"
-          --release-authority-url "${REFERENCE_PRODUCTION_URL}"
-          --engine-version "${{ inputs.release_version }}"
-          --commit "${GITHUB_SHA}"
-
       - name: Restore prior release coordinates after a failed deployment
         if: ${{ failure() && steps.activate.outputs.changed == 'true' && steps.verify.outcome != 'success' }}
         env:
@@ -139,4 +134,61 @@ jobs:
         run: >-
           node scripts/coordinate-reference-release.js rollback
           --operation-key "${RELEASE_OPERATION_KEY}"
+          --state-file "${RELEASE_STATE_FILE}"
+
+  deploy-preview:
+    needs: [publish, deploy-reference]
+    if: >-
+      always()
+      && needs.publish.result == 'success'
+      && (inputs.promote_production == false || needs.deploy-reference.result == 'success')
+    runs-on: ubuntu-latest
+    env:
+      REFERENCE_PREVIEW_URL: https://pop-party-preview.onrender.com
+      PREVIEW_OPERATION_KEY: engine-preview-${{ inputs.release_version }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - run: npm ci
+
+      - name: Activate isolated Preview release coordinates
+        id: activate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_STATE_FILE: ${{ runner.temp }}/reference-preview-release-activation.json
+        run: >-
+          node scripts/coordinate-reference-release.js activate
+          --engine-version "${{ inputs.release_version }}"
+          --operation-key "${PREVIEW_OPERATION_KEY}"
+          --release-ref "heads/game-releases-preview"
+          --source-release-ref "heads/game-releases"
+          --state-file "${RELEASE_STATE_FILE}"
+
+      - name: Deploy and verify the exact release in Preview
+        env:
+          RENDER_PREVIEW_DEPLOY_HOOK_URL: ${{ secrets.RENDER_PREVIEW_DEPLOY_HOOK_URL }}
+        run: >-
+          node scripts/deploy-reference-preview.js
+          --base-url "${REFERENCE_PREVIEW_URL}"
+          --release-authority-url "${REFERENCE_PREVIEW_URL}"
+          --engine-version "${{ inputs.release_version }}"
+          --release-revision "${{ steps.activate.outputs.release_revision }}"
+          --commit "${GITHUB_SHA}"
+
+      - name: Restore prior Preview coordinates after a failed deployment
+        if: ${{ failure() && steps.activate.outputs.changed == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_STATE_FILE: ${{ runner.temp }}/reference-preview-release-activation.json
+        run: >-
+          node scripts/coordinate-reference-release.js rollback
+          --operation-key "${PREVIEW_OPERATION_KEY}"
+          --release-ref "heads/game-releases-preview"
           --state-file "${RELEASE_STATE_FILE}"

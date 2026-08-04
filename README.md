@@ -53,11 +53,14 @@ The included `render.yaml` defines both services as a Render Blueprint.
 keeps Render's shallow checkout identity aligned with the full-history release
 workflow instead of reusing a stale build number.
 
-Every successful `main` check deploys its exact commit to Preview without
-publishing npm packages. Production remains disabled from automatic deployment;
-public engine releases move there only through the protected `publish`
-workflow. The health endpoint reports the application channel and exact commit
-so both workflows verify what Render is actually serving. Configure the private
+Every successful compatible `main` check deploys its exact commit to Preview
+without publishing npm packages. Public engine releases publish immutable npm
+artifacts and opt the reference Preview into its isolated release coordinates;
+games then choose when to pin that exact version. Production remains disabled
+from automatic deployment and moves only when the protected `publish` workflow
+is explicitly dispatched with Production promotion enabled. The health endpoint
+reports the application channel and exact commit so both workflows verify what
+Render is actually serving. Configure the private
 hooks as `RENDER_PREVIEW_DEPLOY_HOOK_URL` and `RENDER_DEPLOY_HOOK_URL`; see
 [docs/deployment-lanes.md](docs/deployment-lanes.md) and
 [.github/RELEASE_SETUP.md](.github/RELEASE_SETUP.md).
