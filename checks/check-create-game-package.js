@@ -641,7 +641,12 @@ module.exports = Object.freeze([
   const developmentSmokePath = path.join(targetRoot, ".pop-party-packed-browser-smoke.cjs");
   fs.writeFileSync(developmentSmokePath, `
     const fs = require("node:fs");
-    const { startDevelopmentApplication } = require("@pop-party/engine/tooling");
+    const path = require("node:path");
+    const { loadGameDefinition, startDevelopmentApplication } = require("@pop-party/engine/tooling");
+    const { createGameApplicationRuntime } = require("@pop-party/engine/server");
+    const engineServerRoot = path.dirname(require.resolve("@pop-party/engine/server"));
+    const { createLocalContentBundleProvider } = require(path.join(engineServerRoot, "local-content-bundle-provider"));
+    const { createRevisionedContentStoreRuntime } = require(path.join(engineServerRoot, "revisioned-content-store-runtime"));
     const { chromium } = require(${JSON.stringify(playwrightModulePath)});
     (async () => {
       const first = await startDevelopmentApplication({ cwd: process.cwd(), engineVersion: ${JSON.stringify(engineVersion)}, host: "127.0.0.1", port: 0 });
@@ -977,8 +982,6 @@ module.exports = Object.freeze([
         longLabel: document.body.textContent.includes("A realistic long private option label"),
         sidebarVisible: Boolean(document.querySelector('[data-layout-react-component="state-list"]'))
       }));
-      await toolsPage.close();
-
       const boundaryPage = await browser.newPage();
       await boundaryPage.route("**/api/art-assets", async (route) => {
         const response = await route.fetch();
@@ -1355,12 +1358,12 @@ module.exports = Object.freeze([
       const artHotReloadBefore = await collectionStagePage.evaluate(() => ({
         actionId: window.currentStageState?.action?.id,
         contentRevision: window.currentStageState?.release?.contentRevision,
-        cardTop: document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"] [data-art-component-id="card"]')?.getBoundingClientRect().top || 0
+        cardTop: document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"] [data-art-component-id="card"]')?.getBoundingClientRect().top || 0,
+        applyCount: Number(window.__popPartyStageMetrics?.applyCount || 0)
       }));
-      const artToolsPage = await browser.newPage();
-      artToolsPage.on("pageerror", (error) => toolsPageErrors.push(error.message));
-      await artToolsPage.goto(first.startup.localUrl + "/tools", { waitUntil: "load" });
+      const artToolsPage = toolsPage;
       await artToolsPage.locator('[data-tool-target="art"]').click();
+      await artToolsPage.waitForSelector('[data-art-browser-composition="fixture-card"]', { timeout: 30_000 });
       if (await artToolsPage.locator('[data-art-migration-summary]').count()) {
         artToolsPage.once("dialog", (dialog) => dialog.accept());
         const artMigrationResponse = artToolsPage.waitForResponse((response) => (
@@ -1399,6 +1402,9 @@ module.exports = Object.freeze([
       await artToolsPage.waitForFunction(() => (
         document.querySelector("[data-art-compositions-status]")?.textContent === "Unsaved changes"
       ), null, { timeout: 15_000 });
+      const artApplyCountBeforeSave = await collectionStagePage.evaluate(() => (
+        Number(window.__popPartyStageMetrics?.applyCount || 0)
+      ));
       const artSaveResponse = artToolsPage.waitForResponse((response) => (
         response.url().endsWith("/api/art-compositions") && response.request().method() === "POST"
       ));
@@ -1424,11 +1430,11 @@ module.exports = Object.freeze([
       ), null, { timeout: 30_000 });
       await artToolsPage.close();
       try {
-        await collectionStagePage.waitForFunction(({ previousRevision, previousTop }) => (
+        await collectionStagePage.waitForFunction(({ previousApplyCount, previousTop }) => (
           window.currentStageState?.action?.id === "collection-wait"
-          && window.currentStageState?.release?.contentRevision !== previousRevision
+          && Number(window.__popPartyStageMetrics?.applyCount || 0) === previousApplyCount + 1
           && Math.abs((document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"] [data-art-component-id="card"]')?.getBoundingClientRect().top || 0) - previousTop) > 1
-        ), { previousRevision: artHotReloadBefore.contentRevision, previousTop: artHotReloadBefore.cardTop }, { timeout: 15_000 });
+        ), { previousApplyCount: artApplyCountBeforeSave, previousTop: artHotReloadBefore.cardTop }, { timeout: 15_000 });
       } catch (error) {
         const durableArt = await (await fetch(first.startup.localUrl + "/api/art-assets")).json();
         const roomArt = await (await fetch(first.startup.localUrl + "/api/stage/RCOL/content/art-assets")).json();
@@ -1446,12 +1452,12 @@ module.exports = Object.freeze([
           stage: stageArt
         }), { cause: error });
       }
-      const artHotReloadExistingRoom = await collectionStagePage.evaluate((before) => ({
+      const artHotReloadExistingRoom = await collectionStagePage.evaluate(({ before, applyCountBeforeSave }) => ({
         actionId: window.currentStageState?.action?.id,
-        contentRevisionChanged: window.currentStageState?.release?.contentRevision !== before.contentRevision,
         itemRetained: window.__fixtureFlatA === document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"]'),
-        cardTopChanged: Math.abs((document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"] [data-art-component-id="card"]')?.getBoundingClientRect().top || 0) - before.cardTop) > 1
-      }), artHotReloadBefore);
+        cardTopChanged: Math.abs((document.querySelector('[data-stage-layout-element-id="fixture-flat-cards"] [data-game-plugin-renderer-item-key="a"] [data-art-component-id="card"]')?.getBoundingClientRect().top || 0) - before.cardTop) > 1,
+        applyDelta: Number(window.__popPartyStageMetrics?.applyCount || 0) - applyCountBeforeSave
+      }), { before: artHotReloadBefore, applyCountBeforeSave: artApplyCountBeforeSave });
       const hotReloadRoomResponse = await fetch(first.startup.localUrl + "/api/stage/rooms", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -2972,6 +2978,143 @@ module.exports = Object.freeze([
       await busyToolsPage.close();
       await recoveryBrowser.close();
       await recoverySecond.runtime.stop();
+
+      const leaseSnapshot = createLocalContentBundleProvider({
+        root: first.development.contentRoot
+      }).loadPublishedRevision();
+      const leaseStore = createRevisionedContentStoreRuntime({
+        initialSnapshot: leaseSnapshot,
+        initialRelease: {
+          gameBuild: "0.1.0",
+          engineVersion: ${JSON.stringify(engineVersion)},
+          pluginVersion: "0.1.0"
+        }
+      });
+      const loadedLeaseGame = loadGameDefinition({ cwd: process.cwd() }).gameDefinition;
+      const leaseRuntime = createGameApplicationRuntime({
+        gameDefinition: {
+          ...loadedLeaseGame,
+          content: { ...loadedLeaseGame.content, store: leaseStore }
+        },
+        workspaceRoot: process.cwd(),
+        contentRoot: first.development.contentRoot,
+        authoringRoot: first.development.contentRoot,
+        host: "127.0.0.1",
+        port: 0,
+        authoringMode: "live-prototype"
+      });
+      const leaseApplication = {
+        runtime: leaseRuntime,
+        startup: await leaseRuntime.start()
+      };
+      const leaseBrowser = await chromium.launch({ headless: true });
+      const leaseRoomResponse = await fetch(leaseApplication.startup.localUrl + "/api/stage/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ stageCode: "LART" })
+      });
+      if (!leaseRoomResponse.ok) throw new Error("Could not create the live-prototype lobby recovery room");
+      const leaseStagePage = await leaseBrowser.newPage();
+      await leaseStagePage.goto(leaseApplication.startup.localUrl + "/stage?stage=LART", { waitUntil: "load" });
+      await leaseStagePage.waitForFunction(() => (
+        Boolean(window.currentStageState)
+        && Boolean(document.querySelector('#waitingStatus .stage-widget-art-layer'))
+      ), null, { timeout: 15_000 });
+      const leaseToolsPage = await leaseBrowser.newPage();
+      const toolsLeaseRecoveryDrafts = [];
+      leaseToolsPage.on('request', (request) => {
+        if (request.url().endsWith('/api/tool-drafts') && request.method() === 'POST') {
+          toolsLeaseRecoveryDrafts.push(JSON.parse(request.postData() || '{}'));
+        }
+      });
+      await leaseToolsPage.goto(leaseApplication.startup.localUrl + "/tools", { waitUntil: "load" });
+      await leaseToolsPage.locator('[data-tool-target="art"]').click();
+      await leaseToolsPage.waitForFunction(() => (
+        Boolean(sessionStorage.getItem('pop-party-authoring-session'))
+        && Boolean(document.querySelector('[data-art-browser-composition="fixture-card"]'))
+      ), null, { timeout: 30_000 });
+      await leaseToolsPage.waitForTimeout(250);
+      toolsLeaseRecoveryDrafts.length = 0;
+      const lobbyWidgetBeforeToolsLease = await leaseStagePage.evaluate(() => {
+        const host = document.querySelector('#waitingStatus');
+        const renderer = window.PartyGameStageWidgetArt?.rendererForHost?.(host);
+        const artRoot = host?.querySelector(':scope > .stage-widget-art-layer > *');
+        window.__fixtureLobbyLeaseHost = host;
+        window.__fixtureLobbyLeaseArtRoot = artRoot;
+        window.__fixtureLobbyLeaseRenderer = renderer;
+        window.__fixtureLobbyLeaseTimeline = renderer?.rootTimelinePlayer;
+        window.__fixtureLobbyLeaseMutations = 0;
+        window.__fixtureLobbyLeaseObserver = new MutationObserver((records) => {
+          window.__fixtureLobbyLeaseMutations += records.length;
+        });
+        window.__fixtureLobbyLeaseObserver.observe(host, { attributes: true, childList: true, subtree: true });
+        window.__fixtureLobbyLeaseFrameProbe = { running: true, frames: 0, last: performance.now(), maxGap: 0 };
+        const probe = (now) => {
+          const state = window.__fixtureLobbyLeaseFrameProbe;
+          if (!state?.running) return;
+          state.maxGap = Math.max(state.maxGap, now - state.last);
+          state.last = now;
+          state.frames += 1;
+          requestAnimationFrame(probe);
+        };
+        requestAnimationFrame(probe);
+        return {
+          applyCount: Number(window.__popPartyStageMetrics?.applyCount || 0),
+          surfaceRevision: Number(window.currentStageState?.surfaceRevision || 0),
+          statusText: host?.dataset.statusText || '',
+          rendererPresent: Boolean(renderer),
+          timelinePresent: Boolean(renderer?.rootTimelinePlayer),
+          artRootPresent: Boolean(artRoot)
+        };
+      });
+      const suspendedToolsRenderer = leaseToolsPage.evaluate((durationMs) => {
+        const suspendedAt = performance.now();
+        while (performance.now() - suspendedAt < durationMs) {
+          // Suspend this renderer's timer queue while the server lease and
+          // Stage renderer continue on wall-clock time.
+        }
+        return performance.now() - suspendedAt;
+      }, 25_000);
+      await leaseStagePage.waitForTimeout(23_000);
+      const workspaceWhileToolsSuspended = await fetch(leaseApplication.startup.localUrl + '/api/authoring/workspace')
+        .then((response) => response.json());
+      const suspendedToolsDuration = await suspendedToolsRenderer;
+      await leaseToolsPage.bringToFront();
+      await leaseToolsPage.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await leaseToolsPage.waitForFunction(() => (
+        document.querySelector('#globalSaveButton')?.dataset.authoringRecovery === 'recovered'
+      ), null, { timeout: 20_000 });
+      await leaseStagePage.waitForTimeout(500);
+      const lobbyWidgetAfterToolsLease = await leaseStagePage.evaluate(() => {
+        const host = document.querySelector('#waitingStatus');
+        const renderer = window.PartyGameStageWidgetArt?.rendererForHost?.(host);
+        const artRoot = host?.querySelector(':scope > .stage-widget-art-layer > *');
+        window.__fixtureLobbyLeaseObserver.disconnect();
+        window.__fixtureLobbyLeaseFrameProbe.running = false;
+        return {
+          applyCount: Number(window.__popPartyStageMetrics?.applyCount || 0),
+          surfaceRevision: Number(window.currentStageState?.surfaceRevision || 0),
+          statusText: host?.dataset.statusText || '',
+          hostRetained: host === window.__fixtureLobbyLeaseHost,
+          artRootRetained: artRoot === window.__fixtureLobbyLeaseArtRoot,
+          rendererRetained: renderer === window.__fixtureLobbyLeaseRenderer,
+          timelineRetained: renderer?.rootTimelinePlayer === window.__fixtureLobbyLeaseTimeline,
+          mutations: window.__fixtureLobbyLeaseMutations,
+          measuredFrames: window.__fixtureLobbyLeaseFrameProbe.frames,
+          maxFrameGap: window.__fixtureLobbyLeaseFrameProbe.maxGap
+        };
+      });
+      const toolsLeaseRecovery = {
+        before: lobbyWidgetBeforeToolsLease,
+        after: lobbyWidgetAfterToolsLease,
+        leaseExpiredWhileSuspended: workspaceWhileToolsSuspended.active === false,
+        suspendedToolsDuration,
+        draftCount: toolsLeaseRecoveryDrafts.length,
+        draftFields: Object.keys(toolsLeaseRecoveryDrafts[0] || {}).sort()
+      };
+      await leaseBrowser.close();
+      await leaseApplication.runtime.stop();
+
       const result = {
         firstRevision: first.development.revision,
         healthRevision: firstHealth.release.contentRevision,
@@ -3015,6 +3158,7 @@ module.exports = Object.freeze([
             && action.textTarget === "layout-text-field-instance-1"
             && action.text === nestedAutoFitText),
         artHotReloadExistingRoom,
+        toolsLeaseRecovery,
         artHotReloadNewRoom,
         artHotReloadReloaded,
         restartedFixtureCardY,
@@ -3179,9 +3323,26 @@ module.exports = Object.freeze([
     || !development.nestedAutoFitLayoutReloaded
     || !development.nestedPresentTextReloaded
     || development.artHotReloadExistingRoom?.actionId !== "collection-wait"
-    || !development.artHotReloadExistingRoom?.contentRevisionChanged
     || !development.artHotReloadExistingRoom?.itemRetained
     || !development.artHotReloadExistingRoom?.cardTopChanged
+    || development.artHotReloadExistingRoom?.applyDelta !== 1
+    || !development.toolsLeaseRecovery?.leaseExpiredWhileSuspended
+    || development.toolsLeaseRecovery?.suspendedToolsDuration < 25_000
+    || development.toolsLeaseRecovery?.draftCount !== 0
+    || development.toolsLeaseRecovery?.draftFields?.length !== 0
+    || !development.toolsLeaseRecovery?.before?.rendererPresent
+    || !development.toolsLeaseRecovery?.before?.timelinePresent
+    || !development.toolsLeaseRecovery?.before?.artRootPresent
+    || development.toolsLeaseRecovery?.after?.applyCount !== development.toolsLeaseRecovery?.before?.applyCount
+    || development.toolsLeaseRecovery?.after?.surfaceRevision !== development.toolsLeaseRecovery?.before?.surfaceRevision
+    || development.toolsLeaseRecovery?.after?.statusText !== development.toolsLeaseRecovery?.before?.statusText
+    || !development.toolsLeaseRecovery?.after?.hostRetained
+    || !development.toolsLeaseRecovery?.after?.artRootRetained
+    || !development.toolsLeaseRecovery?.after?.rendererRetained
+    || !development.toolsLeaseRecovery?.after?.timelineRetained
+    || development.toolsLeaseRecovery?.after?.mutations !== 0
+    || development.toolsLeaseRecovery?.after?.measuredFrames < 5
+    || development.toolsLeaseRecovery?.after?.maxFrameGap >= 500
     || development.artHotReloadNewRoom?.actionId !== "collection-wait"
     || development.artHotReloadNewRoom?.authoredY !== 82
     || development.artHotReloadReloaded?.authoredY !== 82
@@ -3472,6 +3633,7 @@ module.exports = Object.freeze([
   console.log(`Renderer collection browser evidence: flat ${development.collectionIdentityBefore.flatCardVisibility.width.toFixed(1)}x${development.collectionIdentityBefore.flatCardVisibility.height.toFixed(1)}, nested ${development.collectionIdentityBefore.nestedCardVisibility.width.toFixed(1)}x${development.collectionIdentityBefore.nestedCardVisibility.height.toFixed(1)}, fallback hidden ${development.collectionIdentityBefore.fallbackHidden}.`);
   console.log(`Stage projection browser evidence: private applies ${development.stageBeforePartialSubmission.applyCount}->${development.stageAfterPartialSubmission.applyCount}, public burst max frame gap ${development.stageAfterTransitionBurst.maxFrameGap.toFixed(1)}ms, max apply ${development.stageAfterTransitionBurst.maxApplyDuration.toFixed(1)}ms, layout reflows ${development.stageAfterTransitionBurst.layoutApplyCount}.`);
   console.log(`Background controller evidence: Stage applies stayed ${development.controllerProfileInteractions.backgroundPresence.applyCount}, player/renderer/timeline retained, max frame gap ${development.controllerProfileInteractions.backgroundPresence.maxFrameGap.toFixed(1)}ms.`);
+  console.log(`Background Tools evidence: ${development.toolsLeaseRecovery.draftCount} clean-model recovery drafts, Stage applies stayed ${development.toolsLeaseRecovery.after.applyCount}, lobby renderer/timeline retained, max frame gap ${development.toolsLeaseRecovery.after.maxFrameGap.toFixed(1)}ms.`);
   console.log(`Controller projection browser evidence: start ${development.vipControllerJourney.startSurface}, Next ${development.vipControllerJourney.advanceSurfaces.join("/")}, crafting choices ${development.vipControllerJourney.craftingChoice.optionCount}.`);
   const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });
   if (!migrationPreview.includes("Migration preview valid: level 0 -> 0") || !migrationPreview.includes("Changed paths: (none)")) {

@@ -21,7 +21,12 @@ export interface SessionDraftPublisher {
 
 interface ActivePublisher {
   flush(): Promise<void>;
-  republish(): Promise<void>;
+  prepareRecovery(): {
+    message: JsonObject | null;
+    publish(message: JsonObject): Promise<unknown>;
+    commit(): void;
+    rollback(): void;
+  };
 }
 
 const activePublishers = new Set<ActivePublisher>();
@@ -45,7 +50,27 @@ export async function flushAllSessionDraftPublishers(): Promise<void> {
 }
 
 export async function republishAllSessionDraftPublishers(): Promise<void> {
-  await Promise.all([...activePublishers].map(({ republish }) => republish()));
+  const recoveries = [...activePublishers].map(({ prepareRecovery }) => prepareRecovery());
+  if (!recoveries.length) return;
+  try {
+    const combinedMessage: JsonObject = {};
+    for (const { message } of recoveries) {
+      if (!message) continue;
+      for (const [key, value] of Object.entries(message)) {
+        if (Object.prototype.hasOwnProperty.call(combinedMessage, key)) {
+          throw new Error(`Authoring recovery produced duplicate draft field: ${key}`);
+        }
+        combinedMessage[key] = value;
+      }
+    }
+    if (Object.keys(combinedMessage).length > 0) {
+      await recoveries[0].publish(combinedMessage);
+    }
+    for (const recovery of recoveries) recovery.commit();
+  } catch (error) {
+    for (const recovery of recoveries) recovery.rollback();
+    throw error;
+  }
 }
 
 function isRecoveredAuthoringSession(error: unknown): boolean {
@@ -133,14 +158,29 @@ export function createSessionDraftPublisher(
     pendingSnapshot = null;
     await (snapshot === savedSnapshot ? clear() : publish(snapshot));
   };
-  const republish = async (): Promise<void> => {
-    await flush();
-    // A restarted or displaced server has lost every session-scoped draft,
-    // including models the editors still correctly report as clean. Re-send
-    // the browser's complete authoritative model set, not only dirty models.
-    await publish(lastPublishedSnapshot, { force: true });
+  const prepareRecovery = () => {
+    clearTimer();
+    const recoverySnapshot = pendingSnapshot ?? lastPublishedSnapshot;
+    const previousPublishedSnapshot = lastPublishedSnapshot;
+    const previousPendingSnapshot = pendingSnapshot;
+    const dirty = recoverySnapshot !== savedSnapshot;
+    pendingSnapshot = null;
+    lastPublishedSnapshot = recoverySnapshot;
+    return {
+      // The server's durable baseline already owns clean editor models. Only
+      // unsaved browser state is session-scoped and needs reconstruction.
+      message: dirty ? options.draftMessage(recoverySnapshot) : null,
+      publish: options.postDraft,
+      commit() {
+        if (dirty) options.onPublished?.();
+      },
+      rollback() {
+        lastPublishedSnapshot = previousPublishedSnapshot;
+        if (pendingSnapshot === null) pendingSnapshot = previousPendingSnapshot ?? recoverySnapshot;
+      }
+    };
   };
-  const activePublisher = { flush, republish };
+  const activePublisher = { flush, prepareRecovery };
   activePublishers.add(activePublisher);
 
   return {

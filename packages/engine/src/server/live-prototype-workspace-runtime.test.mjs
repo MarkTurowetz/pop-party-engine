@@ -67,13 +67,14 @@ function fixture(options = {}) {
       if (options.deferUntilNextSession) {
         room.pendingSnapshot = snapshot;
         room.pendingRelease = release;
-        return;
+        return { changed: false, deferred: true };
       }
       room.snapshot = snapshot;
       room.release = release;
       room.gameData = createBundleGameData(snapshot);
       room.installs.push({ revision: snapshot.revision, reset: options.reset });
       installs.push({ room, snapshot, release, options });
+      return { changed: true, deferred: false };
     }
   });
   return { drafts, initialSnapshot, installs, rooms, store, workspace };
@@ -94,9 +95,10 @@ describe("live prototype workspace", () => {
       ))
     }];
 
-    await workspace.applyDraft(session.sessionId);
+    const applied = await workspace.applyDraft(session.sessionId);
 
     expect(installs.at(-1).options).toMatchObject({ reset: false, hotReload: true });
+    expect(applied.roomContentChanged).toBe(true);
     expect(workspace.readWorkingSnapshot().readJson("art/manifest.json").compositions[compositionId]
       .components[0].y).toBe(385);
   });
@@ -388,6 +390,7 @@ describe("live prototype workspace", () => {
     };
     const reapplied = await workspace.applyDraft(session.sessionId);
     expect(reapplied.recoveryRequired).toBe(false);
+    expect(reapplied.roomContentChanged).toBe(false);
     expect(room).toMatchObject({ momentVisitId: 11, actionExecutionId: 21 });
     expect(lobbyEntries).toBe(1);
     expect(broadcasts).toBe(1);

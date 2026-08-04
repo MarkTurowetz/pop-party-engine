@@ -106,6 +106,7 @@ export async function beginLivePrototypeWorkspace(
   let reconnectTimer: number | null = null;
   let reconnectTimerResolve: (() => void) | null = null;
   let heartbeatTimer: number | null = null;
+  let heartbeatPromise: Promise<void> | null = null;
   const attachmentWaiters = new Set<{ resolve(): void; reject(error: unknown): void }>();
 
   function publishStatus(next: WorkspaceSyncStatus): void {
@@ -212,11 +213,10 @@ export async function beginLivePrototypeWorkspace(
     }));
   }
 
-  function scheduleHeartbeat(): void {
-    if (heartbeatTimer !== null) win.clearInterval(heartbeatTimer);
-    const heartbeatEvery = Math.max(2000, Math.floor(Number(started.leaseMs || 20_000) / 3));
-    heartbeatTimer = win.setInterval(() => {
-      void client.postJson<WorkspaceResponse, Record<string, never>>(
+  function heartbeatNow(): Promise<void> {
+    if (disposed || !attached) return Promise.resolve();
+    if (heartbeatPromise) return heartbeatPromise;
+    heartbeatPromise = client.postJson<WorkspaceResponse, Record<string, never>>(
         "/api/authoring/workspace/heartbeat",
         {}
       ).then(async (heartbeatState) => {
@@ -234,7 +234,17 @@ export async function beginLivePrototypeWorkspace(
           localRevision: storedCheckpoint?.workingRevision || started.workingRevision,
           gitRevision: started.baselineRevision
         });
+      }).finally(() => {
+        heartbeatPromise = null;
       });
+    return heartbeatPromise;
+  }
+
+  function scheduleHeartbeat(): void {
+    if (heartbeatTimer !== null) win.clearInterval(heartbeatTimer);
+    const heartbeatEvery = Math.max(2000, Math.floor(Number(started.leaseMs || 20_000) / 3));
+    heartbeatTimer = win.setInterval(() => {
+      void heartbeatNow();
     }, heartbeatEvery);
   }
 
@@ -360,7 +370,16 @@ export async function beginLivePrototypeWorkspace(
       resetRooms: false
     }).catch(() => undefined);
   };
+  const resumeHeartbeat = () => {
+    void heartbeatNow();
+  };
+  const resumeVisibleHeartbeat = () => {
+    if (win.document?.visibilityState === "hidden") return;
+    resumeHeartbeat();
+  };
   win.addEventListener("pagehide", discard);
+  win.addEventListener("focus", resumeHeartbeat);
+  win.document?.addEventListener("visibilitychange", resumeVisibleHeartbeat);
 
   async function performSync(): Promise<WorkspaceResponse | null> {
     if (recoveryConflict) throw recoveryConflict;
@@ -515,6 +534,8 @@ export async function beginLivePrototypeWorkspace(
         reconnectTimerResolve = null;
       }
       win.removeEventListener("pagehide", discard);
+      win.removeEventListener("focus", resumeHeartbeat);
+      win.document?.removeEventListener("visibilitychange", resumeVisibleHeartbeat);
       discard();
       rejectAttachmentWaiters(new Error("The authoring workspace is closed"));
       client.setMutationRecoveryHandler?.(null);
@@ -531,6 +552,8 @@ export async function beginLivePrototypeWorkspace(
       win.sessionStorage.removeItem("pop-party-authoring-session");
       client.setMutationRecoveryHandler?.(null);
       win.removeEventListener("pagehide", discard);
+      win.removeEventListener("focus", resumeHeartbeat);
+      win.document?.removeEventListener("visibilitychange", resumeVisibleHeartbeat);
       return null;
     }
     void reconnect("stale").catch(() => undefined);

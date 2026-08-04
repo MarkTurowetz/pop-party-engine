@@ -72,14 +72,14 @@ function createLivePrototypeRoomContentRuntime(options = {}) {
     // gameplay command: do not restart Lobby or replay Start Moment.
     if (requestedRevision && requestedRevision === installedRevision) {
       pendingPins.delete(room);
-      return Object.freeze({ deferred: false });
+      return Object.freeze({ changed: false, deferred: false });
     }
 
     const pin = await preparePin(snapshot, release, reset);
 
     if (deferUntilNextSession) {
       pendingPins.set(room, pin);
-      return Object.freeze({ deferred: true });
+      return Object.freeze({ changed: false, deferred: true });
     }
 
     // Gameplay-affecting authoring remains session-boundary data. Validated
@@ -89,20 +89,20 @@ function createLivePrototypeRoomContentRuntime(options = {}) {
     // Flow or replaying the active moment.
     if (reset && String(room?.phase || "lobby") !== "lobby") {
       pendingPins.set(room, pin);
-      return Object.freeze({ deferred: true });
+      return Object.freeze({ changed: false, deferred: true });
     }
 
     pendingPins.delete(room);
     applyPin(room, pin);
     if (hotReload) {
       broadcastLobby(room);
-      return Object.freeze({ deferred: false, hotReloaded: true });
+      return Object.freeze({ changed: true, deferred: false, hotReloaded: true });
     }
     if (reset) {
       enterLobbyPhase(room);
       broadcastLobby(room);
     }
-    return Object.freeze({ deferred: false });
+    return Object.freeze({ changed: true, deferred: false });
   }
 
   function prepareLobbySession(room) {

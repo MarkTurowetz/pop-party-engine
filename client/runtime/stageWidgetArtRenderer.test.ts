@@ -76,6 +76,8 @@ describe("PartyGameStageWidgetArt (ported widget-art-renderer)", () => {
       }, { label: "29" });
 
       expect(playAll).not.toHaveBeenCalled();
+      expect(PartyGameStageWidgetArt.rendererForHost(host as unknown as HTMLElement))
+        .toBeInstanceOf(FakeTreeRenderer);
       expect(runtimeGetComposition?.("base")).toMatchObject({
         components: [expect.objectContaining({ id: "timer-value", defaultText: "29" })]
       });

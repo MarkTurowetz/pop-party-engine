@@ -215,9 +215,11 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
   }
 
   async function installEveryRoom(snapshot, release, installOptions = { reset: true }) {
+    const results = [];
     for (const room of rooms.values()) {
-      await installRoomSnapshot(room, snapshot, release, installOptions);
+      results.push(await installRoomSnapshot(room, snapshot, release, installOptions));
     }
+    return results;
   }
 
   async function loadBaseline() {
@@ -296,12 +298,15 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     workingCounter += 1;
     try {
       await onSnapshotChanged(workingSnapshot, workingRelease());
-      await installEveryRoom(workingSnapshot, workingRelease(), {
+      const roomInstalls = await installEveryRoom(workingSnapshot, workingRelease(), {
         reset: !presentationOnly,
         hotReload: presentationOnly
       });
       activeSession.recoveryRequired = false;
-      return state();
+      return Object.freeze({
+        ...state(),
+        roomContentChanged: roomInstalls.some((result) => result?.changed !== false)
+      });
     } catch (error) {
       workingSnapshot = previousSnapshot;
       workingCounter = previousCounter;

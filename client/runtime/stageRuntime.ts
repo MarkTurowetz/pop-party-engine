@@ -106,8 +106,11 @@ let stageWidgetArtRendererInstance: Dict | null = null;
 let stageCountdownPopupControllerInstance: StageCountdownPopupController | null = null;
 let stageFrameRenderQueue: AnimationFrameRenderQueue<Dict> | null = null;
 let loadedStageContentRevision = "";
+let loadedStageArtRevision = "";
 let pendingStageContentLobby: Dict | null = null;
 let stageContentReloadPromise: Promise<void> | null = null;
+let stageArtReloadPromise: Promise<void> | null = null;
+let stageArtReloadRevision = "";
 const initializedStageWidgetEntityRenderers = new WeakMap<El, unknown>();
 let renderedStageJoinQrUrl = "";
 const stageManagedTextSources = new StageManagedTextSources();
@@ -285,12 +288,44 @@ function runVotingCardActionForAction(action: Dict): Promise<void> {
   return renderer?.runAction?.(action) || Promise.reject(new Error("Voting card renderer unavailable"));
 }
 
-function reloadStageArtAssets(stageCode = "", failClosed = false): Promise<void> {
-  return w().loadArtAssets!({ stageCode }).then(() => {
+function reloadStageArtAssets(stageCode = "", failClosed = false, contentRevision = ""): Promise<void> {
+  const requestedRevision = String(contentRevision || "");
+  if (requestedRevision && requestedRevision === loadedStageArtRevision) return Promise.resolve();
+  if (stageArtReloadPromise && requestedRevision === stageArtReloadRevision) return stageArtReloadPromise;
+  const reload = w().loadArtAssets!({ stageCode }).then(() => {
+    if (requestedRevision) loadedStageArtRevision = requestedRevision;
     if (w().currentStageState) renderStageLobby(w().currentStageState as Dict, { force: true });
   }).catch((error) => {
     if (failClosed) throw error;
+  }).finally(() => {
+    if (stageArtReloadPromise === reload) {
+      stageArtReloadPromise = null;
+      stageArtReloadRevision = "";
+    }
   });
+  stageArtReloadPromise = reload;
+  stageArtReloadRevision = requestedRevision;
+  return reload;
+}
+
+export function stageArtAssetsChangedRevision(event: Event | null): string {
+  const raw = (event as MessageEvent | null)?.data ?? (event as CustomEvent | null)?.detail ?? null;
+  if (!raw) return "";
+  if (typeof raw === "object") return String((raw as Dict).contentRevision || "");
+  try {
+    return String((JSON.parse(String(raw)) as Dict)?.contentRevision || "");
+  } catch {
+    return "";
+  }
+}
+
+function handleStageArtAssetsChanged(event: Event | null = null): void {
+  void reloadStageArtAssets("", false, stageArtAssetsChangedRevision(event));
+}
+
+function setStageConnectionState(state: "connected" | "reconnecting"): void {
+  if (!w().stageScreen) return;
+  w().stageScreen.dataset.stageConnectionState = state;
 }
 
 function invokeLayoutActionWithCompletion(
@@ -856,6 +891,7 @@ function reloadPendingStageContent(): void {
     w().loadStageLayouts!({ forceServer: true, stageCode })
   ]).then(() => {
     loadedStageContentRevision = revision;
+    loadedStageArtRevision = revision;
     (stageRenderOrchestrator() as { render?: (l: Dict, o?: Dict) => void } | null)
       ?.render?.(lobby, { force: true });
   }).catch((error) => {
@@ -868,7 +904,10 @@ function reloadPendingStageContent(): void {
 
 function renderStageLobby(lobby: Dict, options: Dict = {}): void {
   const revision = stageContentRevision(lobby);
-  if (!loadedStageContentRevision) loadedStageContentRevision = revision;
+  if (!loadedStageContentRevision) {
+    loadedStageContentRevision = revision;
+    loadedStageArtRevision = revision;
+  }
   if (revision && loadedStageContentRevision && revision !== loadedStageContentRevision) {
     pendingStageContentLobby = lobby;
     reloadPendingStageContent();
@@ -1111,11 +1150,14 @@ async function subscribeToStage(stageCode: string): Promise<void> {
   const streamUrl = new URL(`${location.origin}/api/stage/${stageCode}/events`);
   if (ticket) streamUrl.searchParams.set("ticket", ticket);
   const stream = new EventSource(streamUrl.toString());
+  stream.addEventListener("open", () => setStageConnectionState("connected"));
   stream.addEventListener("lobby", (event) => scheduleStageLobbyRender(JSON.parse((event as MessageEvent).data)));
-  stream.addEventListener("artAssetsChanged", () => reloadStageArtAssets());
+  stream.addEventListener("artAssetsChanged", handleStageArtAssetsChanged);
   stream.addEventListener("error", () => {
     stream.close();
-    setStageWaitingStatus("Reconnecting to lobby", true);
+    // Transport availability is not game presentation. Preserve the current
+    // authored lobby widget and expose connection state only as diagnostics.
+    setStageConnectionState("reconnecting");
     window.setTimeout(() => subscribeToStage(stageCode), 1000);
   });
 }
@@ -1125,7 +1167,7 @@ let stageSetupPromise: Promise<void> | null = null;
 async function setupStageOnce(): Promise<void> {
   w().stageScreen.classList.remove("hidden");
   initStageTextObjects();
-  w().listenForArtAssetsChanged!(reloadStageArtAssets);
+  w().listenForArtAssetsChanged!(handleStageArtAssetsChanged);
   const stageCode = w().getOrCreateStageCode!();
   const isDraftPreview = new URLSearchParams(location.search).get("preview") === "draft";
   let room: Dict;

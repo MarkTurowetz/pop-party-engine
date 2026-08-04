@@ -95,9 +95,11 @@ heartbeat-lease expiry clears the server copy, that lease
 cleanup never restarts an existing room or replays its moment animations. The
 browser restores the latest explicitly saved complete JSON-and-binary workspace
 from IndexedDB before the editors mount. A stale heartbeat or draft mutation
-uses one workspace-level reconnect, republishes the current browser models, and
-retries the mutation once; lease failures are never reported as invalid game
-content. Save validates and checkpoints that
+uses one workspace-level reconnect, republishes only unsaved browser models in
+one atomic draft, and retries the mutation once. Clean models remain owned by
+the durable baseline, so lease recovery does not publish a new room revision or
+restart Lobby Art; lease failures are never reported as invalid game content.
+Save validates and checkpoints that
 complete workspace locally first, so the author can continue immediately while
 Git sync runs in the background. The dashboard distinguishes browser-local saves from
 Git-synced saves and provides explicit `Sync Now` and `Restore from Git` actions.

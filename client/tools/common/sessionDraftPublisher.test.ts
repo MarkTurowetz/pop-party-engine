@@ -8,11 +8,12 @@ import {
 describe("createSessionDraftPublisher", () => {
   it("debounces draft publishes and clears when returning to the saved snapshot", async () => {
     vi.useFakeTimers();
+    let publisher: ReturnType<typeof createSessionDraftPublisher> | null = null;
     try {
       const postDraft = vi.fn(async (message) => message);
       const onCleared = vi.fn();
       const onPublished = vi.fn();
-      const publisher = createSessionDraftPublisher({
+      publisher = createSessionDraftPublisher({
         postDraft,
         savedSnapshot: "saved",
         delayMs: 10,
@@ -36,15 +37,17 @@ describe("createSessionDraftPublisher", () => {
       expect(postDraft).toHaveBeenLastCalledWith({ clearFlow: true });
       expect(onCleared).toHaveBeenCalledTimes(1);
     } finally {
+      publisher?.dispose();
       vi.useRealTimers();
     }
   });
 
   it("cancels pending publishes when a snapshot is marked saved", async () => {
     vi.useFakeTimers();
+    let publisher: ReturnType<typeof createSessionDraftPublisher> | null = null;
     try {
       const postDraft = vi.fn(async (message) => message);
-      const publisher = createSessionDraftPublisher({
+      publisher = createSessionDraftPublisher({
         postDraft,
         savedSnapshot: "saved",
         delayMs: 10,
@@ -58,6 +61,7 @@ describe("createSessionDraftPublisher", () => {
 
       expect(postDraft).not.toHaveBeenCalled();
     } finally {
+      publisher?.dispose();
       vi.useRealTimers();
     }
   });
@@ -85,7 +89,7 @@ describe("createSessionDraftPublisher", () => {
     }
   });
 
-  it("republishes clean browser models after the server loses session drafts", async () => {
+  it("does not republish clean browser models already owned by the durable baseline", async () => {
     const postDraft = vi.fn(async (message) => message);
     const publisher = createSessionDraftPublisher({
       postDraft,
@@ -97,10 +101,52 @@ describe("createSessionDraftPublisher", () => {
 
     try {
       await republishAllSessionDraftPublishers();
-      expect(postDraft).toHaveBeenCalledOnce();
-      expect(postDraft).toHaveBeenCalledWith({ flow: "saved" });
+      expect(postDraft).not.toHaveBeenCalled();
     } finally {
       publisher.dispose();
+    }
+  });
+
+  it("republishes every dirty browser model as one atomic recovery draft", async () => {
+    const postDraft = vi.fn(async (message) => message);
+    const flowPublisher = createSessionDraftPublisher({
+      postDraft,
+      savedSnapshot: "saved-flow",
+      delayMs: 0,
+      clearMessage: { clearFlow: true },
+      draftMessage: (snapshot) => ({ flow: snapshot })
+    });
+    const artPublisher = createSessionDraftPublisher({
+      postDraft,
+      savedSnapshot: "saved-art",
+      delayMs: 0,
+      clearMessage: { clearArtCompositions: true },
+      draftMessage: (snapshot) => ({ artCompositions: [snapshot] })
+    });
+    const cleanLayoutPublisher = createSessionDraftPublisher({
+      postDraft,
+      savedSnapshot: "saved-layout",
+      delayMs: 0,
+      clearMessage: { clearLayouts: true },
+      draftMessage: (snapshot) => ({ layouts: snapshot })
+    });
+
+    try {
+      await flowPublisher.publish("dirty-flow");
+      artPublisher.schedule("dirty-art");
+      postDraft.mockClear();
+
+      await republishAllSessionDraftPublishers();
+
+      expect(postDraft).toHaveBeenCalledOnce();
+      expect(postDraft).toHaveBeenCalledWith({
+        flow: "dirty-flow",
+        artCompositions: ["dirty-art"]
+      });
+    } finally {
+      flowPublisher.dispose();
+      artPublisher.dispose();
+      cleanLayoutPublisher.dispose();
     }
   });
 

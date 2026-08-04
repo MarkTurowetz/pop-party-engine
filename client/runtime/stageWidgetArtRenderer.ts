@@ -20,7 +20,10 @@ const w = () => globalThis as typeof globalThis & Window;
 interface TreeRenderer {
   render: (components: Dict[], canvas: Dict, options: Dict) => void;
   playAll?: (animation: string, options?: Dict) => number;
+  rootTimelinePlayer?: unknown;
 }
+
+const renderedWidgetRenderersByHost = new WeakMap<El, TreeRenderer>();
 
 export interface ArtComponentBounds {
   x: number;
@@ -174,6 +177,7 @@ function createRenderer(options: Dict = {}) {
       renderers.set(key, renderer);
     }
     if (!renderer) return null;
+    renderedWidgetRenderersByHost.set(host, renderer);
     const components = ((composition.components as Dict[]) || []).map((component) => cloneComponent(component, textOverrides));
     renderer.render(components, (composition.canvas as Dict) || { width: 1, height: 1 }, {
       instant: renderOptions.instant !== false,
@@ -215,10 +219,17 @@ function createRenderer(options: Dict = {}) {
     return result;
   }
 
-  return { render, renderBound, positionOverlay };
+  return {
+    render,
+    renderBound,
+    positionOverlay
+  };
 }
 
-export const PartyGameStageWidgetArt = { createRenderer };
+export const PartyGameStageWidgetArt = {
+  createRenderer,
+  rendererForHost: (host: El | null) => host ? renderedWidgetRenderersByHost.get(host) || null : null
+};
 
 export function installStageWidgetArtGlobals(target: Window | typeof globalThis = globalThis): void {
   (target as Window).PartyGameStageWidgetArt = PartyGameStageWidgetArt;
