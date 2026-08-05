@@ -325,8 +325,15 @@ concepts into focused modules.
     bounded number, host-audio playback, and input-exit controls.
   - `client/flow/action-inspector-registry.js` owns action-specific Flow inspector
     composition so List View and Node View render from the same action control registry.
-  - `client/flow/node-view-wires.js` owns Flow Node View SVG wire rendering,
-    wire labels, preview wires, and graph-local pointer coordinate conversion.
+  - `client/tools/layout/LayoutEditor.tsx` owns one pointer-captured canvas interaction at a time.
+    Its idempotent cancellation boundary releases capture and removes document/window listeners on
+    completion, cancellation, lost capture, blur, layout/surface changes, and unmount; an interrupted
+    interaction never commits authored coordinates or leaves an overlay above the Tools shell.
+  - `client/tools/flow/components/FlowNodeCanvas.tsx` owns Flow Node View SVG wire rendering,
+    wire labels, preview wires, and graph-local pointer coordinate conversion. Base connections retain
+    authored order in one SVG layer, while connections highlighted by selection retain their own order
+    in a later layer so their complete stroke, destination arrow, and label paint above base wires on
+    both the main canvas and minimap.
   - `client/flow/node-view-minimap.js` owns Flow Node View minimap rendering,
     viewport positioning, minimap clicks, and minimap dragging.
   - `client/flow/node-view-ports.js` owns Flow Node View connection port DOM,

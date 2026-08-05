@@ -1014,9 +1014,72 @@ module.exports = Object.freeze([
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ layouts: controllerLayouts })
       });
+      const flowPaintStates = flowPayload.flow.states.slice(0, 3);
+      if (flowPaintStates.length < 3) throw new Error("Packed Flow paint fixture needs three states");
+      const flowPaintSourceId = flowPaintStates[0].id;
+      const flowPaintBaseId = flowPaintStates[1].id;
+      const flowPaintTargetId = flowPaintStates[2].id;
+      const flowPaintFixture = {
+        ...flowPayload.flow,
+        states: flowPayload.flow.states.map((state, index) => {
+          if (state.id === flowPaintSourceId || state.id === flowPaintBaseId) {
+            return {
+              ...state,
+              nodePosition: { x: 420, y: 900 },
+              nextStateTargetId: flowPaintTargetId
+            };
+          }
+          if (state.id === flowPaintTargetId) {
+            return { ...state, nodePosition: { x: 720, y: 180 }, nextStateTargetId: "none" };
+          }
+          return { ...state, nodePosition: { x: 980 + index * 340, y: 220 + index * 210 } };
+        })
+      };
+      const flowPaintSaveResponse = await fetch(first.startup.localUrl + "/api/game-flow", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ flow: flowPaintFixture })
+      });
       const toolsPageErrors = [];
       const toolsPage = await browser.newPage();
       toolsPage.on("pageerror", (error) => toolsPageErrors.push(error.message));
+      await toolsPage.addInitScript(() => {
+        const trackedTypes = new Set(["pointermove", "pointerup", "pointercancel", "blur"]);
+        const listenerIds = new WeakMap();
+        const active = new Set();
+        let nextListenerId = 1;
+        const listenerId = (listener) => {
+          if ((typeof listener !== "function" && typeof listener !== "object") || listener === null) {
+            return "none";
+          }
+          if (!listenerIds.has(listener)) listenerIds.set(listener, nextListenerId++);
+          return String(listenerIds.get(listener));
+        };
+        const captureValue = (options) => typeof options === "boolean" ? options : options?.capture === true;
+        const targetName = (target) => target === document ? "document" : target === window ? "window" : "other";
+        const keyFor = (target, type, listener, options) => (
+          targetName(target) + ":" + type + ":" + listenerId(listener) + ":" + captureValue(options)
+        );
+        const originalAdd = EventTarget.prototype.addEventListener;
+        const originalRemove = EventTarget.prototype.removeEventListener;
+        EventTarget.prototype.addEventListener = function(type, listener, options) {
+          if ((this === document || this === window) && trackedTypes.has(type)) {
+            active.add(keyFor(this, type, listener, options));
+          }
+          return originalAdd.call(this, type, listener, options);
+        };
+        EventTarget.prototype.removeEventListener = function(type, listener, options) {
+          if ((this === document || this === window) && trackedTypes.has(type)) {
+            active.delete(keyFor(this, type, listener, options));
+          }
+          return originalRemove.call(this, type, listener, options);
+        };
+        window.__layoutListenerAudit = {
+          snapshot() {
+            return Array.from(active).sort();
+          }
+        };
+      });
       await toolsPage.goto(first.startup.localUrl + "/tools", { waitUntil: "load" });
       await toolsPage.locator('[data-tool-target="layout"]').click();
       await toolsPage.locator('[data-layout-group-select="fixture-renderer-preview"]').click();
@@ -1053,11 +1116,208 @@ module.exports = Object.freeze([
         previewText: document.body.textContent.includes("PREVIEW CARD"),
         previewErrors: document.querySelectorAll('[data-layout-element-preview-error]').length
       }));
+      const layoutListenerBaseline = await toolsPage.evaluate(() => window.__layoutListenerAudit.snapshot());
+      const previewDragTarget = toolsPage.locator('[data-layout-element="fixture-preview-flat-cards"]');
+      const previewPositionBeforeInterruptions = await previewDragTarget.evaluate((element) => ({
+        left: element.style.left,
+        top: element.style.top
+      }));
+      const beginInterruptedLayoutDrag = async (pointerId) => {
+        await previewDragTarget.evaluate((element, id) => {
+          const rect = element.getBoundingClientRect();
+          const startX = rect.left + rect.width / 2;
+          const startY = rect.top + rect.height / 2;
+          element.dispatchEvent(new PointerEvent("pointerdown", {
+            bubbles: true,
+            button: 0,
+            buttons: 1,
+            clientX: startX,
+            clientY: startY,
+            pointerId: id,
+            pointerType: "mouse"
+          }));
+          document.dispatchEvent(new PointerEvent("pointermove", {
+            bubbles: true,
+            buttons: 1,
+            clientX: startX + 48,
+            clientY: startY + 32,
+            pointerId: id,
+            pointerType: "mouse"
+          }));
+        }, pointerId);
+        await toolsPage.waitForFunction(() => Boolean(
+          document.querySelector('[data-layout-pointer-interaction-active]')
+        ));
+      };
+      await beginInterruptedLayoutDrag(401);
+      await toolsPage.evaluate(() => document.dispatchEvent(new PointerEvent("pointercancel", {
+        bubbles: true,
+        pointerId: 401,
+        pointerType: "mouse"
+      })));
+      await toolsPage.waitForFunction(() => !document.querySelector('[data-layout-pointer-interaction-active]'));
+
+      await beginInterruptedLayoutDrag(402);
+      await previewDragTarget.evaluate((element) => element.dispatchEvent(new PointerEvent(
+        "lostpointercapture",
+        { bubbles: true, pointerId: 402, pointerType: "mouse" }
+      )));
+      await toolsPage.waitForFunction(() => !document.querySelector('[data-layout-pointer-interaction-active]'));
+
+      await beginInterruptedLayoutDrag(403);
+      await toolsPage.evaluate(() => window.dispatchEvent(new Event("blur")));
+      await toolsPage.waitForFunction(() => !document.querySelector('[data-layout-pointer-interaction-active]'));
+
+      await beginInterruptedLayoutDrag(404);
       await toolsPage.locator('[data-layout-group-select="global"]').click();
       await toolsPage.waitForFunction(() => (
         document.querySelector('[data-layout-group-select="global"]')?.getAttribute("aria-current") === "true"
         && document.querySelector('[data-layout-react-component="state-list"]')
       ));
+      const momentLayoutIds = await toolsPage.locator('[data-layout-group-select]').evaluateAll((elements) =>
+        elements
+          .map((element) => element.getAttribute("data-layout-group-select"))
+          .filter((id) => id && id !== "global")
+          .slice(0, 3)
+      );
+      for (let cycle = 0; cycle < 3; cycle += 1) {
+        for (const layoutId of momentLayoutIds) {
+          await toolsPage.locator('[data-layout-group-select="' + layoutId + '"]').click();
+        }
+        await toolsPage.locator('[data-layout-group-select="global"]').click();
+      }
+      await toolsPage.locator('[data-layout-group-select="fixture-renderer-preview"]').click();
+      const previewPositionAfterInterruptions = await previewDragTarget.evaluate((element) => ({
+        left: element.style.left,
+        top: element.style.top
+      }));
+      const interruptedPositionWasRestored = JSON.stringify(previewPositionAfterInterruptions)
+        === JSON.stringify(previewPositionBeforeInterruptions);
+      await beginInterruptedLayoutDrag(405);
+      await toolsPage.locator('[data-tool-target="flow"]').click();
+      await toolsPage.waitForSelector('[data-node-depth="subroutines"]');
+
+      const selectedFlowWireId = flowPaintSourceId + "->" + flowPaintTargetId + ":Next";
+      const baseFlowWireId = flowPaintBaseId + "->" + flowPaintTargetId + ":Next";
+      await toolsPage.locator('[data-node-id="' + flowPaintSourceId + '"]').dispatchEvent("click");
+      await toolsPage.waitForFunction((wireId) => (
+        document.querySelector('[data-wire-paint-layer="highlighted"] [data-wire-id="' + CSS.escape(wireId) + '"]')
+      ), selectedFlowWireId);
+      const flowSelectedWirePaint = await toolsPage.evaluate(({ selectedWireId, baseWireId }) => {
+        const svg = document.querySelector('[data-node-wires]');
+        const baseLayer = svg?.querySelector('[data-wire-paint-layer="base"]');
+        const highlightedLayer = svg?.querySelector('[data-wire-paint-layer="highlighted"]');
+        const selectedWire = highlightedLayer?.querySelector('[data-wire-id="' + CSS.escape(selectedWireId) + '"]');
+        const baseWire = baseLayer?.querySelector('[data-wire-id="' + CSS.escape(baseWireId) + '"]');
+        const selectedPath = selectedWire?.querySelector('path');
+        const basePath = baseWire?.querySelector('path');
+        const selectedLabel = selectedWire?.querySelector('text');
+        const minimapBaseLayer = document.querySelector('[data-minimap-wire-paint-layer="base"]');
+        const minimapHighlightedLayer = document.querySelector('[data-minimap-wire-paint-layer="highlighted"]');
+        const follows = (later, earlier) => Boolean(
+          later && earlier && (earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING)
+        );
+        const pathBounds = selectedPath?.getBBox();
+        const labelBounds = selectedLabel?.getBBox();
+        const routePoints = (path) => {
+          const values = String(path?.getAttribute('d') || '').match(/-?[0-9]+(?:[.][0-9]+)?/g)?.map(Number) || [];
+          const points = [];
+          for (let index = 0; index + 1 < values.length; index += 2) {
+            points.push({ x: values[index], y: values[index + 1] });
+          }
+          return points;
+        };
+        const segments = (path) => routePoints(path).slice(1).map((point, index) => ({
+          from: routePoints(path)[index],
+          to: point
+        }));
+        const overlapLength = (left, right, axis) => {
+          const leftMin = Math.min(left.from[axis], left.to[axis]);
+          const leftMax = Math.max(left.from[axis], left.to[axis]);
+          const rightMin = Math.min(right.from[axis], right.to[axis]);
+          const rightMax = Math.max(right.from[axis], right.to[axis]);
+          return Math.max(0, Math.min(leftMax, rightMax) - Math.max(leftMin, rightMin));
+        };
+        const selectedSegments = segments(selectedPath);
+        const baseSegments = segments(basePath);
+        const sharedHorizontal = selectedSegments.some((left) =>
+          left.from.y === left.to.y && baseSegments.some((right) =>
+            right.from.y === right.to.y
+            && right.from.y === left.from.y
+            && overlapLength(left, right, 'x') > 1
+          )
+        );
+        const sharedVertical = selectedSegments.some((left) =>
+          left.from.x === left.to.x && baseSegments.some((right) =>
+            right.from.x === right.to.x
+            && right.from.x === left.from.x
+            && overlapLength(left, right, 'y') > 1
+          )
+        );
+        return {
+          basePresent: Boolean(baseWire),
+          selectedPresent: Boolean(selectedWire),
+          selectedLayerAfterBase: follows(highlightedLayer, baseLayer),
+          minimapSelectedLayerAfterBase: follows(minimapHighlightedLayer, minimapBaseLayer),
+          sharedHorizontal,
+          sharedVertical,
+          selectedStroke: selectedPath?.getAttribute('stroke'),
+          selectedArrow: selectedPath?.getAttribute('marker-end'),
+          selectedLabel: selectedLabel?.textContent,
+          pathVisible: Number(pathBounds?.width || 0) > 0 && Number(pathBounds?.height || 0) > 0,
+          labelVisible: Number(labelBounds?.width || 0) > 0 && Number(labelBounds?.height || 0) > 0
+        };
+      }, { selectedWireId: selectedFlowWireId, baseWireId: baseFlowWireId });
+      await toolsPage.locator('[data-node-id="' + flowPaintBaseId + '"]').dispatchEvent("click");
+      await toolsPage.waitForFunction((wireId) => (
+        document.querySelector('[data-wire-paint-layer="highlighted"] [data-wire-id="' + CSS.escape(wireId) + '"]')
+      ), baseFlowWireId);
+      const flowChangedSelectionPaint = await toolsPage.evaluate(({ selectedWireId, baseWireId }) => ({
+        newlyHighlighted: Boolean(document.querySelector(
+          '[data-wire-paint-layer="highlighted"] [data-wire-id="' + CSS.escape(baseWireId) + '"]'
+        )),
+        priorMovedToBase: Boolean(document.querySelector(
+          '[data-wire-paint-layer="base"] [data-wire-id="' + CSS.escape(selectedWireId) + '"]'
+        )),
+        previewIntact: Boolean(document.querySelector('[data-node-wires] defs marker')),
+        minimapIntact: Boolean(document.querySelector('[data-node-minimap]')),
+        zoomIntact: Boolean(document.querySelector('[data-node-zoom]'))
+      }), { selectedWireId: selectedFlowWireId, baseWireId: baseFlowWireId });
+
+      await toolsPage.locator('[data-tool-target="layout"]').click();
+      await toolsPage.locator('[data-layout-group-select="fixture-renderer-preview"]').click();
+      const dragBox = await previewDragTarget.boundingBox();
+      if (!dragBox) throw new Error("Layout drag target has no browser geometry");
+      await toolsPage.mouse.move(dragBox.x + dragBox.width / 2, dragBox.y + dragBox.height / 2);
+      await toolsPage.mouse.down();
+      await toolsPage.mouse.move(dragBox.x + dragBox.width / 2 + 28, dragBox.y + dragBox.height / 2 + 18);
+      await toolsPage.mouse.up();
+      await toolsPage.waitForFunction(() => !document.querySelector('[data-layout-pointer-interaction-active]'));
+      await toolsPage.waitForFunction(() => !document.querySelector('#globalSaveButton')?.disabled);
+      await previewDragTarget.click();
+      await toolsPage.waitForFunction(() => (
+        document.querySelector('[data-layout-element="fixture-preview-flat-cards"]')
+          ?.getAttribute('aria-current') === 'true'
+      ));
+      await toolsPage.locator('#globalSaveButton').click();
+      await toolsPage.waitForTimeout(250);
+      const layoutToolInteractionRecovery = await toolsPage.evaluate(() => {
+        const target = document.querySelector('[data-layout-element="fixture-preview-flat-cards"]');
+        return {
+          listenerBaseline: window.__layoutListenerAudit.snapshot(),
+          interactionActive: Boolean(document.querySelector('[data-layout-pointer-interaction-active]')),
+          backdropCount: document.querySelectorAll('.art-prefab-dialog-backdrop').length,
+          topNavigationPresent: Boolean(document.querySelector('[data-tool-target="flow"]')),
+          saveAllPresent: Boolean(document.querySelector('#globalSaveButton')),
+          globalSelectable: Boolean(document.querySelector('[data-layout-group-select="global"]')),
+          canvasClickable: Boolean(target)
+        };
+      });
+      layoutToolInteractionRecovery.listenerBaselineMatches = JSON.stringify(
+        layoutToolInteractionRecovery.listenerBaseline
+      ) === JSON.stringify(layoutListenerBaseline);
+      layoutToolInteractionRecovery.hitTargetsReachable = true;
+      layoutToolInteractionRecovery.interruptedPositionWasRestored = interruptedPositionWasRestored;
       await toolsPage.locator('[data-tool-target="controller-layout"]').click();
       await toolsPage.locator('[data-layout-group-select="fixture-dynamic-targets"]').click();
       await toolsPage.waitForFunction(() => (
@@ -3363,12 +3623,16 @@ module.exports = Object.freeze([
         recoveryPageErrors,
         pluginActionVisible: Boolean(pluginActionMeta && pluginActionMeta.fields.some((field) => field.key === "amount")),
         pluginInputVisible: Boolean(pluginInputMeta && pluginInputMeta.fields.some((field) => field.key === "resultVariable")),
+        flowPaintSaveStatus: flowPaintSaveResponse.status,
         flowSaveStatus: flowSaveResponse.status,
         flowSaveError: flowSavePayload.error,
         controllerLayoutSaveStatus: controllerLayoutSaveResponse.status,
         stageLayoutSaveStatus: stageLayoutSaveResponse.status,
         toolsPageErrors,
         layoutToolRendererPreview,
+        layoutToolInteractionRecovery,
+        flowSelectedWirePaint,
+        flowChangedSelectionPaint,
         controllerChoiceCollectionPreview,
         layoutToolErrorRecovery,
         customControllerLayoutReloaded: secondControllerLayouts.layouts.states
@@ -3541,6 +3805,7 @@ module.exports = Object.freeze([
     || development.recoveryPageErrors?.length !== 0
     || !development.pluginActionVisible
     || !development.pluginInputVisible
+    || development.flowPaintSaveStatus !== 200
     || development.flowSaveStatus !== 200
     || development.controllerLayoutSaveStatus !== 200
     || development.stageLayoutSaveStatus !== 200
@@ -3552,6 +3817,31 @@ module.exports = Object.freeze([
     || development.layoutToolRendererPreview?.nestedHosts < 3
     || !development.layoutToolRendererPreview?.previewText
     || development.layoutToolRendererPreview?.previewErrors !== 0
+    || !development.layoutToolInteractionRecovery?.listenerBaselineMatches
+    || development.layoutToolInteractionRecovery?.interactionActive
+    || development.layoutToolInteractionRecovery?.backdropCount !== 0
+    || !development.layoutToolInteractionRecovery?.topNavigationPresent
+    || !development.layoutToolInteractionRecovery?.saveAllPresent
+    || !development.layoutToolInteractionRecovery?.globalSelectable
+    || !development.layoutToolInteractionRecovery?.canvasClickable
+    || !development.layoutToolInteractionRecovery?.hitTargetsReachable
+    || !development.layoutToolInteractionRecovery?.interruptedPositionWasRestored
+    || !development.flowSelectedWirePaint?.basePresent
+    || !development.flowSelectedWirePaint?.selectedPresent
+    || !development.flowSelectedWirePaint?.selectedLayerAfterBase
+    || !development.flowSelectedWirePaint?.minimapSelectedLayerAfterBase
+    || !development.flowSelectedWirePaint?.sharedHorizontal
+    || !development.flowSelectedWirePaint?.sharedVertical
+    || development.flowSelectedWirePaint?.selectedStroke !== "#ff4fa3"
+    || !String(development.flowSelectedWirePaint?.selectedArrow || "").includes("flow-wire-highlight-destination-arrow")
+    || development.flowSelectedWirePaint?.selectedLabel !== "Next"
+    || !development.flowSelectedWirePaint?.pathVisible
+    || !development.flowSelectedWirePaint?.labelVisible
+    || !development.flowChangedSelectionPaint?.newlyHighlighted
+    || !development.flowChangedSelectionPaint?.priorMovedToBase
+    || !development.flowChangedSelectionPaint?.previewIntact
+    || !development.flowChangedSelectionPaint?.minimapIntact
+    || !development.flowChangedSelectionPaint?.zoomIntact
     || development.controllerChoiceCollectionPreview?.items !== 3
     || !development.controllerChoiceCollectionPreview?.longLabel
     || !development.controllerChoiceCollectionPreview?.sidebarVisible

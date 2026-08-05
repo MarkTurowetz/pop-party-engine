@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1289",
+  "version": "1.0.17.1290",
   "baseVersion": "1.0.17",
-  "buildNumber": 1289,
-  "commit": "60dac6b4",
-  "branch": "codex/release-engine-1.4.5",
-  "generatedAt": "2026-08-05T03:04:28.245Z"
+  "buildNumber": 1290,
+  "commit": "93bf06cc",
+  "branch": "codex/tools-flow-interaction-1.4.6",
+  "generatedAt": "2026-08-05T05:48:19.982Z"
 }

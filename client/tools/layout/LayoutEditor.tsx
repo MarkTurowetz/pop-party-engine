@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -76,6 +77,10 @@ type LayerDropPlacement = "before" | "after";
 type LayerDropTarget = {
   id: string;
   placement: LayerDropPlacement;
+};
+
+type ActiveLayoutPointerInteraction = {
+  cancel(clearVisualState?: boolean): void;
 };
 
 function useElementSize<T extends HTMLElement>() {
@@ -184,7 +189,17 @@ export function LayoutEditor({
   const controller = mode === "stage" ? stageController : controllerController;
   const state = useLayoutEditor(controller);
   const { layouts, selectedGroupId, selectedElementIds, dirty, saving, canUndo, canRedo } = state;
-  const [live, setLive] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [live, setLive] = useState<{
+    contextKey: string;
+    id: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [activePointerElement, setActivePointerElement] = useState<{
+    contextKey: string;
+    id: string;
+  } | null>(null);
+  const activePointerInteractionRef = useRef<ActiveLayoutPointerInteraction | null>(null);
   const [elementDragId, setElementDragId] = useState<string | null>(null);
   const [elementDropTarget, setElementDropTarget] = useState<LayerDropTarget | null>(null);
   const [previewPanelRef, previewPanelSize] = useElementSize<HTMLElement>();
@@ -244,6 +259,26 @@ export function LayoutEditor({
   const selectedArtComposition = selectedArtCompositionId
     ? compositionById.get(selectedArtCompositionId) || null
     : null;
+  const interactionContextKey = `${surface}:${mode}:${selectedGroupId}`;
+
+  const cancelActivePointerInteraction = useCallback((clearVisualState = true) => {
+    activePointerInteractionRef.current?.cancel(clearVisualState);
+  }, []);
+
+  const resetLayoutInteractionContext = () => {
+    cancelActivePointerInteraction();
+    setElementDragId(null);
+    setElementDropTarget(null);
+    setGameObjectPickerOpen(false);
+    setGroupCreatorOpen(false);
+  };
+
+  useEffect(
+    () => () => {
+      cancelActivePointerInteraction(false);
+    },
+    [cancelActivePointerInteraction, controller, mode, selectedGroupId, surface]
+  );
 
   const openArtCompositionForElement = (element: LayoutElement) => {
     if (!onOpenArtComposition) return;
@@ -256,6 +291,9 @@ export function LayoutEditor({
     if (event.button !== 0) return;
     if (get(element, "locked") === true) return;
     event.stopPropagation();
+    cancelActivePointerInteraction();
+    const pointerId = event.pointerId;
+    const captureTarget = event.currentTarget;
     const originX = Number(get(element, "x") || 0);
     const originY = Number(get(element, "y") || 0);
     const startX = event.clientX;
@@ -263,8 +301,11 @@ export function LayoutEditor({
     let moved = false;
     let nextX = originX;
     let nextY = originY;
+    let cleaned = false;
     const modifierState = createDragModifierState();
     const move = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      e.preventDefault();
       const dx = (e.clientX - startX) / scaleToFit;
       const dy = (e.clientY - startY) / scaleToFit;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
@@ -282,12 +323,41 @@ export function LayoutEditor({
       );
       nextX = next.x;
       nextY = next.y;
-      setLive({ id: element.id, x: nextX, y: nextY });
+      setLive({ contextKey: interactionContextKey, id: element.id, x: nextX, y: nextY });
     };
+    const cleanup = (clearVisualState = true) => {
+      if (cleaned) return;
+      cleaned = true;
+      document.removeEventListener("pointermove", move, true);
+      document.removeEventListener("pointerup", up, true);
+      document.removeEventListener("pointercancel", cancelFromPointer, true);
+      window.removeEventListener("blur", cancelFromWindow);
+      captureTarget.removeEventListener("lostpointercapture", cancelFromPointer);
+      if (captureTarget.hasPointerCapture?.(pointerId)) {
+        try {
+          captureTarget.releasePointerCapture(pointerId);
+        } catch {
+          // The browser may already have released capture during cancellation.
+        }
+      }
+      if (activePointerInteractionRef.current === interaction) {
+        activePointerInteractionRef.current = null;
+      }
+      if (clearVisualState) {
+        setLive(null);
+        setActivePointerElement(null);
+      }
+    };
+    const cancel = (clearVisualState = true) => {
+      cleanup(clearVisualState);
+    };
+    const cancelFromPointer = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      cancel();
+    };
+    const cancelFromWindow = () => cancel();
     const up = (e: PointerEvent) => {
-      document.removeEventListener("pointermove", move);
-      document.removeEventListener("pointerup", up);
-      setLive(null);
+      if (e.pointerId !== pointerId) return;
       const dx = (e.clientX - startX) / scaleToFit;
       const dy = (e.clientY - startY) / scaleToFit;
       const next = applyDragModifiers(
@@ -304,14 +374,27 @@ export function LayoutEditor({
       );
       nextX = next.x;
       nextY = next.y;
+      cleanup();
       if (moved) controller.moveElement(element.id, nextX, nextY);
     };
-    document.addEventListener("pointermove", move);
-    document.addEventListener("pointerup", up);
+    const interaction: ActiveLayoutPointerInteraction = { cancel };
+    activePointerInteractionRef.current = interaction;
+    setActivePointerElement({ contextKey: interactionContextKey, id: element.id });
+    document.addEventListener("pointermove", move, true);
+    document.addEventListener("pointerup", up, true);
+    document.addEventListener("pointercancel", cancelFromPointer, true);
+    window.addEventListener("blur", cancelFromWindow);
+    captureTarget.addEventListener("lostpointercapture", cancelFromPointer);
+    try {
+      captureTarget.setPointerCapture?.(pointerId);
+    } catch {
+      // Synthetic authoring tests and older browsers may not expose active capture.
+    }
   };
 
   const renderElement = (element: LayoutElement, index: number, total: number) => {
-    const livePos = live?.id === element.id ? live : null;
+    const livePos =
+      live?.contextKey === interactionContextKey && live.id === element.id ? live : null;
     const x = livePos ? livePos.x : Number(get(element, "x") || 0);
     const y = livePos ? livePos.y : Number(get(element, "y") || 0);
     const width = Number(get(element, "width") || 1);
@@ -348,6 +431,7 @@ export function LayoutEditor({
       opacity: hidden ? (selected ? 0.28 : 0.08) : 1,
       overflow: isCollection ? undefined : "visible",
       boxSizing: "border-box",
+      touchAction: locked || hidden ? undefined : "none",
       zIndex: get(element, "layoutLayer") === "background" ? 0 : Math.max(1, total - index),
       pointerEvents: locked || hidden ? "none" : "auto",
       ...(isCollection ? choiceCollectionLayoutStyle(element as Record<string, unknown>) : {})
@@ -529,13 +613,23 @@ export function LayoutEditor({
       <h3>Layouts</h3>
       {surface !== "tools" ? (
         <div className="tool-sidebar-switcher" role="group" aria-label="Layout surface">
-          <button type="button" aria-pressed={mode === "stage"} onClick={() => setMode("stage")}>
+          <button
+            type="button"
+            aria-pressed={mode === "stage"}
+            onClick={() => {
+              resetLayoutInteractionContext();
+              setMode("stage");
+            }}
+          >
             Stage
           </button>
           <button
             type="button"
             aria-pressed={mode === "controller"}
-            onClick={() => setMode("controller")}
+            onClick={() => {
+              resetLayoutInteractionContext();
+              setMode("controller");
+            }}
           >
             Controller
           </button>
@@ -576,6 +670,7 @@ export function LayoutEditor({
               data-layout-group-create-form
               onSubmit={(event) => {
                 event.preventDefault();
+                resetLayoutInteractionContext();
                 const createdId = groupCreatorKind === "layer"
                   ? controller.addPersistentLayer({ id: newGroupId, name: newGroupName })
                   : controller.addLayoutGroup({ id: newGroupId, name: newGroupName });
@@ -637,7 +732,10 @@ export function LayoutEditor({
               type="button"
               aria-current={item.id === selectedGroupId ? "true" : undefined}
               data-layout-group-select={item.id}
-              onClick={() => controller.selectGroup(item.id)}
+              onClick={() => {
+                resetLayoutInteractionContext();
+                controller.selectGroup(item.id);
+              }}
             >
               <span>
                 <strong>{item.name || item.id}</strong>
@@ -812,7 +910,15 @@ export function LayoutEditor({
   return (
     <ToolWorkspace
       className="layout-react-shell"
-      dataAttributes={{ "layout-react-shell": "react", surface: surface, "layout-mode": mode }}
+      dataAttributes={{
+        "layout-react-shell": "react",
+        surface,
+        "layout-mode": mode,
+        "layout-pointer-interaction-active":
+          activePointerElement?.contextKey === interactionContextKey
+            ? activePointerElement.id
+            : undefined
+      }}
       header={<h2>{group?.name || group?.id || "Layouts"}</h2>}
       sidebar={sidebar}
       sidebarLabel="Layout groups"

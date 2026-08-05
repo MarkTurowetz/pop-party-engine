@@ -46,6 +46,7 @@ function FlowNodeMinimap({
   viewport: ViewportRect;
   stageRef: RefObject<HTMLDivElement | null>;
 }) {
+  const paintedWires = wirePaintLayers(wires);
   const scale = Math.min(
     (MINIMAP_W - MINIMAP_INSET * 2) / worldWidth,
     (MINIMAP_H - MINIMAP_INSET * 2) / worldHeight
@@ -147,22 +148,24 @@ function FlowNodeMinimap({
           </marker>
         </defs>
         <g transform={`translate(${MINIMAP_INSET} ${MINIMAP_INSET})`}>
-          {wires.map((wire) => {
-            return (
-              <path
-                key={wire.id}
-                data-minimap-wire-id={wire.id}
-                d={connectionRoutePath(wire.route, originX, originY, scale)}
-                fill="none"
-                stroke={wire.highlighted ? "#ff4fa3" : "#38bdf8"}
-                strokeLinecap="round"
-                strokeWidth={wire.highlighted ? 3 : 2}
-                opacity={wire.highlighted ? 0.95 : 0.72}
-                markerEnd={`url(#${wire.highlighted ? MINIMAP_WIRE_HIGHLIGHT_ARROW_ID : MINIMAP_WIRE_ARROW_ID})`}
-                data-wire-destination-arrow="true"
-              />
-            );
-          })}
+          {(["base", "highlighted"] as const).map((layer) => (
+            <g data-minimap-wire-paint-layer={layer} key={layer}>
+              {paintedWires[layer].map((wire) => (
+                <path
+                  key={wire.id}
+                  data-minimap-wire-id={wire.id}
+                  d={connectionRoutePath(wire.route, originX, originY, scale)}
+                  fill="none"
+                  stroke={wire.highlighted ? "#ff4fa3" : "#38bdf8"}
+                  strokeLinecap="round"
+                  strokeWidth={wire.highlighted ? 3 : 2}
+                  opacity={wire.highlighted ? 0.95 : 0.72}
+                  markerEnd={`url(#${wire.highlighted ? MINIMAP_WIRE_HIGHLIGHT_ARROW_ID : MINIMAP_WIRE_ARROW_ID})`}
+                  data-wire-destination-arrow="true"
+                />
+              ))}
+            </g>
+          ))}
         </g>
       </svg>
       {nodes.map((node) => (
@@ -643,6 +646,16 @@ function buildWirePaths(
   return paths;
 }
 
+export function wirePaintLayers<T extends { highlighted: boolean }>(wires: T[]): {
+  base: T[];
+  highlighted: T[];
+} {
+  return {
+    base: wires.filter((wire) => !wire.highlighted),
+    highlighted: wires.filter((wire) => wire.highlighted)
+  };
+}
+
 // Wire colors chosen to read against the dark node canvas: bright cyan by default,
 // hot pink for connections touching the selected node.
 const WIRE_COLOR = "#38bdf8";
@@ -828,6 +841,29 @@ function WireLabel({ wire }: { wire: WirePath }) {
       >
         {label}
       </text>
+    </g>
+  );
+}
+
+function MainWire({ wire }: { wire: WirePath }) {
+  return (
+    <g
+      data-wire-id={wire.id}
+      data-wire-highlighted={wire.highlighted ? "true" : undefined}
+      data-wire-route-kind={wire.route.kind}
+      data-wire-corridor-x={wire.route.corridor?.x}
+    >
+      <path
+        d={wire.d}
+        fill="none"
+        stroke={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : WIRE_COLOR}
+        strokeWidth={wire.highlighted ? 5 : 3.5}
+        strokeLinecap="round"
+        opacity={wire.highlighted ? 1 : 0.9}
+        markerEnd={`url(#${wire.highlighted ? MAIN_WIRE_HIGHLIGHT_ARROW_ID : MAIN_WIRE_ARROW_ID})`}
+        data-wire-destination-arrow="true"
+      />
+      <WireLabel wire={wire} />
     </g>
   );
 }
@@ -1156,6 +1192,7 @@ export function FlowNodeCanvas({
     if (selectedIds.has(connection.from)) connectedIds.add(connection.to);
   }
   const wires = buildWirePaths(connections, selectedIds, geometry);
+  const paintedWires = wirePaintLayers(wires);
   return (
     <section
       className="flow-react-node-canvas"
@@ -1289,27 +1326,16 @@ export function FlowNodeCanvas({
                     <path d="M 0 0 L 10 5 L 0 10 Z" fill={WIRE_HIGHLIGHT_COLOR} />
                   </marker>
                 </defs>
-                {wires.map((wire) => (
-                  <g
-                    key={wire.id}
-                    data-wire-id={wire.id}
-                    data-wire-highlighted={wire.highlighted ? "true" : undefined}
-                    data-wire-route-kind={wire.route.kind}
-                    data-wire-corridor-x={wire.route.corridor?.x}
-                  >
-                    <path
-                      d={wire.d}
-                      fill="none"
-                      stroke={wire.highlighted ? WIRE_HIGHLIGHT_COLOR : WIRE_COLOR}
-                      strokeWidth={wire.highlighted ? 5 : 3.5}
-                      strokeLinecap="round"
-                      opacity={wire.highlighted ? 1 : 0.9}
-                      markerEnd={`url(#${wire.highlighted ? MAIN_WIRE_HIGHLIGHT_ARROW_ID : MAIN_WIRE_ARROW_ID})`}
-                      data-wire-destination-arrow="true"
-                    />
-                    <WireLabel wire={wire} />
-                  </g>
-                ))}
+                <g data-wire-paint-layer="base">
+                  {paintedWires.base.map((wire) => (
+                    <MainWire key={wire.id} wire={wire} />
+                  ))}
+                </g>
+                <g data-wire-paint-layer="highlighted">
+                  {paintedWires.highlighted.map((wire) => (
+                    <MainWire key={wire.id} wire={wire} />
+                  ))}
+                </g>
                 {connectPreview ? (
                   <path
                     data-connect-preview
