@@ -129,8 +129,8 @@ module.exports = Object.freeze([
       controller: {
         layoutStateId: "fixture-plugin-input",
         bindings: [
-          { id: "hit", kind: "choice", layoutElementId: "fixture-hit-button", field: "choice", optionIndex: 0, autoSubmit: true },
-          { id: "stay", kind: "choice", layoutElementId: "fixture-stay-button", field: "choice", optionIndex: 1, autoSubmit: true }
+          { id: "hit", kind: "choice", layoutElementId: "fixture-hit-button", field: "choice", optionIndex: 0, interactionTargetComponentId: "controller-choice-option-interaction-ref", autoSubmit: true },
+          { id: "stay", kind: "choice", layoutElementId: "fixture-stay-button", field: "choice", optionIndex: 1, interactionTargetComponentId: "controller-choice-option-interaction-ref", autoSubmit: true }
         ]
       },
       recipients(context) { return context.players.slice(0, 1).map((player) => player.id); },
@@ -198,10 +198,10 @@ module.exports = Object.freeze([
       controller: {
         layoutStateId: "fixture-plugin-input",
         bindings: [
-          { id: "gestureAlpha", kind: "choice", layoutElementId: "fixture-hit-button", field: "choice", optionIndex: 0, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } },
-          { id: "gestureBeta", kind: "choice", layoutElementId: "fixture-stay-button", field: "choice", optionIndex: 1, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } },
-          { id: "gestureGamma", kind: "choice", layoutElementId: "fixture-extra-button-three", field: "choice", optionIndex: 2, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } },
-          { id: "gestureDelta", kind: "choice", layoutElementId: "fixture-extra-button-four", field: "choice", optionIndex: 3, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } }
+          { id: "gestureAlpha", kind: "choice", layoutElementId: "fixture-hit-button", field: "choice", optionIndex: 0, interactionTargetComponentId: "controller-choice-option-interaction-ref", autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } },
+          { id: "gestureBeta", kind: "choice", layoutElementId: "fixture-stay-button", field: "choice", optionIndex: 1, interactionTargetComponentId: "controller-choice-option-interaction-ref", autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } },
+          { id: "gestureGamma", kind: "choice", layoutElementId: "fixture-extra-button-three", field: "choice", optionIndex: 2, interactionTargetComponentId: "controller-choice-option-interaction-ref", autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } },
+          { id: "gestureDelta", kind: "choice", layoutElementId: "fixture-extra-button-four", field: "choice", optionIndex: 3, interactionTargetComponentId: "controller-choice-option-interaction-ref", autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } }
         ],
         submitted: {
           layoutStateId: "fixture-gesture-confirmed",
@@ -250,6 +250,7 @@ module.exports = Object.freeze([
           kind: "choiceCollection",
           layoutElementId: "fixture-target-collection",
           field: "targetPlayerId",
+          interactionTargetComponentId: "controller-choice-option-interaction-ref",
           item: {
             artCompositionId: "fixture-hold-choice-item",
             targetComponentId: "placeholder-text",
@@ -676,6 +677,9 @@ module.exports = Object.freeze([
     x: 160, y: 62, scale: 0.9, rotation: 0, opacity: 1, visible: true,
     defaultAnimationState: "Off", editorHidden: false, locked: false, transformOrigin: "center"
   };
+  const fixtureChoiceInteractionReference = structuredClone(
+    artManifest.compositions["controller-choice-option"].components.find((component) => component.id === "controller-choice-option-interaction-ref")
+  );
   artManifest.compositions["controller-choice-option"].components.unshift(structuredClone(fixtureHoldMeterReference));
   artManifest.compositions["fixture-hold-choice-item"] = {
     ...structuredClone(artManifest.compositions["controller-text-input-field"]),
@@ -684,6 +688,7 @@ module.exports = Object.freeze([
     isCustom: true,
     components: [
       { ...structuredClone(fixtureHoldMeterReference), x: 165, y: 111 },
+      { ...fixtureChoiceInteractionReference, x: 165, y: 50 },
       ...structuredClone(artManifest.compositions["controller-text-input-field"].components)
     ]
   };
@@ -2386,19 +2391,69 @@ module.exports = Object.freeze([
           return Boolean(layoutHost && control && layoutHost.contains(control));
         })()
       }));
-      const turnSubmit = await (await fetch(first.startup.localUrl + "/api/game-plugin-input", {
-        method: "POST",
-        headers: playerHeaders(one),
-        body: JSON.stringify({
-          stageCode: "PLUG",
-          playerId: one.player.id,
-          gameSessionId: oneInputLobby.gameSessionId,
-          actionId: turnInput.actionId,
-          visitId: turnInput.visitId,
-          submissionId: "turn-one",
-          payload: { choice: "hit" }
-        })
-      })).json();
+      const turnStagePage = await browser.newPage();
+      await turnStagePage.goto(first.startup.localUrl + "/stage?stage=PLUG", { waitUntil: "load" });
+      await turnStagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-turn-choice", null, { timeout: 15_000 });
+      const turnStageApplyBeforeInteraction = await turnStagePage.evaluate(() => window.__popPartyStageMetrics?.applyCount || 0);
+      const hitButton = controllerPage.locator('[data-game-plugin-input-binding="hit"]');
+      const fixedInteractionSnapshot = () => controllerPage.evaluate(() => {
+        const button = document.querySelector('[data-game-plugin-input-binding="hit"]');
+        const host = button?.closest('[data-controller-layout-element-id="fixture-hit-button"]');
+        const interaction = host?.querySelector('[data-art-component-id="controller-choice-option-interaction-ref"]');
+        const state = interaction?.querySelector('[data-art-component-id="controller-choice-option-state-ref"]');
+        return {
+          dispatchedState: button?.dataset.gamePluginInputInteractionState,
+          scale: Number.parseFloat(state?.style.getPropertyValue("--component-scale") || "0")
+        };
+      });
+      const fixedInteractionInitial = await fixedInteractionSnapshot();
+      await hitButton.evaluate((button) => {
+        window.__fixtureFixedChoiceButton = button;
+        const host = button.closest('[data-controller-layout-element-id="fixture-hit-button"]');
+        window.__fixtureFixedChoiceHost = host;
+        window.__fixtureFixedChoiceRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(host);
+        window.__fixtureFixedChoiceInteraction = host?.querySelector('[data-art-component-id="controller-choice-option-interaction-ref"]');
+      });
+      await hitButton.hover();
+      await controllerPage.waitForTimeout(150);
+      const fixedInteractionHover = await fixedInteractionSnapshot();
+      await hitButton.dispatchEvent("pointerdown", { pointerId: 71, pointerType: "mouse", button: 0, isPrimary: true });
+      await controllerPage.waitForTimeout(150);
+      const fixedInteractionDown = await fixedInteractionSnapshot();
+      await hitButton.dispatchEvent("pointerup", { pointerId: 71, pointerType: "mouse", button: 0, isPrimary: true });
+      await controllerPage.waitForTimeout(250);
+      const fixedInteractionUpSettled = await fixedInteractionSnapshot();
+      await controllerPage.mouse.move(1, 1);
+      await controllerPage.waitForTimeout(250);
+      const fixedInteractionReset = await fixedInteractionSnapshot();
+      await controllerPage.waitForTimeout(1_100);
+      const fixedInteractionHeartbeat = await controllerPage.evaluate(() => {
+        const button = document.querySelector('[data-game-plugin-input-binding="hit"]');
+        const host = button?.closest('[data-controller-layout-element-id="fixture-hit-button"]');
+        const interaction = host?.querySelector('[data-art-component-id="controller-choice-option-interaction-ref"]');
+        return {
+          buttonRetained: window.__fixtureFixedChoiceButton === button,
+          hostRetained: window.__fixtureFixedChoiceHost === host,
+          rendererRetained: window.__fixtureFixedChoiceRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(host),
+          interactionRetained: window.__fixtureFixedChoiceInteraction === interaction,
+          dispatchedState: button?.dataset.gamePluginInputInteractionState
+        };
+      });
+      const turnStageApplyAfterInteraction = await turnStagePage.evaluate(() => window.__popPartyStageMetrics?.applyCount || 0);
+      const fixedInteractionState = {
+        initial: { dispatchedState: fixedInteractionInitial.dispatchedState, scale: fixedInteractionInitial.scale },
+        hover: { dispatchedState: fixedInteractionHover.dispatchedState, scale: fixedInteractionHover.scale },
+        down: { dispatchedState: fixedInteractionDown.dispatchedState, scale: fixedInteractionDown.scale },
+        upSettled: { dispatchedState: fixedInteractionUpSettled.dispatchedState, scale: fixedInteractionUpSettled.scale },
+        reset: { dispatchedState: fixedInteractionReset.dispatchedState, scale: fixedInteractionReset.scale },
+        heartbeat: fixedInteractionHeartbeat,
+        stageApplyDelta: turnStageApplyAfterInteraction - turnStageApplyBeforeInteraction
+      };
+      const turnSubmitResponsePromise = controllerPage.waitForResponse((response) => (
+        response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
+      ));
+      await hitButton.click();
+      const turnSubmit = await (await turnSubmitResponsePromise).json();
       const submitPluginInputResponse = async (joined, lobby, payload, id) => {
         const response = await fetch(first.startup.localUrl + "/api/game-plugin-input", {
           method: "POST",
@@ -2493,6 +2548,7 @@ module.exports = Object.freeze([
         const style = meter ? getComputedStyle(meter) : null;
         const rect = meter?.getBoundingClientRect();
         return {
+          interactionState: button?.dataset.gamePluginInputInteractionState,
           phase: button?.dataset.gamePluginInputHoldPhase,
           progress: Number(button?.dataset.gamePluginInputHoldProgress),
           visible: Boolean(rect && rect.width > 0 && rect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden")
@@ -2549,6 +2605,7 @@ module.exports = Object.freeze([
         const fillRect = fill?.getBoundingClientRect();
         const style = meter ? getComputedStyle(meter) : null;
         return {
+          interactionState: button?.dataset.gamePluginInputInteractionState,
           phase: button?.dataset.gamePluginInputHoldPhase,
           progress: Number(button?.dataset.gamePluginInputHoldProgress),
           visible: Boolean(meterRect && meterRect.width > 0 && meterRect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden"),
@@ -2613,6 +2670,7 @@ module.exports = Object.freeze([
         retained: window.__fixtureHeldGestureButton === document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]'),
         holding: window.__fixtureHeldGestureButton?.dataset.gamePluginInputHolding,
         ariaBusy: window.__fixtureHeldGestureButton?.getAttribute("aria-busy"),
+        interactionState: window.__fixtureHeldGestureButton?.dataset.gamePluginInputInteractionState,
         phase: window.__fixtureHeldGestureButton?.dataset.gamePluginInputHoldPhase,
         progress: Number(window.__fixtureHeldGestureButton?.dataset.gamePluginInputHoldProgress),
         meterVisible: (() => {
@@ -2768,6 +2826,7 @@ module.exports = Object.freeze([
         phase: window.__fixtureDynamicRemovedButton?.dataset.gamePluginInputHoldPhase,
         progress: Number(window.__fixtureDynamicRemovedButton?.dataset.gamePluginInputHoldProgress),
         holding: window.__fixtureDynamicRemovedButton?.dataset.gamePluginInputHolding,
+        interactionState: window.__fixtureDynamicRemovedButton?.dataset.gamePluginInputInteractionState,
         disconnected: window.__fixtureDynamicRemovedButton?.isConnected === false
       }));
       await dynamicRetained.dispatchEvent("pointerdown", { pointerId: 191, pointerType: "touch", button: 0, isPrimary: true });
@@ -2812,6 +2871,7 @@ module.exports = Object.freeze([
           focused: document.activeElement === retained,
           holding: retained?.dataset.gamePluginInputHolding,
           ariaBusy: retained?.getAttribute("aria-busy"),
+          interactionState: retained?.dataset.gamePluginInputInteractionState,
           holdPhase: retained?.dataset.gamePluginInputHoldPhase,
           holdProgress: Number(retained?.dataset.gamePluginInputHoldProgress),
           removedDisconnected: removed?.isConnected === false,
@@ -2847,8 +2907,7 @@ module.exports = Object.freeze([
       await controllerPage.evaluate(() => window.__fixtureDynamicRemovedButton?.click());
       await controllerPage.waitForTimeout(100);
       const dynamicStaleSubmissionCount = dynamicBrowserSubmissionCount;
-      const dynamicStagePage = await browser.newPage();
-      await dynamicStagePage.goto(first.startup.localUrl + "/stage?stage=PLUG", { waitUntil: "load" });
+      const dynamicStagePage = turnStagePage;
       await dynamicStagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-dynamic-targets", null, { timeout: 15_000 });
       const dynamicStageBefore = await dynamicStagePage.evaluate(() => ({
         applies: window.__popPartyStageMetrics?.applyCount,
@@ -2877,7 +2936,6 @@ module.exports = Object.freeze([
       await dynamicSecondResponsePromise;
       await dynamicStagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-dynamic-done", null, { timeout: 15_000 });
       const dynamicBarrierAction = (await (await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby")).json()).lobby.action?.id;
-      await dynamicStagePage.close();
       await secondControllerPage.close();
       const transitionBurstActions = Array.from({ length: 24 }, (_, index) => ({
         id: "fixture-transition-burst-" + index,
@@ -2914,8 +2972,7 @@ module.exports = Object.freeze([
         headers: stageHeaders,
         body: JSON.stringify({ flow: wagerFlow })
       });
-      const stagePage = await browser.newPage();
-      await stagePage.goto(first.startup.localUrl + "/stage?stage=PLUG", { waitUntil: "load" });
+      const stagePage = turnStagePage;
       try {
         await stagePage.waitForFunction(() => (
           window.currentStageState?.action?.id === "fixture-private-wager"
@@ -3701,6 +3758,7 @@ module.exports = Object.freeze([
         controllerInputViewState: controllerInputState.viewStateId,
         controllerInputAction: controllerInputState.actionId,
         controllerLayoutControlBound: controllerInputState.layoutHostActive,
+        fixedInteractionState,
         waitingPlayerInputHidden: twoInputLobby.gamePlugin?.input == null,
         inputBranchSelected: turnSubmit.lobby?.lastDecisionTrace?.selectedBranch,
         inputBranchedAction: turnSubmit.lobby?.action?.id,
@@ -4014,6 +4072,22 @@ module.exports = Object.freeze([
     || development.controllerInputViewState !== "gamePluginInput"
     || development.controllerInputAction !== "fixture-turn-choice"
     || !development.controllerLayoutControlBound
+    || development.fixedInteractionState?.initial?.dispatchedState !== "Default"
+    || development.fixedInteractionState?.initial?.scale !== 1
+    || development.fixedInteractionState?.hover?.dispatchedState !== "HoverIn"
+    || !(development.fixedInteractionState?.hover?.scale > 1)
+    || development.fixedInteractionState?.down?.dispatchedState !== "Down"
+    || !(development.fixedInteractionState?.down?.scale < 1)
+    || development.fixedInteractionState?.upSettled?.dispatchedState !== "HoverIn"
+    || !(development.fixedInteractionState?.upSettled?.scale > 1)
+    || development.fixedInteractionState?.reset?.dispatchedState !== "Default"
+    || development.fixedInteractionState?.reset?.scale !== 1
+    || !development.fixedInteractionState?.heartbeat?.buttonRetained
+    || !development.fixedInteractionState?.heartbeat?.hostRetained
+    || !development.fixedInteractionState?.heartbeat?.rendererRetained
+    || !development.fixedInteractionState?.heartbeat?.interactionRetained
+    || development.fixedInteractionState?.heartbeat?.dispatchedState !== "Default"
+    || development.fixedInteractionState?.stageApplyDelta !== 0
     || !development.waitingPlayerInputHidden
     || development.inputBranchSelected !== "input-hit"
     || development.inputBranchedAction !== "fixture-input-hit"
@@ -4026,9 +4100,11 @@ module.exports = Object.freeze([
     || !development.gestureSubmittedAfterHeartbeat?.rendererRetained
     || !development.gesturePersonalizedTextCorrect
     || development.quickTapProgressState?.phase !== "delay"
+    || development.quickTapProgressState?.interactionState !== "Down"
     || development.quickTapProgressState?.progress !== 0
     || development.quickTapProgressState?.visible
     || development.partialHoldProgressState?.phase !== "progress"
+    || development.partialHoldProgressState?.interactionState !== "Down"
     || !(development.partialHoldProgressState?.progress > 0.2 && development.partialHoldProgressState?.progress < 0.7)
     || !development.partialHoldProgressState?.visible
     || !(development.partialHoldProgressState?.fillWidth > 1)
@@ -4050,6 +4126,7 @@ module.exports = Object.freeze([
     || !development.gestureHoldHeartbeatState?.retained
     || development.gestureHoldHeartbeatState?.holding !== "true"
     || development.gestureHoldHeartbeatState?.ariaBusy !== "true"
+    || development.gestureHoldHeartbeatState?.interactionState !== "Down"
     || development.gestureHoldHeartbeatState?.phase !== "progress"
     || !(development.gestureHoldHeartbeatState?.progress > 0.4 && development.gestureHoldHeartbeatState?.progress < 0.9)
     || !development.gestureHoldHeartbeatState?.meterVisible
@@ -4079,11 +4156,13 @@ module.exports = Object.freeze([
     || !development.dynamicReconcileState?.focused
     || development.dynamicReconcileState?.holding !== "true"
     || development.dynamicReconcileState?.ariaBusy !== "true"
+    || development.dynamicReconcileState?.interactionState !== "Down"
     || development.dynamicReconcileState?.holdPhase !== "progress"
     || !(development.dynamicReconcileState?.holdProgress >= development.dynamicProgressBeforeHeartbeat?.progress)
     || !development.dynamicReconcileState?.removedDisconnected
     || !development.dynamicReconcileState?.removedDisabled
     || development.dynamicReconcileState?.removedStale !== "true"
+    || development.dynamicRemovedHoldState?.interactionState !== "Default"
     || !development.dynamicReconcileState?.order?.at(-1)?.endsWith("-target-added")
     || !development.dynamicReconcileState?.longLabel?.toLowerCase().includes("very long private target label")
     || !development.dynamicReconcileState?.overflowed

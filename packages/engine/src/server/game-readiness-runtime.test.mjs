@@ -258,7 +258,7 @@ describe("game readiness runtime", () => {
     });
   });
 
-  it("fails readiness closed when fixed or collection hold progress cannot resolve its authored timeline", async () => {
+  it("fails readiness closed when fixed or collection interaction and hold Art contracts cannot resolve their authored timelines", async () => {
     const progress = {
       delaySeconds: 0.5,
       targetComponentId: "hold-meter-ref",
@@ -274,10 +274,12 @@ describe("game readiness runtime", () => {
           bindings: [
             {
               id: "fixed", kind: "choice", layoutElementId: "fixed-choice", field: "choice", optionIndex: 0,
+              interactionTargetComponentId: "interaction-ref",
               holdSubmit: { seconds: 1.5, submitValues: {}, progress }
             },
             {
               id: "collection", kind: "choiceCollection", layoutElementId: "choice-list", field: "choice",
+              interactionTargetComponentId: "interaction-ref",
               item: { artCompositionId: "choice-button", targetComponentId: "label" },
               holdSubmit: { seconds: 1.5, submitValues: {}, progress }
             }
@@ -302,6 +304,19 @@ describe("game readiness runtime", () => {
         { frame: 11, props: { scale: 1 } }
       ] }]
     };
+    const interactionTimeline = {
+      fps: 30,
+      frameCount: 13,
+      labels: [
+        { name: "Default", frame: 0 },
+        { name: "Down", frame: 1 },
+        { name: "Up", frame: 4 },
+        { name: "HoverIn", frame: 7 },
+        { name: "HoverOut", frame: 10 }
+      ],
+      commands: [0, 3, 6, 9, 12].map((frame) => ({ frame, type: "stop" })),
+      tracks: []
+    };
     const gameData = {
       defaultStageLayouts: { states: [] },
       defaultControllerLayouts: {
@@ -318,6 +333,7 @@ describe("game readiness runtime", () => {
           compositionKind: "gameObject",
           components: [
             { id: "label", kind: "text" },
+            { id: "interaction-ref", kind: "reference", artCompositionId: "choice-interaction" },
             { id: "hold-meter-ref", kind: "reference", artCompositionId: "hold-meter" }
           ]
         },
@@ -327,12 +343,26 @@ describe("game readiness runtime", () => {
           compositionKind: "prefab",
           components: [{ id: "meter-fill", kind: "shape" }],
           timeline: meterTimeline
+        },
+        {
+          id: "choice-interaction",
+          surface: "controller",
+          compositionKind: "prefab",
+          components: [{ id: "interaction-shape", kind: "shape" }],
+          timeline: interactionTimeline
         }
       ]
     };
     const validateRelease = createGameReleaseValidator({ gameDefinition: game, engineVersion: "1.0.0" });
 
     await expect(validateRelease({ gameData, release, snapshot })).resolves.toMatchObject({ release: { contentRevision: "content-1" } });
+    gameData.defaultArtCompositions[2].timeline.labels = gameData.defaultArtCompositions[2].timeline.labels
+      .filter((label) => label.name !== "HoverOut");
+    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({
+      code: "PLUGIN_INPUT_INTERACTION_TIMELINE_INVALID",
+      details: { missingLabels: ["HoverOut"] }
+    });
+    gameData.defaultArtCompositions[2].timeline.labels.push({ name: "HoverOut", frame: 10 });
     gameData.defaultArtCompositions[1].timeline.labels = gameData.defaultArtCompositions[1].timeline.labels
       .filter((label) => label.name !== "HoldComplete");
     await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({

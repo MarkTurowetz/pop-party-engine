@@ -144,6 +144,14 @@ announcing every animation frame. Cancellation resets the target to `Off`.
 Readiness rejects unknown components, missing labels, reversed ranges, and a
 delay outside the hold duration.
 
+A fixed `choice` or `choiceCollection` may also declare
+`interactionTargetComponentId`. The target must be a component in that choice's
+Controller Game Object with the standard authored labels `Default`, `HoverIn`,
+`HoverOut`, `Down`, and `Up`. The engine dispatches those labels for pointer
+interaction only; selection remains the choice host's independent
+`Default`/`Selected` lifecycle and CSS state. Unchanged controls retain their
+current interaction timeline across heartbeats.
+
 Variable-cardinality choices use one Tools-authored Controller Layout collection
 instead of fixed placeholder slots. The collection owns its bounds, direction,
 gap, distribution, alignment, padding, overflow, and local z-order. A
@@ -156,6 +164,7 @@ item template:
   kind: "choiceCollection",
   layoutElementId: "target-options",
   field: "targetPlayerId",
+  interactionTargetComponentId: "choice-interaction",
   item: {
     artCompositionId: "my-game-choice-button",
     targetComponentId: "option-text",

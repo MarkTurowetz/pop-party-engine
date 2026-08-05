@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1291",
+  "version": "1.0.17.1292",
   "baseVersion": "1.0.17",
-  "buildNumber": 1291,
-  "commit": "163b13c9",
-  "branch": "codex/release-engine-1.4.6",
-  "generatedAt": "2026-08-05T05:58:07.870Z"
+  "buildNumber": 1292,
+  "commit": "9af5a619",
+  "branch": "codex/plugin-choice-interaction-1.4.7",
+  "generatedAt": "2026-08-05T19:33:21.147Z"
 }

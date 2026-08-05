@@ -167,6 +167,7 @@ export type GameInputControllerBinding =
       kind: "choiceCollection";
       layoutElementId: string;
       field: string;
+      interactionTargetComponentId?: string;
       item: {
         artCompositionId: string;
         targetComponentId: string;
