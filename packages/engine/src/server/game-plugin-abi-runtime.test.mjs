@@ -308,6 +308,7 @@ describe("game plugin ABI", () => {
       kind: "choiceCollection",
       layoutElementId: "target-collection",
       field: "target",
+      interactionTargetComponentId: "choice-interaction",
       item: {
         artCompositionId: "fixture-controller-target-option",
         targetComponentId: "target-label",
@@ -316,6 +317,15 @@ describe("game plugin ABI", () => {
       },
       autoSubmit: true
     }))).not.toThrow();
+    expect(() => createGamePluginRegistry().install(pluginWithBinding({
+      id: "targets",
+      kind: "choiceCollection",
+      layoutElementId: "target-collection",
+      field: "target",
+      interactionTargetComponentId: "",
+      item: { artCompositionId: "fixture-controller-target-option", targetComponentId: "target-label" },
+      autoSubmit: true
+    }))).toThrow(/interactionTargetComponentId must be non-empty/);
     expect(() => createGamePluginRegistry().install(pluginWithBinding({
       id: "targets",
       kind: "choiceCollection",

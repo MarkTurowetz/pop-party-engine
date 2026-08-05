@@ -264,10 +264,8 @@ function validateInputRegistration(id, value) {
         if (binding.kind === "choice" && (!Number.isInteger(Number(binding.optionIndex)) || Number(binding.optionIndex) < 0)) {
           throw new Error(`Input "${id}" choice binding "${bindingId}" requires a non-negative optionIndex`);
         }
-        if (binding.kind === "choice") {
-          if (binding.interactionTargetComponentId !== undefined && !String(binding.interactionTargetComponentId || "").trim()) {
-            throw new Error(`Input "${id}" choice binding "${bindingId}" interactionTargetComponentId must be non-empty`);
-          }
+        if (binding.interactionTargetComponentId !== undefined && !String(binding.interactionTargetComponentId || "").trim()) {
+          throw new Error(`Input "${id}" ${binding.kind} binding "${bindingId}" interactionTargetComponentId must be non-empty`);
         }
         if (binding.kind === "choiceCollection") {
           assertPlainObject(binding.item, `Input "${id}" choiceCollection binding "${bindingId}" item`);

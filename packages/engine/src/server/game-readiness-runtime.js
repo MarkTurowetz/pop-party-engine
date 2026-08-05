@@ -127,6 +127,44 @@ function validateHoldProgressArtContract({ registrationId, binding, compositionI
   }
 }
 
+const CONTROLLER_INTERACTION_LABELS = Object.freeze(["Default", "HoverIn", "HoverOut", "Down", "Up"]);
+
+function validateInteractionArtContract({ registrationId, binding, compositionId, compositions }) {
+  const targetComponentId = String(binding.interactionTargetComponentId || "").trim();
+  if (!targetComponentId) return;
+  const composition = compositions.get(String(compositionId || ""));
+  if (!composition || String(composition.surface || "").toLowerCase() !== "controller") {
+    readinessFailure("PLUGIN_INPUT_INTERACTION_COMPOSITION_INVALID", `Controller input "${registrationId}" interaction target references an unknown or wrong-surface Game Object`, {
+      inputId: registrationId,
+      bindingId: String(binding.id || ""),
+      compositionId: String(compositionId || "")
+    });
+  }
+  const component = artComponentForId(composition.components, targetComponentId, compositions, new Set([String(compositionId || "")]));
+  if (!component) {
+    readinessFailure("PLUGIN_INPUT_INTERACTION_TARGET_INVALID", `Controller input "${registrationId}" interaction target references an unknown Art component`, {
+      inputId: registrationId,
+      bindingId: String(binding.id || ""),
+      compositionId: String(compositionId || ""),
+      targetComponentId
+    });
+  }
+  const timeline = holdProgressTimelineForComponent(component, compositions);
+  const missingLabels = CONTROLLER_INTERACTION_LABELS.filter((label) => (
+    timeline ? tryFrameForTimelineLabel(timeline, label) === null : true
+  ));
+  if (missingLabels.length) {
+    readinessFailure("PLUGIN_INPUT_INTERACTION_TIMELINE_INVALID", `Controller input "${registrationId}" interaction target requires the standard authored interaction labels`, {
+      inputId: registrationId,
+      bindingId: String(binding.id || ""),
+      compositionId: String(compositionId || ""),
+      targetComponentId,
+      requiredLabels: CONTROLLER_INTERACTION_LABELS,
+      missingLabels
+    });
+  }
+}
+
 function controllerLayoutElementsForInput(gameData, layoutStateId = "") {
   const layouts = gameData.defaultControllerLayouts || {};
   const stateElements = layoutStateId
@@ -139,7 +177,7 @@ function controllerLayoutElementsForInput(gameData, layoutStateId = "") {
   ];
 }
 
-function validateInputHoldProgressContentContracts(game, gameData) {
+function validateInputControllerArtContracts(game, gameData) {
   const compositions = new Map((gameData.defaultArtCompositions || []).map((composition) => [String(composition.id || ""), composition]));
   for (const registration of game.registrations?.inputs || []) {
     const controller = registration.value.controller || {};
@@ -151,8 +189,14 @@ function validateInputHoldProgressContentContracts(game, gameData) {
     ];
     for (const group of groups) {
       const elements = controllerLayoutElementsForInput(gameData, group.layoutStateId);
-      for (const binding of group.bindings.filter((candidate) => candidate.holdSubmit?.progress)) {
+      for (const binding of group.bindings.filter((candidate) => candidate.holdSubmit?.progress || candidate.interactionTargetComponentId)) {
         if (binding.kind === "choiceCollection") {
+          validateInteractionArtContract({
+            registrationId: registration.id,
+            binding,
+            compositionId: binding.item?.artCompositionId,
+            compositions
+          });
           validateHoldProgressArtContract({
             registrationId: registration.id,
             binding,
@@ -163,7 +207,7 @@ function validateInputHoldProgressContentContracts(game, gameData) {
         }
         const targets = elements.filter((element) => String(element.id || "") === String(binding.layoutElementId || ""));
         if (!targets.length) {
-          readinessFailure("PLUGIN_INPUT_HOLD_PROGRESS_LAYOUT_TARGET_INVALID", `Controller input "${registration.id}" hold progress targets an unknown Controller Layout element`, {
+          readinessFailure("PLUGIN_INPUT_CONTROLLER_ART_LAYOUT_TARGET_INVALID", `Controller input "${registration.id}" authored Controller Art binding targets an unknown Controller Layout element`, {
             inputId: registration.id,
             bindingId: String(binding.id || ""),
             layoutElementId: String(binding.layoutElementId || ""),
@@ -171,6 +215,12 @@ function validateInputHoldProgressContentContracts(game, gameData) {
           });
         }
         for (const target of targets) {
+          validateInteractionArtContract({
+            registrationId: registration.id,
+            binding,
+            compositionId: target.artCompositionId,
+            compositions
+          });
           validateHoldProgressArtContract({
             registrationId: registration.id,
             binding,
@@ -271,6 +321,12 @@ function validateControllerInteractionContentContracts(game, gameData) {
         if (!artComponentForId(composition.components, componentId, compositions, new Set([compositionId]))) {
           readinessFailure("PLUGIN_CONTROLLER_INTERACTION_COMPONENT_INVALID", `Controller interaction "${registration.id}" choice item targets an unknown Art component`, { interactionId: registration.id, compositionId, targetComponentId: componentId });
         }
+        validateInteractionArtContract({
+          registrationId: registration.id,
+          binding,
+          compositionId,
+          compositions
+        });
         validateHoldProgressArtContract({
           registrationId: registration.id,
           binding,
@@ -289,16 +345,12 @@ function validateControllerInteractionContentContracts(game, gameData) {
       }
       if (binding.kind === "choice") {
         const compositionId = String(target.artCompositionId || "");
-        const composition = compositions.get(compositionId);
-        for (const componentId of [binding.interactionTargetComponentId].filter(Boolean)) {
-          if (!composition || !artComponentForId(composition.components, String(componentId), compositions, new Set([compositionId]))) {
-            readinessFailure("PLUGIN_CONTROLLER_INTERACTION_COMPONENT_INVALID", `Controller interaction "${registration.id}" choice binding targets an unknown Art component`, {
-              interactionId: registration.id,
-              compositionId,
-              targetComponentId: String(componentId)
-            });
-          }
-        }
+        validateInteractionArtContract({
+          registrationId: registration.id,
+          binding,
+          compositionId,
+          compositions
+        });
         validateHoldProgressArtContract({
           registrationId: registration.id,
           binding,
@@ -332,7 +384,7 @@ function createGameReleaseValidator(options = {}) {
     const semanticRoles = semanticRolesFrom(snapshot);
     assertExpectedSemanticRoles(game.semanticRoles, semanticRoles);
     validateRendererContentContracts(game, gameData, semanticRoles);
-    validateInputHoldProgressContentContracts(game, gameData);
+    validateInputControllerArtContracts(game, gameData);
     validateControllerInteractionContentContracts(game, gameData);
     for (const registration of game.registrations?.validators || []) {
       if (typeof registration.value !== "function") readinessFailure("PLUGIN_VALIDATOR_INVALID", "Game validator registration is not callable", { id: registration.id });

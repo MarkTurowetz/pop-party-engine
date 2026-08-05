@@ -787,6 +787,27 @@ function playControllerButtonInteraction(target: El | null, animation: unknown):
   return renderer?.playComponent?.(`${compositionId}-interaction-ref`, cleanAnimation, { instant: false }) || 0;
 }
 
+function playControllerPluginInputInteraction(
+  target: El | null,
+  targetComponentId: unknown,
+  animation: unknown,
+  options: Dict = {}
+): number {
+  if (!target) return 0;
+  const cleanTargetComponentId = String(targetComponentId || "").trim();
+  const cleanAnimation = String(animation || "").trim();
+  if (!cleanTargetComponentId || !controllerButtonInteractionAnimations.has(cleanAnimation)) return 0;
+  const renderer = artRendererForLayoutHost(target);
+  const playbackOptions = {
+    instant: options.instant === true,
+    complete: typeof options.complete === "function" ? options.complete : undefined
+  };
+  if (options.instant === true) {
+    return renderer?.stopAtComponent?.(cleanTargetComponentId, cleanAnimation, playbackOptions) || 0;
+  }
+  return renderer?.playComponent?.(cleanTargetComponentId, cleanAnimation, playbackOptions) || 0;
+}
+
 function setControllerButtonDisabledState(target: El | null, disabled: boolean): number {
   if (!target) return 0;
   const compositionId = controllerWidgetArtCompositionIdForTarget(target);
@@ -795,12 +816,9 @@ function setControllerButtonDisabledState(target: El | null, disabled: boolean):
   return renderer?.stopAtComponent?.(`${compositionId}-state-ref`, disabled ? "Disabled" : "Default", { instant: true }) || 0;
 }
 
-function setControllerPluginInputChoiceState(target: El | null, selected: boolean, targetComponentId = ""): number {
+function setControllerPluginInputChoiceState(target: El | null, selected: boolean): number {
   if (!target) return 0;
   const renderer = artRendererForLayoutHost(target);
-  if (targetComponentId) {
-    return renderer?.stopAtComponent?.(targetComponentId, selected ? "Selected" : "Default", { instant: true }) || 0;
-  }
   return renderer?.stopAtAll?.(selected ? "Selected" : "Default", { instant: true }) || 0;
 }
 
@@ -1546,6 +1564,7 @@ const PartyGameLayoutText = {
   setControllerButtonText: setControllerLayoutButtonText,
   setControllerButtonLifecycleState,
   playControllerButtonInteraction,
+  playControllerPluginInputInteraction,
   setControllerButtonDisabledState,
   setControllerPluginInputChoiceState,
   setControllerPluginInputHoldingState,
@@ -1574,7 +1593,7 @@ Object.assign(w(), {
   renderControllerArtInstance, renderStageArtInstance, setControllerLayoutArtElementShownForAction, setControllerLayoutGameObjectShownForAction, setControllerLayoutText, setControllerLayoutTextShown,
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   disposeControllerButtonArt, setControllerButtonLifecycleState,
-  playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPluginInputChoiceState, setControllerPluginInputHoldingState,
+  playControllerButtonInteraction, playControllerPluginInputInteraction, setControllerButtonDisabledState, setControllerPluginInputChoiceState, setControllerPluginInputHoldingState,
   setControllerPluginInputHoldProgress,
   setControllerPluginInputCollectionState,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,

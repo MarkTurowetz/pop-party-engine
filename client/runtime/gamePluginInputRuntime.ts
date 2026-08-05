@@ -113,6 +113,14 @@ export function createGamePluginInputView(options: {
     animationFrame: number | null;
   };
   const activeHolds = new Map<HTMLButtonElement, ActiveHold>();
+  type ChoiceInteractionState = {
+    hovered: boolean;
+    pressed: boolean;
+    pointerId: number | null;
+    identity: string;
+    commandToken: number;
+  };
+  const choiceInteractionStates = new WeakMap<HTMLButtonElement, ChoiceInteractionState>();
   const suppressedHosts = new Set<HTMLElement>();
   let visitKey = "";
   let renderModeKey = "";
@@ -222,10 +230,9 @@ export function createGamePluginInputView(options: {
         );
         return;
       }
-      if (hostChanged) (runtime().setControllerPluginInputChoiceState as ((target: HTMLElement, selected: boolean, componentId?: string) => unknown) | undefined)?.(
+      if (hostChanged) (runtime().setControllerPluginInputChoiceState as ((target: HTMLElement, selected: boolean) => unknown) | undefined)?.(
         host,
-        hostSelected,
-        controlBindings.get(button)?.interactionTargetComponentId
+        hostSelected
       );
       return;
     }
@@ -262,6 +269,92 @@ export function createGamePluginInputView(options: {
     return button.dataset.gamePluginChoiceCollectionItem === "true"
       ? button
       : button.parentElement as HTMLElement | null;
+  }
+
+  function interactionVisualHost(button: HTMLButtonElement): HTMLElement | null {
+    return button.dataset.gamePluginChoiceCollectionItem === "true"
+      ? button
+      : button.parentElement as HTMLElement | null;
+  }
+
+  function interactionState(button: HTMLButtonElement): ChoiceInteractionState {
+    const existing = choiceInteractionStates.get(button);
+    if (existing) return existing;
+    const created: ChoiceInteractionState = {
+      hovered: false,
+      pressed: false,
+      pointerId: null,
+      identity: "",
+      commandToken: 0
+    };
+    choiceInteractionStates.set(button, created);
+    return created;
+  }
+
+  function dispatchChoiceInteraction(
+    button: HTMLButtonElement,
+    animation: "Default" | "HoverIn" | "HoverOut" | "Down" | "Up",
+    dispatchOptions: { instant?: boolean; settle?: boolean } = {}
+  ): void {
+    const binding = controlBindings.get(button);
+    const targetComponentId = String(binding?.interactionTargetComponentId || "").trim();
+    const host = interactionVisualHost(button);
+    if (!targetComponentId || !host) return;
+    const state = interactionState(button);
+    const token = ++state.commandToken;
+    button.dataset.gamePluginInputInteractionState = animation;
+    host.dataset.gamePluginInputInteractionState = animation;
+    const complete = dispatchOptions.settle
+      ? () => {
+          if (state.commandToken !== token) return;
+          const settled = state.hovered
+            && !button.disabled
+            && collectionControlIsAuthoritative(button)
+            ? "HoverIn"
+            : "Default";
+          dispatchChoiceInteraction(button, settled, { instant: settled === "Default" });
+        }
+      : undefined;
+    (runtime().playControllerPluginInputInteraction as ((
+      target: HTMLElement,
+      componentId: string,
+      state: string,
+      options?: Dict
+    ) => unknown) | undefined)?.(
+      host,
+      targetComponentId,
+      animation,
+      { instant: dispatchOptions.instant === true, complete }
+    );
+  }
+
+  function initializeChoiceInteraction(button: HTMLButtonElement): void {
+    const binding = controlBindings.get(button);
+    const targetComponentId = String(binding?.interactionTargetComponentId || "").trim();
+    if (!targetComponentId) return;
+    const host = interactionVisualHost(button);
+    if (!host) return;
+    const rendererIdentity = button.dataset.gamePluginChoiceRendererKey
+      || host.dataset.layoutRendererKey
+      || host.dataset.controllerLayoutVisibilityKey
+      || binding?.layoutElementId
+      || "";
+    const identity = `${visitKey}:${binding?.id || ""}:${rendererIdentity}:${targetComponentId}`;
+    const state = interactionState(button);
+    if (state.identity === identity) return;
+    state.identity = identity;
+    state.hovered = false;
+    state.pressed = false;
+    state.pointerId = null;
+    dispatchChoiceInteraction(button, "Default", { instant: true });
+  }
+
+  function resetChoiceInteraction(button: HTMLButtonElement): void {
+    const state = interactionState(button);
+    state.hovered = false;
+    state.pressed = false;
+    state.pointerId = null;
+    dispatchChoiceInteraction(button, "Default", { instant: true });
   }
 
   function applyHoldProgress(
@@ -383,6 +476,7 @@ export function createGamePluginInputView(options: {
         const unavailable = control.dataset.gamePluginInputDisabled === "true"
           || control.dataset.gamePluginInputStale === "true";
         control.disabled = pending || input.submitted === true || unavailable;
+        if (control instanceof HTMLButtonElement && control.disabled) resetChoiceInteraction(control);
         if (control instanceof HTMLButtonElement && control.dataset.gamePluginChoiceCollectionItem === "true") {
           control.dataset.gamePluginInputSubmitted = pending || input.submitted === true ? "true" : "false";
           control.setAttribute("aria-disabled", control.disabled ? "true" : "false");
@@ -400,9 +494,12 @@ export function createGamePluginInputView(options: {
   }
 
   function applyCollectionVisualState(button: HTMLButtonElement): void {
+    const state = collectionVisualState(button);
+    if (button.dataset.gamePluginInputArtState === state) return;
+    button.dataset.gamePluginInputArtState = state;
     (runtime().setControllerPluginInputCollectionState as ((target: HTMLElement, state: string) => unknown) | undefined)?.(
       button,
-      collectionVisualState(button)
+      state
     );
   }
 
@@ -417,6 +514,7 @@ export function createGamePluginInputView(options: {
 
   function clearCollectionControl(button: HTMLButtonElement, remove = true): void {
     cancelHold(button, true);
+    resetChoiceInteraction(button);
     button.disabled = true;
     button.dataset.gamePluginInputStale = "true";
     button.setAttribute("aria-disabled", "true");
@@ -476,43 +574,90 @@ export function createGamePluginInputView(options: {
   function bindChoiceControlListeners(button: HTMLButtonElement): void {
     if (button.dataset.gamePluginInputListenerBound === "true") return;
     button.dataset.gamePluginInputListenerBound = "true";
+    button.addEventListener("pointerenter", () => {
+      const state = interactionState(button);
+      state.hovered = true;
+      if (!button.disabled && collectionControlIsAuthoritative(button) && !state.pressed) {
+        dispatchChoiceInteraction(button, "HoverIn");
+      }
+    });
+    button.addEventListener("pointerleave", () => {
+      const state = interactionState(button);
+      state.hovered = false;
+      if (!button.disabled && collectionControlIsAuthoritative(button)) {
+        dispatchChoiceInteraction(button, "HoverOut", { settle: true });
+      }
+    });
     button.addEventListener("pointerdown", (event) => {
       const current = controlBindings.get(button);
       if (
-        !current?.holdSubmit
+        !current
         || button.disabled
-        || activeHolds.has(button)
         || !collectionControlIsAuthoritative(button)
         || event.isPrimary === false
         || (event.pointerType !== "touch" && event.button !== 0)
       ) return;
-      const holdSubmit = current.holdSubmit;
-      button.dataset.gamePluginInputSuppressClick = "false";
-      try { button.setPointerCapture(event.pointerId); } catch { /* Synthetic pointers may not be capturable. */ }
-      setHolding(button, true);
-      if (holdSubmit.progress) applyHoldProgress(button, holdSubmit.progress, null, "delay");
-      const thresholdMs = holdSubmit.seconds * 1000;
-      const hold: ActiveHold = {
-        pointerId: event.pointerId,
-        bindingId: current.id,
-        startedAt: now(),
-        thresholdMs,
-        progress: holdSubmit.progress,
-        delayTimer: null,
-        completionTimer: 0 as unknown as ReturnType<typeof setTimeout>,
-        animationFrame: null
-      };
-      activeHolds.set(button, hold);
-      if (hold.progress) {
-        const delayMs = hold.progress.delaySeconds * 1000;
-        if (delayMs <= 0) startHoldProgressAnimation(button, hold);
-        else hold.delayTimer = setTimeout(() => startHoldProgressAnimation(button, hold), delayMs);
+      if (current.holdSubmit && !activeHolds.has(button)) {
+        const holdSubmit = current.holdSubmit;
+        button.dataset.gamePluginInputSuppressClick = "false";
+        try { button.setPointerCapture(event.pointerId); } catch { /* Synthetic pointers may not be capturable. */ }
+        setHolding(button, true);
+        if (holdSubmit.progress) applyHoldProgress(button, holdSubmit.progress, null, "delay");
+        const thresholdMs = holdSubmit.seconds * 1000;
+        const hold: ActiveHold = {
+          pointerId: event.pointerId,
+          bindingId: current.id,
+          startedAt: now(),
+          thresholdMs,
+          progress: holdSubmit.progress,
+          delayTimer: null,
+          completionTimer: 0 as unknown as ReturnType<typeof setTimeout>,
+          animationFrame: null
+        };
+        activeHolds.set(button, hold);
+        if (hold.progress) {
+          const delayMs = hold.progress.delaySeconds * 1000;
+          if (delayMs <= 0) startHoldProgressAnimation(button, hold);
+          else hold.delayTimer = setTimeout(() => startHoldProgressAnimation(button, hold), delayMs);
+        }
+        hold.completionTimer = setTimeout(() => completeHold(button, hold, current), thresholdMs);
       }
-      hold.completionTimer = setTimeout(() => completeHold(button, hold, current), thresholdMs);
+      const state = interactionState(button);
+      state.pressed = true;
+      state.pointerId = event.pointerId;
+      dispatchChoiceInteraction(button, "Down");
     });
-    button.addEventListener("pointerup", () => cancelHold(button));
-    button.addEventListener("pointercancel", () => cancelHold(button, true));
-    button.addEventListener("lostpointercapture", () => cancelHold(button, true));
+    button.addEventListener("pointerup", (event) => {
+      cancelHold(button);
+      const state = interactionState(button);
+      if (state.pointerId !== null && state.pointerId !== event.pointerId) return;
+      state.pressed = false;
+      state.pointerId = null;
+      if (!button.disabled && collectionControlIsAuthoritative(button)) {
+        dispatchChoiceInteraction(button, "Up", { settle: true });
+      }
+    });
+    const cancelPointerInteraction = () => {
+      cancelHold(button, true);
+      const state = interactionState(button);
+      if (!state.pressed) return;
+      state.pressed = false;
+      state.pointerId = null;
+      state.hovered = false;
+      dispatchChoiceInteraction(button, "HoverOut", { settle: true });
+    };
+    button.addEventListener("pointercancel", cancelPointerInteraction);
+    button.addEventListener("lostpointercapture", cancelPointerInteraction);
+    button.addEventListener("blur", () => {
+      cancelHold(button, true);
+      const state = interactionState(button);
+      const wasActive = state.pressed || state.hovered;
+      state.pressed = false;
+      state.pointerId = null;
+      state.hovered = false;
+      if (wasActive) dispatchChoiceInteraction(button, "HoverOut", { settle: true });
+      else dispatchChoiceInteraction(button, "Default", { instant: true });
+    });
     button.addEventListener("click", () => {
       if (!collectionControlIsAuthoritative(button) || button.disabled) return;
       if (button.dataset.gamePluginInputSuppressClick === "true") {
@@ -589,6 +734,7 @@ export function createGamePluginInputView(options: {
     if (!button.parentElement) target.host.appendChild(button);
     if (binding.kind === "choice") {
       setChoiceSelected(button, values.get(String(binding.field || "")) === button.dataset.gamePluginInputOption);
+      initializeChoiceInteraction(button);
     }
   }
 
@@ -711,6 +857,7 @@ export function createGamePluginInputView(options: {
       );
       setChoiceSelected(button, values.get(String(binding.field || "")) === option.id);
       applyCollectionVisualState(button);
+      initializeChoiceInteraction(button);
     }
     if (focusedControl && collectionControlIsAuthoritative(focusedControl) && !focusedControl.disabled) {
       focusedControl.focus({ preventScroll: true });
@@ -805,7 +952,10 @@ export function createGamePluginInputView(options: {
         if (control instanceof HTMLButtonElement && control.dataset.gamePluginChoiceCollectionItem === "true") {
           clearCollectionControl(control);
         } else {
-          if (control instanceof HTMLButtonElement) cancelHold(control);
+          if (control instanceof HTMLButtonElement) {
+            cancelHold(control);
+            resetChoiceInteraction(control);
+          }
           control.remove();
         }
       }
@@ -865,7 +1015,10 @@ export function createGamePluginInputView(options: {
     document.querySelectorAll<HTMLElement>(`[data-game-plugin-input-binding]${controlScopeSelector}`).forEach((node) => {
       if (node instanceof HTMLButtonElement && node.dataset.gamePluginChoiceCollectionItem === "true") {
         clearCollectionControl(node);
-      } else node.remove();
+      } else {
+        if (node instanceof HTMLButtonElement) resetChoiceInteraction(node);
+        node.remove();
+      }
     });
   }
 
