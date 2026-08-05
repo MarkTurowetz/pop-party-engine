@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1288",
+  "version": "1.0.17.1289",
   "baseVersion": "1.0.17",
-  "buildNumber": 1288,
-  "commit": "01e64de5",
-  "branch": "codex/hold-progress-1.4.5",
-  "generatedAt": "2026-08-05T02:49:37.601Z"
+  "buildNumber": 1289,
+  "commit": "60dac6b4",
+  "branch": "codex/release-engine-1.4.5",
+  "generatedAt": "2026-08-05T03:04:28.245Z"
 }
