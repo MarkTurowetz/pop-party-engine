@@ -275,6 +275,17 @@ export class TimelinePlayer {
     this.onFrame?.(timelineSnapshotAt(this.timeline, this.currentFrame));
   }
 
+  seekProgress(startLabel: string, completeLabel: string, progress: number): boolean {
+    this.stop();
+    if (!this.timeline || !this.hasLabel(startLabel) || !this.hasLabel(completeLabel)) return false;
+    const startFrame = frameForTimelineLabel(this.timeline, startLabel);
+    const completeFrame = frameForTimelineLabel(this.timeline, completeLabel);
+    const normalized = Math.max(0, Math.min(1, Number(progress) || 0));
+    const framePosition = startFrame + (completeFrame - startFrame) * normalized;
+    this.applyFramePosition(framePosition, Math.floor(framePosition));
+    return true;
+  }
+
   private applyFramePosition(framePosition: number, displayFrame = Math.floor(framePosition)): void {
     if (!this.timeline) return;
     this.currentFrame = this.cleanTimelineFrame(displayFrame);

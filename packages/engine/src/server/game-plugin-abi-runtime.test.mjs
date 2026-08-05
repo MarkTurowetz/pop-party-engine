@@ -248,7 +248,17 @@ describe("game plugin ABI", () => {
       id: "choice", kind: "choice", layoutElementId: "choice", field: "choice", optionIndex: 0,
       autoSubmit: true,
       submitValues: { mode: "tap", amount: 2 },
-      holdSubmit: { seconds: 1.5, submitValues: { mode: "hold", amount: 4 } }
+      holdSubmit: {
+        seconds: 1.5,
+        submitValues: { mode: "hold", amount: 4 },
+        progress: {
+          delaySeconds: 0.5,
+          targetComponentId: "hold-meter",
+          startLabel: "HoldStart",
+          completeLabel: "HoldComplete",
+          resetLabel: "Off"
+        }
+      }
     }))).not.toThrow();
     expect(() => createGamePluginRegistry().install(pluginWithBinding({
       id: "choice", kind: "choice", layoutElementId: "choice", field: "choice", optionIndex: 0,
@@ -262,6 +272,20 @@ describe("game plugin ABI", () => {
       id: "choice", kind: "choice", layoutElementId: "choice", field: "choice", optionIndex: 0,
       autoSubmit: true, submitValues: { amount: 9 }
     }))).toThrow(/outside its declared bounds/);
+    expect(() => createGamePluginRegistry().install(pluginWithBinding({
+      id: "choice", kind: "choice", layoutElementId: "choice", field: "choice", optionIndex: 0,
+      holdSubmit: {
+        seconds: 1.5,
+        submitValues: { mode: "hold" },
+        progress: {
+          delaySeconds: 1.5,
+          targetComponentId: "hold-meter",
+          startLabel: "HoldStart",
+          completeLabel: "HoldComplete",
+          resetLabel: "Off"
+        }
+      }
+    }))).toThrow(/delaySeconds must be non-negative and less than hold seconds/);
   });
 
   it("accepts a reusable authored choice collection and rejects incomplete item templates", () => {

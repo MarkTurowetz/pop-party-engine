@@ -258,6 +258,88 @@ describe("game readiness runtime", () => {
     });
   });
 
+  it("fails readiness closed when fixed or collection hold progress cannot resolve its authored timeline", async () => {
+    const progress = {
+      delaySeconds: 0.5,
+      targetComponentId: "hold-meter-ref",
+      startLabel: "HoldStart",
+      completeLabel: "HoldComplete",
+      resetLabel: "Off"
+    };
+    const registration = {
+      id: "fixture.gesture",
+      value: {
+        controller: {
+          layoutStateId: "gesture",
+          bindings: [
+            {
+              id: "fixed", kind: "choice", layoutElementId: "fixed-choice", field: "choice", optionIndex: 0,
+              holdSubmit: { seconds: 1.5, submitValues: {}, progress }
+            },
+            {
+              id: "collection", kind: "choiceCollection", layoutElementId: "choice-list", field: "choice",
+              item: { artCompositionId: "choice-button", targetComponentId: "label" },
+              holdSubmit: { seconds: 1.5, submitValues: {}, progress }
+            }
+          ]
+        }
+      }
+    };
+    const { game, release, snapshot } = fixture({
+      game: { registrations: { validators: [], inputs: [registration] } }
+    });
+    const meterTimeline = {
+      fps: 10,
+      frameCount: 12,
+      labels: [
+        { name: "Off", frame: 0 },
+        { name: "HoldStart", frame: 1 },
+        { name: "HoldComplete", frame: 11 }
+      ],
+      commands: [{ frame: 0, type: "setVisible", target: "false" }, { frame: 11, type: "stop" }],
+      tracks: [{ targetId: "meter-fill", keyframes: [
+        { frame: 1, easing: "linear", props: { scale: 0 } },
+        { frame: 11, props: { scale: 1 } }
+      ] }]
+    };
+    const gameData = {
+      defaultStageLayouts: { states: [] },
+      defaultControllerLayouts: {
+        global: { elements: [] },
+        states: [{ id: "gesture", elements: [
+          { id: "fixed-choice", kind: "art", artCompositionId: "choice-button" },
+          { id: "choice-list", kind: "collection" }
+        ] }]
+      },
+      defaultArtCompositions: [
+        {
+          id: "choice-button",
+          surface: "controller",
+          compositionKind: "gameObject",
+          components: [
+            { id: "label", kind: "text" },
+            { id: "hold-meter-ref", kind: "reference", artCompositionId: "hold-meter" }
+          ]
+        },
+        {
+          id: "hold-meter",
+          surface: "controller",
+          compositionKind: "prefab",
+          components: [{ id: "meter-fill", kind: "shape" }],
+          timeline: meterTimeline
+        }
+      ]
+    };
+    const validateRelease = createGameReleaseValidator({ gameDefinition: game, engineVersion: "1.0.0" });
+
+    await expect(validateRelease({ gameData, release, snapshot })).resolves.toMatchObject({ release: { contentRevision: "content-1" } });
+    gameData.defaultArtCompositions[1].timeline.labels = gameData.defaultArtCompositions[1].timeline.labels
+      .filter((label) => label.name !== "HoldComplete");
+    await expect(validateRelease({ gameData, release, snapshot })).rejects.toMatchObject({
+      code: "PLUGIN_INPUT_HOLD_PROGRESS_TIMELINE_INVALID"
+    });
+  });
+
   it("validates game-owned player collections without an engine roster composition", async () => {
     const registration = {
       id: "fixture.players",

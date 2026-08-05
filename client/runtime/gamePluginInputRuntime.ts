@@ -6,6 +6,20 @@ import {
 type Dict = Record<string, unknown>;
 type SubmitValues = Record<string, string | number>;
 
+type HoldProgressBinding = {
+  delaySeconds: number;
+  targetComponentId: string;
+  startLabel: string;
+  completeLabel: string;
+  resetLabel: string;
+};
+
+type HoldSubmitBinding = {
+  seconds: number;
+  submitValues: SubmitValues;
+  progress?: HoldProgressBinding;
+};
+
 function cssEscape(value: string): string {
   return globalThis.CSS?.escape?.(value) || value.replace(/[^a-zA-Z0-9_-]/g, (character) => `\\${character}`);
 }
@@ -22,7 +36,7 @@ type InputBinding = {
   interactionTargetComponentId?: string;
   autoSubmit?: boolean;
   submitValues?: SubmitValues;
-  holdSubmit?: { seconds: number; submitValues: SubmitValues };
+  holdSubmit?: HoldSubmitBinding;
   item?: {
     artCompositionId: string;
     targetComponentId: string;
@@ -88,7 +102,17 @@ export function createGamePluginInputView(options: {
   const controlBindings = new WeakMap<HTMLElement, InputBinding>();
   const collectionControlAuthority = new WeakMap<HTMLButtonElement, { bindingId: string; optionId: string; visitKey: string }>();
   const activeCollectionOptionIds = new Map<string, Set<string>>();
-  const activeHolds = new Map<HTMLButtonElement, { pointerId: number; timer: ReturnType<typeof setTimeout> }>();
+  type ActiveHold = {
+    pointerId: number;
+    bindingId: string;
+    startedAt: number;
+    thresholdMs: number;
+    progress?: HoldProgressBinding;
+    delayTimer: ReturnType<typeof setTimeout> | null;
+    completionTimer: ReturnType<typeof setTimeout>;
+    animationFrame: number | null;
+  };
+  const activeHolds = new Map<HTMLButtonElement, ActiveHold>();
   const suppressedHosts = new Set<HTMLElement>();
   let visitKey = "";
   let renderModeKey = "";
@@ -96,6 +120,21 @@ export function createGamePluginInputView(options: {
 
   function runtime(): Dict {
     return globalThis as typeof globalThis & Dict;
+  }
+
+  function now(): number {
+    return globalThis.performance?.now?.() ?? Date.now();
+  }
+
+  function requestProgressFrame(callback: (timestamp: number) => void): number {
+    if (typeof globalThis.requestAnimationFrame === "function") return globalThis.requestAnimationFrame(callback);
+    return Number(globalThis.setTimeout(() => callback(now()), 16));
+  }
+
+  function cancelProgressFrame(id: number | null): void {
+    if (id === null) return;
+    if (typeof globalThis.cancelAnimationFrame === "function") globalThis.cancelAnimationFrame(id);
+    else globalThis.clearTimeout(id);
   }
 
   function targetFor(layoutElementId: string): { element: Dict; host: HTMLElement } | null {
@@ -219,15 +258,122 @@ export function createGamePluginInputView(options: {
     );
   }
 
-  function cancelHold(button: HTMLButtonElement): void {
+  function holdVisualHost(button: HTMLButtonElement): HTMLElement | null {
+    return button.dataset.gamePluginChoiceCollectionItem === "true"
+      ? button
+      : button.parentElement as HTMLElement | null;
+  }
+
+  function applyHoldProgress(
+    button: HTMLButtonElement,
+    progress: HoldProgressBinding,
+    normalizedProgress: number | null,
+    phase: "idle" | "delay" | "progress" | "complete"
+  ): void {
+    const value = normalizedProgress === null ? 0 : Math.max(0, Math.min(1, Number(normalizedProgress) || 0));
+    const serialized = value.toFixed(3).replace(/\.000$/, "");
+    button.dataset.gamePluginInputHoldProgress = serialized;
+    button.dataset.gamePluginInputHoldPhase = phase;
+    button.dataset.gamePluginInputHoldDelaySeconds = String(progress.delaySeconds);
+    const host = holdVisualHost(button);
+    if (!host) return;
+    host.dataset.gamePluginInputHoldProgress = serialized;
+    host.dataset.gamePluginInputHoldPhase = phase;
+    (runtime().setControllerPluginInputHoldProgress as ((
+      target: HTMLElement,
+      spec: HoldProgressBinding,
+      value: number | null
+    ) => unknown) | undefined)?.(host, progress, normalizedProgress);
+  }
+
+  function holdIsAuthoritative(button: HTMLButtonElement, hold: ActiveHold): boolean {
+    return button.isConnected
+      && !button.disabled
+      && controlBindings.get(button)?.id === hold.bindingId
+      && collectionControlIsAuthoritative(button);
+  }
+
+  function clearHoldSchedules(hold: ActiveHold): void {
+    if (hold.delayTimer !== null) clearTimeout(hold.delayTimer);
+    clearTimeout(hold.completionTimer);
+    cancelProgressFrame(hold.animationFrame);
+    hold.delayTimer = null;
+    hold.animationFrame = null;
+  }
+
+  function cancelHold(button: HTMLButtonElement, suppressClick = false): void {
     const hold = activeHolds.get(button);
-    if (hold) clearTimeout(hold.timer);
+    if (!hold) return;
+    clearHoldSchedules(hold);
     activeHolds.delete(button);
+    if (suppressClick) button.dataset.gamePluginInputSuppressClick = "true";
     setHolding(button, false);
+    if (hold.progress) applyHoldProgress(button, hold.progress, null, "idle");
   }
 
   function cancelAllHolds(): void {
-    for (const button of Array.from(activeHolds.keys())) cancelHold(button);
+    for (const button of Array.from(activeHolds.keys())) cancelHold(button, true);
+  }
+
+  function holdProgressValue(hold: ActiveHold, timestamp = now()): number {
+    if (!hold.progress) return 0;
+    const delayMs = hold.progress.delaySeconds * 1000;
+    const progressDurationMs = Math.max(1, hold.thresholdMs - delayMs);
+    return Math.max(0, Math.min(1, (timestamp - hold.startedAt - delayMs) / progressDurationMs));
+  }
+
+  function updateHoldProgress(button: HTMLButtonElement, hold: ActiveHold, reinitialize = false): void {
+    if (!hold.progress) return;
+    if (!holdIsAuthoritative(button, hold)) {
+      cancelHold(button, true);
+      return;
+    }
+    const elapsedMs = now() - hold.startedAt;
+    const delayMs = hold.progress.delaySeconds * 1000;
+    if (elapsedMs < delayMs) {
+      applyHoldProgress(button, hold.progress, null, "delay");
+      return;
+    }
+    const value = holdProgressValue(hold);
+    if (reinitialize) applyHoldProgress(button, hold.progress, 0, "progress");
+    applyHoldProgress(button, hold.progress, value, value >= 1 ? "complete" : "progress");
+  }
+
+  function startHoldProgressAnimation(button: HTMLButtonElement, hold: ActiveHold): void {
+    if (!hold.progress || activeHolds.get(button) !== hold) return;
+    updateHoldProgress(button, hold, true);
+    const tick = () => {
+      if (activeHolds.get(button) !== hold) return;
+      updateHoldProgress(button, hold);
+      if (activeHolds.get(button) === hold && holdProgressValue(hold) < 1) {
+        hold.animationFrame = requestProgressFrame(tick);
+      }
+    };
+    hold.animationFrame = requestProgressFrame(tick);
+  }
+
+  function completeHold(button: HTMLButtonElement, hold: ActiveHold, current: InputBinding): void {
+    if (activeHolds.get(button) !== hold || !holdIsAuthoritative(button, hold)) {
+      cancelHold(button, true);
+      return;
+    }
+    clearHoldSchedules(hold);
+    activeHolds.delete(button);
+    if (hold.progress) applyHoldProgress(button, hold.progress, 1, "complete");
+    setHolding(button, false);
+    if (hold.progress) applyHoldProgress(button, hold.progress, 1, "complete");
+    button.dataset.gamePluginInputSuppressClick = "true";
+    const overrides = { ...(current.submitValues || {}), ...(current.holdSubmit?.submitValues || {}) };
+    selectChoice(button, overrides);
+    submitHandlers.get(button)?.(overrides);
+  }
+
+  function resetCompletedHoldProgress(): void {
+    document.querySelectorAll<HTMLButtonElement>(`[data-game-plugin-input-hold-phase="complete"]${controlScopeSelector}`)
+      .forEach((button) => {
+        const progress = controlBindings.get(button)?.holdSubmit?.progress;
+        if (progress) applyHoldProgress(button, progress, null, "idle");
+      });
   }
 
   function setSubmissionPending(pending: boolean, input: Dict): void {
@@ -270,7 +416,7 @@ export function createGamePluginInputView(options: {
   }
 
   function clearCollectionControl(button: HTMLButtonElement, remove = true): void {
-    cancelHold(button);
+    cancelHold(button, true);
     button.disabled = true;
     button.dataset.gamePluginInputStale = "true";
     button.setAttribute("aria-disabled", "true");
@@ -332,33 +478,41 @@ export function createGamePluginInputView(options: {
     button.dataset.gamePluginInputListenerBound = "true";
     button.addEventListener("pointerdown", (event) => {
       const current = controlBindings.get(button);
-      if (!current?.holdSubmit || button.disabled || activeHolds.has(button) || !collectionControlIsAuthoritative(button)) return;
+      if (
+        !current?.holdSubmit
+        || button.disabled
+        || activeHolds.has(button)
+        || !collectionControlIsAuthoritative(button)
+        || event.isPrimary === false
+        || (event.pointerType !== "touch" && event.button !== 0)
+      ) return;
       const holdSubmit = current.holdSubmit;
       button.dataset.gamePluginInputSuppressClick = "false";
       try { button.setPointerCapture(event.pointerId); } catch { /* Synthetic pointers may not be capturable. */ }
       setHolding(button, true);
-      const timer = setTimeout(() => {
-        if (
-          !button.isConnected
-          || button.disabled
-          || controlBindings.get(button)?.id !== current.id
-          || !collectionControlIsAuthoritative(button)
-        ) {
-          cancelHold(button);
-          return;
-        }
-        activeHolds.delete(button);
-        setHolding(button, false);
-        button.dataset.gamePluginInputSuppressClick = "true";
-        const overrides = { ...(current.submitValues || {}), ...holdSubmit.submitValues };
-        selectChoice(button, overrides);
-        submitHandlers.get(button)?.(overrides);
-      }, holdSubmit.seconds * 1000);
-      activeHolds.set(button, { pointerId: event.pointerId, timer });
+      if (holdSubmit.progress) applyHoldProgress(button, holdSubmit.progress, null, "delay");
+      const thresholdMs = holdSubmit.seconds * 1000;
+      const hold: ActiveHold = {
+        pointerId: event.pointerId,
+        bindingId: current.id,
+        startedAt: now(),
+        thresholdMs,
+        progress: holdSubmit.progress,
+        delayTimer: null,
+        completionTimer: 0 as unknown as ReturnType<typeof setTimeout>,
+        animationFrame: null
+      };
+      activeHolds.set(button, hold);
+      if (hold.progress) {
+        const delayMs = hold.progress.delaySeconds * 1000;
+        if (delayMs <= 0) startHoldProgressAnimation(button, hold);
+        else hold.delayTimer = setTimeout(() => startHoldProgressAnimation(button, hold), delayMs);
+      }
+      hold.completionTimer = setTimeout(() => completeHold(button, hold, current), thresholdMs);
     });
     button.addEventListener("pointerup", () => cancelHold(button));
-    button.addEventListener("pointercancel", () => cancelHold(button));
-    button.addEventListener("lostpointercapture", () => cancelHold(button));
+    button.addEventListener("pointercancel", () => cancelHold(button, true));
+    button.addEventListener("lostpointercapture", () => cancelHold(button, true));
     button.addEventListener("click", () => {
       if (!collectionControlIsAuthoritative(button) || button.disabled) return;
       if (button.dataset.gamePluginInputSuppressClick === "true") {
@@ -411,6 +565,7 @@ export function createGamePluginInputView(options: {
     button.disabled = input.submitted === true || submitting;
     submitHandlers.set(button, submitNow);
     controlBindings.set(button, binding);
+    if (button.disabled && activeHolds.has(button)) cancelHold(button, true);
     if (binding.kind === "choice") {
       const option = choiceOption(binding, input, model);
       if (!option) {
@@ -526,6 +681,7 @@ export function createGamePluginInputView(options: {
       button.setAttribute("aria-label", option.label);
       button.setAttribute("aria-disabled", option.disabled || input.submitted === true || submitting ? "true" : "false");
       button.disabled = option.disabled || input.submitted === true || submitting;
+      if (button.disabled && activeHolds.has(button)) cancelHold(button, true);
       button.style.width = `${dimensions.width}px`;
       button.style.height = `${dimensions.height}px`;
       button.style.flex = "0 0 auto";
@@ -661,14 +817,21 @@ export function createGamePluginInputView(options: {
       const payload = Object.fromEntries(manifest.submission.map((field) => [field.id, overrides[field.id] ?? values.get(field.id)]));
       void options.submit(String(input.actionId), Number(input.visitId || 0), payload, submissionId())
         .then((result) => {
-          if (options.persistentSubmissions === true) setSubmissionPending(false, input);
+          if (options.persistentSubmissions === true) {
+            setSubmissionPending(false, input);
+            resetCompletedHoldProgress();
+          }
           const nextLobby = (result as Dict | null)?.lobby;
           if (nextLobby) options.renderState(nextLobby as Dict);
-          else setSubmissionPending(false, input);
+          else {
+            setSubmissionPending(false, input);
+            resetCompletedHoldProgress();
+          }
           options.onSubmitted?.();
         })
         .catch(() => {
           setSubmissionPending(false, input);
+          resetCompletedHoldProgress();
         });
     };
     for (const binding of availableBindings.filter((candidate) => candidate.kind === "choiceCollection")) {
@@ -676,6 +839,18 @@ export function createGamePluginInputView(options: {
     }
     for (const binding of availableBindings) addControl(binding, withManifest, model, submitNow);
     renderTextBindings(availableBindings.filter((binding) => binding.kind === "text"), model);
+    document.querySelectorAll<HTMLButtonElement>(`button[data-game-plugin-input-binding]${controlScopeSelector}`)
+      .forEach((button) => {
+        const hold = activeHolds.get(button);
+        if (hold) {
+          updateHoldProgress(button, hold, true);
+          return;
+        }
+        const progress = controlBindings.get(button)?.holdSubmit?.progress;
+        if (progress && button.dataset.gamePluginInputHoldPhase !== "complete") {
+          applyHoldProgress(button, progress, null, "idle");
+        }
+      });
     return true;
   }
 
