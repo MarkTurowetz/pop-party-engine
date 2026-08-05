@@ -4,7 +4,8 @@ import {
   buildConnectionRoute,
   buildFlowGraphGeometry,
   FlowNodeCanvas,
-  newConnectedActionPosition
+  newConnectedActionPosition,
+  wirePaintLayers
 } from "./FlowNodeCanvas";
 import type { FlowGraphConnection, FlowGraphNode } from "../flowNodeGraph";
 
@@ -181,6 +182,62 @@ describe("FlowNodeCanvas", () => {
     expect(markup).toContain('marker-end="url(#flow-wire-highlight-destination-arrow)"');
     expect(markup).toContain('marker-end="url(#flow-minimap-wire-highlight-destination-arrow)"');
     expect(markup.match(/data-wire-destination-arrow="true"/g)).toHaveLength(2);
+  });
+
+  it("paints highlighted wires after every base wire without disturbing relative order", () => {
+    const graphNodes = [
+      { ...nodes()[0], id: "selected-source", selected: true },
+      { ...nodes()[0], id: "base-source", selected: false },
+      { ...nodes()[1], id: "shared-target", selected: false }
+    ];
+    const connections: FlowGraphConnection[] = [
+      {
+        id: "selected-wire",
+        from: "selected-source",
+        to: "shared-target",
+        label: "Selected route"
+      },
+      { id: "base-wire", from: "base-source", to: "shared-target", label: "Base route" }
+    ];
+    const markup = renderToStaticMarkup(
+      <FlowNodeCanvas depth="subroutine" nodes={graphNodes} connections={connections} />
+    );
+    const baseLayerIndex = markup.indexOf('data-wire-paint-layer="base"');
+    const baseWireIndex = markup.indexOf('data-wire-id="base-wire"');
+    const highlightedLayerIndex = markup.indexOf('data-wire-paint-layer="highlighted"');
+    const selectedWireIndex = markup.indexOf('data-wire-id="selected-wire"');
+
+    expect(baseLayerIndex).toBeGreaterThanOrEqual(0);
+    expect(baseLayerIndex).toBeLessThan(baseWireIndex);
+    expect(baseWireIndex).toBeLessThan(highlightedLayerIndex);
+    expect(highlightedLayerIndex).toBeLessThan(selectedWireIndex);
+    expect(markup).toContain("Selected route");
+    expect(markup).toContain('marker-end="url(#flow-wire-highlight-destination-arrow)"');
+
+    const minimapBaseIndex = markup.indexOf('data-minimap-wire-paint-layer="base"');
+    const minimapBaseWireIndex = markup.indexOf('data-minimap-wire-id="base-wire"');
+    const minimapHighlightedIndex = markup.indexOf(
+      'data-minimap-wire-paint-layer="highlighted"'
+    );
+    const minimapSelectedWireIndex = markup.indexOf('data-minimap-wire-id="selected-wire"');
+    expect(minimapBaseIndex).toBeLessThan(minimapBaseWireIndex);
+    expect(minimapBaseWireIndex).toBeLessThan(minimapHighlightedIndex);
+    expect(minimapHighlightedIndex).toBeLessThan(minimapSelectedWireIndex);
+  });
+
+  it("keeps connection order stable inside each paint layer", () => {
+    const paintLayers = wirePaintLayers([
+      { id: "selected-a", highlighted: true },
+      { id: "base-a", highlighted: false },
+      { id: "selected-b", highlighted: true },
+      { id: "base-b", highlighted: false }
+    ]);
+
+    expect(paintLayers.base.map((wire) => wire.id)).toEqual(["base-a", "base-b"]);
+    expect(paintLayers.highlighted.map((wire) => wire.id)).toEqual([
+      "selected-a",
+      "selected-b"
+    ]);
   });
 
   it("renders node timing and value badges together", () => {
