@@ -145,9 +145,23 @@ export type GameInputSubmissionField =
 
 export type GameInputSubmitValues = Readonly<Record<string, string | number>>;
 
+export interface GameInputHoldProgress {
+  readonly delaySeconds: number;
+  readonly targetComponentId: string;
+  readonly startLabel: string;
+  readonly completeLabel: string;
+  readonly resetLabel: string;
+}
+
+export interface GameInputHoldSubmit {
+  readonly seconds: number;
+  readonly submitValues: GameInputSubmitValues;
+  readonly progress?: GameInputHoldProgress;
+}
+
 export type GameInputControllerBinding =
   | { id: string; kind: "text"; layoutElementId: string; source: string; targetComponentId: string }
-  | { id: string; kind: "choice"; layoutElementId: string; field: string; optionIndex: number; labelSource?: string; interactionTargetComponentId?: string; autoSubmit?: boolean; submitValues?: GameInputSubmitValues; holdSubmit?: { seconds: number; submitValues: GameInputSubmitValues } }
+  | { id: string; kind: "choice"; layoutElementId: string; field: string; optionIndex: number; labelSource?: string; interactionTargetComponentId?: string; autoSubmit?: boolean; submitValues?: GameInputSubmitValues; holdSubmit?: GameInputHoldSubmit }
   | {
       id: string;
       kind: "choiceCollection";
@@ -161,7 +175,7 @@ export type GameInputControllerBinding =
       };
       autoSubmit?: boolean;
       submitValues?: GameInputSubmitValues;
-      holdSubmit?: { seconds: number; submitValues: GameInputSubmitValues };
+      holdSubmit?: GameInputHoldSubmit;
     }
   | { id: string; kind: "integer"; layoutElementId: string; field: string }
   | { id: string; kind: "submit"; layoutElementId: string; labelSource?: string };

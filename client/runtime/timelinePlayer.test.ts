@@ -25,6 +25,38 @@ describe("TimelinePlayer", () => {
     expect(timelineSnapshotAt(timeline!, 5).targets.card.scale).toBe(0.75);
   });
 
+  it("seeks a normalized authored progress range without executing timeline commands", () => {
+    const frames: Array<{ frame: number; scale: unknown }> = [];
+    const command = vi.fn();
+    const timeline = normalizeTimeline({
+      fps: 10,
+      frameCount: 12,
+      labels: [
+        { name: "Off", frame: 0 },
+        { name: "HoldStart", frame: 1 },
+        { name: "HoldComplete", frame: 11 }
+      ],
+      commands: [
+        { frame: 6, type: "emit", event: "halfway" },
+        { frame: 11, type: "stop" }
+      ],
+      tracks: [{ targetId: "meter", keyframes: [
+        { frame: 1, easing: "linear", props: { scale: 0 } },
+        { frame: 11, props: { scale: 1 } }
+      ] }]
+    });
+    const player = new TimelinePlayer({
+      timeline,
+      onFrame: (snapshot) => frames.push({ frame: snapshot.frame, scale: snapshot.targets.meter.scale }),
+      onCommand: command
+    });
+
+    expect(player.seekProgress("HoldStart", "HoldComplete", 0.5)).toBe(true);
+    expect(frames.at(-1)).toEqual({ frame: 6, scale: 0.5 });
+    expect(command).not.toHaveBeenCalled();
+    expect(player.seekProgress("missing", "HoldComplete", 1)).toBe(false);
+  });
+
   it("normalizes and applies explicit clockwise and counterclockwise full rotations", () => {
     const clockwise = normalizeTimeline({
       fps: 30,

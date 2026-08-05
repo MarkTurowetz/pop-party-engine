@@ -694,6 +694,13 @@ class ArtObjectView {
     return visual?.stopAt?.(animation, options) || visual?.play?.(animation, { ...options, instant: true }) || 0;
   }
 
+  seekProgress(startLabel: string, completeLabel: string, progress: number): boolean {
+    const visual = this.createVisual() as {
+      seekTimelineProgress?: (start: string, complete: string, value: number) => boolean;
+    } | null;
+    return visual?.seekTimelineProgress?.(startLabel, completeLabel, progress) === true;
+  }
+
   playTree(animation: string, options: Dict = {}): number {
     let duration = this.play(animation, options);
     const childOptions = { ...options };
@@ -1002,6 +1009,10 @@ class ArtObjectTreeRenderer {
 
   stopAtComponent(componentId: string, animation: string, options: Dict = {}): number {
     return this.viewForComponentId(componentId)?.stopAt(animation, options) || 0;
+  }
+
+  seekComponentProgress(componentId: string, startLabel: string, completeLabel: string, progress: number): boolean {
+    return this.viewForComponentId(componentId)?.seekProgress(startLabel, completeLabel, progress) === true;
   }
 
   playComponentTree(componentId: string, animation: string, options: Dict = {}): number {

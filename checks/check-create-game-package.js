@@ -108,6 +108,13 @@ module.exports = Object.freeze([{
 }]);
 `);
   fs.writeFileSync(path.join(targetRoot, "src", "inputs", "index.js"), `"use strict";
+const holdProgress = Object.freeze({
+  delaySeconds: 0.5,
+  targetComponentId: "fixture-hold-meter-ref",
+  startLabel: "HoldStart",
+  completeLabel: "HoldComplete",
+  resetLabel: "Off"
+});
 module.exports = Object.freeze([
   {
     id: "generated-fixture.turnChoice",
@@ -191,10 +198,10 @@ module.exports = Object.freeze([
       controller: {
         layoutStateId: "fixture-plugin-input",
         bindings: [
-          { id: "gestureAlpha", kind: "choice", layoutElementId: "fixture-hit-button", field: "choice", optionIndex: 0, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" } } },
-          { id: "gestureBeta", kind: "choice", layoutElementId: "fixture-stay-button", field: "choice", optionIndex: 1, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" } } },
-          { id: "gestureGamma", kind: "choice", layoutElementId: "fixture-extra-button-three", field: "choice", optionIndex: 2, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" } } },
-          { id: "gestureDelta", kind: "choice", layoutElementId: "fixture-extra-button-four", field: "choice", optionIndex: 3, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" } } }
+          { id: "gestureAlpha", kind: "choice", layoutElementId: "fixture-hit-button", field: "choice", optionIndex: 0, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } },
+          { id: "gestureBeta", kind: "choice", layoutElementId: "fixture-stay-button", field: "choice", optionIndex: 1, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } },
+          { id: "gestureGamma", kind: "choice", layoutElementId: "fixture-extra-button-three", field: "choice", optionIndex: 2, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } },
+          { id: "gestureDelta", kind: "choice", layoutElementId: "fixture-extra-button-four", field: "choice", optionIndex: 3, autoSubmit: true, submitValues: { mode: "tap" }, holdSubmit: { seconds: 1.5, submitValues: { mode: "hold" }, progress: holdProgress } }
         ],
         submitted: {
           layoutStateId: "fixture-gesture-confirmed",
@@ -244,13 +251,13 @@ module.exports = Object.freeze([
           layoutElementId: "fixture-target-collection",
           field: "targetPlayerId",
           item: {
-            artCompositionId: "controller-text-input-field",
+            artCompositionId: "fixture-hold-choice-item",
             targetComponentId: "placeholder-text",
             labelSource: "label",
             disabledSource: "disabled"
           },
           autoSubmit: true,
-          holdSubmit: { seconds: 1.5, submitValues: {} }
+          holdSubmit: { seconds: 1.5, submitValues: {}, progress: holdProgress }
         }]
       },
       recipients(context) { return context.players.slice(0, 2).map((player) => player.id); },
@@ -553,6 +560,34 @@ module.exports = Object.freeze([
       ]
     }
   ];
+  const fixtureChoiceElement = (id, y) => ({
+    id, name: id, selector: "", kind: "art", artCompositionId: "controller-choice-option",
+    hidden: false, locked: false, x: 195, y, width: 300, height: 80, scale: 1, rotation: 0,
+    defaultAnimationState: "On", defaultText: "", fontSize: 32, autoFitText: false,
+    fontFamily: "", fontColor: "#17131f"
+  });
+  controllerLayouts.states = [
+    ...(controllerLayouts.states || []).filter((state) => !["fixture-plugin-input", "fixture-dynamic-targets"].includes(state.id)),
+    {
+      id: "fixture-plugin-input", name: "Fixture Plugin Input", hiddenGlobals: [], hiddenLayers: [],
+      elements: [
+        fixtureChoiceElement("fixture-hit-button", 390),
+        fixtureChoiceElement("fixture-stay-button", 500),
+        fixtureChoiceElement("fixture-extra-button-three", 610),
+        fixtureChoiceElement("fixture-extra-button-four", 720)
+      ]
+    },
+    {
+      id: "fixture-dynamic-targets", name: "Fixture Dynamic Targets", hiddenGlobals: [], hiddenLayers: [],
+      elements: [{
+        id: "fixture-target-collection", name: "Private Target Collection", selector: "", kind: "collection", artCompositionId: "",
+        hidden: false, locked: false, x: 195, y: 430, width: 350, height: 280, scale: 1, rotation: 0,
+        defaultAnimationState: "On", collectionDirection: "vertical", collectionGap: 12,
+        collectionDistribution: "start", collectionAlignment: "stretch", collectionPadding: 10,
+        collectionOverflow: "auto", zIndex: 25
+      }]
+    }
+  ];
   fs.writeFileSync(controllerLayoutPath, `${JSON.stringify(controllerLayouts, null, 2)}\n`);
   const artManifestPath = path.join(targetRoot, "content", "art", "manifest.json");
   const artManifest = JSON.parse(fs.readFileSync(artManifestPath, "utf8"));
@@ -598,6 +633,59 @@ module.exports = Object.freeze([
         { frame: 1, easing: "linear", props: { imageTint: "#17131f" } }
       ]
     }]
+  };
+  const fixtureHoldMeterTimeline = {
+    fps: 30,
+    frameCount: 32,
+    labels: [
+      { name: "Off", frame: 0 },
+      { name: "HoldStart", frame: 1 },
+      { name: "HoldComplete", frame: 31 }
+    ],
+    commandFrames: [0, 1, 31],
+    commands: [
+      { id: "fixture-hold-meter-hide", frame: 0, type: "setVisible", target: "false" },
+      { id: "fixture-hold-meter-stop-off", frame: 0, type: "stop" },
+      { id: "fixture-hold-meter-show", frame: 1, type: "setVisible", target: "true" },
+      { id: "fixture-hold-meter-stop-start", frame: 1, type: "stop" },
+      { id: "fixture-hold-meter-stop-complete", frame: 31, type: "stop" }
+    ],
+    tracks: [{
+      id: "fixture-hold-meter-fill-track",
+      targetId: "fixture-hold-meter-fill",
+      keyframes: [
+        { id: "fixture-hold-meter-empty", frame: 1, easing: "linear", props: { x: 0.5, width: 1, opacity: 1 } },
+        { id: "fixture-hold-meter-full", frame: 31, easing: "hold", props: { x: 150, width: 300, opacity: 1 } }
+      ]
+    }]
+  };
+  artManifest.compositions["fixture-hold-meter"] = {
+    name: "Fixture Hold Meter", surface: "controller", compositionKind: "prefab", isCustom: true,
+    canvas: { width: 300, height: 14 }, timelineArchitectureVersion: 2,
+    timeline: fixtureHoldMeterTimeline,
+    components: [{
+      id: "fixture-hold-meter-fill", instanceLabel: "holdMeterFill", name: "Hold Meter Fill", kind: "shape",
+      x: 150, y: 7, width: 300, height: 14, fillColor: "#ff4fa3", fillCss: "#ff4fa3",
+      borderColor: "#17131f", borderWidth: 1, borderRadius: 7, shapeStyle: "rounded",
+      opacity: 1, rotation: 0, scale: 1, visible: true, defaultAnimationState: "On"
+    }]
+  };
+  const fixtureHoldMeterReference = {
+    id: "fixture-hold-meter-ref", instanceLabel: "holdMeter", name: "Hold Meter", kind: "reference",
+    artCompositionId: "fixture-hold-meter", referenceSizeMode: "intrinsic",
+    x: 160, y: 62, scale: 0.9, rotation: 0, opacity: 1, visible: true,
+    defaultAnimationState: "Off", editorHidden: false, locked: false, transformOrigin: "center"
+  };
+  artManifest.compositions["controller-choice-option"].components.unshift(structuredClone(fixtureHoldMeterReference));
+  artManifest.compositions["fixture-hold-choice-item"] = {
+    ...structuredClone(artManifest.compositions["controller-text-input-field"]),
+    name: "Fixture Hold Choice Item",
+    compositionKind: "gameObject",
+    isCustom: true,
+    components: [
+      { ...structuredClone(fixtureHoldMeterReference), x: 165, y: 111 },
+      ...structuredClone(artManifest.compositions["controller-text-input-field"].components)
+    ]
   };
   artManifest.compositions["fixture-player-avatar-art"] = {
     name: "Fixture Player Avatar Art", surface: "stage", compositionKind: "gameObject", isCustom: true,
@@ -1197,7 +1285,24 @@ module.exports = Object.freeze([
         };
       });
       await collectionControllerOne.waitForTimeout(550);
-      await privateAccentResponse;
+      await Promise.race([
+        privateAccentResponse,
+        collectionControllerOne.waitForTimeout(2_000).then(async () => {
+          const diagnostic = await collectionControllerOne.evaluate(() => {
+            const control = document.querySelector('[data-game-plugin-controller-interaction="generated-fixture.privateAccent"][data-game-plugin-input-option="moon"]');
+            return {
+              connected: control?.isConnected,
+              disabled: control?.disabled,
+              holding: control?.dataset.gamePluginInputHolding,
+              suppressClick: control?.dataset.gamePluginInputSuppressClick,
+              stale: control?.dataset.gamePluginInputStale,
+              visitId: (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
+                .find((item) => item.id === "generated-fixture.privateAccent")?.visitId
+            };
+          });
+          throw new Error("Persistent Controller interaction hold did not submit: " + JSON.stringify({ retainedPersistentHold, diagnostic }));
+        })
+      ]);
       await collectionControllerOne.mouse.up();
       await collectionControllerOne.waitForFunction(() => (
         (window.controllerState?.lobby?.gamePlugin?.controllerInteractions || [])
@@ -2086,6 +2191,22 @@ module.exports = Object.freeze([
       });
       const oneGestureTapLobby = await heartbeat(one);
       const twoGestureTapLobby = await heartbeat(two);
+      const secondControllerPage = await browser.newPage();
+      await secondControllerPage.addInitScript((session) => {
+        sessionStorage.setItem("partyTemplatePlayerId", session.playerId);
+        sessionStorage.setItem("partyTemplatePlayerName", session.playerName);
+        sessionStorage.setItem("partyTemplateStageCode", "PLUG");
+        sessionStorage.setItem("partyTemplatePlayerCapability", session.playerCapability);
+      }, {
+        playerId: two.player.id,
+        playerName: two.player.name,
+        playerCapability: two.playerCapability
+      });
+      await secondControllerPage.goto(first.startup.localUrl + "/controller?stage=PLUG&name=Two&join=1", { waitUntil: "load" });
+      await secondControllerPage.waitForFunction((playerId) => window.controllerState?.player?.id === playerId, two.player.id, { timeout: 15_000 });
+      await secondControllerPage.waitForFunction(() => (
+        window.controllerState?.lobby?.gamePlugin?.input?.actionId === "fixture-gesture-tap"
+      ), null, { timeout: 15_000 });
       let gestureBrowserSubmissionCount = 0;
       controllerPage.on("request", (request) => {
         if (request.url().endsWith("/api/game-plugin-input") && request.method() === "POST") gestureBrowserSubmissionCount += 1;
@@ -2102,7 +2223,22 @@ module.exports = Object.freeze([
       const tapResponsePromise = controllerPage.waitForResponse((response) => (
         response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
       ));
-      await controllerPage.locator('[data-game-plugin-input-binding="gestureAlpha"]').click();
+      const quickTapButton = controllerPage.locator('[data-game-plugin-input-binding="gestureAlpha"]');
+      await quickTapButton.hover();
+      await controllerPage.mouse.down();
+      await controllerPage.waitForTimeout(250);
+      const quickTapProgressState = await controllerPage.evaluate(() => {
+        const button = document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]');
+        const meter = button?.closest('[data-controller-layout-element-id]')?.querySelector('[data-art-component-id="fixture-hold-meter-ref"]');
+        const style = meter ? getComputedStyle(meter) : null;
+        const rect = meter?.getBoundingClientRect();
+        return {
+          phase: button?.dataset.gamePluginInputHoldPhase,
+          progress: Number(button?.dataset.gamePluginInputHoldProgress),
+          visible: Boolean(rect && rect.width > 0 && rect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden")
+        };
+      });
+      await controllerPage.mouse.up();
       const tapBrowserResponse = await tapResponsePromise;
       const tapBrowserRequest = JSON.parse(tapBrowserResponse.request().postData() || "{}");
       await controllerPage.waitForFunction(() => (
@@ -2133,7 +2269,49 @@ module.exports = Object.freeze([
           detail: text("vote-count")
         };
       });
-      const secondTapSubmit = await submitPluginInputResponse(two, twoGestureTapLobby, { choice: "beta", mode: "tap" }, "gesture-tap-two");
+      await secondControllerPage.route("**/api/game-plugin-input", async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await route.continue();
+      }, { times: 1 });
+      const secondTapResponsePromise = secondControllerPage.waitForResponse((response) => (
+        response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
+      ));
+      const partialTapButton = secondControllerPage.locator('[data-game-plugin-input-binding="gestureBeta"]');
+      await partialTapButton.hover();
+      await secondControllerPage.mouse.down();
+      await secondControllerPage.waitForTimeout(850);
+      const partialHoldProgressState = await secondControllerPage.evaluate(() => {
+        const button = document.querySelector('[data-game-plugin-input-binding="gestureBeta"]');
+        const host = button?.closest('[data-controller-layout-element-id]');
+        const meter = host?.querySelector('[data-art-component-id="fixture-hold-meter-ref"]');
+        const fill = host?.querySelector('[data-art-component-id="fixture-hold-meter-fill"]');
+        const meterRect = meter?.getBoundingClientRect();
+        const fillRect = fill?.getBoundingClientRect();
+        const style = meter ? getComputedStyle(meter) : null;
+        return {
+          phase: button?.dataset.gamePluginInputHoldPhase,
+          progress: Number(button?.dataset.gamePluginInputHoldProgress),
+          visible: Boolean(meterRect && meterRect.width > 0 && meterRect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden"),
+          meterWidth: meterRect?.width,
+          fillWidth: fillRect?.width
+        };
+      });
+      await secondControllerPage.mouse.up();
+      await secondControllerPage.waitForTimeout(50);
+      const partialHoldResetState = await secondControllerPage.evaluate(() => {
+        const button = document.querySelector('[data-game-plugin-input-binding="gestureBeta"]');
+        const meter = button?.closest('[data-controller-layout-element-id]')?.querySelector('[data-art-component-id="fixture-hold-meter-ref"]');
+        const style = meter ? getComputedStyle(meter) : null;
+        const rect = meter?.getBoundingClientRect();
+        return {
+          phase: button?.dataset.gamePluginInputHoldPhase,
+          progress: Number(button?.dataset.gamePluginInputHoldProgress),
+          visible: Boolean(rect && rect.width > 0 && rect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden")
+        };
+      });
+      const secondTapBrowserResponse = await secondTapResponsePromise;
+      const secondTapBrowserRequest = JSON.parse(secondTapBrowserResponse.request().postData() || "{}");
+      const secondTapSubmit = { status: secondTapBrowserResponse.status(), body: await secondTapBrowserResponse.json() };
       const oneGestureHoldLobby = await heartbeat(one);
       const twoGestureHoldLobby = await heartbeat(two);
       await controllerPage.waitForFunction(() => (
@@ -2154,11 +2332,17 @@ module.exports = Object.freeze([
       const gestureCancellationState = {
         ...(await controllerPage.evaluate(() => ({
         holding: document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]')?.dataset.gamePluginInputHolding,
+        phase: document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]')?.dataset.gamePluginInputHoldPhase,
+        progress: Number(document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]')?.dataset.gamePluginInputHoldProgress),
         selected: document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]')?.getAttribute("aria-pressed")
         }))),
         submissions: gestureBrowserSubmissionCount
       };
       await gestureButton.evaluate((button) => { window.__fixtureHeldGestureButton = button; });
+      await controllerPage.route("**/api/game-plugin-input", async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await route.continue();
+      }, { times: 1 });
       const holdResponsePromise = controllerPage.waitForResponse((response) => (
         response.url().endsWith("/api/game-plugin-input") && response.request().method() === "POST"
       ));
@@ -2168,8 +2352,31 @@ module.exports = Object.freeze([
       const gestureHoldHeartbeatState = await controllerPage.evaluate(() => ({
         retained: window.__fixtureHeldGestureButton === document.querySelector('[data-game-plugin-input-binding="gestureAlpha"]'),
         holding: window.__fixtureHeldGestureButton?.dataset.gamePluginInputHolding,
-        ariaBusy: window.__fixtureHeldGestureButton?.getAttribute("aria-busy")
+        ariaBusy: window.__fixtureHeldGestureButton?.getAttribute("aria-busy"),
+        phase: window.__fixtureHeldGestureButton?.dataset.gamePluginInputHoldPhase,
+        progress: Number(window.__fixtureHeldGestureButton?.dataset.gamePluginInputHoldProgress),
+        meterVisible: (() => {
+          const meter = window.__fixtureHeldGestureButton?.closest('[data-controller-layout-element-id]')?.querySelector('[data-art-component-id="fixture-hold-meter-ref"]');
+          const rect = meter?.getBoundingClientRect();
+          const style = meter ? getComputedStyle(meter) : null;
+          return Boolean(rect && rect.width > 0 && rect.height > 0 && style?.display !== "none" && style?.visibility !== "hidden");
+        })()
       }));
+      await controllerPage.waitForTimeout(500);
+      const completedHoldProgressState = await controllerPage.evaluate(() => {
+        const button = window.__fixtureHeldGestureButton;
+        const host = button?.closest('[data-controller-layout-element-id]');
+        const meter = host?.querySelector('[data-art-component-id="fixture-hold-meter-ref"]');
+        const fill = host?.querySelector('[data-art-component-id="fixture-hold-meter-fill"]');
+        const meterRect = meter?.getBoundingClientRect();
+        const fillRect = fill?.getBoundingClientRect();
+        return {
+          phase: button?.dataset.gamePluginInputHoldPhase,
+          progress: Number(button?.dataset.gamePluginInputHoldProgress),
+          meterWidth: meterRect?.width,
+          fillWidth: fillRect?.width
+        };
+      });
       const holdBrowserResponse = await holdResponsePromise;
       await controllerPage.mouse.up();
       const holdBrowserRequest = JSON.parse(holdBrowserResponse.request().postData() || "{}");
@@ -2179,19 +2386,6 @@ module.exports = Object.freeze([
       ), null, { timeout: 15_000 });
       const secondHoldSubmit = await submitPluginInputResponse(two, twoGestureHoldLobby, { choice: "delta", mode: "hold" }, "gesture-hold-two");
       const gestureBrowserSubmissionCountAfterHold = gestureBrowserSubmissionCount;
-      const secondControllerPage = await browser.newPage();
-      await secondControllerPage.addInitScript((session) => {
-        sessionStorage.setItem("partyTemplatePlayerId", session.playerId);
-        sessionStorage.setItem("partyTemplatePlayerName", session.playerName);
-        sessionStorage.setItem("partyTemplateStageCode", "PLUG");
-        sessionStorage.setItem("partyTemplatePlayerCapability", session.playerCapability);
-      }, {
-        playerId: two.player.id,
-        playerName: two.player.name,
-        playerCapability: two.playerCapability
-      });
-      await secondControllerPage.goto(first.startup.localUrl + "/controller?stage=PLUG&name=Two&join=1", { waitUntil: "load" });
-      await secondControllerPage.waitForFunction((playerId) => window.controllerState?.player?.id === playerId, two.player.id, { timeout: 15_000 });
       const dynamicFlowForCount = (optionCount) => ({
         ...flowPayload.flow,
         states: flowPayload.flow.states.map((state) => state.id === "lobby" ? {
@@ -2286,7 +2480,7 @@ module.exports = Object.freeze([
         };
       });
       const dynamicRetained = controllerPage.locator('[data-game-plugin-input-option="' + dynamicIdentityBefore.retainedOption + '"]');
-      await dynamicRetained.dispatchEvent("pointerdown", { pointerId: 191, pointerType: "touch", button: 0, isPrimary: true });
+      const dynamicRemoved = controllerPage.locator('[data-game-plugin-input-option="' + dynamicIdentityBefore.removedOption + '"]');
       await controllerPage.route("**/api/heartbeat", async (route) => {
         const response = await route.fetch();
         const payload = await response.json();
@@ -2302,10 +2496,43 @@ module.exports = Object.freeze([
         }
         await route.fulfill({ response, json: payload });
       }, { times: 1 });
+      await dynamicRemoved.dispatchEvent("pointerdown", { pointerId: 190, pointerType: "touch", button: 0, isPrimary: true });
+      await secondControllerPage.bringToFront();
+      await controllerPage.bringToFront();
+      await controllerPage.evaluate(() => window.dispatchEvent(new Event("focus")));
       await controllerPage.waitForFunction(() => (
         document.querySelector('[data-game-plugin-input-option$="-target-added"]')
         && window.__fixtureDynamicRemovedButton?.isConnected === false
       ), null, { timeout: 15_000 });
+      const dynamicRemovedHoldState = await controllerPage.evaluate(() => ({
+        phase: window.__fixtureDynamicRemovedButton?.dataset.gamePluginInputHoldPhase,
+        progress: Number(window.__fixtureDynamicRemovedButton?.dataset.gamePluginInputHoldProgress),
+        holding: window.__fixtureDynamicRemovedButton?.dataset.gamePluginInputHolding,
+        disconnected: window.__fixtureDynamicRemovedButton?.isConnected === false
+      }));
+      await dynamicRetained.dispatchEvent("pointerdown", { pointerId: 191, pointerType: "touch", button: 0, isPrimary: true });
+      await controllerPage.waitForTimeout(650);
+      const dynamicProgressBeforeHeartbeat = await controllerPage.evaluate(() => ({
+        progress: Number(window.__fixtureDynamicRetainedButton?.dataset.gamePluginInputHoldProgress),
+        phase: window.__fixtureDynamicRetainedButton?.dataset.gamePluginInputHoldPhase
+      }));
+      let dynamicHeartbeatSeen = false;
+      await controllerPage.route("**/api/heartbeat", async (route) => {
+        const response = await route.fetch();
+        const payload = await response.json();
+        payload.lobby.surfaceRevision = Number(payload.lobby.surfaceRevision || 0) + 1;
+        payload.lobby.revision = Number(payload.lobby.revision || 0) + 1;
+        dynamicHeartbeatSeen = true;
+        await route.fulfill({ response, json: payload });
+      }, { times: 1 });
+      await secondControllerPage.bringToFront();
+      await controllerPage.bringToFront();
+      await controllerPage.evaluate(() => window.dispatchEvent(new Event("focus")));
+      for (let attempt = 0; attempt < 20 && !dynamicHeartbeatSeen; attempt += 1) {
+        await controllerPage.waitForTimeout(25);
+      }
+      if (!dynamicHeartbeatSeen) throw new Error("Controller focus did not trigger the dynamic hold heartbeat fixture");
+      await controllerPage.waitForTimeout(50);
       const dynamicReconcileState = await controllerPage.evaluate(() => {
         const retained = window.__fixtureDynamicRetainedButton;
         const removed = window.__fixtureDynamicRemovedButton;
@@ -2325,6 +2552,8 @@ module.exports = Object.freeze([
           focused: document.activeElement === retained,
           holding: retained?.dataset.gamePluginInputHolding,
           ariaBusy: retained?.getAttribute("aria-busy"),
+          holdPhase: retained?.dataset.gamePluginInputHoldPhase,
+          holdProgress: Number(retained?.dataset.gamePluginInputHoldProgress),
           removedDisconnected: removed?.isConnected === false,
           removedDisabled: removed?.disabled === true,
           removedStale: removed?.dataset.gamePluginInputStale,
@@ -2350,6 +2579,11 @@ module.exports = Object.freeze([
         };
       });
       await dynamicRetained.dispatchEvent("pointercancel", { pointerId: 191, pointerType: "touch", button: 0, isPrimary: true });
+      const dynamicRetainedResetState = await controllerPage.evaluate(() => ({
+        phase: window.__fixtureDynamicRetainedButton?.dataset.gamePluginInputHoldPhase,
+        progress: Number(window.__fixtureDynamicRetainedButton?.dataset.gamePluginInputHoldProgress),
+        holding: window.__fixtureDynamicRetainedButton?.dataset.gamePluginInputHolding
+      }));
       await controllerPage.evaluate(() => window.__fixtureDynamicRemovedButton?.click());
       await controllerPage.waitForTimeout(100);
       const dynamicStaleSubmissionCount = dynamicBrowserSubmissionCount;
@@ -3218,7 +3452,12 @@ module.exports = Object.freeze([
           && gestureSubmittedAfterHeartbeat.detail === gestureSubmittedBeforeHeartbeat.detail,
         gestureCancellationState,
         gestureHoldHeartbeatState,
+        quickTapProgressState,
+        partialHoldProgressState,
+        partialHoldResetState,
+        completedHoldProgressState,
         tapBrowserPayload: tapBrowserRequest.payload,
+        secondTapBrowserPayload: secondTapBrowserRequest.payload,
         holdBrowserPayload: holdBrowserRequest.payload,
         gestureBrowserSubmissionCount: gestureBrowserSubmissionCountAfterHold,
         gestureSecondTapStatus: secondTapSubmit.status,
@@ -3235,7 +3474,10 @@ module.exports = Object.freeze([
           secondIds: dynamicSixTwoLobby.gamePlugin?.input?.viewModel?.targets?.map((target) => target.id)
         },
         dynamicIdentityBefore,
+        dynamicRemovedHoldState,
+        dynamicProgressBeforeHeartbeat,
         dynamicReconcileState,
+        dynamicRetainedResetState,
         dynamicStaleSubmissionCount,
         dynamicSubmitPayload: dynamicSubmitRequest.payload,
         dynamicStageBefore,
@@ -3493,14 +3735,34 @@ module.exports = Object.freeze([
     || !development.gestureSubmittedAfterHeartbeat?.hostRetained
     || !development.gestureSubmittedAfterHeartbeat?.rendererRetained
     || !development.gesturePersonalizedTextCorrect
+    || development.quickTapProgressState?.phase !== "delay"
+    || development.quickTapProgressState?.progress !== 0
+    || development.quickTapProgressState?.visible
+    || development.partialHoldProgressState?.phase !== "progress"
+    || !(development.partialHoldProgressState?.progress > 0.2 && development.partialHoldProgressState?.progress < 0.7)
+    || !development.partialHoldProgressState?.visible
+    || !(development.partialHoldProgressState?.fillWidth > 1)
+    || !(development.partialHoldProgressState?.fillWidth < development.partialHoldProgressState?.meterWidth)
+    || development.partialHoldResetState?.phase !== "idle"
+    || development.partialHoldResetState?.progress !== 0
+    || development.partialHoldResetState?.visible
+    || development.completedHoldProgressState?.phase !== "complete"
+    || development.completedHoldProgressState?.progress !== 1
+    || Math.abs(development.completedHoldProgressState?.fillWidth - development.completedHoldProgressState?.meterWidth) > 1
     || JSON.stringify(development.tapBrowserPayload) !== JSON.stringify({ choice: "alpha", mode: "tap" })
+    || JSON.stringify(development.secondTapBrowserPayload) !== JSON.stringify({ choice: "beta", mode: "tap" })
     || JSON.stringify(development.holdBrowserPayload) !== JSON.stringify({ choice: "alpha", mode: "hold" })
     || development.gestureCancellationState?.submissions !== 1
     || development.gestureCancellationState?.holding !== "false"
+    || development.gestureCancellationState?.phase !== "idle"
+    || development.gestureCancellationState?.progress !== 0
     || development.gestureCancellationState?.selected !== "false"
     || !development.gestureHoldHeartbeatState?.retained
     || development.gestureHoldHeartbeatState?.holding !== "true"
     || development.gestureHoldHeartbeatState?.ariaBusy !== "true"
+    || development.gestureHoldHeartbeatState?.phase !== "progress"
+    || !(development.gestureHoldHeartbeatState?.progress > 0.4 && development.gestureHoldHeartbeatState?.progress < 0.9)
+    || !development.gestureHoldHeartbeatState?.meterVisible
     || development.gestureBrowserSubmissionCount !== 2
     || development.gestureSecondTapStatus !== 200
     || development.gestureSecondTapAction !== "fixture-gesture-hold"
@@ -3514,6 +3776,12 @@ module.exports = Object.freeze([
     || development.dynamicPrivateSets?.firstIds?.some((id) => development.dynamicPrivateSets?.secondIds?.includes(id))
     || development.dynamicIdentityBefore?.count !== 6
     || !development.dynamicIdentityBefore?.rendererPresent
+    || !development.dynamicRemovedHoldState?.disconnected
+    || development.dynamicRemovedHoldState?.holding !== "false"
+    || development.dynamicRemovedHoldState?.phase !== "idle"
+    || development.dynamicRemovedHoldState?.progress !== 0
+    || development.dynamicProgressBeforeHeartbeat?.phase !== "progress"
+    || !(development.dynamicProgressBeforeHeartbeat?.progress > 0)
     || development.dynamicReconcileState?.count !== 6
     || !development.dynamicReconcileState?.retained
     || !development.dynamicReconcileState?.rendererRetained
@@ -3521,6 +3789,8 @@ module.exports = Object.freeze([
     || !development.dynamicReconcileState?.focused
     || development.dynamicReconcileState?.holding !== "true"
     || development.dynamicReconcileState?.ariaBusy !== "true"
+    || development.dynamicReconcileState?.holdPhase !== "progress"
+    || !(development.dynamicReconcileState?.holdProgress >= development.dynamicProgressBeforeHeartbeat?.progress)
     || !development.dynamicReconcileState?.removedDisconnected
     || !development.dynamicReconcileState?.removedDisabled
     || development.dynamicReconcileState?.removedStale !== "true"
@@ -3535,6 +3805,9 @@ module.exports = Object.freeze([
     || !development.dynamicReconcileState?.visibleHost
     || !development.dynamicReconcileState?.visibleItem
     || !development.dynamicReconcileState?.matchingBounds
+    || development.dynamicRetainedResetState?.holding !== "false"
+    || development.dynamicRetainedResetState?.phase !== "idle"
+    || development.dynamicRetainedResetState?.progress !== 0
     || development.dynamicStaleSubmissionCount !== 0
     || JSON.stringify(development.dynamicSubmitPayload) !== JSON.stringify({ targetPlayerId: development.dynamicIdentityBefore?.retainedOption })
     || !(development.dynamicStageAfterPartial?.applies > development.dynamicStageBefore?.applies)
@@ -3635,6 +3908,7 @@ module.exports = Object.freeze([
   console.log(`Background controller evidence: Stage applies stayed ${development.controllerProfileInteractions.backgroundPresence.applyCount}, player/renderer/timeline retained, max frame gap ${development.controllerProfileInteractions.backgroundPresence.maxFrameGap.toFixed(1)}ms.`);
   console.log(`Background Tools evidence: ${development.toolsLeaseRecovery.draftCount} clean-model recovery drafts, Stage applies stayed ${development.toolsLeaseRecovery.after.applyCount}, lobby renderer/timeline retained, max frame gap ${development.toolsLeaseRecovery.after.maxFrameGap.toFixed(1)}ms.`);
   console.log(`Controller projection browser evidence: start ${development.vipControllerJourney.startSurface}, Next ${development.vipControllerJourney.advanceSurfaces.join("/")}, crafting choices ${development.vipControllerJourney.craftingChoice.optionCount}.`);
+  console.log(`Hold progress browser evidence: quick tap hidden ${!development.quickTapProgressState.visible}, partial ${(development.partialHoldProgressState.progress * 100).toFixed(1)}%, complete ${(development.completedHoldProgressState.progress * 100).toFixed(0)}%, fixed and collection renderers retained.`);
   const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });
   if (!migrationPreview.includes("Migration preview valid: level 0 -> 0") || !migrationPreview.includes("Changed paths: (none)")) {
     throw new Error("Generated game migration preview contract failed");

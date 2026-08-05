@@ -290,6 +290,22 @@ function validateInputRegistration(id, value) {
             throw new Error(`Input "${id}" binding "${bindingId}" holdSubmit requires positive seconds`);
           }
           validateSubmitValues(binding.holdSubmit.submitValues, `binding "${bindingId}" holdSubmit submitValues`);
+          if (binding.holdSubmit.progress !== undefined) {
+            const progress = binding.holdSubmit.progress;
+            assertPlainObject(progress, `Input "${id}" binding "${bindingId}" holdSubmit progress`);
+            const delaySeconds = Number(progress.delaySeconds);
+            if (!Number.isFinite(delaySeconds) || delaySeconds < 0 || delaySeconds >= Number(binding.holdSubmit.seconds)) {
+              throw new Error(`Input "${id}" binding "${bindingId}" holdSubmit progress delaySeconds must be non-negative and less than hold seconds`);
+            }
+            for (const field of ["targetComponentId", "startLabel", "completeLabel", "resetLabel"]) {
+              if (!String(progress[field] || "").trim()) {
+                throw new Error(`Input "${id}" binding "${bindingId}" holdSubmit progress requires ${field}`);
+              }
+            }
+            if (String(progress.startLabel).trim() === String(progress.completeLabel).trim()) {
+              throw new Error(`Input "${id}" binding "${bindingId}" holdSubmit progress requires distinct startLabel and completeLabel`);
+            }
+          }
         }
         if (binding.autoSubmit === true || binding.holdSubmit !== undefined) hasSubmissionTrigger = true;
       }

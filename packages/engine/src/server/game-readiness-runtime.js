@@ -6,6 +6,7 @@ const {
   validateSemanticRoleDocument
 } = require("../shared/semantic-role-schema");
 const { ENGINE_CONTENT_SCHEMA_VERSION } = require("../shared/content-bundle-schema");
+const { normalizeTimeline, tryFrameForTimelineLabel } = require("../shared/timeline-model");
 const { createBundleGameData } = require("./content-game-data-runtime");
 
 class GameReadinessError extends Error {
@@ -79,6 +80,107 @@ function artComponentForId(components, componentId, compositions, visited = new 
     if (match) return match;
   }
   return null;
+}
+
+function holdProgressTimelineForComponent(component, compositions) {
+  if (String(component?.kind || "").toLowerCase() === "reference") {
+    return normalizeTimeline(compositions.get(String(component.artCompositionId || ""))?.timeline);
+  }
+  return normalizeTimeline(component?.timeline);
+}
+
+function validateHoldProgressArtContract({ registrationId, binding, compositionId, compositions }) {
+  const progress = binding.holdSubmit?.progress;
+  if (!progress) return;
+  const composition = compositions.get(String(compositionId || ""));
+  if (!composition || String(composition.surface || "").toLowerCase() !== "controller") {
+    readinessFailure("PLUGIN_INPUT_HOLD_PROGRESS_COMPOSITION_INVALID", `Controller input "${registrationId}" hold progress references an unknown or wrong-surface Game Object`, {
+      inputId: registrationId,
+      bindingId: String(binding.id || ""),
+      compositionId: String(compositionId || "")
+    });
+  }
+  const targetComponentId = String(progress.targetComponentId || "");
+  const component = artComponentForId(composition.components, targetComponentId, compositions, new Set([String(compositionId || "")]));
+  if (!component) {
+    readinessFailure("PLUGIN_INPUT_HOLD_PROGRESS_TARGET_INVALID", `Controller input "${registrationId}" hold progress targets an unknown Art component`, {
+      inputId: registrationId,
+      bindingId: String(binding.id || ""),
+      compositionId: String(compositionId || ""),
+      targetComponentId
+    });
+  }
+  const timeline = holdProgressTimelineForComponent(component, compositions);
+  const startFrame = timeline ? tryFrameForTimelineLabel(timeline, String(progress.startLabel || "")) : null;
+  const completeFrame = timeline ? tryFrameForTimelineLabel(timeline, String(progress.completeLabel || "")) : null;
+  const resetFrame = timeline ? tryFrameForTimelineLabel(timeline, String(progress.resetLabel || "")) : null;
+  if (startFrame === null || completeFrame === null || resetFrame === null || completeFrame <= startFrame) {
+    readinessFailure("PLUGIN_INPUT_HOLD_PROGRESS_TIMELINE_INVALID", `Controller input "${registrationId}" hold progress requires ordered start/complete labels and a reset label on its authored target timeline`, {
+      inputId: registrationId,
+      bindingId: String(binding.id || ""),
+      compositionId: String(compositionId || ""),
+      targetComponentId,
+      startLabel: String(progress.startLabel || ""),
+      completeLabel: String(progress.completeLabel || ""),
+      resetLabel: String(progress.resetLabel || "")
+    });
+  }
+}
+
+function controllerLayoutElementsForInput(gameData, layoutStateId = "") {
+  const layouts = gameData.defaultControllerLayouts || {};
+  const stateElements = layoutStateId
+    ? ((layouts.states || []).find((state) => String(state.id || "") === layoutStateId)?.elements || [])
+    : (layouts.states || []).flatMap((state) => state.elements || []);
+  return [
+    ...stateElements,
+    ...(layouts.global?.elements || []),
+    ...(layouts.layers || []).flatMap((layer) => layer.elements || [])
+  ];
+}
+
+function validateInputHoldProgressContentContracts(game, gameData) {
+  const compositions = new Map((gameData.defaultArtCompositions || []).map((composition) => [String(composition.id || ""), composition]));
+  for (const registration of game.registrations?.inputs || []) {
+    const controller = registration.value.controller || {};
+    const groups = [
+      { layoutStateId: String(controller.layoutStateId || ""), bindings: controller.bindings || [] },
+      ...(controller.submitted
+        ? [{ layoutStateId: String(controller.submitted.layoutStateId || ""), bindings: controller.submitted.bindings || [] }]
+        : [])
+    ];
+    for (const group of groups) {
+      const elements = controllerLayoutElementsForInput(gameData, group.layoutStateId);
+      for (const binding of group.bindings.filter((candidate) => candidate.holdSubmit?.progress)) {
+        if (binding.kind === "choiceCollection") {
+          validateHoldProgressArtContract({
+            registrationId: registration.id,
+            binding,
+            compositionId: binding.item?.artCompositionId,
+            compositions
+          });
+          continue;
+        }
+        const targets = elements.filter((element) => String(element.id || "") === String(binding.layoutElementId || ""));
+        if (!targets.length) {
+          readinessFailure("PLUGIN_INPUT_HOLD_PROGRESS_LAYOUT_TARGET_INVALID", `Controller input "${registration.id}" hold progress targets an unknown Controller Layout element`, {
+            inputId: registration.id,
+            bindingId: String(binding.id || ""),
+            layoutElementId: String(binding.layoutElementId || ""),
+            layoutStateId: group.layoutStateId
+          });
+        }
+        for (const target of targets) {
+          validateHoldProgressArtContract({
+            registrationId: registration.id,
+            binding,
+            compositionId: target.artCompositionId,
+            compositions
+          });
+        }
+      }
+    }
+  }
 }
 
 function validateRendererItemContract({ registration, binding, surface, compositions }) {
@@ -169,6 +271,12 @@ function validateControllerInteractionContentContracts(game, gameData) {
         if (!artComponentForId(composition.components, componentId, compositions, new Set([compositionId]))) {
           readinessFailure("PLUGIN_CONTROLLER_INTERACTION_COMPONENT_INVALID", `Controller interaction "${registration.id}" choice item targets an unknown Art component`, { interactionId: registration.id, compositionId, targetComponentId: componentId });
         }
+        validateHoldProgressArtContract({
+          registrationId: registration.id,
+          binding,
+          compositionId,
+          compositions
+        });
         continue;
       }
       if (binding.kind === "text") {
@@ -191,6 +299,12 @@ function validateControllerInteractionContentContracts(game, gameData) {
             });
           }
         }
+        validateHoldProgressArtContract({
+          registrationId: registration.id,
+          binding,
+          compositionId,
+          compositions
+        });
       }
     }
   }
@@ -218,6 +332,7 @@ function createGameReleaseValidator(options = {}) {
     const semanticRoles = semanticRolesFrom(snapshot);
     assertExpectedSemanticRoles(game.semanticRoles, semanticRoles);
     validateRendererContentContracts(game, gameData, semanticRoles);
+    validateInputHoldProgressContentContracts(game, gameData);
     validateControllerInteractionContentContracts(game, gameData);
     for (const registration of game.registrations?.validators || []) {
       if (typeof registration.value !== "function") readinessFailure("PLUGIN_VALIDATOR_INVALID", "Game validator registration is not callable", { id: registration.id });

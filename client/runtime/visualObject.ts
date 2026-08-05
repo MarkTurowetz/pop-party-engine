@@ -366,6 +366,10 @@ class CssVisualObject {
     this.timelinePlayer.applyFrame(this.timelinePlayer.currentFrame);
   }
 
+  seekTimelineProgress(startLabel: string, completeLabel: string, progress: number): boolean {
+    return this.timelinePlayer?.seekProgress(startLabel, completeLabel, progress) === true;
+  }
+
   applyTimelineProperties(props: TimelineProperties): void {
     if (!this.element) return;
     const ownsIntrinsicDimensions = this.element.dataset.artIntrinsicDimensions === "true";

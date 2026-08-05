@@ -118,6 +118,32 @@ selected-state fallback. These local values and states survive normal lobby
 heartbeat rendering until submission, while a reload or new input visit starts
 from the server-provided private view model.
 
+A choice `holdSubmit` may optionally bind its single authoritative hold clock to
+one Tools-authored Art timeline:
+
+```js
+holdSubmit: {
+  seconds: 1.5,
+  submitValues: { wagerMode: "hold" },
+  progress: {
+    delaySeconds: 0.5,
+    targetComponentId: "hold-meter",
+    startLabel: "HoldStart",
+    completeLabel: "HoldComplete",
+    resetLabel: "Off"
+  }
+}
+```
+
+The target owns the meter design. `Off` hides it, `HoldStart` is its visible
+empty frame, and `HoldComplete` is its full frame. The engine scrubs that
+authored range from the delay to the submission threshold, exposes the
+normalized value and phase through `data-game-plugin-input-hold-progress` and
+`data-game-plugin-input-hold-phase`, and keeps `aria-busy` stable without
+announcing every animation frame. Cancellation resets the target to `Off`.
+Readiness rejects unknown components, missing labels, reversed ranges, and a
+delay outside the hold duration.
+
 Variable-cardinality choices use one Tools-authored Controller Layout collection
 instead of fixed placeholder slots. The collection owns its bounds, direction,
 gap, distribution, alignment, padding, overflow, and local z-order. A

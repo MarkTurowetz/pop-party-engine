@@ -810,6 +810,43 @@ function setControllerPluginInputHoldingState(target: El | null, holding: boolea
   return renderer?.stopAtAll?.(holding ? "Holding" : selected ? "Selected" : "Default", { instant: true }) || 0;
 }
 
+type ControllerPluginHoldProgress = {
+  targetComponentId: string;
+  startLabel: string;
+  completeLabel: string;
+  resetLabel: string;
+};
+
+function setControllerPluginInputHoldProgress(
+  target: El | null,
+  progress: ControllerPluginHoldProgress,
+  normalizedProgress: number | null
+): boolean {
+  if (!target) return false;
+  const renderer = artRendererForLayoutHost(target) as {
+    stopAtComponent?: (componentId: string, animation: string, options?: Dict) => number;
+    seekComponentProgress?: (componentId: string, startLabel: string, completeLabel: string, value: number) => boolean;
+  } | null;
+  if (!renderer) return false;
+  if (normalizedProgress === null) {
+    renderer.stopAtComponent?.(progress.targetComponentId, progress.resetLabel, { instant: true });
+    return true;
+  }
+  const value = Math.max(0, Math.min(1, Number(normalizedProgress) || 0));
+  if (value <= 0) {
+    renderer.stopAtComponent?.(progress.targetComponentId, progress.startLabel, { instant: true });
+  } else if (value >= 1) {
+    renderer.stopAtComponent?.(progress.targetComponentId, progress.completeLabel, { instant: true });
+    return true;
+  }
+  return renderer.seekComponentProgress?.(
+    progress.targetComponentId,
+    progress.startLabel,
+    progress.completeLabel,
+    value
+  ) === true;
+}
+
 function setControllerPluginInputCollectionState(target: El | null, state: string): number {
   if (!target) return 0;
   const renderer = artRendererForLayoutHost(target);
@@ -1512,6 +1549,7 @@ const PartyGameLayoutText = {
   setControllerButtonDisabledState,
   setControllerPluginInputChoiceState,
   setControllerPluginInputHoldingState,
+  setControllerPluginInputHoldProgress,
   setControllerPluginInputCollectionState,
   setControllerText: setControllerLayoutText,
   setControllerTextShown: setControllerLayoutTextShown,
@@ -1537,6 +1575,7 @@ Object.assign(w(), {
   setControllerLayoutButtonText, playControllerLayoutGameObjectAnimationForAction,
   disposeControllerButtonArt, setControllerButtonLifecycleState,
   playControllerButtonInteraction, setControllerButtonDisabledState, setControllerPluginInputChoiceState, setControllerPluginInputHoldingState,
+  setControllerPluginInputHoldProgress,
   setControllerPluginInputCollectionState,
   playStageLayoutGameObjectAnimationForAction, setStageLayoutArtElementShownForAction, setStageLayoutGameObjectShownForAction, setStageLayoutText, stageArtInstanceRenderers, stageDynamicArtInstances,
   stageLayoutComputedFontSize, stageLayoutElementForId, stageLayoutElementForTarget, stageLayoutElementVisibilityKey, stageLayoutEntityForElementId, stageLayoutGameObjectRegistry,

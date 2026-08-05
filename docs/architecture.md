@@ -242,9 +242,13 @@ concepts into focused modules.
     authored `Selected` or `Default` label when that label exists. A static native selection ring
     remains as the accessible fallback when custom art has no selected timeline state.
     Choice bindings may add schema-declared `submitValues` to an ordinary activation and may define
-    `holdSubmit: { seconds, submitValues }` for a pointer-captured hold. Holding state is retained
+    `holdSubmit: { seconds, submitValues }` for a pointer-captured hold. An optional
+    `progress` contract names one Art component, an initial delay, and authored reset/start/complete
+    timeline labels. The runtime owns the clock and scrubs the target's normalized timeline range,
+    so games do not duplicate timers or inject meter CSS. Holding state is retained
     across authoritative heartbeats and exposed through `aria-busy`,
-    `data-game-plugin-input-holding`, and the authored `Holding` Art label. Pointer cancellation,
+    `data-game-plugin-input-holding`, `data-game-plugin-input-hold-progress`,
+    `data-game-plugin-input-hold-phase`, and the authored `Holding` Art label. Pointer cancellation,
     stale visits, submission, and layout changes cancel pending holds, and every resulting value is
     still validated against the recipient's private view model on the server. Authored choice slots
     with no matching private option are suppressed for that visit without destroying their Art

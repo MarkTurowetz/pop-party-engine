@@ -20,6 +20,22 @@ describe("PartyGameArtObject (ported art-object-visuals)", () => {
     expect(PartyGameArtObject.syncComponentElement).toBeTypeOf("function");
   });
 
+  it("seeks one authored component timeline without replacing its renderer tree", () => {
+    const seekProgress = vi.fn(() => true);
+    const view = { seekProgress };
+    const renderer = Object.create(PartyGameArtObject.ArtObjectTreeRenderer.prototype) as {
+      views: Map<string, unknown>;
+      viewForComponentId: (componentId: string) => typeof view | null;
+      seekComponentProgress: (componentId: string, start: string, complete: string, progress: number) => boolean;
+    };
+    renderer.views = new Map([["hold-meter", view]]);
+    renderer.viewForComponentId = (componentId) => componentId === "hold-meter" ? view : null;
+
+    expect(renderer.seekComponentProgress("hold-meter", "HoldStart", "HoldComplete", 0.625)).toBe(true);
+    expect(seekProgress).toHaveBeenCalledWith("HoldStart", "HoldComplete", 0.625);
+    expect(renderer.views.get("hold-meter")).toBe(view);
+  });
+
   it("cancels root and child animations when a dynamic art tree is disposed", () => {
     const stop = vi.fn();
     const removeImmediately = vi.fn();
