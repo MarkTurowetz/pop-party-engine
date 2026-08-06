@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent
 } from "react";
 import type { ArtAsset, ArtComposition, LayoutElement } from "../../types/game-data";
@@ -19,6 +18,7 @@ import {
   type ArtTextOverride
 } from "../art/ArtPreviewRenderer";
 import { applyDragModifiers, createDragModifierState } from "../common/dragModifiers";
+import { canvasDragSelection } from "../common/canvasSelection";
 import { ToolSaveError } from "../common/ToolSaveError";
 import { ToolWorkspace } from "../common/ToolWorkspace";
 import type { LayoutController } from "./layoutController";
@@ -36,6 +36,7 @@ import {
   layoutViewTags
 } from "./layoutTags";
 import { useLayoutEditor } from "./useLayoutEditor";
+import { layoutElementsTopFirst, layoutElementStackOffset } from "../../runtime/layoutStackOrder";
 import {
   choiceCollectionBindingForElement,
   LayoutCollectionPreview,
@@ -116,13 +117,20 @@ function useElementSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
-function layerDropPlacement(event: ReactDragEvent<HTMLElement>): LayerDropPlacement {
-  const rect = event.currentTarget.getBoundingClientRect();
-  return event.clientY > rect.top + rect.height / 2 ? "after" : "before";
-}
-
 function layoutElementArtCompositionId(element: LayoutElement): string {
   return String(get(element, "artCompositionId") || "");
+}
+
+function layoutInitialAnimationState(
+  element: LayoutElement,
+  mode: "stage" | "controller"
+): "On" | "Off" {
+  if (mode === "controller")
+    return controllerInitialAnimationState(get(element, "defaultAnimationState"));
+  const state = String(get(element, "defaultAnimationState") || "")
+    .trim()
+    .toLowerCase();
+  return ["on", "appear", "update", "visible", "shown"].includes(state) ? "On" : "Off";
 }
 
 function layoutTextOverride(element: LayoutElement): ArtTextOverride {
@@ -159,7 +167,8 @@ function layoutElementPreviewFallbackStyle(
     top: y - height / 2,
     width,
     height,
-    zIndex: get(element, "layoutLayer") === "background" ? 0 : Math.max(1, total - index),
+    zIndex:
+      get(element, "layoutLayer") === "background" ? 0 : layoutElementStackOffset(index, total) + 1,
     pointerEvents: "auto"
   };
 }
@@ -191,9 +200,7 @@ export function LayoutEditor({
   const { layouts, selectedGroupId, selectedElementIds, dirty, saving, canUndo, canRedo } = state;
   const [live, setLive] = useState<{
     contextKey: string;
-    id: string;
-    x: number;
-    y: number;
+    positions: Record<string, { x: number; y: number }>;
   } | null>(null);
   const [activePointerElement, setActivePointerElement] = useState<{
     contextKey: string;
@@ -219,8 +226,10 @@ export function LayoutEditor({
 
   const groups = layoutGroups(layouts);
   const group = groups.find((item) => item.id === selectedGroupId) || layouts.global || null;
-  const selectedPersistentLayer = (layouts.layers || []).find((item) => item.id === selectedGroupId) || null;
-  const selectedControllerState = (layouts.states || []).find((item) => item.id === selectedGroupId) || null;
+  const selectedPersistentLayer =
+    (layouts.layers || []).find((item) => item.id === selectedGroupId) || null;
+  const selectedControllerState =
+    (layouts.states || []).find((item) => item.id === selectedGroupId) || null;
   const canvasWidth = Number(layouts.canvas?.width || (mode === "controller" ? 390 : 1920));
   const canvasHeight = Number(layouts.canvas?.height || (mode === "controller" ? 844 : 1080));
   const fallbackPreviewWidth = mode === "controller" ? 420 : 960;
@@ -239,7 +248,7 @@ export function LayoutEditor({
       availablePreviewHeight / canvasHeight
     )
   );
-  const groupElements = group?.elements || [];
+  const groupElements = layoutElementsTopFirst(group?.elements || []);
   const controllerViewTags = mode === "controller" ? layoutViewTags(groupElements) : [];
   const controllerPreviewTag =
     mode === "controller" && group
@@ -249,10 +258,8 @@ export function LayoutEditor({
     mode === "controller" && controllerPreviewTag
       ? groupElements.filter((element) => layoutElementHasTag(element, controllerPreviewTag))
       : groupElements;
-  const selectedElement =
-    group && selectedElementIds.size === 1
-      ? groupElements.find((element) => element.id === [...selectedElementIds][0])
-      : undefined;
+  const selectedElements = groupElements.filter((element) => selectedElementIds.has(element.id));
+  const selectedElement = selectedElements.length === 1 ? selectedElements[0] : undefined;
   const selectedArtCompositionId = selectedElement
     ? layoutElementArtCompositionId(selectedElement)
     : "";
@@ -292,6 +299,16 @@ export function LayoutEditor({
     if (get(element, "locked") === true) return;
     event.stopPropagation();
     cancelActivePointerInteraction();
+    const additive = event.metaKey || event.ctrlKey || event.shiftKey;
+    const dragSelection = canvasDragSelection(selectedElementIds, element.id, additive);
+    controller.setElementSelection(dragSelection);
+    const targets = groupElements
+      .filter((candidate) => dragSelection.has(candidate.id) && get(candidate, "locked") !== true)
+      .map((candidate) => ({
+        id: candidate.id,
+        x: Number(get(candidate, "x") || 0),
+        y: Number(get(candidate, "y") || 0)
+      }));
     const pointerId = event.pointerId;
     const captureTarget = event.currentTarget;
     const originX = Number(get(element, "x") || 0);
@@ -299,8 +316,9 @@ export function LayoutEditor({
     const startX = event.clientX;
     const startY = event.clientY;
     let moved = false;
-    let nextX = originX;
-    let nextY = originY;
+    let positions = Object.fromEntries(
+      targets.map((target) => [target.id, { x: target.x, y: target.y }])
+    );
     let cleaned = false;
     const modifierState = createDragModifierState();
     const move = (e: PointerEvent) => {
@@ -321,9 +339,18 @@ export function LayoutEditor({
         },
         modifierState
       );
-      nextX = next.x;
-      nextY = next.y;
-      setLive({ contextKey: interactionContextKey, id: element.id, x: nextX, y: nextY });
+      const translatedX = next.x - originX;
+      const translatedY = next.y - originY;
+      positions = Object.fromEntries(
+        targets.map((target) => [
+          target.id,
+          {
+            x: Number((target.x + translatedX).toFixed(3)),
+            y: Number((target.y + translatedY).toFixed(3))
+          }
+        ])
+      );
+      setLive({ contextKey: interactionContextKey, positions });
     };
     const cleanup = (clearVisualState = true) => {
       if (cleaned) return;
@@ -372,10 +399,19 @@ export function LayoutEditor({
         },
         modifierState
       );
-      nextX = next.x;
-      nextY = next.y;
+      const translatedX = next.x - originX;
+      const translatedY = next.y - originY;
+      positions = Object.fromEntries(
+        targets.map((target) => [
+          target.id,
+          {
+            x: Number((target.x + translatedX).toFixed(3)),
+            y: Number((target.y + translatedY).toFixed(3))
+          }
+        ])
+      );
       cleanup();
-      if (moved) controller.moveElement(element.id, nextX, nextY);
+      if (moved) controller.moveElements(positions);
     };
     const interaction: ActiveLayoutPointerInteraction = { cancel };
     activePointerInteractionRef.current = interaction;
@@ -393,8 +429,7 @@ export function LayoutEditor({
   };
 
   const renderElement = (element: LayoutElement, index: number, total: number) => {
-    const livePos =
-      live?.contextKey === interactionContextKey && live.id === element.id ? live : null;
+    const livePos = live?.contextKey === interactionContextKey ? live.positions[element.id] : null;
     const x = livePos ? livePos.x : Number(get(element, "x") || 0);
     const y = livePos ? livePos.y : Number(get(element, "y") || 0);
     const width = Number(get(element, "width") || 1);
@@ -432,7 +467,10 @@ export function LayoutEditor({
       overflow: isCollection ? undefined : "visible",
       boxSizing: "border-box",
       touchAction: locked || hidden ? undefined : "none",
-      zIndex: get(element, "layoutLayer") === "background" ? 0 : Math.max(1, total - index),
+      zIndex:
+        get(element, "layoutLayer") === "background"
+          ? 0
+          : layoutElementStackOffset(index, total) + 1,
       pointerEvents: locked || hidden ? "none" : "auto",
       ...(isCollection ? choiceCollectionLayoutStyle(element as Record<string, unknown>) : {})
     };
@@ -459,17 +497,7 @@ export function LayoutEditor({
               }
         }
         onPointerDown={locked || hidden ? undefined : (event) => beginDrag(element, event)}
-        onClick={
-          locked || hidden
-            ? undefined
-            : (event) => {
-                event.stopPropagation();
-                controller.selectElement(
-                  element.id,
-                  event.metaKey || event.ctrlKey || event.shiftKey
-                );
-              }
-        }
+        onClick={locked || hidden ? undefined : (event) => event.stopPropagation()}
       >
         {composition ? (
           <div
@@ -530,37 +558,86 @@ export function LayoutEditor({
     );
   };
 
-  const beginElementLayerDrag = (id: string, event: ReactDragEvent<HTMLDivElement>) => {
+  const beginElementLayerDrag = (id: string, event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cancelActivePointerInteraction();
+    const pointerId = event.pointerId;
+    const captureTarget = event.currentTarget;
+    let dropTarget: LayerDropTarget | null = null;
+    let cleaned = false;
+    const move = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== pointerId) return;
+      pointerEvent.preventDefault();
+      const row = document
+        .elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)
+        ?.closest<HTMLElement>("[data-layout-object-id]");
+      const targetId = row?.dataset.layoutObjectId || "";
+      if (!row || !targetId || targetId === id) {
+        dropTarget = null;
+        setElementDropTarget(null);
+        return;
+      }
+      const rect = row.getBoundingClientRect();
+      dropTarget = {
+        id: targetId,
+        placement: pointerEvent.clientY > rect.top + rect.height / 2 ? "after" : "before"
+      };
+      setElementDropTarget(dropTarget);
+    };
+    const cleanup = (clearVisualState = true) => {
+      if (cleaned) return;
+      cleaned = true;
+      document.removeEventListener("pointermove", move, true);
+      document.removeEventListener("pointerup", up, true);
+      document.removeEventListener("pointercancel", cancelFromPointer, true);
+      document.removeEventListener("visibilitychange", cancelFromVisibility);
+      window.removeEventListener("blur", cancelFromWindow);
+      captureTarget.removeEventListener("lostpointercapture", cancelFromPointer);
+      if (captureTarget.hasPointerCapture?.(pointerId)) {
+        try {
+          captureTarget.releasePointerCapture(pointerId);
+        } catch {
+          // Pointer capture can already be gone after a tab or window switch.
+        }
+      }
+      if (activePointerInteractionRef.current === interaction)
+        activePointerInteractionRef.current = null;
+      if (clearVisualState) {
+        setElementDragId(null);
+        setElementDropTarget(null);
+      }
+    };
+    const cancel = (clearVisualState = true) => cleanup(clearVisualState);
+    const cancelFromPointer = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId === pointerId) cancel();
+    };
+    const cancelFromWindow = () => cancel();
+    const cancelFromVisibility = () => {
+      if (document.hidden) cancel();
+    };
+    const up = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== pointerId) return;
+      const completedDrop = dropTarget;
+      cleanup();
+      if (completedDrop) controller.reorderElement(id, completedDrop.id, completedDrop.placement);
+    };
+    const interaction: ActiveLayoutPointerInteraction = { cancel };
+    activePointerInteractionRef.current = interaction;
     setElementDragId(id);
     setElementDropTarget(null);
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", id);
-  };
-
-  const updateElementLayerDropTarget = (
-    targetId: string,
-    event: ReactDragEvent<HTMLDivElement>
-  ) => {
-    const draggingId = elementDragId || event.dataTransfer.getData("text/plain");
-    if (!draggingId || draggingId === targetId) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    setElementDropTarget({ id: targetId, placement: layerDropPlacement(event) });
-  };
-
-  const dropElementLayer = (targetId: string, event: ReactDragEvent<HTMLDivElement>) => {
-    const draggingId = elementDragId || event.dataTransfer.getData("text/plain");
-    const placement = layerDropPlacement(event);
-    setElementDragId(null);
-    setElementDropTarget(null);
-    if (!draggingId || draggingId === targetId) return;
-    event.preventDefault();
-    controller.reorderElement(draggingId, targetId, placement);
-  };
-
-  const endElementLayerDrag = () => {
-    setElementDragId(null);
-    setElementDropTarget(null);
+    document.addEventListener("pointermove", move, true);
+    document.addEventListener("pointerup", up, true);
+    document.addEventListener("pointercancel", cancelFromPointer, true);
+    document.addEventListener("visibilitychange", cancelFromVisibility);
+    window.addEventListener("blur", cancelFromWindow);
+    captureTarget.addEventListener("lostpointercapture", cancelFromPointer);
+    try {
+      captureTarget.setPointerCapture?.(pointerId);
+    } catch {
+      // Synthetic authoring tests do not always implement pointer capture.
+    }
   };
 
   const toolbar = (
@@ -671,9 +748,10 @@ export function LayoutEditor({
               onSubmit={(event) => {
                 event.preventDefault();
                 resetLayoutInteractionContext();
-                const createdId = groupCreatorKind === "layer"
-                  ? controller.addPersistentLayer({ id: newGroupId, name: newGroupName })
-                  : controller.addLayoutGroup({ id: newGroupId, name: newGroupName });
+                const createdId =
+                  groupCreatorKind === "layer"
+                    ? controller.addPersistentLayer({ id: newGroupId, name: newGroupName })
+                    : controller.addLayoutGroup({ id: newGroupId, name: newGroupName });
                 if (!createdId) return;
                 setGroupCreatorOpen(false);
                 setNewGroupName("New Controller Layout");
@@ -741,7 +819,9 @@ export function LayoutEditor({
                 <strong>{item.name || item.id}</strong>
                 <small>
                   {item.id}
-                  {(layouts.layers || []).some((layer) => layer.id === item.id) ? " · persistent" : ""}
+                  {(layouts.layers || []).some((layer) => layer.id === item.id)
+                    ? " · persistent"
+                    : ""}
                 </small>
               </span>
             </button>
@@ -754,9 +834,11 @@ export function LayoutEditor({
           <input
             type="number"
             value={selectedPersistentLayer.zIndex}
-            onChange={(event) => controller.updatePersistentLayer(selectedPersistentLayer.id, {
-              zIndex: Number(event.target.value)
-            })}
+            onChange={(event) =>
+              controller.updatePersistentLayer(selectedPersistentLayer.id, {
+                zIndex: Number(event.target.value)
+              })
+            }
           />
           <small>Lower values render behind Global (200); active state renders at 300.</small>
         </label>
@@ -771,11 +853,13 @@ export function LayoutEditor({
                 <input
                   type="checkbox"
                   checked={visible}
-                  onChange={(event) => controller.setPersistentLayerVisible(
-                    selectedControllerState.id,
-                    layer.id,
-                    event.target.checked
-                  )}
+                  onChange={(event) =>
+                    controller.setPersistentLayerVisible(
+                      selectedControllerState.id,
+                      layer.id,
+                      event.target.checked
+                    )
+                  }
                 />
                 <span>{layer.name || layer.id}</span>
               </label>
@@ -785,6 +869,7 @@ export function LayoutEditor({
       ) : null}
       <div className="layout-object-list-panel" data-layout-react-component="object-list">
         <h3>Game Objects</h3>
+        <small className="layout-object-stack-help">Top items render in front.</small>
         {group ? (
           <ol className="layout-object-list">
             {groupElements.map((element) => {
@@ -793,10 +878,7 @@ export function LayoutEditor({
               const selected = selectedElementIds.has(element.id);
               const compositionId = layoutElementArtCompositionId(element);
               const linkedComposition = compositionId ? compositionById.get(compositionId) : null;
-              const initialState =
-                mode === "controller"
-                  ? controllerInitialAnimationState(get(element, "defaultAnimationState"))
-                  : "";
+              const initialState = layoutInitialAnimationState(element, mode);
               const tags = mode === "controller" ? layoutElementTags(element) : [];
               return (
                 <li
@@ -813,14 +895,20 @@ export function LayoutEditor({
                 >
                   <div
                     className="layout-object-row"
-                    draggable
+                    data-layout-object-dragging={elementDragId === element.id ? "true" : undefined}
                     data-layout-object-hidden={hidden ? "true" : "false"}
                     data-layout-object-locked={locked ? "true" : "false"}
-                    onDragStart={(event) => beginElementLayerDrag(element.id, event)}
-                    onDragOver={(event) => updateElementLayerDropTarget(element.id, event)}
-                    onDrop={(event) => dropElementLayer(element.id, event)}
-                    onDragEnd={endElementLayerDrag}
                   >
+                    <button
+                      type="button"
+                      className="layout-object-reorder-handle"
+                      aria-label={`Reorder ${element.name || element.id}`}
+                      title="Drag to reorder; top items render in front"
+                      data-layout-object-reorder={element.id}
+                      onPointerDown={(event) => beginElementLayerDrag(element.id, event)}
+                    >
+                      <span aria-hidden="true">↕</span>
+                    </button>
                     <button
                       type="button"
                       className="layout-object-select"
@@ -1059,7 +1147,7 @@ export function LayoutEditor({
         <LayoutElementInspector
           artComposition={selectedArtComposition}
           controller={controller}
-          element={selectedElement ?? null}
+          elements={selectedElements}
           mode={mode}
           viewTags={controllerViewTags}
         />
@@ -1071,17 +1159,17 @@ export function LayoutEditor({
 function LayoutElementInspector({
   artComposition,
   controller,
-  element,
+  elements,
   mode,
   viewTags
 }: {
   artComposition: ArtComposition | null;
   controller: LayoutController;
-  element: LayoutElement | null;
+  elements: LayoutElement[];
   mode: "stage" | "controller";
   viewTags: string[];
 }) {
-  if (!element) {
+  if (!elements.length) {
     return (
       <section
         className="flow-react-panel flow-react-inspector layout-element-inspector"
@@ -1093,23 +1181,30 @@ function LayoutElementInspector({
       </section>
     );
   }
-  const commit = (patch: Partial<LayoutElement>) => controller.updateElement(element.id, patch);
-  const isText =
-    element.kind === "text" || get(element, "artCompositionId") === "layout-text-field";
-  const isCollection = element.kind === "collection";
+  const element = elements[0];
+  const multiple = elements.length > 1;
+  const elementIds = elements.map((item) => item.id);
+  const commit = (patch: Partial<LayoutElement>) => controller.updateElements(elementIds, patch);
+  const isText = elements.every(
+    (item) => item.kind === "text" || get(item, "artCompositionId") === "layout-text-field"
+  );
+  const isCollection = elements.every((item) => item.kind === "collection");
   const defaultDimensions = artCompositionDefaultDimensions(artComposition);
   return (
     <section
       className="flow-react-panel flow-react-inspector layout-element-inspector"
       data-layout-react-component="element-inspector"
-      data-layout-element-id={element.id}
+      data-layout-element-id={multiple ? undefined : element.id}
+      data-layout-element-count={elements.length}
     >
-      <h3>{element.name || element.kind}</h3>
-      <label className="flow-react-field" data-layout-field="id">
-        <span>Element ID</span>
-        <input type="text" readOnly value={element.id} data-layout-element-id-value />
-      </label>
-      {element.artCompositionId ? (
+      <h3>{multiple ? `${elements.length} Game Objects` : element.name || element.kind}</h3>
+      {!multiple ? (
+        <label className="flow-react-field" data-layout-field="id">
+          <span>Element ID</span>
+          <input type="text" readOnly value={element.id} data-layout-element-id-value />
+        </label>
+      ) : null}
+      {!multiple && element.artCompositionId ? (
         <label className="flow-react-field" data-layout-field="artCompositionId">
           <span>Game Object</span>
           <input
@@ -1120,16 +1215,18 @@ function LayoutElementInspector({
           />
         </label>
       ) : null}
-      <label className="flow-react-field" data-layout-field="name">
-        <span>Name</span>
-        <input
-          type="text"
-          key={`${element.id}-name`}
-          defaultValue={element.name || ""}
-          data-layout-element-name
-          onBlur={(event) => commit({ name: event.target.value })}
-        />
-      </label>
+      {!multiple ? (
+        <label className="flow-react-field" data-layout-field="name">
+          <span>Name</span>
+          <input
+            type="text"
+            key={`${element.id}-name`}
+            defaultValue={element.name || ""}
+            data-layout-element-name
+            onBlur={(event) => commit({ name: event.target.value })}
+          />
+        </label>
+      ) : null}
       <label className="flow-react-field" data-layout-field="visible">
         <span>Visible</span>
         <input
@@ -1163,24 +1260,24 @@ function LayoutElementInspector({
           </select>
         </label>
       ) : null}
+      <label className="flow-react-field" data-layout-field="defaultAnimationState">
+        <span>Initial State</span>
+        <select
+          value={layoutInitialAnimationState(element, mode)}
+          data-layout-element-field="defaultAnimationState"
+          onChange={(event) =>
+            commit({ defaultAnimationState: event.target.value } as Partial<LayoutElement>)
+          }
+        >
+          <option value="Off">Off</option>
+          <option value="On">On</option>
+        </select>
+      </label>
       {mode === "controller" ? (
         <>
-          <label className="flow-react-field" data-layout-field="defaultAnimationState">
-            <span>Initial State</span>
-            <select
-              value={controllerInitialAnimationState(get(element, "defaultAnimationState"))}
-              data-layout-element-field="defaultAnimationState"
-              onChange={(event) =>
-                commit({ defaultAnimationState: event.target.value } as Partial<LayoutElement>)
-              }
-            >
-              <option value="On">On</option>
-              <option value="Off">Off</option>
-            </select>
-          </label>
           <LayoutElementTagEditor
             availableTags={viewTags}
-            key={element.id}
+            key={elementIds.join("|")}
             tags={layoutElementTags(element)}
             onChange={(tags) => commit({ tags })}
           />
@@ -1193,7 +1290,9 @@ function LayoutElementInspector({
             <span>Direction</span>
             <select
               value={String(get(element, "collectionDirection") || "vertical")}
-              onChange={(event) => commit({ collectionDirection: event.target.value } as Partial<LayoutElement>)}
+              onChange={(event) =>
+                commit({ collectionDirection: event.target.value } as Partial<LayoutElement>)
+              }
             >
               <option value="vertical">Vertical</option>
               <option value="horizontal">Horizontal</option>
@@ -1203,7 +1302,9 @@ function LayoutElementInspector({
             <span>Distribution</span>
             <select
               value={String(get(element, "collectionDistribution") || "start")}
-              onChange={(event) => commit({ collectionDistribution: event.target.value } as Partial<LayoutElement>)}
+              onChange={(event) =>
+                commit({ collectionDistribution: event.target.value } as Partial<LayoutElement>)
+              }
             >
               <option value="start">Start</option>
               <option value="center">Center</option>
@@ -1217,7 +1318,9 @@ function LayoutElementInspector({
             <span>Alignment</span>
             <select
               value={String(get(element, "collectionAlignment") || "stretch")}
-              onChange={(event) => commit({ collectionAlignment: event.target.value } as Partial<LayoutElement>)}
+              onChange={(event) =>
+                commit({ collectionAlignment: event.target.value } as Partial<LayoutElement>)
+              }
             >
               <option value="stretch">Stretch</option>
               <option value="start">Start</option>
@@ -1229,7 +1332,9 @@ function LayoutElementInspector({
             <span>Overflow</span>
             <select
               value={String(get(element, "collectionOverflow") || "auto")}
-              onChange={(event) => commit({ collectionOverflow: event.target.value } as Partial<LayoutElement>)}
+              onChange={(event) =>
+                commit({ collectionOverflow: event.target.value } as Partial<LayoutElement>)
+              }
             >
               <option value="auto">Auto scroll</option>
               <option value="scroll">Always scroll</option>
@@ -1239,8 +1344,7 @@ function LayoutElementInspector({
           </label>
           {[
             ["collectionGap", "Gap", 16],
-            ["collectionPadding", "Padding", 0],
-            ["zIndex", "Local z-order", 0]
+            ["collectionPadding", "Padding", 0]
           ].map(([key, label, fallback]) => (
             <label className="flow-react-field" data-layout-field={String(key)} key={String(key)}>
               <span>{String(label)}</span>
@@ -1248,7 +1352,9 @@ function LayoutElementInspector({
                 type="number"
                 key={`${element.id}-${String(key)}-${String(get(element, String(key)) ?? fallback)}`}
                 defaultValue={String(get(element, String(key)) ?? fallback)}
-                onBlur={(event) => commit({ [String(key)]: Number(event.target.value) } as Partial<LayoutElement>)}
+                onBlur={(event) =>
+                  commit({ [String(key)]: Number(event.target.value) } as Partial<LayoutElement>)
+                }
               />
             </label>
           ))}
@@ -1259,16 +1365,19 @@ function LayoutElementInspector({
           <span>{field.label}</span>
           <input
             type="number"
-            key={`${element.id}-${field.key}-${String(get(element, field.key) ?? "")}`}
+            key={`${elementIds.join("|")}-${field.key}-${String(get(element, field.key) ?? "")}`}
             defaultValue={String(get(element, field.key) ?? 0)}
             data-layout-element-field={field.key}
-            onBlur={(event) =>
-              commit({ [field.key]: Number(event.target.value) } as Partial<LayoutElement>)
-            }
+            onBlur={(event) => {
+              const next = Number(event.target.value);
+              const current = Number(get(element, field.key) || 0);
+              if (multiple) controller.adjustElements(elementIds, field.key, next - current);
+              else commit({ [field.key]: next } as Partial<LayoutElement>);
+            }}
           />
         </label>
       ))}
-      {defaultDimensions ? (
+      {!multiple && defaultDimensions ? (
         <div
           className="flow-react-field layout-dimension-reset-row"
           data-layout-field="resetDimensions"

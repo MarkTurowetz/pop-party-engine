@@ -140,7 +140,11 @@ describe("controller layout initial state", () => {
       collectionOverflow: "scroll",
       zIndex: 7
     });
-    expect(serializeLayoutsForSave(source, "controller").states[0].elements[1]).toMatchObject({
+    expect(
+      serializeLayoutsForSave(source, "controller").states[0].elements.find(
+        (element) => element.id === "targets"
+      )
+    ).toMatchObject({
       kind: "collection",
       collectionDirection: "horizontal",
       collectionGap: 12,
@@ -169,7 +173,11 @@ describe("controller layout initial state", () => {
       collectionOverflow: "hidden",
       zIndex: 4
     });
-    expect(serializeLayoutsForSave(source, "stage").global.elements[1]).toMatchObject({
+    expect(
+      serializeLayoutsForSave(source, "stage").global.elements.find(
+        (element) => element.id === "cards"
+      )
+    ).toMatchObject({
       kind: "collection",
       collectionDirection: "horizontal",
       collectionGap: 20,

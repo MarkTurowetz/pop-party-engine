@@ -7,6 +7,7 @@ import type {
 } from "../../types/game-data";
 import { normalizeGameTextFontFamily } from "../../textFonts";
 import { normalizeLayoutTags } from "./layoutTags";
+import { layoutElementsTopFirst } from "../../runtime/layoutStackOrder";
 
 /**
  * Typed port of the legacy serializeStageLayoutsForSave / serializeLayoutGroup so
@@ -81,7 +82,11 @@ export function controllerInitialAnimationState(value: unknown): "On" | "Off" {
   return ["off", "park", "disappear", "hidden", "hide"].includes(state) ? "Off" : "On";
 }
 
-function serializeElement(raw: LayoutElement, mode: LayoutMode): LayoutElement {
+function serializeElement(
+  raw: LayoutElement,
+  mode: LayoutMode,
+  fallbackZIndex: number
+): LayoutElement {
   const element = raw as Record<string, unknown>;
   const kind = String(element.kind || "art");
   const artCompositionId = String(element.artCompositionId || "");
@@ -113,23 +118,34 @@ function serializeElement(raw: LayoutElement, mode: LayoutMode): LayoutElement {
     fontSize: isText ? num(element.fontSize, 58) : 58,
     autoFitText: isText ? element.autoFitText === true : false,
     fontFamily: isText ? normalizeGameTextFontFamily(element.fontFamily) : "",
-    fontColor: isText ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff"
+    fontColor: isText ? normalizeColor(element.fontColor) || "#ffffff" : "#ffffff",
+    zIndex: Number.isFinite(Number(element.zIndex)) ? num(element.zIndex) : fallbackZIndex
   } as LayoutElement;
   if (kind === "collection") {
-    serialized.collectionDirection = element.collectionDirection === "horizontal" ? "horizontal" : "vertical";
+    serialized.collectionDirection =
+      element.collectionDirection === "horizontal" ? "horizontal" : "vertical";
     serialized.collectionGap = num(element.collectionGap, 16);
-    serialized.collectionDistribution = ["start", "center", "end", "space-between", "space-around", "space-evenly"]
-      .includes(String(element.collectionDistribution))
-      ? element.collectionDistribution as LayoutElement["collectionDistribution"]
+    serialized.collectionDistribution = [
+      "start",
+      "center",
+      "end",
+      "space-between",
+      "space-around",
+      "space-evenly"
+    ].includes(String(element.collectionDistribution))
+      ? (element.collectionDistribution as LayoutElement["collectionDistribution"])
       : "start";
-    serialized.collectionAlignment = ["start", "center", "end", "stretch"].includes(String(element.collectionAlignment))
-      ? element.collectionAlignment as LayoutElement["collectionAlignment"]
+    serialized.collectionAlignment = ["start", "center", "end", "stretch"].includes(
+      String(element.collectionAlignment)
+    )
+      ? (element.collectionAlignment as LayoutElement["collectionAlignment"])
       : "stretch";
     serialized.collectionPadding = num(element.collectionPadding, 0);
-    serialized.collectionOverflow = ["visible", "hidden", "auto", "scroll"].includes(String(element.collectionOverflow))
-      ? element.collectionOverflow as LayoutElement["collectionOverflow"]
+    serialized.collectionOverflow = ["visible", "hidden", "auto", "scroll"].includes(
+      String(element.collectionOverflow)
+    )
+      ? (element.collectionOverflow as LayoutElement["collectionOverflow"])
       : "auto";
-    serialized.zIndex = num(element.zIndex, 0);
   }
   return serialized;
 }
@@ -142,8 +158,10 @@ function serializeGroup(raw: LayoutState, mode: LayoutMode): LayoutState {
     hiddenInStates: group.id === "global" ? group.hiddenInStates === true : false,
     hiddenGlobals: Array.isArray(group.hiddenGlobals) ? [...group.hiddenGlobals] : [],
     hiddenLayers: Array.isArray(group.hiddenLayers) ? [...group.hiddenLayers] : [],
-    elements: (Array.isArray(group.elements) ? group.elements : []).map((element) =>
-      serializeElement(element as LayoutElement, mode)
+    elements: layoutElementsTopFirst(
+      (Array.isArray(group.elements) ? group.elements : []) as LayoutElement[]
+    ).map((element, index, elements) =>
+      serializeElement(element, mode, Math.max(0, elements.length - index - 1))
     )
   } as LayoutState;
 }
@@ -165,12 +183,14 @@ export function serializeLayoutsForSave(
       mode
     ),
     states: (layouts?.states || []).map((state) => serializeGroup(state as LayoutState, mode)),
-    ...(mode === "controller" ? {
-      layers: ((layouts?.layers || []) as ControllerLayoutLayer[]).map((layer, index) => ({
-        ...serializeGroup(layer, mode),
-        zIndex: Number.isFinite(Number(layer.zIndex)) ? Number(layer.zIndex) : (index + 1) * 100
-      }))
-    } : {})
+    ...(mode === "controller"
+      ? {
+          layers: ((layouts?.layers || []) as ControllerLayoutLayer[]).map((layer, index) => ({
+            ...serializeGroup(layer, mode),
+            zIndex: Number.isFinite(Number(layer.zIndex)) ? Number(layer.zIndex) : (index + 1) * 100
+          }))
+        }
+      : {})
   } as StageLayoutCollection;
   return result;
 }
@@ -185,5 +205,7 @@ export function layoutSnapshot(
 /** All authorable groups for a layout collection. */
 export function layoutGroups(layouts: StageLayoutCollection | null | undefined): LayoutState[] {
   if (!layouts) return [];
-  return [layouts.global, ...(layouts.layers || []), ...(layouts.states || [])].filter(Boolean) as LayoutState[];
+  return [layouts.global, ...(layouts.layers || []), ...(layouts.states || [])].filter(
+    Boolean
+  ) as LayoutState[];
 }

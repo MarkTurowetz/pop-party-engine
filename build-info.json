@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1293",
+  "version": "1.0.17.1294",
   "baseVersion": "1.0.17",
-  "buildNumber": 1293,
-  "commit": "67962888",
-  "branch": "codex/release-engine-1.4.7",
-  "generatedAt": "2026-08-05T19:44:47.812Z"
+  "buildNumber": 1294,
+  "commit": "2612d145",
+  "branch": "codex/layout-tool-default-state-multiselect",
+  "generatedAt": "2026-08-06T00:07:08.664Z"
 }

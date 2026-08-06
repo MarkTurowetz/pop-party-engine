@@ -1,6 +1,7 @@
 import type { ArtComponent } from "../../types/game-data";
 import type { TimelineDocument, TimelineProperties } from "../../../shared/timeline-model";
 import { addTransformKeyframe, effectiveArtVisibilityTimeline } from "./artTimelineModel";
+import { canvasDragSelection } from "../common/canvasSelection";
 
 export interface ArtCanvasTransformTarget {
   component: ArtComponent;
@@ -57,13 +58,18 @@ export function artCanvasKeyboardCommand(event: {
   };
   const direction = arrowDirections[event.key] || functionArrowDirections[event.key];
   if (!direction) return null;
-  const functionModified = Boolean(event.getModifierState?.("Fn")) || Object.prototype.hasOwnProperty.call(functionArrowDirections, event.key);
+  const functionModified =
+    Boolean(event.getModifierState?.("Fn")) ||
+    Object.prototype.hasOwnProperty.call(functionArrowDirections, event.key);
   if (event.shiftKey && functionModified) return { direction, mode: "align", step: 0 };
   if (!arrowDirections[event.key]) return null;
   return { direction, mode: "nudge", step: event.shiftKey ? 10 : 1 };
 }
 
-export function rootArtCanvasSelectionIds(components: ArtComponent[], selectedIds: ReadonlySet<string>): Set<string> {
+export function rootArtCanvasSelectionIds(
+  components: ArtComponent[],
+  selectedIds: ReadonlySet<string>
+): Set<string> {
   const roots = new Set<string>();
   const visit = (items: ArtComponent[], ancestorSelected: boolean): void => {
     for (const component of items || []) {
@@ -81,8 +87,7 @@ export function artCanvasDragSelection(
   anchorId: string,
   additive: boolean
 ): Set<string> {
-  if (currentSelection.has(anchorId)) return new Set(currentSelection);
-  return additive ? new Set([...currentSelection, anchorId]) : new Set([anchorId]);
+  return canvasDragSelection(currentSelection, anchorId, additive);
 }
 
 function finiteNumber(value: unknown, fallback: number): number {
@@ -90,8 +95,16 @@ function finiteNumber(value: unknown, fallback: number): number {
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
-function resolvedNumber(component: ArtComponent, props: TimelineProperties, key: keyof ArtComponent, fallback: number): number {
-  return finiteNumber(Object.prototype.hasOwnProperty.call(props, key) ? props[String(key)] : component[key], fallback);
+function resolvedNumber(
+  component: ArtComponent,
+  props: TimelineProperties,
+  key: keyof ArtComponent,
+  fallback: number
+): number {
+  return finiteNumber(
+    Object.prototype.hasOwnProperty.call(props, key) ? props[String(key)] : component[key],
+    fallback
+  );
 }
 
 export function captureArtCanvasTransformTargets(
@@ -156,38 +169,63 @@ export function alignedArtCanvasPositions(
   previewScale: number
 ): ArtCanvasLivePositions {
   if (targets.length < 2 || previewScale <= 0) return {};
-  const edge = direction === "left" || direction === "right" ? direction : direction === "up" ? "top" : "bottom";
+  const edge =
+    direction === "left" || direction === "right"
+      ? direction
+      : direction === "up"
+        ? "top"
+        : "bottom";
   const entries = targets
     .map((target) => ({ target, bounds: visualBoundsById.get(target.id) }))
-    .filter((entry): entry is { target: ArtCanvasTransformTarget; bounds: ArtCanvasVisualBounds } => Boolean(entry.bounds));
+    .filter((entry): entry is { target: ArtCanvasTransformTarget; bounds: ArtCanvasVisualBounds } =>
+      Boolean(entry.bounds)
+    );
   if (entries.length < 2) return {};
-  const targetEdge = edge === "left" || edge === "top"
-    ? Math.min(...entries.map((entry) => entry.bounds[edge]))
-    : Math.max(...entries.map((entry) => entry.bounds[edge]));
+  const targetEdge =
+    edge === "left" || edge === "top"
+      ? Math.min(...entries.map((entry) => entry.bounds[edge]))
+      : Math.max(...entries.map((entry) => entry.bounds[edge]));
   const positions: ArtCanvasLivePositions = {};
   for (const entry of entries) {
     const pixelDelta = targetEdge - entry.bounds[edge];
-    const worldDeltaX = direction === "left" || direction === "right" ? pixelDelta / previewScale : 0;
+    const worldDeltaX =
+      direction === "left" || direction === "right" ? pixelDelta / previewScale : 0;
     const worldDeltaY = direction === "up" || direction === "down" ? pixelDelta / previewScale : 0;
-    Object.assign(positions, translatedArtCanvasPositions([entry.target], worldDeltaX, worldDeltaY));
+    Object.assign(
+      positions,
+      translatedArtCanvasPositions([entry.target], worldDeltaX, worldDeltaY)
+    );
   }
   return positions;
 }
 
-export function centeredArtCanvasPositions(targets: ArtCanvasTransformTarget[]): ArtCanvasLivePositions {
+export function centeredArtCanvasPositions(
+  targets: ArtCanvasTransformTarget[]
+): ArtCanvasLivePositions {
   if (targets.length < 2) return {};
   const largest = targets.reduce((current, candidate) => {
     const renderedArea = (target: ArtCanvasTransformTarget): number => {
       const width = Math.max(0, resolvedNumber(target.component, target.resolvedProps, "width", 0));
-      const height = Math.max(0, resolvedNumber(target.component, target.resolvedProps, "height", 0));
+      const height = Math.max(
+        0,
+        resolvedNumber(target.component, target.resolvedProps, "height", 0)
+      );
       const scale = Math.abs(resolvedNumber(target.component, target.resolvedProps, "scale", 1));
       return width * height * scale * scale;
     };
     return renderedArea(candidate) > renderedArea(current) ? candidate : current;
   });
   const center = {
-    x: Number((Math.max(0, resolvedNumber(largest.component, largest.resolvedProps, "width", 0)) / 2).toFixed(3)),
-    y: Number((Math.max(0, resolvedNumber(largest.component, largest.resolvedProps, "height", 0)) / 2).toFixed(3))
+    x: Number(
+      (
+        Math.max(0, resolvedNumber(largest.component, largest.resolvedProps, "width", 0)) / 2
+      ).toFixed(3)
+    ),
+    y: Number(
+      (
+        Math.max(0, resolvedNumber(largest.component, largest.resolvedProps, "height", 0)) / 2
+      ).toFixed(3)
+    )
   };
   return Object.fromEntries(targets.map((target) => [target.id, { ...center }]));
 }
@@ -198,13 +236,16 @@ export function applyArtCanvasTransformKeyframes(
   frame: number
 ): TimelineDocument {
   if (patches.length === 0) return effectiveArtVisibilityTimeline(timeline);
-  return patches.reduce((nextTimeline, { target, patch }) => {
-    const stampedComponent = {
-      ...target.component,
-      ...target.resolvedProps,
-      ...patch,
-      id: target.id
-    } as ArtComponent;
-    return addTransformKeyframe(nextTimeline, stampedComponent, frame);
-  }, timeline as TimelineDocument | null | undefined) as TimelineDocument;
+  return patches.reduce(
+    (nextTimeline, { target, patch }) => {
+      const stampedComponent = {
+        ...target.component,
+        ...target.resolvedProps,
+        ...patch,
+        id: target.id
+      } as ArtComponent;
+      return addTransformKeyframe(nextTimeline, stampedComponent, frame);
+    },
+    timeline as TimelineDocument | null | undefined
+  ) as TimelineDocument;
 }

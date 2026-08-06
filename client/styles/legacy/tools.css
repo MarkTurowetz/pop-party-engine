@@ -2840,14 +2840,32 @@ body.tool-dashboard-mode .layout-react-shell {
 
 .layout-object-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px 42px;
+  grid-template-columns: 34px minmax(0, 1fr) 42px 42px;
   gap: 6px;
   align-items: stretch;
-  cursor: grab;
 }
 
-.layout-object-row:active {
+.layout-object-row[data-layout-object-dragging="true"] .layout-object-reorder-handle,
+.layout-object-reorder-handle:active {
   cursor: grabbing;
+}
+
+.layout-object-reorder-handle {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  padding: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.layout-object-stack-help {
+  display: block;
+  margin: -4px 0 8px;
+  color: #5e5475;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .layout-object-select {

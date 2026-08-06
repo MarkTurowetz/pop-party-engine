@@ -93,6 +93,7 @@ function createLayoutNormalizationRuntime({
       height,
       scale: normalizeLayoutNumber(element.scale, 1, 0.05, 10),
       rotation: normalizeLayoutNumber(element.rotation, 0, -3600, 3600),
+      zIndex: normalizeLayoutNumber(element.zIndex, -elementIndex, -1000, 1000),
       tags: normalizeLayoutTags(element.tags),
       defaultAnimationState,
       defaultText: textDefaultsEnabled ? cleanLayoutText(element.defaultText) : "",
@@ -121,7 +122,6 @@ function createLayoutNormalizationRuntime({
         : "auto";
       normalized.collectionGap = normalizeLayoutNumber(element.collectionGap, 16, 0, 500);
       normalized.collectionPadding = normalizeLayoutNumber(element.collectionPadding, 0, 0, 500);
-      normalized.zIndex = normalizeLayoutNumber(element.zIndex, 0, -1000, 1000);
     }
     return normalized;
   }
