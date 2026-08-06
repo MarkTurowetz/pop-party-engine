@@ -27,14 +27,16 @@ describe("layout collection normalization", () => {
       defaultText: "A long authored instruction",
       fontSize: 58,
       autoFitText: true,
-      fontColor: "#ffffff"
+      fontColor: "#ffffff",
+      zIndex: 9
     }, 0)).toEqual(expect.objectContaining({
       kind: "art",
       artCompositionId: "layout-text-field",
       defaultText: "A long authored instruction",
       fontSize: 58,
       autoFitText: true,
-      fontColor: "#ffffff"
+      fontColor: "#ffffff",
+      zIndex: 9
     }));
   });
 

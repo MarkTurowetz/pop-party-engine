@@ -75,7 +75,64 @@ describe("LayoutEditor", () => {
     );
     expect(markup).toContain('data-layout-react-component="object-list"');
     expect(markup).toContain('data-layout-add-game-object="true"');
+    expect(markup).toContain('data-layout-object-reorder="title"');
+    expect(markup).toContain("Top items render in front.");
+    expect(markup).not.toContain("draggable=");
     expect(markup).not.toContain("data-layout-add-group");
+  });
+
+  it("exposes Initial State for Stage Game Objects", () => {
+    const api = fakeApi();
+    const stageController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "stage",
+      api
+    });
+    stageController.selectElement("title");
+    const controllerController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "controller",
+      api
+    });
+    const markup = renderToStaticMarkup(
+      <LayoutEditor
+        stageController={stageController}
+        controllerController={controllerController}
+        surface="tools"
+      />
+    );
+    expect(markup).toContain('data-layout-element-field="defaultAnimationState"');
+    expect(markup).toContain('<option value="Off" selected="">Off</option>');
+  });
+
+  it("shows shared controls for a multi-selection", () => {
+    const api = fakeApi();
+    const source = layouts();
+    source.global.elements.push({
+      id: "subtitle",
+      name: "Subtitle",
+      kind: "text",
+      x: 960,
+      y: 400
+    } as never);
+    const stageController = createLayoutController({ initialLayouts: source, mode: "stage", api });
+    stageController.setElementSelection(["title", "subtitle"]);
+    const controllerController = createLayoutController({
+      initialLayouts: layouts(),
+      mode: "controller",
+      api
+    });
+    const markup = renderToStaticMarkup(
+      <LayoutEditor
+        stageController={stageController}
+        controllerController={controllerController}
+        surface="tools"
+      />
+    );
+    expect(markup).toContain('data-layout-element-count="2"');
+    expect(markup).toContain("2 Game Objects");
+    expect(markup).toContain('data-layout-element-field="x"');
+    expect(markup).toContain('data-layout-element-field="defaultAnimationState"');
   });
 
   it("offers game-owned layout-group creation only in the Controller Layout Tool", () => {
@@ -271,16 +328,18 @@ describe("LayoutEditor", () => {
       surface: "stage",
       compositionKind: "gameObject",
       canvas: { width: 100, height: 140 },
-      components: [{
-        id: "label",
-        name: "Label",
-        kind: "text",
-        x: 50,
-        y: 70,
-        width: 80,
-        height: 40,
-        defaultText: "CARD"
-      }]
+      components: [
+        {
+          id: "label",
+          name: "Label",
+          kind: "text",
+          x: 50,
+          y: 70,
+          width: 80,
+          height: 40,
+          defaultText: "CARD"
+        }
+      ]
     } as ArtComposition;
     const row = {
       id: "preview-row",
@@ -288,17 +347,19 @@ describe("LayoutEditor", () => {
       surface: "stage",
       compositionKind: "gameObject",
       canvas: { width: 600, height: 150 },
-      components: [{
-        id: "cards-slot",
-        name: "Cards Slot",
-        kind: "container",
-        childDistribution: "horizontal",
-        x: 300,
-        y: 75,
-        width: 580,
-        height: 140,
-        children: []
-      }]
+      components: [
+        {
+          id: "cards-slot",
+          name: "Cards Slot",
+          kind: "container",
+          childDistribution: "horizontal",
+          x: 300,
+          y: 75,
+          width: 580,
+          height: 140,
+          children: []
+        }
+      ]
     } as ArtComposition;
     const cardBindings = [
       {
@@ -319,41 +380,47 @@ describe("LayoutEditor", () => {
             id: "fixture.flat",
             surface: "stage",
             target: { layoutElementId: "flat-cards" },
-            bindings: [{
-              id: "cards",
-              kind: "collection",
-              source: "cards",
-              item: {
-                keySource: "id",
-                artCompositionId: "preview-card",
-                bindings: cardBindings
+            bindings: [
+              {
+                id: "cards",
+                kind: "collection",
+                source: "cards",
+                item: {
+                  keySource: "id",
+                  artCompositionId: "preview-card",
+                  bindings: cardBindings
+                }
               }
-            }]
+            ]
           },
           {
             id: "fixture.rows",
             surface: "stage",
             target: { layoutElementId: "player-rows" },
-            bindings: [{
-              id: "rows",
-              kind: "collection",
-              source: "rows",
-              item: {
-                keySource: "id",
-                artCompositionId: "preview-row",
-                bindings: [{
-                  id: "cards",
-                  kind: "collection",
-                  source: "cards",
-                  targetComponentId: "cards-slot",
-                  item: {
-                    keySource: "id",
-                    artCompositionId: "preview-card",
-                    bindings: cardBindings
-                  }
-                }]
+            bindings: [
+              {
+                id: "rows",
+                kind: "collection",
+                source: "rows",
+                item: {
+                  keySource: "id",
+                  artCompositionId: "preview-row",
+                  bindings: [
+                    {
+                      id: "cards",
+                      kind: "collection",
+                      source: "cards",
+                      targetComponentId: "cards-slot",
+                      item: {
+                        keySource: "id",
+                        artCompositionId: "preview-card",
+                        bindings: cardBindings
+                      }
+                    }
+                  ]
+                }
               }
-            }]
+            ]
           }
         ]}
       />
@@ -373,17 +440,19 @@ describe("LayoutEditor", () => {
     controllerLayouts.states.push({
       id: "dynamic-choice",
       name: "Dynamic Choice",
-      elements: [{
-        id: "choice-host",
-        name: "Choice Host",
-        kind: "collection",
-        x: 195,
-        y: 420,
-        width: 330,
-        height: 400,
-        collectionDirection: "vertical",
-        collectionAlignment: "stretch"
-      } as never]
+      elements: [
+        {
+          id: "choice-host",
+          name: "Choice Host",
+          kind: "collection",
+          x: 195,
+          y: 420,
+          width: 330,
+          height: 400,
+          collectionDirection: "vertical",
+          collectionAlignment: "stretch"
+        } as never
+      ]
     });
     const controllerController = createLayoutController({
       initialLayouts: controllerLayouts,
@@ -399,37 +468,45 @@ describe("LayoutEditor", () => {
     const markup = renderToStaticMarkup(
       <LayoutEditor
         initialMode="controller"
-        artCompositions={[{
-          id: "choice-item",
-          name: "Choice Item",
-          surface: "controller",
-          compositionKind: "gameObject",
-          canvas: { width: 300, height: 80 },
-          components: [{
-            id: "label",
-            name: "Label",
-            kind: "text",
-            x: 150,
-            y: 40,
-            width: 260,
-            height: 50,
-            defaultText: "OPTION"
-          }]
-        } as ArtComposition]}
+        artCompositions={[
+          {
+            id: "choice-item",
+            name: "Choice Item",
+            surface: "controller",
+            compositionKind: "gameObject",
+            canvas: { width: 300, height: 80 },
+            components: [
+              {
+                id: "label",
+                name: "Label",
+                kind: "text",
+                x: 150,
+                y: 40,
+                width: 260,
+                height: 50,
+                defaultText: "OPTION"
+              }
+            ]
+          } as ArtComposition
+        ]}
         stageController={stageController}
         controllerController={controllerController}
-        gamePluginInputs={[{
-          controller: {
-            bindings: [{
-              kind: "choiceCollection",
-              layoutElementId: "choice-host",
-              item: {
-                artCompositionId: "choice-item",
-                targetComponentId: "label"
-              }
-            }]
+        gamePluginInputs={[
+          {
+            controller: {
+              bindings: [
+                {
+                  kind: "choiceCollection",
+                  layoutElementId: "choice-host",
+                  item: {
+                    artCompositionId: "choice-item",
+                    targetComponentId: "label"
+                  }
+                }
+              ]
+            }
           }
-        }]}
+        ]}
       />
     );
 

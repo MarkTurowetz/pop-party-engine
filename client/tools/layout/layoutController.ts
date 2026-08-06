@@ -17,6 +17,10 @@ import {
   uniqueLayoutAuthoringId,
   type LayoutMode
 } from "./layoutModel";
+import {
+  layoutElementsTopFirst,
+  synchronizeLayoutElementStack
+} from "../../runtime/layoutStackOrder";
 
 export interface LayoutEditorState {
   layouts: StageLayoutCollection;
@@ -43,6 +47,7 @@ export interface LayoutController {
   subscribe(listener: () => void): () => void;
   selectGroup(groupId: string): void;
   selectElement(elementId: string, additive?: boolean): void;
+  setElementSelection(elementIds: Iterable<string>): void;
   clearElementSelection(): void;
   addTextElement(): void;
   addChoiceCollection(): string | null;
@@ -58,7 +63,10 @@ export interface LayoutController {
     placement: "before" | "after"
   ): void;
   updateElement(elementId: string, patch: Partial<LayoutElement>): void;
+  updateElements(elementIds: Iterable<string>, patch: Partial<LayoutElement>): void;
+  adjustElements(elementIds: Iterable<string>, field: string, delta: number): void;
   moveElement(elementId: string, x: number, y: number): void;
+  moveElements(positions: Record<string, { x: number; y: number }>): void;
   undo(): void;
   redo(): void;
   acceptWorkspaceSave(): void;
@@ -170,6 +178,11 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       } else {
         selectedElementIds = new Set([elementId]);
       }
+      emit();
+    },
+    setElementSelection: (elementIds) => {
+      selectedElementIds = new Set(elementIds);
+      reconcileSelection();
       emit();
     },
     clearElementSelection: () => {
@@ -290,7 +303,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
           scale: 1,
           rotation: 0,
           tags: [],
-          defaultAnimationState: mode === "controller" ? "On" : ""
+          defaultAnimationState: "Off"
         } as LayoutElement;
         target.elements = [...(target.elements || []), element];
         selectedElementIds = new Set([element.id]);
@@ -335,7 +348,11 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
         emit();
         return null;
       }
-      const name = String(input?.name || "").trim().replace(/\s+/g, " ").slice(0, 240) || "Persistent Layer";
+      const name =
+        String(input?.name || "")
+          .trim()
+          .replace(/\s+/g, " ")
+          .slice(0, 240) || "Persistent Layer";
       const layerId = uniqueLayoutAuthoringId(
         input?.id || name,
         layoutGroups(layouts).map((item) => item.id),
@@ -358,8 +375,10 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
       const layer = (layouts.layers || []).find((item) => item.id === layerId);
       if (!layer) return;
       recordMutation(() => {
-        if (patch.name !== undefined) layer.name = String(patch.name).trim().slice(0, 240) || layer.name;
-        if (patch.zIndex !== undefined && Number.isFinite(Number(patch.zIndex))) layer.zIndex = Number(patch.zIndex);
+        if (patch.name !== undefined)
+          layer.name = String(patch.name).trim().slice(0, 240) || layer.name;
+        if (patch.zIndex !== undefined && Number.isFinite(Number(patch.zIndex)))
+          layer.zIndex = Number(patch.zIndex);
       });
     },
     setPersistentLayerVisible: (stateId, layerId, visible) => {
@@ -382,7 +401,7 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
     reorderElement: (sourceElementId, targetElementId, placement) =>
       mutateGroup((target) => {
         if (!sourceElementId || !targetElementId || sourceElementId === targetElementId) return;
-        const elements = [...(target.elements || [])];
+        const elements = layoutElementsTopFirst(target.elements || []);
         const sourceIndex = elements.findIndex((element) => element.id === sourceElementId);
         const targetIndex = elements.findIndex((element) => element.id === targetElementId);
         if (sourceIndex < 0 || targetIndex < 0) return;
@@ -390,13 +409,33 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
         const adjustedTargetIndex = elements.findIndex((element) => element.id === targetElementId);
         const insertIndex = placement === "after" ? adjustedTargetIndex + 1 : adjustedTargetIndex;
         elements.splice(Math.max(0, insertIndex), 0, source);
-        target.elements = elements;
+        target.elements = synchronizeLayoutElementStack(elements);
       }),
     updateElement: (elementId, patch) =>
       mutateGroup((target) => {
         const element = (target.elements || []).find((item) => item.id === elementId);
         if (element) Object.assign(element, patch);
       }),
+    updateElements: (elementIds, patch) => {
+      const ids = new Set(elementIds);
+      if (!ids.size) return;
+      mutateGroup((target) => {
+        for (const element of target.elements || []) {
+          if (ids.has(element.id)) Object.assign(element, patch);
+        }
+      });
+    },
+    adjustElements: (elementIds, field, delta) => {
+      const ids = new Set(elementIds);
+      if (!ids.size || !Number.isFinite(delta) || delta === 0) return;
+      mutateGroup((target) => {
+        for (const element of target.elements || []) {
+          if (!ids.has(element.id)) continue;
+          const current = Number((element as Record<string, unknown>)[field] || 0);
+          (element as Record<string, unknown>)[field] = Number((current + delta).toFixed(3));
+        }
+      });
+    },
     moveElement: (elementId, x, y) =>
       mutateGroup((target) => {
         const element = (target.elements || []).find((item) => item.id === elementId);
@@ -405,6 +444,19 @@ export function createLayoutController(options: LayoutControllerOptions): Layout
           (element as Record<string, unknown>).y = Number(y.toFixed(3));
         }
       }),
+    moveElements: (positions) => {
+      const entries = Object.entries(positions);
+      if (!entries.length) return;
+      mutateGroup((target) => {
+        const byId = new Map(entries);
+        for (const element of target.elements || []) {
+          const position = byId.get(element.id);
+          if (!position) continue;
+          (element as Record<string, unknown>).x = Number(position.x.toFixed(3));
+          (element as Record<string, unknown>).y = Number(position.y.toFixed(3));
+        }
+      });
+    },
 
     undo: () => {
       const previous = undoStack.pop();

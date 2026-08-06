@@ -99,7 +99,8 @@ describe("createLayoutController", () => {
         x: 960,
         y: 540,
         width: 320,
-        height: 180
+        height: 180,
+        defaultAnimationState: "Off"
       }),
       expect.objectContaining({
         id: "score-card-instance-2",
@@ -203,8 +204,9 @@ describe("createLayoutController", () => {
       api: fakeApi()
     });
 
-    expect(controller.addPersistentLayer({ id: "Round Context", name: "Round Context", zIndex: 150 }))
-      .toBe("round-context");
+    expect(
+      controller.addPersistentLayer({ id: "Round Context", name: "Round Context", zIndex: 150 })
+    ).toBe("round-context");
     controller.updatePersistentLayer("round-context", { zIndex: 175 });
     controller.setPersistentLayerVisible("intro", "round-context", false);
     expect(controller.getState().layouts.layers).toEqual([
@@ -259,6 +261,37 @@ describe("createLayoutController", () => {
     expect(el.x).toBe(12.345);
   });
 
+  it("moves and edits a multi-selection in one history transaction", () => {
+    const source = layouts();
+    source.states[0].elements.push({ id: "e2", name: "E2", kind: "art", x: 10, y: 20 } as never);
+    const controller = createLayoutController({
+      initialLayouts: source,
+      mode: "stage",
+      api: fakeApi()
+    });
+    controller.selectGroup("intro");
+    controller.setElementSelection(["e1", "e2"]);
+    controller.moveElements({ e1: { x: 5, y: 6 }, e2: { x: 15, y: 26 } });
+    controller.adjustElements(["e1", "e2"], "width", 12);
+    controller.updateElements(["e1", "e2"], { defaultAnimationState: "Off" });
+
+    expect(controller.getState().layouts.states[0].elements).toEqual([
+      expect.objectContaining({ id: "e1", x: 5, y: 6, width: 12, defaultAnimationState: "Off" }),
+      expect.objectContaining({ id: "e2", x: 15, y: 26, width: 12, defaultAnimationState: "Off" })
+    ]);
+    controller.undo();
+    expect(
+      controller.getState().layouts.states[0].elements[0].defaultAnimationState
+    ).toBeUndefined();
+    controller.undo();
+    expect(controller.getState().layouts.states[0].elements[0].width).toBeUndefined();
+    controller.undo();
+    expect(controller.getState().layouts.states[0].elements).toEqual([
+      expect.objectContaining({ id: "e1", x: 0, y: 0 }),
+      expect.objectContaining({ id: "e2", x: 10, y: 20 })
+    ]);
+  });
+
   it("reorders elements in the selected group", () => {
     const controller = createLayoutController({
       initialLayouts: {
@@ -285,6 +318,9 @@ describe("createLayoutController", () => {
       "a",
       "b"
     ]);
+    expect(
+      controller.getState().layouts.states[0].elements.map((element) => element.zIndex)
+    ).toEqual([2, 1, 0]);
   });
 
   it("stores hidden and locked layout element state", () => {
