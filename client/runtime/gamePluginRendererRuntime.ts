@@ -2,6 +2,7 @@ import {
   choiceCollectionItemDimensions,
   choiceCollectionLayoutStyle
 } from "./controllerChoiceCollectionLayout";
+import { bindGamePluginInputDraftControl } from "./gamePluginInputRuntime";
 
 type Dict = Record<string, unknown>;
 type RendererBinding = {
@@ -16,6 +17,7 @@ type RendererBinding = {
     keySource: string;
     artCompositionId: string;
     bindings: RendererBinding[];
+    inputAction?: { id: string; ariaLabelSource?: string };
   };
 };
 type PluginRendererManifest = {
@@ -207,6 +209,11 @@ function reconcileRendererCollection(options: {
   const { surface, manifestId, binding, model, host, layout, runtime, path } = options;
   const definition = binding.item;
   if (!definition) return;
+  const focusedElement = document.activeElement instanceof HTMLElement && host.contains(document.activeElement)
+    ? document.activeElement
+    : null;
+  const retainedScrollTop = host.scrollTop;
+  const retainedScrollLeft = host.scrollLeft;
   Object.assign(host.style, choiceCollectionLayoutStyle(layout));
   host.classList.add("game-plugin-renderer-collection", `${surface}-renderer-collection`);
   const selected = propertyPathValue(model, binding.source);
@@ -232,7 +239,7 @@ function reconcileRendererCollection(options: {
     const itemKey = keys[index];
     let itemHost = existing.get(itemKey);
     if (!itemHost || !itemHost.isConnected) {
-      itemHost = document.createElement("div");
+      itemHost = document.createElement(surface === "controller" && definition.inputAction ? "button" : "div");
       itemHost.className = `game-plugin-renderer-collection-item ${surface}-widget-art-host`;
       itemHost.dataset.gamePluginRendererCollectionItem = "true";
       itemHost.dataset.gamePluginRendererItemKey = itemKey;
@@ -242,6 +249,13 @@ function reconcileRendererCollection(options: {
     itemHost.style.height = `${dimensions.height}px`;
     itemHost.style.flex = "0 0 auto";
     itemHost.style.minWidth = "0";
+    if (surface === "controller" && itemHost instanceof HTMLButtonElement && definition.inputAction) {
+      itemHost.style.border = "0";
+      itemHost.style.padding = "0";
+      itemHost.style.background = "transparent";
+      itemHost.style.color = "inherit";
+      bindGamePluginInputDraftControl(itemHost, definition.inputAction, itemModel, itemKey);
+    }
     host.appendChild(itemHost);
     const rendererKey = `plugin-renderer:${surface}:${manifestId}:${path}:${itemKey}`;
     itemHost.dataset.gamePluginRendererKey = rendererKey;
@@ -282,6 +296,13 @@ function reconcileRendererCollection(options: {
         path: `${path}:${itemKey}:${nested.id}`
       });
     }
+  }
+  host.scrollTop = retainedScrollTop;
+  host.scrollLeft = retainedScrollLeft;
+  if (focusedElement?.isConnected && !(focusedElement instanceof HTMLButtonElement && focusedElement.disabled)) {
+    focusedElement.focus({ preventScroll: true });
+    host.scrollTop = retainedScrollTop;
+    host.scrollLeft = retainedScrollLeft;
   }
 }
 

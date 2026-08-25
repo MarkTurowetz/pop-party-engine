@@ -91,6 +91,27 @@ describe("createControllerSubmitApi (ported)", () => {
     });
   });
 
+  it("posts non-terminal game-owned draft mutations with a distinct idempotency identity", async () => {
+    const { api, postJson } = setup({
+      playerId: "p1",
+      stageCode: "ABCD",
+      lobby: { gameSessionId: 4 }
+    });
+
+    await api.mutateGamePluginInput("draft", 12, "cycleCell", { cellId: "p1-alpha" }, "mutation-1");
+
+    expect(postJson).toHaveBeenCalledWith("/api/game-plugin-input", {
+      actionId: "draft",
+      draftActionId: "cycleCell",
+      gameSessionId: 4,
+      mutationId: "mutation-1",
+      payload: { cellId: "p1-alpha" },
+      playerId: "p1",
+      stageCode: "ABCD",
+      visitId: 12
+    });
+  });
+
   it("resolves null without calling postJson when there is no controller state", async () => {
     const { api, postJson } = setup(null);
     expect(await api.heartbeat()).toBe(null);

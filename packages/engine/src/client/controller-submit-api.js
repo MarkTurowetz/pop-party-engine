@@ -56,6 +56,19 @@ function createControllerSubmitApi(options) {
     });
   }
 
+  function mutateGamePluginInput(actionId, visitId, draftActionId, payload, mutationId) {
+    const base = payloadBase();
+    if (!base) return Promise.resolve(null);
+    return postJson("/api/game-plugin-input", {
+      ...base,
+      actionId,
+      visitId: Math.max(0, Number(visitId || 0)),
+      draftActionId: String(draftActionId || ""),
+      payload,
+      mutationId: String(mutationId || "")
+    });
+  }
+
   function submitGamePluginControllerInteraction(interactionId, visitId, payload, submissionId) {
     const base = payloadBase();
     if (!base) return Promise.resolve(null);
@@ -104,6 +117,7 @@ function createControllerSubmitApi(options) {
     grantMicrophoneAccess,
     inputEvent,
     join,
+    mutateGamePluginInput,
     saveTextDraft,
     submitChoice,
     submitGamePluginControllerInteraction,

@@ -48,11 +48,55 @@ type InputBinding = {
 type InputManifest = {
   id: string;
   submission: Array<{ id: string; type: "choice" | "integer"; min?: number; max?: number; optionsSource?: string }>;
+  draftActions?: Array<{
+    id: string;
+    collectionSource: string;
+    itemKeySource?: string;
+    disabledSource?: string;
+    payloadKey?: string;
+  }>;
   controller: {
     bindings: InputBinding[];
+    confirm?: { enabledSource: string; shownSource?: string };
     submitted?: { layoutStateId: string; bindings: InputBinding[] };
   };
 };
+
+type DraftItemAction = { id: string; ariaLabelSource?: string };
+type ActiveDraftSession = {
+  actionId: string;
+  visitId: number;
+  input: Dict;
+  manifest: InputManifest;
+  mutate: (actionId: string, visitId: number, draftActionId: string, payload: Dict, mutationId: string) => Promise<unknown>;
+  renderState: (lobby: Dict) => void;
+};
+
+let activeFlowDraftSession: ActiveDraftSession | null = null;
+const draftControlState = new WeakMap<HTMLButtonElement, {
+  session: ActiveDraftSession;
+  action: DraftItemAction;
+  itemKey: string;
+  authoritativelyDisabled: boolean;
+}>();
+const pendingDraftControls = new WeakSet<HTMLButtonElement>();
+
+function dispatchDraftDiagnostic(
+  event: "requested" | "applied" | "rejected",
+  session: ActiveDraftSession,
+  actionId: string,
+  mutationId: string
+): void {
+  globalThis.dispatchEvent?.(new CustomEvent("pop-party:game-plugin-input-draft", {
+    detail: Object.freeze({
+      event,
+      actionId: session.actionId,
+      visitId: session.visitId,
+      draftActionId: actionId,
+      mutationId
+    })
+  }));
+}
 
 function propertyPathValue(root: unknown, path: string): unknown {
   let current = root;
@@ -76,6 +120,71 @@ function submissionId(): string {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+export function bindGamePluginInputDraftControl(
+  button: HTMLButtonElement,
+  action: DraftItemAction,
+  itemModel: Dict,
+  itemKey: string
+): void {
+  const session = activeFlowDraftSession;
+  const descriptor = session?.manifest.draftActions?.find((candidate) => candidate.id === action.id);
+  const authoritativelyDisabled = !session
+    || session.input.submitted === true
+    || !descriptor
+    || propertyPathValue(itemModel, descriptor.disabledSource || "") === true;
+  const pending = pendingDraftControls.has(button);
+  const disabled = authoritativelyDisabled;
+  button.type = "button";
+  button.classList.add("game-plugin-input-draft-control");
+  button.dataset.gamePluginInputDraftAction = action.id;
+  button.dataset.gamePluginInputDraftItem = itemKey;
+  button.dataset.controllerOption = itemKey;
+  button.dataset.gamePluginInputStale = session && descriptor ? "false" : "true";
+  button.disabled = disabled;
+  button.setAttribute("aria-disabled", disabled || pending ? "true" : "false");
+  button.setAttribute("aria-busy", pending ? "true" : "false");
+  const ariaLabel = propertyPathValue(itemModel, action.ariaLabelSource || "");
+  if (ariaLabel !== undefined) button.setAttribute("aria-label", String(ariaLabel));
+  if (!session || !descriptor) {
+    draftControlState.delete(button);
+    return;
+  }
+  draftControlState.set(button, { session, action, itemKey, authoritativelyDisabled });
+  if (button.dataset.gamePluginInputDraftListenerBound === "true") return;
+  button.dataset.gamePluginInputDraftListenerBound = "true";
+  button.addEventListener("click", () => {
+    const current = draftControlState.get(button);
+    if (!current || button.disabled || pendingDraftControls.has(button)) return;
+    const currentDescriptor = current.session.manifest.draftActions?.find((candidate) => candidate.id === current.action.id);
+    if (!currentDescriptor) return;
+    pendingDraftControls.add(button);
+    button.setAttribute("aria-disabled", "true");
+    button.setAttribute("aria-busy", "true");
+    const payloadKey = String(currentDescriptor.payloadKey || "itemId");
+    const mutationId = submissionId();
+    dispatchDraftDiagnostic("requested", current.session, current.action.id, mutationId);
+    void current.session.mutate(
+      current.session.actionId,
+      current.session.visitId,
+      current.action.id,
+      { [payloadKey]: current.itemKey },
+      mutationId
+    ).then((result) => {
+      const nextLobby = (result as Dict | null)?.lobby;
+      if (nextLobby) current.session.renderState(nextLobby as Dict);
+      dispatchDraftDiagnostic("applied", current.session, current.action.id, mutationId);
+    }).catch(() => {
+      dispatchDraftDiagnostic("rejected", current.session, current.action.id, mutationId);
+    }).finally(() => {
+      pendingDraftControls.delete(button);
+      const latest = draftControlState.get(button);
+      button.disabled = !latest || latest.authoritativelyDisabled;
+      button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
+      button.setAttribute("aria-busy", "false");
+    });
+  });
+}
+
 export function createGamePluginInputView(options: {
   applyLayoutForPhase: (
     phase: string,
@@ -85,6 +194,7 @@ export function createGamePluginInputView(options: {
   hideViews: () => void;
   renderState: (lobby: Dict) => void;
   showView: (viewId: string) => unknown;
+  mutate?: (actionId: string, visitId: number, draftActionId: string, payload: Dict, mutationId: string) => Promise<unknown>;
   submit: (actionId: string, visitId: number, payload: Dict, submissionId: string) => Promise<unknown>;
   manifestSource?: () => InputManifest[];
   payloadForLobby?: (lobby: Dict) => Dict | null;
@@ -707,7 +817,12 @@ export function createGamePluginInputView(options: {
     button.classList.add("game-plugin-input-control", "game-plugin-action-button");
     button.dataset.gamePluginInputBinding = binding.id;
     button.dataset.gamePluginInputScope = controlScope;
-    button.disabled = input.submitted === true || submitting;
+    const confirm = binding.kind === "submit" ? (input.manifest as InputManifest).controller.confirm : undefined;
+    const confirmShown = !confirm?.shownSource || propertyPathValue(model, confirm.shownSource) === true;
+    const confirmEnabled = !confirm || propertyPathValue(model, confirm.enabledSource) === true;
+    button.hidden = !confirmShown;
+    button.disabled = input.submitted === true || submitting || !confirmShown || !confirmEnabled;
+    button.setAttribute("aria-disabled", button.disabled ? "true" : "false");
     submitHandlers.set(button, submitNow);
     controlBindings.set(button, binding);
     if (button.disabled && activeHolds.has(button)) cancelHold(button, true);
@@ -888,6 +1003,18 @@ export function createGamePluginInputView(options: {
       visitKey = nextVisitKey;
     }
     const withManifest = { ...input, manifest };
+    if (controlScope === "flow") {
+      activeFlowDraftSession = options.mutate && (manifest.draftActions?.length || 0) > 0 && input.submitted !== true
+        ? {
+            actionId: String(input.actionId),
+            visitId: Number(input.visitId || 0),
+            input,
+            manifest,
+            mutate: options.mutate,
+            renderState: options.renderState
+          }
+        : null;
+    }
     const model = input.viewModel;
     const layoutStateId = String(input.layoutStateId || "controller-presentation");
     const viewId = layoutStateId === "controller-multiple-choice" || layoutStateId === "controller-voting"
@@ -895,7 +1022,9 @@ export function createGamePluginInputView(options: {
       : layoutStateId === "controller-text-input" || layoutStateId === "controller-voice-input"
         ? "textInput"
         : "globalAction";
-    if (options.prepareLayout !== false) {
+    const nextRenderModeKey = `${nextVisitKey}:${layoutStateId}:${input.submitted === true}`;
+    const layoutModeChanged = nextRenderModeKey !== renderModeKey;
+    if (options.prepareLayout !== false && layoutModeChanged) {
       options.hideViews();
       options.showView(viewId);
       options.applyLayoutForPhase(
@@ -907,7 +1036,6 @@ export function createGamePluginInputView(options: {
     const activeBindings = input.submitted === true && manifest.controller.submitted
       ? manifest.controller.submitted.bindings
       : manifest.controller.bindings;
-    const nextRenderModeKey = `${nextVisitKey}:${layoutStateId}:${input.submitted === true}`;
     if (renderModeKey && renderModeKey !== nextRenderModeKey) cancelAllHolds();
     renderModeKey = nextRenderModeKey;
     restoreSuppressedHosts();
@@ -1005,6 +1133,7 @@ export function createGamePluginInputView(options: {
   }
 
   function reset(): void {
+    if (controlScope === "flow") activeFlowDraftSession = null;
     cancelAllHolds();
     restoreSuppressedHosts();
     values.clear();

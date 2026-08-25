@@ -118,6 +118,92 @@ selected-state fallback. These local values and states survive normal lobby
 heartbeat rendering until submission, while a reload or new input visit starts
 from the server-provided private view model.
 
+### Recipient-private draft actions
+
+An input may expose repeated, non-terminal mutations from stable items in a
+Tools-authored recursive Controller collection. The engine authenticates each
+request and checks the game session, Flow action, input visit, recipient,
+private-view membership, disabled state, declared payload field, and mutation
+identity before invoking game code. A draft mutation never completes the
+recipient or advances the input barrier.
+
+```js
+registry.inputs("my-game.privateDraft", {
+  name: "Private Draft",
+  fields: [
+    { key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" }
+  ],
+  submission: [{ id: "confirmed", type: "integer", min: 1, max: 1 }],
+  draftActions: [{
+    id: "cycleCell",
+    collectionSource: "rows[].cells",
+    itemKeySource: "id",
+    disabledSource: "disabled",
+    payloadKey: "cellId"
+  }],
+  controller: {
+    layoutStateId: "my-game-private-draft",
+    bindings: [{ id: "confirm", kind: "submit", layoutElementId: "confirm" }],
+    confirm: { enabledSource: "canSubmit", shownSource: "showConfirm" },
+    submitted: { layoutStateId: "my-game-draft-confirmed", bindings: [] }
+  },
+  recipients(context) {
+    return context.players.map((player) => player.id);
+  },
+  view(context) {
+    return privateDraftViewFor(context.viewer.id, context.state);
+  },
+  mutate(context, payload) {
+    cyclePrivateCell(context.state, context.actor.id, payload.cellId);
+    // Omit for a Controller-private-only change. The actor still receives
+    // the latest authoritative private model in the mutation response.
+    context.refresh.public();
+  },
+  submit(context) {
+    context.state.confirmed ||= {};
+    context.state.confirmed[context.actor.id] = true;
+  }
+});
+
+registry.controllerRenderers("my-game.privateDraftGrid", {
+  name: "Private Draft Grid",
+  target: { layoutElementId: "draft-grid", layoutScope: "moment" },
+  bindings: [{
+    id: "rows",
+    kind: "collection",
+    source: "rows",
+    item: {
+      keySource: "id",
+      artCompositionId: "my-game-draft-row",
+      bindings: [{
+        id: "cells",
+        kind: "collection",
+        source: "cells",
+        targetComponentId: "cells",
+        item: {
+          keySource: "id",
+          artCompositionId: "my-game-draft-cell",
+          inputAction: { id: "cycleCell", ariaLabelSource: "label" },
+          bindings: []
+        }
+      }]
+    }
+  }],
+  select(context) {
+    return privateDraftRendererModelFor(context.viewer.id, context.state);
+  }
+});
+```
+
+Each intentional tap receives a fresh engine-generated mutation identity;
+retries of that identity are applied at most once. The mutation callback is
+transactional and may change only its plugin namespace. Public Stage projection
+is recomputed only when `context.refresh.public()` is requested, and surface
+fingerprinting prevents an apply when its semantic value did not change. The
+terminal submit remains the ordinary input submission and is rejected until
+`controller.confirm.enabledSource` is exactly `true` in the current private
+view model.
+
 A choice `holdSubmit` may optionally bind its single authoritative hold clock to
 one Tools-authored Art timeline:
 

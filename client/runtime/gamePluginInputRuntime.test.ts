@@ -50,6 +50,21 @@ describe("game plugin input runtime", () => {
       expect.any(Function),
       { preferRequestedState: true }
     );
+    expect(view.render({
+      phase: "round-initialization",
+      revision: 2,
+      gamePlugin: {
+        input: {
+          actionId: "fixture-input",
+          type: "fixture.customInput",
+          visitId: 2,
+          gameSessionId: 3,
+          layoutStateId: "fixture-custom-layout",
+          viewModel: { updated: true }
+        }
+      }
+    })).toBe(true);
+    expect(applyLayoutForPhase).toHaveBeenCalledTimes(1);
   });
 
   it("switches a submitted recipient to the authored confirmation layout on the same visit", () => {

@@ -391,6 +391,7 @@ function rendererBindingManifest(binding) {
       item: Object.freeze({
         keySource: String(binding.item.keySource),
         artCompositionId: String(binding.item.artCompositionId),
+        ...(binding.item.inputAction ? { inputAction: Object.freeze(cloneJson(binding.item.inputAction)) } : {}),
         bindings: Object.freeze(binding.item.bindings.map(rendererBindingManifest))
       })
     } : {}),
@@ -707,10 +708,12 @@ function inputManifest(registration) {
     id: registration.id,
     name: String(config.name),
     submission: Object.freeze(config.submission.map((field) => Object.freeze(cloneJson(field)))),
+    draftActions: Object.freeze((config.draftActions || []).map((draftAction) => Object.freeze(cloneJson(draftAction)))),
     controller: Object.freeze({
       layoutStateId: String(config.controller.layoutStateId || ""),
       layoutStateIdField: String(config.controller.layoutStateIdField || ""),
       bindings: Object.freeze(config.controller.bindings.map((binding) => Object.freeze(cloneJson(binding)))),
+      ...(config.controller.confirm ? { confirm: Object.freeze(cloneJson(config.controller.confirm)) } : {}),
       ...(config.controller.submitted ? {
         submitted: Object.freeze({
           layoutStateId: String(config.controller.submitted.layoutStateId || ""),
@@ -767,6 +770,51 @@ function propertyPathValue(root, path) {
   return current;
 }
 
+function collectionItemsAtPath(root, path) {
+  let values = [root];
+  for (const rawSegment of String(path || "").split(".").filter(Boolean)) {
+    const many = rawSegment.endsWith("[]");
+    const segment = many ? rawSegment.slice(0, -2) : rawSegment;
+    const next = [];
+    for (const value of values) {
+      const selected = propertyPathValue(value, segment);
+      if (many) {
+        if (Array.isArray(selected)) next.push(...selected);
+      } else if (selected !== undefined) {
+        next.push(selected);
+      }
+    }
+    values = next;
+  }
+  return values.flatMap((value) => Array.isArray(value) ? value : [value])
+    .filter((value) => value && typeof value === "object" && !Array.isArray(value));
+}
+
+function validateDraftMutationPayload(draftAction, viewModel, rawPayload) {
+  const payload = rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload) ? rawPayload : {};
+  const payloadKey = String(draftAction.payloadKey || "itemId");
+  if (Object.keys(payload).length !== 1 || !(payloadKey in payload)) {
+    throw new Error(`Draft action "${draftAction.id}" requires only payload field "${payloadKey}"`);
+  }
+  const itemId = String(payload[payloadKey] ?? "");
+  if (!itemId) throw new Error(`Draft action "${draftAction.id}" requires a stable item id`);
+  const keySource = String(draftAction.itemKeySource || "id");
+  const matches = collectionItemsAtPath(viewModel, draftAction.collectionSource)
+    .filter((item) => String(propertyPathValue(item, keySource) ?? "") === itemId);
+  if (matches.length !== 1) throw new Error(`Draft action "${draftAction.id}" item is missing, foreign, or ambiguous`);
+  if (draftAction.disabledSource && propertyPathValue(matches[0], draftAction.disabledSource) === true) {
+    throw new Error(`Draft action "${draftAction.id}" item is disabled`);
+  }
+  return Object.freeze({ [payloadKey]: itemId });
+}
+
+function confirmationIsAvailable(config, viewModel) {
+  const confirm = config.controller.confirm;
+  if (!confirm) return true;
+  if (confirm.shownSource && propertyPathValue(viewModel, confirm.shownSource) !== true) return false;
+  return propertyPathValue(viewModel, confirm.enabledSource) === true;
+}
+
 function validateInputPayload(config, viewModel, rawPayload) {
   const payload = rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload) ? rawPayload : {};
   const result = {};
@@ -813,6 +861,7 @@ function createGameInputRuntime({
     room.gamePluginInputGameSessionId = 0;
     room.gamePluginInputRecipientIds = new Set();
     room.gamePluginInputSubmissions = new Map();
+    room.gamePluginInputMutationIds = new Map();
   }
 
   function scopedReadContext(room, registration) {
@@ -895,6 +944,7 @@ function createGameInputRuntime({
       room.gamePluginInputGameSessionId = Number(room.gameSessionId || 0);
       room.gamePluginInputRecipientIds = new Set(recipientIds);
       room.gamePluginInputSubmissions = new Map();
+      room.gamePluginInputMutationIds = new Map();
       const timeout = registration.value.timeout;
       const seconds = timeout ? Math.max(0, Number(action?.[timeout.secondsField] || 0)) : 0;
       if (seconds > 0 && timeout.policy !== "wait") {
@@ -985,6 +1035,9 @@ function createGameInputRuntime({
     let payload;
     try {
       const viewModel = privateView(room, action, registration, actorId);
+      if (!confirmationIsAvailable(registration.value, viewModel)) {
+        return { status: 422, error: "Confirmation is not currently available", errorCode: "GAME_PLUGIN_INPUT_CONFIRM_UNAVAILABLE" };
+      }
       payload = validateInputPayload(registration.value, viewModel, request.payload);
     } catch (error) {
       return { status: 422, error: String(error?.message || error), errorCode: "GAME_PLUGIN_INPUT_INVALID" };
@@ -1025,6 +1078,79 @@ function createGameInputRuntime({
     }
   }
 
+  function mutate(room, playerId, request) {
+    const action = currentRoomAction(room);
+    const registration = registrationById.get(action?.type);
+    if (!registration || !ensure(room, action)) {
+      return { status: 409, error: "No game-owned input is active", errorCode: "GAME_PLUGIN_INPUT_INACTIVE" };
+    }
+    if (
+      String(request.actionId || "") !== String(action.id || "")
+      || Number(request.visitId || 0) !== Number(room.gamePluginInputVisitId || 0)
+      || Number(request.gameSessionId || 0) !== Number(room.gameSessionId || 0)
+    ) return { status: 409, error: "This input visit is stale", errorCode: "GAME_PLUGIN_INPUT_STALE" };
+    const actorId = String(playerId || "");
+    if (!room.gamePluginInputRecipientIds.has(actorId)) {
+      return { status: 403, error: "This player is not eligible for the active input", errorCode: "GAME_PLUGIN_INPUT_INELIGIBLE" };
+    }
+    if (room.gamePluginInputSubmissions.has(actorId)) {
+      return { status: 409, error: "This input has already been confirmed", errorCode: "GAME_PLUGIN_INPUT_STALE" };
+    }
+    const draftActionId = String(request.draftActionId || "");
+    const draftAction = (registration.value.draftActions || []).find((candidate) => String(candidate.id) === draftActionId);
+    if (!draftAction) {
+      return { status: 422, error: "Draft action is not declared for this input", errorCode: "GAME_PLUGIN_INPUT_DRAFT_INVALID" };
+    }
+    const mutationId = String(request.mutationId || "");
+    if (!mutationId || mutationId.length > 128) {
+      return { status: 422, error: "Draft mutations require a valid mutation identity", errorCode: "GAME_PLUGIN_INPUT_DRAFT_INVALID" };
+    }
+    if (!(room.gamePluginInputMutationIds instanceof Map)) room.gamePluginInputMutationIds = new Map();
+    const mutationKey = `${actorId}:${draftActionId}`;
+    const mutationIds = room.gamePluginInputMutationIds.get(mutationKey) || new Set();
+    if (mutationIds.has(mutationId)) return { status: 200, duplicate: true };
+    if (mutationIds.size >= 4096) {
+      return { status: 429, error: "This input has too many draft mutations", errorCode: "GAME_PLUGIN_INPUT_DRAFT_LIMIT" };
+    }
+    let payload;
+    try {
+      payload = validateDraftMutationPayload(draftAction, privateView(room, action, registration, actorId), request.payload);
+    } catch (error) {
+      return { status: 422, error: String(error?.message || error), errorCode: "GAME_PLUGIN_INPUT_DRAFT_INVALID" };
+    }
+    try {
+      const actor = publicPlayerSnapshot(room.players.get(actorId), room);
+      const nextState = cloneJson(pluginStateFor(room, registration.ownerNamespace), {});
+      let publicRefreshRequested = false;
+      const context = Object.freeze({
+        namespace: registration.ownerNamespace,
+        state: nextState,
+        actor,
+        players: Object.freeze(activePlayers(room).map((player) => publicPlayerSnapshot(player, room))),
+        capability: Object.freeze({ authenticated: true, isRecipient: true, isVip: actor?.isVip === true }),
+        flow: Object.freeze(cloneJson(room.flowVariables, {})),
+        local: Object.freeze(cloneJson(room.localVariables, {})),
+        random: inputRandom(room, action, registration, actorId, mutationId),
+        refresh: Object.freeze({ public() { publicRefreshRequested = true; } })
+      });
+      const result = registration.value.mutate(
+        context,
+        payload,
+        Object.freeze(cloneJson(action, {})),
+        Object.freeze(cloneJson(draftAction, {}))
+      );
+      if (result && typeof result.then === "function") throw new Error("Game input mutate functions must be synchronous");
+      assertJsonValue(nextState, `Game input "${registration.id}" draft state`);
+      room.gamePluginState[registration.ownerNamespace] = nextState;
+      mutationIds.add(mutationId);
+      room.gamePluginInputMutationIds.set(mutationKey, mutationIds);
+      if (publicRefreshRequested) broadcastLobby(room);
+      return { status: 200, duplicate: false };
+    } catch (error) {
+      return { status: 500, error: String(error?.message || error), errorCode: "GAME_PLUGIN_INPUT_DRAFT_FAILED" };
+    }
+  }
+
   function playerDisconnected(room, disconnectedPlayerId = "") {
     const action = currentRoomAction(room);
     const registration = registrationById.get(action?.type);
@@ -1046,6 +1172,7 @@ function createGameInputRuntime({
     manifests,
     payloadForViewer,
     playerDisconnected,
+    mutate,
     submit
   });
 }
