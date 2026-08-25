@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1297",
+  "version": "1.0.17.1298",
   "baseVersion": "1.0.17",
-  "buildNumber": 1297,
-  "commit": "b151079a",
-  "branch": "codex/release-engine-1-4-8",
-  "generatedAt": "2026-08-25T21:07:40.561Z"
+  "buildNumber": 1298,
+  "commit": "0fc264ff",
+  "branch": "codex/tools-refresh-reattach-1-4-9",
+  "generatedAt": "2026-08-25T23:30:54.526Z"
 }

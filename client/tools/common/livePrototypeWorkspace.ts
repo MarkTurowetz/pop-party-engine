@@ -4,7 +4,10 @@ import {
   type BrowserWorkspaceCheckpoint,
   type WorkspaceCheckpointStore
 } from "./workspaceCheckpointStore";
-import { republishAllSessionDraftPublishers } from "./sessionDraftPublisher";
+import {
+  activeSessionDraftPublisherCount,
+  republishAllSessionDraftPublishers
+} from "./sessionDraftPublisher";
 
 interface WorkspaceResponse {
   ok: boolean;
@@ -54,6 +57,7 @@ export interface LivePrototypeWorkspace {
   save(): Promise<WorkspaceResponse>;
   syncNow(): Promise<WorkspaceResponse | null>;
   restoreFromGit(): Promise<void>;
+  exportBrowserCheckpoint(): Promise<void>;
   subscribe(listener: (status: WorkspaceSyncStatus) => void): () => void;
   getStatus(): WorkspaceSyncStatus;
   dispose(): void;
@@ -167,6 +171,10 @@ export async function beginLivePrototypeWorkspace(
   }
 
   function publishStatus(next: WorkspaceSyncStatus): void {
+    if (recoveryConflict && next.phase !== "conflict") {
+      recordConnectionEvent("status-suppressed-by-conflict", { trigger: next.phase });
+      return;
+    }
     status = next;
     recordConnectionEvent("status");
     for (const listener of listeners) listener(status);
@@ -300,7 +308,7 @@ export async function beginLivePrototypeWorkspace(
         recoveryConflict = error instanceof Error ? error : new Error(String(error));
         publishStatus({
           phase: "conflict",
-          message: `${recoveryConflict.message} Use Restore from Git to discard the browser copy.`,
+          message: `${recoveryConflict.message} Download Browser Copy before using Restore from Git.`,
           localRevision: storedCheckpoint.workingRevision,
           gitRevision: started.baselineRevision
         });
@@ -319,10 +327,22 @@ export async function beginLivePrototypeWorkspace(
       detail: { state: "required" }
     }));
     await republishAllSessionDraftPublishers();
-    started = {
-      ...started,
-      recoveryRequired: false
-    };
+    const recovered = await client.postJson<WorkspaceResponse, Record<string, never>>(
+      "/api/authoring/workspace/complete-recovery",
+      {}
+    );
+    started = { ...started, ...recovered };
+    if (started.recoveryRequired) throw new Error("The server did not confirm authoring recovery");
+    publishStatus(storedCheckpoint
+      ? statusForLocalCheckpoint(storedCheckpoint)
+      : {
+          phase: started.gitSynced ? "synced" : "saved-local",
+          message: started.gitSynced
+            ? "Browser work recovered · Git is up to date"
+            : "Browser work recovered · Save All to checkpoint before Git sync",
+          localRevision: started.localCheckpointRevision || started.workingRevision,
+          gitRevision: started.baselineRevision
+        });
     win.dispatchEvent(new CustomEvent("pop-party-authoring-recovery", {
       detail: { state: "recovered" }
     }));
@@ -378,7 +398,11 @@ export async function beginLivePrototypeWorkspace(
       sessionAccepted = true;
       started = { ...started, ...response };
       win.sessionStorage.setItem("pop-party-authoring-session", started.sessionId);
-      if (started.recoveryRequired && !storedCheckpoint && !resuming) {
+      if (
+        started.recoveryRequired
+        && !storedCheckpoint
+        && (!resuming || activeSessionDraftPublisherCount() === 0)
+      ) {
         await client.postJson("/api/authoring/workspace/discard", {
           sessionId: started.sessionId,
           resetRooms: false
@@ -535,8 +559,10 @@ export async function beginLivePrototypeWorkspace(
     recordConnectionEvent("foreground-resume", { trigger });
     wakeReconnectRetry(trigger);
     if (activeControlRequest && !activeControlRequest.controller.signal.aborted) {
-      activeControlRequest.trigger = trigger;
-      activeControlRequest.controller.abort();
+      recordConnectionEvent("foreground-joined-control", {
+        request: activeControlRequest.request,
+        trigger
+      });
       return;
     }
     if (attached) void heartbeatNow(trigger);
@@ -690,6 +716,18 @@ export async function beginLivePrototypeWorkspace(
         gitRevision: started.baselineRevision
       });
     },
+    async exportBrowserCheckpoint() {
+      const checkpoint = await checkpointStore.read();
+      if (!checkpoint) throw new Error("No browser workspace checkpoint is available to download");
+      const blob = new Blob([JSON.stringify(checkpoint, null, 2)], { type: "application/json" });
+      const href = URL.createObjectURL(blob);
+      const anchor = win.document.createElement("a");
+      anchor.href = href;
+      anchor.download = `${checkpoint.gameId || "pop-party"}-browser-checkpoint-${checkpoint.workingRevision.slice(0, 12)}.json`;
+      anchor.click();
+      URL.revokeObjectURL(href);
+      recordConnectionEvent("checkpoint-exported");
+    },
     subscribe(listener) {
       listeners.add(listener);
       listener(status);
@@ -723,7 +761,10 @@ export async function beginLivePrototypeWorkspace(
     await reconnect("stale");
   });
   try {
-    if (!await attach(false)) void reconnect("busy").catch(() => undefined);
+    if (!await attach(false)) {
+      const reason = status.phase === "busy" ? "busy" : status.phase === "offline" ? "transport" : "stale";
+      void reconnect(reason).catch(() => undefined);
+    }
   } catch (error) {
     if (errorStatus(error) === 404) {
       win.sessionStorage.removeItem("pop-party-authoring-session");

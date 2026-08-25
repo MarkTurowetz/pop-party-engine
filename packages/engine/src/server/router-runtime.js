@@ -121,6 +121,10 @@ function createRouterRuntime({
         void livePrototype.handleRestoreCheckpoint(req, res);
         return;
       }
+      if (req.method === "POST" && url.pathname === "/api/authoring/workspace/complete-recovery") {
+        void livePrototype.handleCompleteRecovery(req, res);
+        return;
+      }
       if (req.method === "POST" && url.pathname === "/api/authoring/workspace/save") {
         void livePrototype.handleSave(req, res);
         return;

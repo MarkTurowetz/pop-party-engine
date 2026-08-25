@@ -4,6 +4,7 @@ type Listener = (event?: Event) => unknown;
 
 interface DashboardHarness {
   button: HTMLButtonElement;
+  clickExportBrowser: () => Promise<void>;
   clickRestoreGit: () => Promise<void>;
   clickSaveAll: () => Promise<void>;
   clickSyncNow: () => Promise<void>;
@@ -11,6 +12,7 @@ interface DashboardHarness {
   registerDashboardWorkspaceActions: typeof import("./toolDashboard").registerDashboardWorkspaceActions;
   registerDashboardTool: typeof import("./toolDashboard").registerDashboardTool;
   restoreButton: HTMLButtonElement;
+  exportButton: HTMLButtonElement;
   setupToolDashboard: () => void;
   status: HTMLElement;
   syncButton: HTMLButtonElement;
@@ -55,6 +57,11 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
     disabled: false,
     textContent: "Restore from Git"
   } as unknown as HTMLButtonElement;
+  const exportButton = {
+    classList: classListStub(),
+    disabled: true,
+    textContent: "Download Browser Copy"
+  } as unknown as HTMLButtonElement;
   const status = {
     classList: classListStub(),
     textContent: ""
@@ -73,6 +80,7 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
   globals.globalSaveButton = button;
   globals.globalSyncButton = syncButton;
   globals.globalRestoreGitButton = restoreButton;
+  globals.globalExportBrowserButton = exportButton;
   globals.globalSaveStatus = status;
   globals.toolDashboardBar = { classList: classListStub() } as unknown as HTMLElement;
   globals.toolTabs = [];
@@ -83,6 +91,11 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
 
   return {
     button,
+    clickExportBrowser: async () => {
+      const listener = documentListeners.get("click");
+      if (listener) await listener({ target: exportButton } as unknown as MouseEvent);
+      await Promise.resolve();
+    },
     clickRestoreGit: async () => {
       const listener = documentListeners.get("click");
       if (listener) await listener({ target: restoreButton } as unknown as MouseEvent);
@@ -116,6 +129,7 @@ async function createDashboardHarness(): Promise<DashboardHarness> {
     registerDashboardWorkspaceActions: dashboard.registerDashboardWorkspaceActions,
     registerDashboardTool: dashboard.registerDashboardTool,
     restoreButton,
+    exportButton,
     setupToolDashboard,
     status,
     syncButton
@@ -130,6 +144,7 @@ afterEach(() => {
   delete globals.globalSaveButton;
   delete globals.globalSyncButton;
   delete globals.globalRestoreGitButton;
+  delete globals.globalExportBrowserButton;
   delete globals.globalSaveStatus;
   delete globals.toolDashboardBar;
   delete globals.toolTabs;
@@ -304,6 +319,31 @@ describe("toolDashboard Save All", () => {
 
     expect(sync).toHaveBeenCalledTimes(1);
     expect(harness.syncButton.disabled).toBe(false);
+  });
+
+  it("offers a non-destructive browser checkpoint download while Git conflict stays fail-closed", async () => {
+    const harness = await createDashboardHarness();
+    const exportBrowserCheckpoint = vi.fn(async () => undefined);
+    harness.registerDashboardWorkspaceActions({
+      save: vi.fn(async () => undefined),
+      sync: vi.fn(async () => undefined),
+      restore: vi.fn(async () => undefined),
+      exportBrowserCheckpoint,
+      subscribe(listener) {
+        listener({ phase: "conflict", message: "Git changed; browser copy preserved" });
+        return () => undefined;
+      }
+    });
+    harness.setupToolDashboard();
+
+    expect(harness.syncButton.disabled).toBe(true);
+    expect(harness.button.disabled).toBe(true);
+    expect(harness.restoreButton.disabled).toBe(false);
+    expect(harness.exportButton.disabled).toBe(false);
+    await harness.clickExportBrowser();
+
+    expect(exportBrowserCheckpoint).toHaveBeenCalledTimes(1);
+    expect(harness.status.textContent).toMatch(/Git remains unchanged/);
   });
 
   it("confirms and reloads after Restore from Git completes", async () => {

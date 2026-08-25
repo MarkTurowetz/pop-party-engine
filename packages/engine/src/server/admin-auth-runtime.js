@@ -12,6 +12,7 @@ const ADMIN_API_PATHS = new Set([
   "/api/authoring/workspace", "/api/authoring/workspace/session",
   "/api/authoring/workspace/heartbeat", "/api/authoring/workspace/discard",
   "/api/authoring/workspace/checkpoint", "/api/authoring/workspace/restore-checkpoint",
+  "/api/authoring/workspace/complete-recovery",
   "/api/authoring/workspace/save",
   "/api/host-audios", "/api/stage-layouts", "/api/controller-layouts",
   "/api/host-audios/assets",

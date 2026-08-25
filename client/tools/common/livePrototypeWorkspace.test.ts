@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { beginLivePrototypeWorkspace, requestLivePrototypeSave } from "./livePrototypeWorkspace";
+import { createSessionDraftPublisher } from "./sessionDraftPublisher";
 import type { ApiClient } from "../../api/http";
 import type {
   BrowserWorkspaceCheckpoint,
@@ -44,8 +45,10 @@ function browserWindow() {
   const listeners = new Map<string, EventListener>();
   const documentListeners = new Map<string, EventListener>();
   let intervalHandler: (() => void) | null = null;
+  const downloadAnchor = { click: vi.fn(), download: "", href: "" };
   const documentTarget = {
     visibilityState: "visible",
+    createElement: vi.fn(() => downloadAnchor),
     addEventListener: vi.fn((type: string, listener: EventListener) => documentListeners.set(type, listener)),
     removeEventListener: vi.fn()
   };
@@ -76,7 +79,8 @@ function browserWindow() {
     heartbeat: () => intervalHandler?.(),
     focus: () => listeners.get("focus")?.({ type: "focus" } as Event),
     online: () => listeners.get("online")?.({ type: "online" } as Event),
-    visible: () => documentListeners.get("visibilitychange")?.({ type: "visibilitychange" } as Event)
+    visible: () => documentListeners.get("visibilitychange")?.({ type: "visibilitychange" } as Event),
+    downloadAnchor
   };
 }
 
@@ -340,6 +344,68 @@ describe("live prototype browser workspace", () => {
     expect(persisted.current()).toBeNull();
   });
 
+  it("surfaces a checkpoint conflict after an ambiguously accepted refresh response", async () => {
+    let sessionAttempts = 0;
+    const conflict = Object.assign(new Error("Git changed after this browser checkpoint was created"), {
+      status: 409,
+      payload: { errorCode: "BROWSER_CHECKPOINT_GIT_CONFLICT" }
+    });
+    const postJson = vi.fn(async (path: string) => {
+      if (path.endsWith("/session")) {
+        sessionAttempts += 1;
+        if (sessionAttempts === 1) throw new DOMException("The response was lost", "AbortError");
+        return {
+          ...sessionResponse(),
+          baselineRevision: "git-two",
+          workingRevision: "git-two",
+          recoveryRequired: true
+        };
+      }
+      if (path.endsWith("/restore-checkpoint")) throw conflict;
+      return { ok: true };
+    });
+    const browser = browserWindow();
+    browser.storage.set("pop-party-authoring-session", "persisted-session");
+    const persisted = memoryCheckpointStore(checkpoint());
+
+    const workspace = await beginLivePrototypeWorkspace(
+      { postJson } as unknown as ApiClient,
+      browser.win,
+      persisted.store
+    );
+    await vi.waitFor(() => expect(workspace?.getStatus().phase).toBe("conflict"));
+
+    expect(sessionAttempts).toBe(2);
+    expect(workspace?.getStatus().message).toMatch(/Download Browser Copy/);
+    expect(browser.win.dispatchEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "pop-party-authoring-recovery" })
+    );
+    expect(persisted.current()?.workingRevision).toBe("local-one");
+    workspace?.dispose();
+  });
+
+  it("downloads the preserved checkpoint without mutating Git or browser storage", async () => {
+    const localCheckpoint = checkpoint();
+    const postJson = vi.fn(async (path: string) => (
+      path.endsWith("/session") ? sessionResponse() : { ok: true }
+    ));
+    const persisted = memoryCheckpointStore(localCheckpoint);
+    const browser = browserWindow();
+    const workspace = await beginLivePrototypeWorkspace(
+      { postJson } as unknown as ApiClient,
+      browser.win,
+      persisted.store
+    );
+
+    await workspace?.exportBrowserCheckpoint();
+
+    expect(browser.downloadAnchor.click).toHaveBeenCalledTimes(1);
+    expect(browser.downloadAnchor.download).toMatch(/game-one-browser-checkpoint-local-one\.json/);
+    expect(persisted.current()).toEqual(localCheckpoint);
+    expect(postJson.mock.calls.some(([path]) => path.endsWith("/save"))).toBe(false);
+    workspace?.dispose();
+  });
+
   it("keeps a busy tab read-only and attaches automatically when the owner releases the lease", async () => {
     let sessionAttempts = 0;
     const busy = Object.assign(new Error("Another Tools tab is editing"), {
@@ -442,9 +508,10 @@ describe("live prototype browser workspace", () => {
     expect(browser.win.removeEventListener).toHaveBeenCalledWith("focus", expect.any(Function));
   });
 
-  it("abandons a stalled control request and reuses one reconnect coordinator when connectivity resumes", async () => {
+  it("joins a stalled session request instead of aborting an ambiguously accepted server session", async () => {
     let sessionAttempts = 0;
     let stalledRequestAborts = 0;
+    let finishStalledRequest: (value: ReturnType<typeof sessionResponse>) => void = () => undefined;
     const stale = Object.assign(new Error("Session stale"), {
       status: 409,
       payload: { errorCode: "AUTHORING_SESSION_STALE" }
@@ -457,7 +524,8 @@ describe("live prototype browser workspace", () => {
       if (path.endsWith("/session")) {
         sessionAttempts += 1;
         if (sessionAttempts === 2) {
-          return await new Promise((_, reject) => {
+          return await new Promise<ReturnType<typeof sessionResponse>>((resolve, reject) => {
+            finishStalledRequest = resolve;
             requestOptions?.signal?.addEventListener("abort", () => {
               stalledRequestAborts += 1;
               reject(new DOMException("The operation was aborted", "AbortError"));
@@ -482,10 +550,17 @@ describe("live prototype browser workspace", () => {
 
     browser.online();
     browser.focus();
-    await vi.waitFor(() => expect(sessionAttempts).toBe(3));
+    expect(sessionAttempts).toBe(2);
+    finishStalledRequest(sessionResponse());
     await workspace?.whenAttached();
 
-    expect(stalledRequestAborts).toBe(1);
+    expect(stalledRequestAborts).toBe(0);
+    expect(sessionAttempts).toBe(2);
+    expect((browser.win as Window & {
+      __popPartyAuthoringDiagnostics?: { events?: Array<{ event?: string }> };
+    }).__popPartyAuthoringDiagnostics?.events).toContainEqual(
+      expect.objectContaining({ event: "foreground-joined-control" })
+    );
     expect(workspace?.getStatus().phase).toBe("synced");
     workspace?.dispose();
   });
@@ -494,7 +569,7 @@ describe("live prototype browser workspace", () => {
     let sessionAttempts = 0;
     let heartbeatAttempts = 0;
     const transportFailure = new TypeError("Failed to fetch");
-    const postJson = vi.fn(async (path: string) => {
+    const postJson = vi.fn(async (path: string, _body?: unknown) => {
       if (path.endsWith("/session")) {
         sessionAttempts += 1;
         if (sessionAttempts === 2) throw transportFailure;
@@ -526,6 +601,48 @@ describe("live prototype browser workspace", () => {
     await workspace?.whenAttached();
 
     expect(workspace?.getStatus().phase).toBe("synced");
+    workspace?.dispose();
+  });
+
+  it("settles heartbeat recovery in an editable terminal phase only after server acknowledgement", async () => {
+    let heartbeatAttempts = 0;
+    const postJson = vi.fn(async (path: string, _body?: unknown) => {
+      if (path.endsWith("/session")) return sessionResponse();
+      if (path.endsWith("/heartbeat")) {
+        heartbeatAttempts += 1;
+        return { ...sessionResponse(), recoveryRequired: true };
+      }
+      if (path.endsWith("/complete-recovery")) {
+        return { ...sessionResponse(), recoveryRequired: false };
+      }
+      return { ...sessionResponse(), recoveryRequired: false };
+    });
+    const publisher = createSessionDraftPublisher({
+      postDraft: (message) => postJson("/api/tools/draft", message),
+      savedSnapshot: "saved",
+      clearMessage: { value: null },
+      draftMessage: (value) => ({ value })
+    });
+    await publisher.publish("dirty");
+    const browser = browserWindow();
+    const workspace = await beginLivePrototypeWorkspace(
+      { postJson } as unknown as ApiClient,
+      browser.win,
+      memoryCheckpointStore().store
+    );
+
+    browser.heartbeat();
+    await vi.waitFor(() => expect(
+      postJson.mock.calls.filter(([path]) => path.endsWith("/complete-recovery"))
+    ).toHaveLength(1));
+
+    expect(heartbeatAttempts).toBe(1);
+    expect(workspace?.getStatus().phase).toBe("synced");
+    expect(workspace?.getStatus().message).toMatch(/recovered/i);
+    expect(browser.win.dispatchEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "pop-party-authoring-recovery" })
+    );
+    publisher.dispose();
     workspace?.dispose();
   });
 });

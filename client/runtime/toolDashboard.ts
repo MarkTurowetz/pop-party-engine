@@ -15,6 +15,7 @@ export interface DashboardWorkspaceActions {
   save: () => Promise<unknown>;
   sync: () => Promise<unknown>;
   restore: () => Promise<unknown>;
+  exportBrowserCheckpoint?: () => Promise<unknown>;
   subscribe?: (listener: (status: {
     phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "offline" | "busy" | "conflict" | "error";
     message: string;
@@ -34,6 +35,7 @@ declare global {
     globalSaveButton?: HTMLButtonElement;
     globalSyncButton?: HTMLButtonElement;
     globalRestoreGitButton?: HTMLButtonElement;
+    globalExportBrowserButton?: HTMLButtonElement;
     globalSaveStatus?: HTMLElement;
     unsafeChangesModal?: HTMLElement;
     unsafeCancelButton?: HTMLElement;
@@ -132,6 +134,11 @@ function restoreButton(): HTMLButtonElement | undefined {
   return dashboardButton("#globalRestoreGitButton", w().globalRestoreGitButton);
 }
 
+function exportBrowserButton(): HTMLButtonElement | undefined {
+  return (document.querySelector("#globalExportBrowserButton") as HTMLButtonElement | null)
+    || w().globalExportBrowserButton;
+}
+
 function updateGlobalSaveButton(): void {
   const globalSaveButton = saveButton();
   if (!globalSaveButton) return;
@@ -170,6 +177,11 @@ function updateWorkspaceActionButtons(
   const currentRestoreButton = restoreButton();
   if (currentRestoreButton) {
     currentRestoreButton.disabled = syncingWorkspace || restoringWorkspace || reconnecting;
+  }
+  const currentExportButton = exportBrowserButton();
+  if (currentExportButton) {
+    currentExportButton.classList.toggle("hidden", phase !== "conflict");
+    currentExportButton.disabled = phase !== "conflict" || restoringWorkspace || syncingWorkspace;
   }
   for (const tool of TOOL_METADATA) {
     const screen = screenFor(tool.id);
@@ -279,6 +291,16 @@ async function restoreWorkspaceFromGit(): Promise<void> {
   }
 }
 
+async function exportBrowserCheckpoint(): Promise<void> {
+  if (!workspaceActions?.exportBrowserCheckpoint) return;
+  try {
+    await workspaceActions.exportBrowserCheckpoint();
+    setGlobalSaveStatus("Browser checkpoint downloaded. Git remains unchanged.", "info");
+  } catch (error) {
+    setGlobalSaveStatus(error instanceof Error ? error.message : String(error), "error");
+  }
+}
+
 function isSaveAllHotkey(event: KeyboardEvent): boolean {
   const key = String(event.key || "").toLowerCase();
   return key === "s" && event.shiftKey && (event.metaKey || event.ctrlKey);
@@ -298,6 +320,10 @@ async function handleDashboardClick(event: MouseEvent): Promise<void> {
   }
   if (target === syncButton()) {
     await syncWorkspaceNow();
+    return;
+  }
+  if (target === exportBrowserButton()) {
+    await exportBrowserCheckpoint();
     return;
   }
   if (target === restoreButton()) await restoreWorkspaceFromGit();
@@ -341,18 +367,29 @@ function setupToolDashboard(): void {
       );
     }) as EventListener);
     window.addEventListener?.("pop-party-authoring-recovery", ((event: CustomEvent<{ state?: string }>) => {
+      if (latestWorkspaceStatus?.phase === "conflict") {
+        setGlobalSaveStatus(latestWorkspaceStatus.message, "error");
+        updateWorkspaceActionButtons("conflict");
+        return;
+      }
       const recovering = event.detail?.state === "required";
       const globalSaveButton = saveButton();
       if (globalSaveButton && !savingAllTools) {
         globalSaveButton.textContent = recovering ? "Recover Browser Work" : "Save All";
       }
       if (globalSaveButton) globalSaveButton.dataset.authoringRecovery = recovering ? "required" : "recovered";
-      setGlobalSaveStatus(
-        recovering
-          ? "Server restarted · republishing the browser's Art, Layout, and Flow models…"
-          : "Browser work recovered and preserved.",
-        "info"
-      );
+      if (recovering) {
+        setGlobalSaveStatus(
+          "Server restarted · republishing the browser's Art, Layout, and Flow models…",
+          "info"
+        );
+      } else if (latestWorkspaceStatus) {
+        setGlobalSaveStatus(
+          latestWorkspaceStatus.message,
+          latestWorkspaceStatus.phase === "error" ? "error" : "info"
+        );
+        updateWorkspaceActionButtons(latestWorkspaceStatus.phase);
+      }
     }) as EventListener);
     dashboardEventsInstalled = true;
   }

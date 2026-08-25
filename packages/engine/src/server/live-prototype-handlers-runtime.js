@@ -103,6 +103,16 @@ function createLivePrototypeHandlersRuntime(options = {}) {
     ));
   }
 
+  async function handleCompleteRecovery(req, res) {
+    let payload = {};
+    try {
+      payload = await readJson(req, 64 * 1024);
+    } catch (error) {
+      // A header-only recovery completion request is valid.
+    }
+    await run(res, () => workspace.completeRecovery(sessionIdFrom(req, payload)));
+  }
+
   function sendState(res) {
     sendJson(res, 200, { ok: true, ...workspace.state() });
   }
@@ -110,6 +120,7 @@ function createLivePrototypeHandlersRuntime(options = {}) {
   return Object.freeze({
     handleBegin,
     handleCheckpoint,
+    handleCompleteRecovery,
     handleDiscard,
     handleHeartbeat,
     handleRestoreCheckpoint,

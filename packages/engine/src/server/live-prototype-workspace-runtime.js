@@ -289,6 +289,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     // invoking this hook. Preserve that first recovered payload while the
     // inactive workspace reloads its durable baseline.
     const activeSession = await ensureSession(sessionId, { preserveDrafts: true });
+    const recovering = Boolean(activeSession.recoveryRequired);
     const candidate = buildSnapshot(localCheckpointSnapshot, drafts);
     validateSnapshot(candidate);
     const previousSnapshot = workingSnapshot;
@@ -298,10 +299,12 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     workingCounter += 1;
     try {
       await onSnapshotChanged(workingSnapshot, workingRelease());
-      const roomInstalls = await installEveryRoom(workingSnapshot, workingRelease(), {
-        reset: !presentationOnly,
-        hotReload: presentationOnly
-      });
+      const roomInstalls = recovering
+        ? []
+        : await installEveryRoom(workingSnapshot, workingRelease(), {
+            reset: !presentationOnly,
+            hotReload: presentationOnly
+          });
       activeSession.recoveryRequired = false;
       return Object.freeze({
         ...state(),
@@ -462,6 +465,12 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     return state();
   }
 
+  async function completeRecovery(sessionId) {
+    const activeSession = await ensureSession(sessionId);
+    activeSession.recoveryRequired = false;
+    return state();
+  }
+
   async function sweep() {
     if (!session || now() - session.lastSeenAt <= leaseMs) return false;
     await discard(session.id, { resetRooms: false });
@@ -497,6 +506,7 @@ function createLivePrototypeWorkspaceRuntime(options = {}) {
     applyDraft,
     begin,
     checkpoint,
+    completeRecovery,
     discard,
     heartbeat,
     initialize,
