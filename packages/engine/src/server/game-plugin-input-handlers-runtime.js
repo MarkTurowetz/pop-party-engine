@@ -32,7 +32,9 @@ function createGamePluginInputHandlersRuntime({
       return;
     }
     markPlayerControllerConnected(player);
-    const result = gameInputRuntime.submit(room, playerId, payload);
+    const result = payload.draftActionId
+      ? gameInputRuntime.mutate(room, playerId, payload)
+      : gameInputRuntime.submit(room, playerId, payload);
     if (result.status !== 200) {
       sendJson(res, result.status, { ok: false, error: result.error, errorCode: result.errorCode });
       return;

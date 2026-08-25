@@ -90,6 +90,7 @@ export interface GameRendererCollectionBinding {
     keySource: string;
     artCompositionId: string;
     bindings: GameRendererBinding[];
+    inputAction?: { id: string; ariaLabelSource?: string };
   };
 }
 
@@ -139,11 +140,31 @@ export interface GameInputSubmitContext<TState extends Record<string, unknown> =
   readonly broadcast: GameActionExecutionContext<TState>["broadcast"];
 }
 
+export interface GameInputDraftContext<TState extends Record<string, unknown> = Record<string, unknown>> {
+  readonly namespace: string;
+  readonly state: TState;
+  readonly actor: GameActionPlayer;
+  readonly players: readonly GameActionPlayer[];
+  readonly capability: Readonly<{ authenticated: true; isRecipient: true; isVip: boolean }>;
+  readonly flow: Readonly<Record<string, unknown>>;
+  readonly local: Readonly<Record<string, unknown>>;
+  readonly random: GameActionExecutionContext<TState>["random"];
+  readonly refresh: Readonly<{ public(): void }>;
+}
+
 export type GameInputSubmissionField =
   | { id: string; type: "choice"; optionsSource: string; options?: ReadonlyArray<string | number | { id: string | number }> }
   | { id: string; type: "integer"; min: number; max: number };
 
 export type GameInputSubmitValues = Readonly<Record<string, string | number>>;
+
+export interface GameInputDraftAction {
+  readonly id: string;
+  readonly collectionSource: string;
+  readonly itemKeySource?: string;
+  readonly disabledSource?: string;
+  readonly payloadKey?: string;
+}
 
 export interface GameInputHoldProgress {
   readonly delaySeconds: number;
@@ -189,10 +210,12 @@ export interface GameInputRegistration<TState extends Record<string, unknown> = 
   outputs?: GameActionOutput[];
   completionTargetField?: string;
   submission: GameInputSubmissionField[];
+  draftActions?: GameInputDraftAction[];
   controller: {
     layoutStateId?: string;
     layoutStateIdField?: string;
     bindings: GameInputControllerBinding[];
+    confirm?: { enabledSource: string; shownSource?: string };
     submitted?: {
       layoutStateId: string;
       bindings: GameInputControllerBinding[];
@@ -203,6 +226,12 @@ export interface GameInputRegistration<TState extends Record<string, unknown> = 
   timeout?: { secondsField: string; policy?: "wait" | "complete" | "fault" };
   recipients(context: GameInputReadContext<TState>, action: Readonly<Record<string, unknown>>): readonly string[];
   view(context: GameInputViewContext<TState>, action: Readonly<Record<string, unknown>>): unknown;
+  mutate?(
+    context: GameInputDraftContext<TState>,
+    payload: Readonly<Record<string, string>>,
+    action: Readonly<Record<string, unknown>>,
+    draftAction: Readonly<GameInputDraftAction>
+  ): void;
   submit(context: GameInputSubmitContext<TState>, payload: Readonly<Record<string, string | number>>, action: Readonly<Record<string, unknown>>): void;
 }
 

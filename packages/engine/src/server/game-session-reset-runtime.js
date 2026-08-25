@@ -22,6 +22,7 @@ function resetGameSessionState(room) {
   room.gamePluginInputGameSessionId = 0;
   room.gamePluginInputRecipientIds = new Set();
   room.gamePluginInputSubmissions = new Map();
+  room.gamePluginInputMutationIds = new Map();
   room.gamePluginInputTimeoutId = null;
   room.controllerInputRecipientIds = new Set();
   room.controllerInputUnavailablePlayerIds = new Set();

@@ -104,6 +104,55 @@ function fixturePlugin() {
           context.state.wagers[context.actor.id] = payload;
         }
       });
+      registry.inputs("fixture.privateDraft", {
+        name: "Private Draft",
+        fields: [{ key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" }],
+        submission: [{ id: "confirmed", type: "integer", min: 1, max: 1 }],
+        draftActions: [{
+          id: "cycleCell",
+          collectionSource: "rows[].cells",
+          itemKeySource: "id",
+          disabledSource: "disabled",
+          payloadKey: "cellId"
+        }, {
+          id: "cycleCellPrivate",
+          collectionSource: "rows[].cells",
+          itemKeySource: "id",
+          disabledSource: "disabled",
+          payloadKey: "cellId"
+        }],
+        controller: {
+          layoutStateId: "fixture-private-draft",
+          bindings: [{ id: "confirm", kind: "submit", layoutElementId: "confirm" }],
+          confirm: { enabledSource: "canSubmit", shownSource: "showConfirm" },
+          submitted: { layoutStateId: "fixture-draft-confirmed", bindings: [] }
+        },
+        recipients(context) {
+          return context.players.map((player) => player.id);
+        },
+        view(context) {
+          const allocations = context.state.drafts?.[context.viewer.id] || {};
+          const cells = ["a", "b"].map((id) => ({
+            id: `${context.viewer.id}-${id}`,
+            allocation: Number(allocations[id] || 0),
+            disabled: id === "b" && context.viewer.id === "p2"
+          }));
+          const allocated = cells.reduce((sum, cell) => sum + cell.allocation, 0);
+          return { rows: [{ id: "row", cells }], remaining: 3 - allocated, canSubmit: allocated === 3, showConfirm: true, confirmed: 1 };
+        },
+        mutate(context, payload, _action, draftAction) {
+          const cell = String(payload.cellId).split("-").at(-1);
+          context.state.drafts ||= {};
+          context.state.drafts[context.actor.id] ||= {};
+          const current = Number(context.state.drafts[context.actor.id][cell] || 0);
+          context.state.drafts[context.actor.id][cell] = current >= 3 ? 0 : current + 1;
+          if (draftAction.id === "cycleCell") context.refresh.public();
+        },
+        submit(context) {
+          context.state.confirmed ||= {};
+          context.state.confirmed[context.actor.id] = true;
+        }
+      });
       registry.controllerInteractions("fixture.avatarProfile", {
         name: "Avatar profile",
         profileField: "avatarId",
@@ -164,6 +213,34 @@ function fixturePlugin() {
       registry.controllerRenderers("fixture.layerCounter", {
         ...renderer,
         target: { layoutElementId: "draw-counter", layoutScope: "layer", layoutLayerId: "game-context" }
+      });
+      registry.controllerRenderers("fixture.privateDraftGrid", {
+        name: "Private Draft Grid",
+        target: { layoutElementId: "draft-grid", layoutScope: "moment" },
+        bindings: [{
+          id: "rows",
+          kind: "collection",
+          source: "rows",
+          item: {
+            keySource: "id",
+            artCompositionId: "fixture-row",
+            bindings: [{
+              id: "cells",
+              kind: "collection",
+              source: "cells",
+              targetComponentId: "cells",
+              item: {
+                keySource: "id",
+                artCompositionId: "fixture-cell",
+                inputAction: { id: "cycleCell", ariaLabelSource: "id" },
+                bindings: [{ id: "allocation", kind: "text", source: "allocation", targetComponentId: "allocation" }]
+              }
+            }]
+          }
+        }],
+        select(context) {
+          return { rows: context.state.rows || [] };
+        }
       });
     }
   });
@@ -710,6 +787,115 @@ describe("game plugin ABI", () => {
     room.players.get("p2").active = false;
     expect(runtime.playerDisconnected(room)).toBe(true);
     expect(jumpToAction).toHaveBeenLastCalledWith(room, "after-wagers", action);
+  });
+
+  it("applies idempotent recipient-private draft mutations without completing the barrier", async () => {
+    const installed = createGamePluginRegistry().install(fixturePlugin());
+    const registrations = installed.inputs;
+    const rendererRuntime = createGameRendererRuntime({ controllerRenderers: installed.controllerRenderers });
+    expect(rendererRuntime.manifests.find((manifest) => manifest.id === "fixture.privateDraftGrid")
+      ?.bindings[0].item.bindings[0].item.inputAction).toEqual({ id: "cycleCell", ariaLabelSource: "id" });
+    const players = new Map([
+      ["p1", { id: "p1", name: "One", active: true, points: 0 }],
+      ["p2", { id: "p2", name: "Two", active: true, points: 0 }],
+      ["p3", { id: "p3", name: "Three", active: true, points: 0 }]
+    ]);
+    const room = {
+      stageCode: "TEST",
+      phase: "play",
+      flowStateId: "play",
+      gameSessionId: 4,
+      momentVisitId: 8,
+      controllerInputVisitCounter: 0,
+      vipPlayerId: "p1",
+      players,
+      flowVariables: {},
+      localVariables: {},
+      gamePluginState: { fixture: {} }
+    };
+    const action = { id: "draft", type: "fixture.privateDraft", answersSubmittedTargetActionId: "after-drafts" };
+    const jumpToAction = vi.fn();
+    const broadcastLobby = vi.fn();
+    const runtime = createGameInputRuntime({
+      inputRegistrations: registrations,
+      currentRoomAction: () => action,
+      jumpToAction,
+      broadcastLobby
+    });
+    expect(runtime.ensure(room, action)).toBe(true);
+    await Promise.resolve();
+    broadcastLobby.mockClear();
+    const visitId = room.gamePluginInputVisitId;
+    const mutate = (playerId, cellId, mutationId, overrides = {}) => runtime.mutate(room, playerId, {
+      actionId: "draft",
+      visitId,
+      gameSessionId: 4,
+      draftActionId: "cycleCell",
+      mutationId,
+      payload: { cellId },
+      ...overrides
+    });
+
+    expect(runtime.submit(room, "p1", {
+      actionId: "draft", visitId, gameSessionId: 4, submissionId: "too-soon", payload: { confirmed: 1 }
+    })).toMatchObject({ status: 422, errorCode: "GAME_PLUGIN_INPUT_CONFIRM_UNAVAILABLE" });
+    expect(mutate("p1", "p1-a", "m1")).toMatchObject({ status: 200, duplicate: false });
+    expect(mutate("p1", "p1-a", "m1")).toMatchObject({ status: 200, duplicate: true });
+    expect(room.gamePluginState.fixture.drafts.p1.a).toBe(1);
+    expect(runtime.payloadForViewer(room, action, "p1").viewModel).toMatchObject({ remaining: 2, canSubmit: false });
+    expect(runtime.payloadForViewer(room, action, "p2").viewModel).toMatchObject({ remaining: 3, canSubmit: false });
+    expect(jumpToAction).not.toHaveBeenCalled();
+    expect(broadcastLobby).toHaveBeenCalledOnce();
+
+    broadcastLobby.mockClear();
+    expect(runtime.mutate(room, "p2", {
+      actionId: "draft",
+      visitId,
+      gameSessionId: 4,
+      draftActionId: "cycleCellPrivate",
+      mutationId: "private-only",
+      payload: { cellId: "p2-a" }
+    })).toMatchObject({ status: 200, duplicate: false });
+    expect(runtime.payloadForViewer(room, action, "p2").viewModel).toMatchObject({ remaining: 2 });
+    expect(broadcastLobby).not.toHaveBeenCalled();
+
+    const resumedRuntime = createGameInputRuntime({
+      inputRegistrations: registrations,
+      currentRoomAction: () => action,
+      jumpToAction,
+      broadcastLobby
+    });
+    expect(resumedRuntime.ensure(room, action)).toBe(true);
+    expect(resumedRuntime.payloadForViewer(room, action, "p2").viewModel).toMatchObject({ remaining: 2 });
+    expect(resumedRuntime.mutate(room, "p2", {
+      actionId: "draft",
+      visitId,
+      gameSessionId: 4,
+      draftActionId: "cycleCellPrivate",
+      mutationId: "private-only",
+      payload: { cellId: "p2-a" }
+    })).toMatchObject({ status: 200, duplicate: true });
+
+    expect(mutate("p1", "p1-a", "m2")).toMatchObject({ status: 200 });
+    expect(mutate("p1", "p1-a", "m3")).toMatchObject({ status: 200 });
+    expect(runtime.payloadForViewer(room, action, "p1").viewModel).toMatchObject({ remaining: 0, canSubmit: true });
+    expect(mutate("p1", "p1-a", "m4")).toMatchObject({ status: 200 });
+    expect(runtime.payloadForViewer(room, action, "p1").viewModel).toMatchObject({ remaining: 3, canSubmit: false });
+    expect(mutate("p1", "p2-a", "foreign")).toMatchObject({ status: 422, errorCode: "GAME_PLUGIN_INPUT_DRAFT_INVALID" });
+    expect(mutate("p2", "p2-b", "disabled")).toMatchObject({ status: 422, errorCode: "GAME_PLUGIN_INPUT_DRAFT_INVALID" });
+    expect(mutate("p1", "p1-a", "stale", { visitId: visitId - 1 })).toMatchObject({ status: 409 });
+    expect(mutate("p1", "p1-a", "bad-payload", { payload: { cellId: "p1-a", extra: true } })).toMatchObject({ status: 422 });
+
+    expect(mutate("p1", "p1-a", "m5")).toMatchObject({ status: 200 });
+    expect(mutate("p1", "p1-a", "m6")).toMatchObject({ status: 200 });
+    expect(mutate("p1", "p1-a", "m7")).toMatchObject({ status: 200 });
+    expect(runtime.submit(room, "p1", {
+      actionId: "draft", visitId, gameSessionId: 4, submissionId: "confirmed-p1", payload: { confirmed: 1 }
+    })).toMatchObject({ status: 200, duplicate: false });
+    expect(runtime.payloadForViewer(room, action, "p1")).toMatchObject({ submitted: true, layoutStateId: "fixture-draft-confirmed" });
+    expect(runtime.payloadForViewer(room, action, "p2")).toMatchObject({ submitted: false, layoutStateId: "fixture-private-draft" });
+    expect(mutate("p1", "p1-a", "after-confirm")).toMatchObject({ status: 409 });
+    expect(jumpToAction).not.toHaveBeenCalled();
   });
 
   it("runs persistent authenticated controller interactions outside Flow without granting cross-player mutation", () => {

@@ -24,6 +24,7 @@ const INPUT_BINDING_KINDS = new Set(["choice", "choiceCollection", "integer", "s
 const INPUT_COMPLETION_POLICIES = new Set(["allRecipients", "anyRecipient", "manual"]);
 const INPUT_DISCONNECT_POLICIES = new Set(["wait", "completeRemaining", "fault"]);
 const INPUT_TIMEOUT_POLICIES = new Set(["wait", "complete", "fault"]);
+const INPUT_DRAFT_COLLECTION_SOURCE_PATTERN = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\[\])?(?:\.[A-Za-z_$][A-Za-z0-9_$]*(?:\[\])?)*$/;
 const CONTROLLER_INTERACTION_VISIBILITIES = new Set(["private", "public"]);
 const RENDERER_BINDING_KINDS = new Set(["collection", "component", "state", "text"]);
 const RENDERER_COMPONENT_PROPERTIES = new Set([
@@ -149,6 +150,33 @@ function validateInputRegistration(id, value) {
   if (typeof value.recipients !== "function") throw new Error(`Input "${id}" requires a recipients function`);
   if (typeof value.view !== "function") throw new Error(`Input "${id}" requires a view function`);
   if (typeof value.submit !== "function") throw new Error(`Input "${id}" requires a submit function`);
+  const draftActions = value.draftActions === undefined ? [] : value.draftActions;
+  if (!Array.isArray(draftActions)) throw new Error(`Input "${id}" draftActions must be an array`);
+  const draftActionIds = new Set();
+  for (const draftAction of draftActions) {
+    assertPlainObject(draftAction, `Input "${id}" draft action`);
+    const draftActionId = String(draftAction.id || "").trim();
+    if (!ACTION_OUTPUT_ID_PATTERN.test(draftActionId) || draftActionIds.has(draftActionId)) {
+      throw new Error(`Input "${id}" has an invalid or duplicate draft action id: ${draftActionId || "(missing)"}`);
+    }
+    draftActionIds.add(draftActionId);
+    const collectionSource = String(draftAction.collectionSource || "").trim();
+    if (!INPUT_DRAFT_COLLECTION_SOURCE_PATTERN.test(collectionSource)) {
+      throw new Error(`Input "${id}" draft action "${draftActionId}" requires a valid collectionSource`);
+    }
+    for (const [field, fallback] of [["itemKeySource", "id"], ["payloadKey", "itemId"]]) {
+      const selected = String(draftAction[field] || fallback).trim();
+      if (!ACTION_FIELD_KEY_PATTERN.test(selected)) {
+        throw new Error(`Input "${id}" draft action "${draftActionId}" has an invalid ${field}`);
+      }
+    }
+    if (draftAction.disabledSource !== undefined && !String(draftAction.disabledSource || "").trim()) {
+      throw new Error(`Input "${id}" draft action "${draftActionId}" disabledSource must be non-empty`);
+    }
+  }
+  if (draftActions.length > 0 && typeof value.mutate !== "function") {
+    throw new Error(`Input "${id}" with draftActions requires a mutate function`);
+  }
   const fields = value.fields === undefined ? [] : value.fields;
   if (!Array.isArray(fields)) throw new Error(`Input "${id}" fields must be an array`);
   const fieldKeys = new Set();
@@ -320,6 +348,18 @@ function validateInputRegistration(id, value) {
     }
   }
   validateControllerBindings(value.controller.bindings, "controller", { requireSubmissionTrigger: true });
+  if (value.controller.confirm !== undefined) {
+    assertPlainObject(value.controller.confirm, `Input "${id}" controller confirm`);
+    if (!String(value.controller.confirm.enabledSource || "").trim()) {
+      throw new Error(`Input "${id}" controller confirm requires enabledSource`);
+    }
+    if (value.controller.confirm.shownSource !== undefined && !String(value.controller.confirm.shownSource || "").trim()) {
+      throw new Error(`Input "${id}" controller confirm shownSource must be non-empty`);
+    }
+    if (!value.controller.bindings.some((binding) => binding.kind === "submit")) {
+      throw new Error(`Input "${id}" controller confirm requires a submit binding`);
+    }
+  }
   if (value.controller.submitted !== undefined) {
     assertPlainObject(value.controller.submitted, `Input "${id}" submitted controller`);
     if (!String(value.controller.submitted.layoutStateId || "").trim()) {
@@ -417,6 +457,15 @@ function validateRendererBinding(rendererId, binding, bindingIds, context = {}) 
     }
     if (!Array.isArray(binding.item.bindings)) {
       throw new Error(`Renderer "${rendererId}" collection binding "${bindingId}" item requires bindings`);
+    }
+    if (binding.item.inputAction !== undefined) {
+      assertPlainObject(binding.item.inputAction, `Renderer "${rendererId}" collection binding "${bindingId}" inputAction`);
+      if (!ACTION_OUTPUT_ID_PATTERN.test(String(binding.item.inputAction.id || "").trim())) {
+        throw new Error(`Renderer "${rendererId}" collection binding "${bindingId}" inputAction requires a valid id`);
+      }
+      if (binding.item.inputAction.ariaLabelSource !== undefined && !String(binding.item.inputAction.ariaLabelSource || "").trim()) {
+        throw new Error(`Renderer "${rendererId}" collection binding "${bindingId}" inputAction ariaLabelSource must be non-empty`);
+      }
     }
     const childIds = new Set();
     for (const child of binding.item.bindings) {

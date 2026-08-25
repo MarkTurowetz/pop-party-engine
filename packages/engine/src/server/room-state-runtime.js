@@ -60,6 +60,7 @@ function createDefaultRoom(stageCode) {
     gamePluginInputGameSessionId: 0,
     gamePluginInputRecipientIds: new Set(),
     gamePluginInputSubmissions: new Map(),
+    gamePluginInputMutationIds: new Map(),
     gamePluginInputTimeoutId: null,
     triviaPromptText: "",
     G: {},

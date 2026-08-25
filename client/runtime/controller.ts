@@ -338,6 +338,8 @@ function getGamePluginInputView() {
     createGamePluginInputView({
       applyLayoutForPhase: applyControllerLayoutForPhase,
       hideViews: hideControllerViews,
+      mutate: (actionId, visitId, draftActionId, payload, id) =>
+        getControllerSubmitApi().mutateGamePluginInput(actionId, visitId, draftActionId, payload, id) as Promise<unknown>,
       renderState: renderControllerState,
       showView: (viewId) => getControllerViewState().show(viewId),
       submit: (actionId, visitId, payload, id) =>

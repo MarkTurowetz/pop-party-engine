@@ -17,6 +17,7 @@ export interface ControllerSubmitApi {
   grantMicrophoneAccess(actionId: string): Promise<ControllerSubmitJson>;
   inputEvent(actionId: string, eventType: string): Promise<ControllerSubmitJson>;
   join(stageCode: string, playerName: string, playerId: string): Promise<ControllerSubmitJson>;
+  mutateGamePluginInput(actionId: string, visitId: number, draftActionId: string, payload: Record<string, unknown>, mutationId: string): Promise<ControllerSubmitJson>;
   saveTextDraft(actionId: string, text: string, draftSequence: number): Promise<ControllerSubmitJson>;
   submitChoice(actionId: string, optionIndex: number, cardId?: string): Promise<ControllerSubmitJson>;
   submitGamePluginInput(actionId: string, visitId: number, payload: Record<string, unknown>, submissionId: string): Promise<ControllerSubmitJson>;

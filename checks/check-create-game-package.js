@@ -281,6 +281,47 @@ module.exports = Object.freeze([
         context.state.dynamicTargets[context.actor.id] = payload.targetPlayerId;
       }
     }
+  },
+  {
+    id: "generated-fixture.privateDraftGrid",
+    value: {
+      name: "Private Draft Grid",
+      fields: [{ key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" }],
+      submission: [{ id: "confirmed", type: "integer", min: 1, max: 1 }],
+      draftActions: [{
+        id: "cycleCell", collectionSource: "rows[].cells", itemKeySource: "id", disabledSource: "disabled", payloadKey: "cellId"
+      }],
+      controller: {
+        layoutStateId: "fixture-private-draft-grid",
+        bindings: [{ id: "confirm", kind: "submit", layoutElementId: "fixture-draft-confirm" }],
+        confirm: { enabledSource: "canSubmit", shownSource: "showConfirm" },
+        submitted: { layoutStateId: "fixture-wager-confirmed", bindings: [] }
+      },
+      recipients(context) { return context.players.slice(0, 3).map((player) => player.id); },
+      view(context) {
+        const allocations = context.state.privateDrafts?.[context.viewer.id] || {};
+        const cells = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"].map((name) => ({
+          id: context.viewer.id + "-" + name,
+          label: name.toUpperCase() + " " + Number(allocations[name] || 0),
+          allocation: Number(allocations[name] || 0),
+          disabled: name === "beta" && context.viewer.name === "Two"
+        }));
+        const allocated = cells.reduce((sum, cell) => sum + cell.allocation, 0);
+        return { viewer: context.viewer.id, rows: [{ id: "top", cells: cells.slice(0, 4) }, { id: "bottom", cells: cells.slice(4) }], remaining: 3 - allocated, canSubmit: allocated === 3, showConfirm: true, confirmed: 1 };
+      },
+      mutate(context, payload) {
+        const cell = String(payload.cellId).split("-").at(-1);
+        context.state.privateDrafts ||= {};
+        context.state.privateDrafts[context.actor.id] ||= {};
+        const current = Number(context.state.privateDrafts[context.actor.id][cell] || 0);
+        context.state.privateDrafts[context.actor.id][cell] = current >= 3 ? 0 : current + 1;
+        context.refresh.public();
+      },
+      submit(context) {
+        context.state.privateDraftConfirmations ||= {};
+        context.state.privateDraftConfirmations[context.actor.id] = true;
+      }
+    }
   }
 ]);
 `);
@@ -417,6 +458,24 @@ module.exports = Object.freeze([
     }
   },
   {
+    id: "generated-fixture.draftRemaining",
+    value: {
+      name: "Public Draft Remaining",
+      target: { layoutElementId: "fixture-draft-remaining", layoutScope: "global" },
+      bindings: [{
+        id: "players", kind: "collection", source: "players",
+        item: { keySource: "id", artCompositionId: "fixture-card", bindings: cardBindings }
+      }],
+      select(context) {
+        return { players: context.players.slice(0, 3).map((player) => {
+          const allocations = context.state.privateDrafts?.[player.id] || {};
+          const allocated = Object.values(allocations).reduce((sum, value) => sum + Number(value || 0), 0);
+          return { id: player.id, label: player.name + " " + (3 - allocated), state: "On" };
+        }) };
+      }
+    }
+  },
+  {
     id: "generated-fixture.playerPresentations",
     value: {
       name: "Fixture Game-owned Player Presentations",
@@ -497,7 +556,55 @@ module.exports = Object.freeze([
 `);
   fs.writeFileSync(
     path.join(targetRoot, "src", "controller", "index.js"),
-    generatedRenderer("generated-fixture.controllerCounter", "controllerglobalactionmessage", "layout-text-field-text/layout-text")
+    `"use strict";
+const cellBindings = [
+  { id: "label", kind: "text", source: "label", targetComponentId: "placeholder-text", fallback: "CELL" },
+  { id: "state", kind: "state", source: "state", fallback: "On", playback: "stop" }
+];
+function draftModel(context) {
+  const allocations = context.state.privateDrafts?.[context.viewer?.id] || {};
+  const cells = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta"].map((name) => ({
+    id: context.viewer.id + "-" + name,
+    label: name.toUpperCase() + " " + Number(allocations[name] || 0),
+    allocation: Number(allocations[name] || 0),
+    disabled: name === "beta" && context.viewer.name === "Two"
+  }));
+  return { viewer: context.viewer.id, rows: [{ id: "top", cells: cells.slice(0, 4) }, { id: "bottom", cells: cells.slice(4) }] };
+}
+module.exports = Object.freeze([
+  {
+    id: "generated-fixture.controllerCounter",
+    value: {
+      name: "Fixture Counter",
+      target: { layoutElementId: "controllerglobalactionmessage", layoutScope: "global" },
+      bindings: [{ id: "count", kind: "text", source: "label", targetComponentId: "layout-text-field-text/layout-text", fallback: "0" }],
+      select(context) { return { label: String(context.state.count || 0) }; }
+    }
+  },
+  {
+    id: "generated-fixture.privateDraftGrid",
+    value: {
+      name: "Private Draft Grid",
+      target: { layoutElementId: "fixture-draft-grid", layoutScope: "moment" },
+      bindings: [{
+        id: "rows", kind: "collection", source: "rows",
+        item: {
+          keySource: "id", artCompositionId: "fixture-draft-row", bindings: [
+            { id: "state", kind: "state", source: "state", fallback: "On", playback: "stop" },
+            { id: "cells", kind: "collection", source: "cells", targetComponentId: "cells-slot",
+            item: {
+              keySource: "id", artCompositionId: "fixture-draft-cell",
+              inputAction: { id: "cycleCell", ariaLabelSource: "label" },
+              bindings: cellBindings
+            }
+          }]
+        }
+      }],
+      select(context) { return draftModel(context); }
+    }
+  }
+]);
+`
   );
   const stageLayoutPath = path.join(targetRoot, "content", "layouts", "stage.json");
   const stageLayouts = JSON.parse(fs.readFileSync(stageLayoutPath, "utf8"));
@@ -519,6 +626,12 @@ module.exports = Object.freeze([
       hidden: false, locked: false, x: 960, y: 850, width: 1320, height: 220, scale: 1, rotation: 0,
       collectionDirection: "horizontal", collectionGap: 24, collectionDistribution: "space-evenly", collectionAlignment: "center",
       collectionPadding: 10, collectionOverflow: "visible", zIndex: 32
+    },
+    {
+      id: "fixture-draft-remaining", name: "Fixture Draft Remaining", selector: "", kind: "collection", artCompositionId: "",
+      hidden: false, locked: false, x: 960, y: 150, width: 900, height: 160, scale: 1, rotation: 0,
+      collectionDirection: "horizontal", collectionGap: 18, collectionDistribution: "center", collectionAlignment: "center",
+      collectionPadding: 10, collectionOverflow: "visible", zIndex: 33
     }
   ];
   stageLayouts.global.elements.push(...structuredClone(rendererCollectionLayoutElements));
@@ -568,7 +681,7 @@ module.exports = Object.freeze([
     fontFamily: "", fontColor: "#17131f"
   });
   controllerLayouts.states = [
-    ...(controllerLayouts.states || []).filter((state) => !["fixture-plugin-input", "fixture-dynamic-targets"].includes(state.id)),
+    ...(controllerLayouts.states || []).filter((state) => !["fixture-plugin-input", "fixture-dynamic-targets", "fixture-private-draft-grid"].includes(state.id)),
     {
       id: "fixture-plugin-input", name: "Fixture Plugin Input", hiddenGlobals: [], hiddenLayers: [],
       elements: [
@@ -587,6 +700,19 @@ module.exports = Object.freeze([
         collectionDistribution: "start", collectionAlignment: "stretch", collectionPadding: 10,
         collectionOverflow: "auto", zIndex: 25
       }]
+    },
+    {
+      id: "fixture-private-draft-grid", name: "Fixture Private Draft Grid", hiddenGlobals: [], hiddenLayers: [],
+      elements: [
+        {
+          id: "fixture-draft-grid", name: "Private Draft Grid", selector: "", kind: "collection", artCompositionId: "",
+          hidden: false, locked: false, x: 195, y: 455, width: 350, height: 300, scale: 1, rotation: 0,
+          defaultAnimationState: "On", collectionDirection: "vertical", collectionGap: 12,
+          collectionDistribution: "start", collectionAlignment: "stretch", collectionPadding: 10,
+          collectionOverflow: "auto", zIndex: 25
+        },
+        fixtureChoiceElement("fixture-draft-confirm", 790)
+      ]
     }
   ];
   fs.writeFileSync(controllerLayoutPath, `${JSON.stringify(controllerLayouts, null, 2)}\n`);
@@ -691,6 +817,20 @@ module.exports = Object.freeze([
       { ...fixtureChoiceInteractionReference, x: 165, y: 50 },
       ...structuredClone(artManifest.compositions["controller-text-input-field"].components)
     ]
+  };
+  artManifest.compositions["fixture-draft-cell"] = {
+    ...structuredClone(artManifest.compositions["controller-text-input-field"]),
+    name: "Fixture Draft Cell",
+    compositionKind: "gameObject",
+    isCustom: true
+  };
+  artManifest.compositions["fixture-draft-row"] = {
+    name: "Fixture Draft Row", surface: "controller", compositionKind: "gameObject", isCustom: true,
+    canvas: { width: 330, height: 250 }, timeline: fixtureVisibleTimeline,
+    components: [{
+      id: "cells-slot", name: "Cells Slot", kind: "container", childDistribution: "vertical",
+      x: 165, y: 125, width: 320, height: 240, fillColor: "transparent", defaultAnimationState: "On", children: []
+    }]
   };
   artManifest.compositions["fixture-player-avatar-art"] = {
     name: "Fixture Player Avatar Art", surface: "stage", compositionKind: "gameObject", isCustom: true,
@@ -2936,6 +3076,256 @@ module.exports = Object.freeze([
       await dynamicSecondResponsePromise;
       await dynamicStagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-dynamic-done", null, { timeout: 15_000 });
       const dynamicBarrierAction = (await (await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby")).json()).lobby.action?.id;
+
+      const three = await joinPlayer("Three");
+      const thirdControllerPage = await browser.newPage();
+      await thirdControllerPage.addInitScript((session) => {
+        sessionStorage.setItem("partyTemplatePlayerId", session.playerId);
+        sessionStorage.setItem("partyTemplatePlayerName", session.playerName);
+        sessionStorage.setItem("partyTemplateStageCode", "PLUG");
+        sessionStorage.setItem("partyTemplatePlayerCapability", session.playerCapability);
+      }, {
+        playerId: three.player.id,
+        playerName: three.player.name,
+        playerCapability: three.playerCapability
+      });
+      await thirdControllerPage.goto(first.startup.localUrl + "/controller?stage=PLUG&name=Three&join=1", { waitUntil: "load" });
+      await thirdControllerPage.waitForFunction((playerId) => window.controllerState?.player?.id === playerId, three.player.id, { timeout: 15_000 });
+      const draftFlow = {
+        ...flowPayload.flow,
+        states: flowPayload.flow.states.map((state) => state.id === "lobby" ? {
+          ...fixtureLobby,
+          entryTargetActionId: "fixture-private-draft-grid",
+          actions: [
+            {
+              id: "fixture-private-draft-grid",
+              name: "Private Draft Grid",
+              type: "generated-fixture.privateDraftGrid",
+              answersSubmittedTargetActionId: "fixture-draft-done",
+              timing: { mode: "E+", seconds: 0 },
+              subActions: []
+            },
+            {
+              id: "fixture-draft-done",
+              name: "Private Draft Done",
+              type: "presentText",
+              text: "Private drafts complete",
+              timing: { mode: "E+", seconds: 0 },
+              subActions: [],
+              nextTargetActionId: "none"
+            }
+          ]
+        } : state)
+      };
+      await fetch(first.startup.localUrl + "/api/stage/PLUG/test-config", {
+        method: "POST",
+        headers: stageHeaders,
+        body: JSON.stringify({ flow: draftFlow })
+      });
+      const oneDraftLobby = await heartbeat(one);
+      const twoDraftLobby = await heartbeat(two);
+      const threeDraftLobby = await heartbeat(three);
+      for (const page of [controllerPage, secondControllerPage, thirdControllerPage]) {
+        await page.waitForFunction(() => (
+          window.controllerState?.lobby?.gamePlugin?.input?.type === "generated-fixture.privateDraftGrid"
+          && document.querySelectorAll('[data-game-plugin-input-draft-action="cycleCell"]').length === 8
+        ), null, { timeout: 15_000 });
+      }
+      const earlyDraftConfirm = await submitPluginInputResponse(one, oneDraftLobby, { confirmed: 1 }, "draft-too-soon");
+      const draftPrivateIsolationBefore = {
+        one: oneDraftLobby.gamePlugin.input.viewModel,
+        two: twoDraftLobby.gamePlugin.input.viewModel,
+        three: threeDraftLobby.gamePlugin.input.viewModel,
+        stageInput: (await (await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby")).json()).lobby.gamePlugin?.input
+      };
+      const alphaSelector = '[data-game-plugin-input-draft-item="' + one.player.id + '-alpha"]';
+      const betaTwoSelector = '[data-game-plugin-input-draft-item="' + two.player.id + '-beta"]';
+      await controllerPage.evaluate(() => {
+        window.__fixtureDraftEvents = [];
+        window.addEventListener("pop-party:game-plugin-input-draft", (event) => window.__fixtureDraftEvents.push(event.detail));
+      });
+      const draftIdentityBefore = await controllerPage.evaluate((selector) => {
+        const control = document.querySelector(selector);
+        const grid = document.querySelector('[data-controller-layout-element-id="fixture-draft-grid"]');
+        control?.focus();
+        if (grid) grid.scrollTop = 80;
+        window.__fixtureDraftControl = control;
+        window.__fixtureDraftRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(control);
+        window.__fixtureDraftArtLayer = control?.querySelector(":scope > .controller-widget-art-layer");
+        return {
+          rendererPresent: Boolean(window.__fixtureDraftRenderer),
+          focused: document.activeElement === control,
+          scrollTop: grid?.scrollTop,
+          overflowed: Number(grid?.scrollHeight || 0) > Number(grid?.clientHeight || 0),
+          bounds: control?.getBoundingClientRect().toJSON()
+        };
+      }, alphaSelector);
+      const stageBeforeDraft = await dynamicStagePage.evaluate(() => ({
+        applies: window.__popPartyStageMetrics?.applyCount,
+        layoutApplies: window.__fixtureStageLayoutApplyCount,
+        animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
+        animationState: window.__fixtureStageAnimation?.playState,
+        publicModel: window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.draftRemaining"],
+        host: (() => {
+          const host = document.querySelector('[data-stage-layout-element-id="fixture-draft-remaining"]');
+          window.__fixtureDraftStageHost = host;
+          window.__fixtureDraftStageRenderer = window.PartyGameStageWidgetArt?.rendererForHost?.(host);
+          window.__fixtureDraftStageArtLayer = host?.querySelector(":scope > .stage-widget-art-layer");
+          return Boolean(host);
+        })()
+      }));
+      const draftAllocations = [];
+      let stageAfterFirstDraftMutation = null;
+      let firstDraftRequest = null;
+      for (let allocation = 1; allocation <= 4; allocation += 1) {
+        const responsePromise = controllerPage.waitForResponse((response) => {
+          if (!response.url().endsWith("/api/game-plugin-input") || response.request().method() !== "POST") return false;
+          const request = JSON.parse(response.request().postData() || "{}");
+          return request.draftActionId === "cycleCell";
+        });
+        await controllerPage.evaluate((selector) => document.querySelector(selector)?.click(), alphaSelector);
+        const response = await responsePromise;
+        if (!firstDraftRequest) firstDraftRequest = JSON.parse(response.request().postData() || "{}");
+        await controllerPage.waitForFunction(({ playerId, expected }) => {
+          const rows = window.controllerState?.lobby?.gamePlugin?.input?.viewModel?.rows || [];
+          const cell = rows.flatMap((row) => row.cells || []).find((candidate) => candidate.id === playerId + "-alpha");
+          return Number(cell?.allocation) === expected;
+        }, { playerId: one.player.id, expected: allocation % 4 }, { timeout: 15_000 });
+        draftAllocations.push(await controllerPage.evaluate((selector) => {
+          const control = document.querySelector(selector);
+          const grid = document.querySelector('[data-controller-layout-element-id="fixture-draft-grid"]');
+          const rows = window.controllerState?.lobby?.gamePlugin?.input?.viewModel?.rows || [];
+          const cell = rows.flatMap((row) => row.cells || []).find((candidate) => candidate.id === control?.dataset.gamePluginInputDraftItem);
+          return {
+            allocation: cell?.allocation,
+            retained: window.__fixtureDraftControl === control,
+            rendererRetained: window.__fixtureDraftRenderer === window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(control),
+            artLayerRetained: window.__fixtureDraftArtLayer === control?.querySelector(":scope > .controller-widget-art-layer"),
+            focused: document.activeElement === control,
+            scrollTop: grid?.scrollTop
+          };
+        }, alphaSelector));
+        if (allocation === 1) {
+          await dynamicStagePage.waitForFunction((playerId) => (
+            window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.draftRemaining"]?.players
+              ?.find((player) => player.id === playerId)?.label?.endsWith(" 2")
+          ), one.player.id, { timeout: 15_000 });
+          stageAfterFirstDraftMutation = await dynamicStagePage.evaluate(() => {
+            const host = document.querySelector('[data-stage-layout-element-id="fixture-draft-remaining"]');
+            return {
+              applies: window.__popPartyStageMetrics?.applyCount,
+              layoutApplies: window.__fixtureStageLayoutApplyCount,
+              appliedSlices: window.__popPartyStageMetrics?.lastAppliedSlices,
+              hostRetained: host === window.__fixtureDraftStageHost,
+              rendererRetained: window.PartyGameStageWidgetArt?.rendererForHost?.(host) === window.__fixtureDraftStageRenderer,
+              artLayerRetained: host?.querySelector(":scope > .stage-widget-art-layer") === window.__fixtureDraftStageArtLayer,
+              animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
+              animationState: window.__fixtureStageAnimation?.playState,
+              publicModel: window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.draftRemaining"]
+            };
+          });
+        }
+      }
+      await controllerPage.reload({ waitUntil: "load" });
+      await controllerPage.waitForFunction((playerId) => {
+        const rows = window.controllerState?.lobby?.gamePlugin?.input?.viewModel?.rows || [];
+        const cell = rows.flatMap((row) => row.cells || []).find((candidate) => candidate.id === playerId + "-alpha");
+        return window.controllerState?.lobby?.gamePlugin?.input?.submitted === false
+          && Number(cell?.allocation) === 0
+          && document.querySelectorAll('[data-game-plugin-input-draft-action="cycleCell"]').length === 8;
+      }, one.player.id, { timeout: 15_000 });
+      const draftReloadRecovery = await controllerPage.evaluate((selector) => ({
+        allocation: (window.controllerState?.lobby?.gamePlugin?.input?.viewModel?.rows || [])
+          .flatMap((row) => row.cells || [])
+          .find((candidate) => candidate.id === document.querySelector(selector)?.dataset.gamePluginInputDraftItem)?.allocation,
+        controls: document.querySelectorAll('[data-game-plugin-input-draft-action="cycleCell"]').length,
+        confirmDisabled: document.querySelector('[data-game-plugin-input-binding="confirm"]')?.disabled
+      }), alphaSelector);
+      const duplicateDraftResponse = await fetch(first.startup.localUrl + "/api/game-plugin-input", {
+        method: "POST",
+        headers: playerHeaders(one),
+        body: JSON.stringify(firstDraftRequest)
+      });
+      const duplicateDraft = { status: duplicateDraftResponse.status, body: await duplicateDraftResponse.json() };
+      const malformedDraftResponse = await fetch(first.startup.localUrl + "/api/game-plugin-input", {
+        method: "POST",
+        headers: playerHeaders(one),
+        body: JSON.stringify({ ...firstDraftRequest, mutationId: "draft-malformed", payload: { cellId: one.player.id + "-alpha", extra: true } })
+      });
+      const malformedDraft = { status: malformedDraftResponse.status, body: await malformedDraftResponse.json() };
+      const foreignDraftResponse = await fetch(first.startup.localUrl + "/api/game-plugin-input", {
+        method: "POST",
+        headers: playerHeaders(one),
+        body: JSON.stringify({ ...firstDraftRequest, mutationId: "draft-foreign", payload: { cellId: two.player.id + "-alpha" } })
+      });
+      const foreignDraft = { status: foreignDraftResponse.status, body: await foreignDraftResponse.json() };
+      const disabledDraftState = await secondControllerPage.evaluate((selector) => ({
+        disabled: document.querySelector(selector)?.disabled,
+        ariaDisabled: document.querySelector(selector)?.getAttribute("aria-disabled")
+      }), betaTwoSelector);
+      const disabledDraftResponse = await fetch(first.startup.localUrl + "/api/game-plugin-input", {
+        method: "POST",
+        headers: playerHeaders(two),
+        body: JSON.stringify({ ...firstDraftRequest, playerId: two.player.id, mutationId: "draft-disabled", payload: { cellId: two.player.id + "-beta" } })
+      });
+      const disabledDraft = { status: disabledDraftResponse.status, body: await disabledDraftResponse.json() };
+      for (let allocation = 1; allocation <= 3; allocation += 1) {
+        await controllerPage.evaluate((selector) => document.querySelector(selector)?.click(), alphaSelector);
+        await controllerPage.waitForFunction(({ playerId, expected }) => {
+          const rows = window.controllerState?.lobby?.gamePlugin?.input?.viewModel?.rows || [];
+          const cell = rows.flatMap((row) => row.cells || []).find((candidate) => candidate.id === playerId + "-alpha");
+          return Number(cell?.allocation) === expected;
+        }, { playerId: one.player.id, expected: allocation }, { timeout: 15_000 });
+      }
+      await controllerPage.waitForFunction(() => document.querySelector('[data-game-plugin-input-binding="confirm"]')?.disabled === false, null, { timeout: 15_000 });
+      const confirmOneResponse = controllerPage.waitForResponse((response) => response.url().endsWith("/api/game-plugin-input")
+        && response.request().method() === "POST"
+        && !JSON.parse(response.request().postData() || "{}").draftActionId);
+      await controllerPage.locator('[data-game-plugin-input-binding="confirm"]').click();
+      await confirmOneResponse;
+      await controllerPage.waitForFunction(() => window.controllerState?.lobby?.gamePlugin?.input?.submitted === true, null, { timeout: 15_000 });
+      const draftAfterFirstConfirm = await controllerPage.evaluate(() => ({
+        submitted: window.controllerState?.lobby?.gamePlugin?.input?.submitted,
+        layout: window.controllerState?.lobby?.gamePlugin?.input?.layoutStateId,
+        activeDraftControls: document.querySelectorAll('[data-game-plugin-input-draft-action="cycleCell"]:not(:disabled)').length,
+        originalControlConnected: window.__fixtureDraftControl?.isConnected === true
+      }));
+      const draftBarrierAfterFirst = (await (await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby")).json()).lobby.action?.id;
+      const completeDraftForPage = async (page, joined) => {
+        const selector = '[data-game-plugin-input-draft-item="' + joined.player.id + '-alpha"]';
+        for (let allocation = 1; allocation <= 3; allocation += 1) {
+          await page.evaluate((target) => document.querySelector(target)?.click(), selector);
+          await page.waitForFunction(({ playerId, expected }) => {
+            const rows = window.controllerState?.lobby?.gamePlugin?.input?.viewModel?.rows || [];
+            const cell = rows.flatMap((row) => row.cells || []).find((candidate) => candidate.id === playerId + "-alpha");
+            return Number(cell?.allocation) === expected;
+          }, { playerId: joined.player.id, expected: allocation }, { timeout: 15_000 });
+        }
+        await page.waitForFunction(() => document.querySelector('[data-game-plugin-input-binding="confirm"]')?.disabled === false, null, { timeout: 15_000 });
+        await page.locator('[data-game-plugin-input-binding="confirm"]').click();
+      };
+      await completeDraftForPage(secondControllerPage, two);
+      const draftBarrierAfterSecond = (await (await fetch(first.startup.localUrl + "/api/stage/PLUG/lobby")).json()).lobby.action?.id;
+      await completeDraftForPage(thirdControllerPage, three);
+      await dynamicStagePage.waitForFunction(() => window.currentStageState?.action?.id === "fixture-draft-done", null, { timeout: 15_000 });
+      const stageAfterDraft = await dynamicStagePage.evaluate(() => ({
+        applies: window.__popPartyStageMetrics?.applyCount,
+        layoutApplies: window.__fixtureStageLayoutApplyCount,
+        animationTime: Number(window.__fixtureStageAnimation?.currentTime || 0),
+        animationState: window.__fixtureStageAnimation?.playState,
+        publicModel: window.currentStageState?.gamePlugin?.viewModels?.["generated-fixture.draftRemaining"],
+        privateInput: window.currentStageState?.gamePlugin?.input
+      }));
+      const draftPrivateIsolationAfter = {
+        two: (await heartbeat(two)).gamePlugin?.input?.viewModel,
+        three: (await heartbeat(three)).gamePlugin?.input?.viewModel
+      };
+      const thirdLeaveResponse = await fetch(first.startup.localUrl + "/api/leave", {
+        method: "POST",
+        headers: playerHeaders(three),
+        body: JSON.stringify({ stageCode: "PLUG", playerId: three.player.id })
+      });
+      await thirdControllerPage.close();
       await secondControllerPage.close();
       const transitionBurstActions = Array.from({ length: 24 }, (_, index) => ({
         id: "fixture-transition-burst-" + index,
@@ -3234,6 +3624,7 @@ module.exports = Object.freeze([
       });
       const flowSavePayload = await flowSaveResponse.json();
       const savedRevision = JSON.parse(fs.readFileSync(".pop-party/content/content-bundle.json", "utf8")).rootHash;
+      const draftDiagnostics = await controllerPage.evaluate(() => window.__fixtureDraftEvents || []);
       await stagePage.close();
       await first.runtime.stop().catch(() => {});
       await browser.close();
@@ -3889,6 +4280,27 @@ module.exports = Object.freeze([
         dynamicStageBefore,
         dynamicStageAfterPartial,
         dynamicBarrierAction,
+        privateDraftGrid: {
+          earlyConfirm: earlyDraftConfirm,
+          privateIsolationBefore: draftPrivateIsolationBefore,
+          identityBefore: draftIdentityBefore,
+          allocations: draftAllocations,
+          reloadRecovery: draftReloadRecovery,
+          duplicate: duplicateDraft,
+          malformed: malformedDraft,
+          foreign: foreignDraft,
+          disabledState: disabledDraftState,
+          disabled: disabledDraft,
+          afterFirstConfirm: draftAfterFirstConfirm,
+          barrierAfterFirst: draftBarrierAfterFirst,
+          barrierAfterSecond: draftBarrierAfterSecond,
+          stageBefore: stageBeforeDraft,
+          stageAfterFirstMutation: stageAfterFirstDraftMutation,
+          stageAfter: stageAfterDraft,
+          privateIsolationAfter: draftPrivateIsolationAfter,
+          thirdLeaveStatus: thirdLeaveResponse.status,
+          diagnostics: draftDiagnostics
+        },
         privateWagerTargets: [
           oneWagerLobby.gamePlugin?.input?.viewModel?.target,
           twoWagerLobby.gamePlugin?.input?.viewModel?.target
@@ -4282,6 +4694,55 @@ module.exports = Object.freeze([
     || Object.values(development.dynamicStageBefore?.needsInput || {}).filter(Boolean).length !== 2
     || Object.values(development.dynamicStageAfterPartial?.needsInput || {}).filter(Boolean).length !== 1
     || development.dynamicBarrierAction !== "fixture-dynamic-done"
+    || development.privateDraftGrid?.earlyConfirm?.status !== 422
+    || development.privateDraftGrid?.earlyConfirm?.body?.errorCode !== "GAME_PLUGIN_INPUT_CONFIRM_UNAVAILABLE"
+    || development.privateDraftGrid?.privateIsolationBefore?.stageInput != null
+    || new Set([
+      development.privateDraftGrid?.privateIsolationBefore?.one?.viewer,
+      development.privateDraftGrid?.privateIsolationBefore?.two?.viewer,
+      development.privateDraftGrid?.privateIsolationBefore?.three?.viewer
+    ]).size !== 3
+    || development.privateDraftGrid?.identityBefore?.rendererPresent !== true
+    || development.privateDraftGrid?.identityBefore?.focused !== true
+    || development.privateDraftGrid?.identityBefore?.overflowed !== true
+    || !(development.privateDraftGrid?.identityBefore?.bounds?.width > 0)
+    || !(development.privateDraftGrid?.identityBefore?.bounds?.height > 0)
+    || JSON.stringify(development.privateDraftGrid?.allocations?.map((item) => item.allocation)) !== JSON.stringify([1, 2, 3, 0])
+    || development.privateDraftGrid?.allocations?.some((item) => (
+      !item.retained || !item.rendererRetained || !item.artLayerRetained || !item.focused
+      || item.scrollTop !== development.privateDraftGrid?.identityBefore?.scrollTop
+    ))
+    || development.privateDraftGrid?.reloadRecovery?.allocation !== 0
+    || development.privateDraftGrid?.reloadRecovery?.controls !== 8
+    || development.privateDraftGrid?.reloadRecovery?.confirmDisabled !== true
+    || development.privateDraftGrid?.duplicate?.status !== 200
+    || development.privateDraftGrid?.duplicate?.body?.duplicate !== true
+    || development.privateDraftGrid?.malformed?.status !== 422
+    || development.privateDraftGrid?.malformed?.body?.errorCode !== "GAME_PLUGIN_INPUT_DRAFT_INVALID"
+    || development.privateDraftGrid?.foreign?.status !== 422
+    || development.privateDraftGrid?.foreign?.body?.errorCode !== "GAME_PLUGIN_INPUT_DRAFT_INVALID"
+    || development.privateDraftGrid?.disabledState?.disabled !== true
+    || development.privateDraftGrid?.disabledState?.ariaDisabled !== "true"
+    || development.privateDraftGrid?.disabled?.status !== 422
+    || development.privateDraftGrid?.disabled?.body?.errorCode !== "GAME_PLUGIN_INPUT_DRAFT_INVALID"
+    || development.privateDraftGrid?.afterFirstConfirm?.submitted !== true
+    || development.privateDraftGrid?.afterFirstConfirm?.layout !== "fixture-wager-confirmed"
+    || development.privateDraftGrid?.afterFirstConfirm?.activeDraftControls !== 0
+    || development.privateDraftGrid?.afterFirstConfirm?.originalControlConnected !== false
+    || development.privateDraftGrid?.barrierAfterFirst !== "fixture-private-draft-grid"
+    || development.privateDraftGrid?.barrierAfterSecond !== "fixture-private-draft-grid"
+    || development.privateDraftGrid?.stageBefore?.host !== true
+    || !(development.privateDraftGrid?.stageAfterFirstMutation?.applies > development.privateDraftGrid?.stageBefore?.applies)
+    || development.privateDraftGrid?.stageAfterFirstMutation?.layoutApplies !== development.privateDraftGrid?.stageBefore?.layoutApplies
+    || JSON.stringify(development.privateDraftGrid?.stageAfterFirstMutation?.appliedSlices) !== JSON.stringify(["gamePlugin"])
+    || development.privateDraftGrid?.stageAfterFirstMutation?.hostRetained !== true
+    || development.privateDraftGrid?.stageAfterFirstMutation?.rendererRetained !== true
+    || development.privateDraftGrid?.stageAfterFirstMutation?.artLayerRetained !== true
+    || !development.privateDraftGrid?.stageAfterFirstMutation?.publicModel?.players?.some((player) => player.label?.endsWith(" 2"))
+    || JSON.stringify(development.privateDraftGrid?.stageAfterFirstMutation?.publicModel || {}).includes("allocation")
+    || development.privateDraftGrid?.stageAfter?.privateInput != null
+    || !development.privateDraftGrid?.stageAfter?.publicModel?.players?.every((player) => player.label?.endsWith(" 0"))
+    || development.privateDraftGrid?.thirdLeaveStatus !== 200
     || JSON.stringify(development.privateWagerTargets) !== JSON.stringify([10, 20])
     || development.wagerInitialState?.value !== "7"
     || !(development.wagerInitialState?.fontSize > 0)
