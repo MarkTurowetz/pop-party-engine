@@ -396,6 +396,34 @@ describe("live prototype workspace", () => {
     expect(broadcasts).toBe(1);
   });
 
+  it("acknowledges clean browser recovery without resetting or replaying active rooms", async () => {
+    let clock = 1_000;
+    const { installs, rooms, workspace } = fixture({
+      now: () => clock,
+      leaseMs: 5_000,
+      roomPhase: "active-play"
+    });
+    await workspace.initialize();
+    const session = await workspace.begin();
+    const room = rooms.get("ROOM");
+    room.momentVisitId = 12;
+    room.actionExecutionId = 34;
+
+    clock += 5_001;
+    await workspace.sweep();
+    const resumed = await workspace.heartbeat(session.sessionId);
+    expect(resumed.recoveryRequired).toBe(true);
+
+    const recovered = await workspace.completeRecovery(session.sessionId);
+
+    expect(recovered.recoveryRequired).toBe(false);
+    expect(installs).toHaveLength(0);
+    expect(room).toMatchObject({ momentVisitId: 12, actionExecutionId: 34 });
+    await expect(workspace.checkpoint(session.sessionId)).resolves.toMatchObject({
+      recoveryRequired: false
+    });
+  });
+
   it("does not reset an active game when the Tools heartbeat lease expires", async () => {
     let clock = 1_000;
     const enterLobbyPhase = () => {

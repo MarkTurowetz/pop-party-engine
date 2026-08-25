@@ -99,6 +99,7 @@ void livePrototypeWorkspace.then((workspace) => {
       return workspace.syncNow();
     },
     restore: () => workspace.restoreFromGit(),
+    exportBrowserCheckpoint: () => workspace.exportBrowserCheckpoint(),
     subscribe: (listener) => workspace.subscribe(listener)
   });
 });

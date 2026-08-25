@@ -73,6 +73,10 @@ export async function republishAllSessionDraftPublishers(): Promise<void> {
   }
 }
 
+export function activeSessionDraftPublisherCount(): number {
+  return activePublishers.size;
+}
+
 function isRecoveredAuthoringSession(error: unknown): boolean {
   const errorCode = String(
     (error as { payload?: { errorCode?: unknown } })?.payload?.errorCode || ""

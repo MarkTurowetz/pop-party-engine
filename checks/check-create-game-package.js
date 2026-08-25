@@ -4001,6 +4001,116 @@ module.exports = Object.freeze([
         sessionAttempts: stalledSessionAttempts
       };
       await stalledToolsPage.close();
+
+      const conflictToolsPage = await recoveryBrowser.newPage();
+      let conflictRefresh = false;
+      let conflictSessionAttempts = 0;
+      let conflictLostResponse = false;
+      const conflictResponse = {
+        ...busyResponse,
+        sessionId: "packed-browser-conflict",
+        baselineRevision: "git-one",
+        localCheckpointRevision: "git-one",
+        workingRevision: "git-one",
+        release: { contentRevision: "git-one", releaseRevision: "release-one" }
+      };
+      await conflictToolsPage.route("**/api/authoring/workspace/**", async (route) => {
+        const pathname = new URL(route.request().url()).pathname;
+        if (pathname.endsWith("/session")) {
+          conflictSessionAttempts += 1;
+          if (conflictRefresh && !conflictLostResponse) {
+            conflictLostResponse = true;
+            await route.abort("timedout");
+            return;
+          }
+        }
+        if (conflictRefresh && pathname.endsWith("/restore-checkpoint")) {
+          await route.fulfill({
+            status: 409,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: "Git changed after this browser checkpoint was created.",
+              errorCode: "BROWSER_CHECKPOINT_GIT_CONFLICT"
+            })
+          });
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(conflictRefresh
+            ? {
+                ...conflictResponse,
+                baselineRevision: "git-two",
+                localCheckpointRevision: "git-two",
+                workingRevision: "git-two",
+                recoveryRequired: true,
+                release: { contentRevision: "git-two", releaseRevision: "release-two" }
+              }
+            : conflictResponse)
+        });
+      });
+      await conflictToolsPage.goto(recoverySecond.startup.localUrl + "/tools", { waitUntil: "load" });
+      await conflictToolsPage.waitForFunction(() => Boolean(document.querySelector('.flow-react-shell')), null, { timeout: 15_000 });
+      await conflictToolsPage.evaluate(async () => {
+        const checkpoint = {
+          schemaVersion: 1,
+          gameId: "generated-fixture",
+          workingRevision: "browser-one",
+          gitContentRevision: "git-one",
+          gitReleaseRevision: "release-one",
+          savedAt: new Date().toISOString(),
+          manifest: {},
+          files: {}
+        };
+        const request = indexedDB.open("pop-party-authoring", 1);
+        const database = await new Promise((resolve, reject) => {
+          request.addEventListener("upgradeneeded", () => {
+            if (!request.result.objectStoreNames.contains("workspace-checkpoints")) {
+              request.result.createObjectStore("workspace-checkpoints", { keyPath: "key" });
+            }
+          });
+          request.addEventListener("success", () => resolve(request.result));
+          request.addEventListener("error", () => reject(request.error));
+        });
+        await new Promise((resolve, reject) => {
+          const transaction = database.transaction("workspace-checkpoints", "readwrite");
+          transaction.objectStore("workspace-checkpoints").put({
+            key: location.origin + ":default-workspace",
+            checkpoint
+          });
+          transaction.addEventListener("complete", resolve);
+          transaction.addEventListener("error", () => reject(transaction.error));
+        });
+        database.close();
+      });
+      conflictRefresh = true;
+      await conflictToolsPage.reload({ waitUntil: "load" });
+      await conflictToolsPage.waitForFunction(() => (
+        document.querySelector('#globalSaveStatus')?.textContent?.includes("Git changed")
+        && document.querySelector('#globalSyncButton')?.textContent === "Sync blocked"
+        && !document.querySelector('#globalRestoreGitButton')?.disabled
+        && !document.querySelector('#globalExportBrowserButton')?.disabled
+      ), null, { timeout: 15_000 });
+      await conflictToolsPage.evaluate(() => {
+        window.dispatchEvent(new Event("focus"));
+        window.dispatchEvent(new Event("online"));
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      await conflictToolsPage.waitForTimeout(500);
+      const checkpointConflictRecovery = await conflictToolsPage.evaluate(() => ({
+        conflictVisible: document.querySelector('#globalSaveStatus')?.textContent?.includes("Git changed"),
+        falseRecovery: document.querySelector('#globalSaveStatus')?.textContent?.includes("recovered and preserved"),
+        saveDisabled: Boolean(document.querySelector('#globalSaveButton')?.disabled),
+        syncBlocked: document.querySelector('#globalSyncButton')?.textContent === "Sync blocked",
+        restoreEnabled: !document.querySelector('#globalRestoreGitButton')?.disabled,
+        exportEnabled: !document.querySelector('#globalExportBrowserButton')?.disabled,
+        editorsHeld: Boolean(document.querySelector('#flowScreen')?.textContent?.includes("Checking flow storage")),
+        diagnostics: window.__popPartyAuthoringDiagnostics
+      }));
+      checkpointConflictRecovery.sessionAttempts = conflictSessionAttempts;
+      await conflictToolsPage.close();
       await recoveryBrowser.close();
       await recoverySecond.runtime.stop();
 
@@ -4152,6 +4262,7 @@ module.exports = Object.freeze([
         authoringRecovery,
         busyAuthoringReconnect: { busyReadOnly, busyReconnect, sessionAttempts: busySessionAttempts },
         stalledAuthoringRecovery,
+        checkpointConflictRecovery,
         recoveryPageErrors,
         pluginActionVisible: Boolean(pluginActionMeta && pluginActionMeta.fields.some((field) => field.key === "amount")),
         pluginInputVisible: Boolean(pluginInputMeta && pluginInputMeta.fields.some((field) => field.key === "resultVariable")),
@@ -4367,7 +4478,18 @@ module.exports = Object.freeze([
     || development.stalledAuthoringRecovery?.sessionAttempts !== 3
     || development.stalledAuthoringRecovery?.reconnectResumeMs >= 1500
     || !development.stalledAuthoringRecovery?.after?.diagnostics?.events?.some((event) => (
-      event.event === "control-abort" && event.trigger === "online" && event.request === "session"
+      event.event === "foreground-joined-control" && event.trigger === "online" && event.request === "session"
+    ))
+    || !development.checkpointConflictRecovery?.conflictVisible
+    || development.checkpointConflictRecovery?.falseRecovery
+    || !development.checkpointConflictRecovery?.saveDisabled
+    || !development.checkpointConflictRecovery?.syncBlocked
+    || !development.checkpointConflictRecovery?.restoreEnabled
+    || !development.checkpointConflictRecovery?.exportEnabled
+    || !development.checkpointConflictRecovery?.editorsHeld
+    || development.checkpointConflictRecovery?.sessionAttempts < 3
+    || !development.checkpointConflictRecovery?.diagnostics?.events?.some((event) => (
+      event.event === "control-failure" && event.request === "session"
     ))
     || development.recoveryPageErrors?.length !== 0
     || !development.pluginActionVisible
