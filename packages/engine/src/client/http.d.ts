@@ -12,7 +12,11 @@ export interface ApiClientOptions {
 
 export interface ApiClient {
   getJson<T>(path: string): Promise<T>;
-  postJson<TResponse, TBody = unknown>(path: string, body: TBody): Promise<TResponse>;
+  postJson<TResponse, TBody = unknown>(
+    path: string,
+    body: TBody,
+    options?: { signal?: AbortSignal }
+  ): Promise<TResponse>;
   deleteJson<T>(path: string): Promise<T>;
   setMutationRecoveryHandler(handler: null | ((context: {
     error: unknown;

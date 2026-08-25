@@ -16,7 +16,7 @@ export interface DashboardWorkspaceActions {
   sync: () => Promise<unknown>;
   restore: () => Promise<unknown>;
   subscribe?: (listener: (status: {
-    phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "busy" | "conflict" | "error";
+    phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "offline" | "busy" | "conflict" | "error";
     message: string;
   }) => void) => (() => void);
 }
@@ -63,7 +63,7 @@ let dashboardEventsInstalled = false;
 let workspaceActions: DashboardWorkspaceActions | null = null;
 let disposeWorkspaceStatus: (() => void) | null = null;
 let latestWorkspaceStatus: {
-  phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "busy" | "conflict" | "error";
+  phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "offline" | "busy" | "conflict" | "error";
   message: string;
 } | null = null;
 
@@ -138,6 +138,7 @@ function updateGlobalSaveButton(): void {
   const dirty = TOOL_METADATA.some((tool) => isToolDirty(tool.id));
   const connectionBlocked = latestWorkspaceStatus?.phase === "busy"
     || latestWorkspaceStatus?.phase === "reconnecting"
+    || latestWorkspaceStatus?.phase === "offline"
     || latestWorkspaceStatus?.phase === "conflict";
   globalSaveButton.disabled = savingAllTools || connectionBlocked;
   globalSaveButton.dataset.dashboardDirty = dirty ? "true" : "false";
@@ -153,16 +154,17 @@ function setGlobalSaveStatus(message = "", tone: "info" | "error" = "info"): voi
 }
 
 function updateWorkspaceActionButtons(
-  phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "busy" | "conflict" | "error" = "synced"
+  phase: "synced" | "saved-local" | "syncing" | "reconnecting" | "offline" | "busy" | "conflict" | "error" = "synced"
 ): void {
-  const connectionBlocked = phase === "busy" || phase === "reconnecting" || phase === "conflict";
-  const reconnecting = phase === "busy" || phase === "reconnecting";
+  const connectionBlocked = phase === "busy" || phase === "reconnecting" || phase === "offline" || phase === "conflict";
+  const reconnecting = phase === "busy" || phase === "reconnecting" || phase === "offline";
   const currentSyncButton = syncButton();
   if (currentSyncButton) {
     currentSyncButton.disabled = syncingWorkspace || restoringWorkspace || phase === "syncing" || connectionBlocked;
     currentSyncButton.textContent = phase === "syncing"
       ? "Syncing…"
-      : reconnecting ? "Reconnecting…"
+      : phase === "offline" ? "Offline · retrying…"
+        : reconnecting ? "Reconnecting…"
         : phase === "conflict" ? "Sync blocked" : "Sync Now";
   }
   const currentRestoreButton = restoreButton();
