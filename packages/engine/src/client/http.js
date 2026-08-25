@@ -125,7 +125,7 @@ function createApiClient(options = {}) {
       const response = await fetchImpl(apiUrl(baseUrl, path), { headers: { Accept: "application/json" } });
       return parseJsonResponse(response);
     },
-    async postJson(path, body) {
+    async postJson(path, body, requestOptions = {}) {
       return mutate(path, {
         method: "POST",
         headers: {
@@ -133,6 +133,7 @@ function createApiClient(options = {}) {
           "Content-Type": "application/json"
         },
         credentials: "same-origin",
+        signal: requestOptions.signal,
         body: JSON.stringify(body)
       });
     },

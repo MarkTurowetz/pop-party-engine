@@ -123,7 +123,7 @@ describe("createSessionDraftPublisher", () => {
       clearMessage: { clearArtCompositions: true },
       draftMessage: (snapshot) => ({ artCompositions: [snapshot] })
     });
-    const cleanLayoutPublisher = createSessionDraftPublisher({
+    const layoutPublisher = createSessionDraftPublisher({
       postDraft,
       savedSnapshot: "saved-layout",
       delayMs: 0,
@@ -134,6 +134,7 @@ describe("createSessionDraftPublisher", () => {
     try {
       await flowPublisher.publish("dirty-flow");
       artPublisher.schedule("dirty-art");
+      layoutPublisher.schedule("dirty-layout");
       postDraft.mockClear();
 
       await republishAllSessionDraftPublishers();
@@ -141,12 +142,13 @@ describe("createSessionDraftPublisher", () => {
       expect(postDraft).toHaveBeenCalledOnce();
       expect(postDraft).toHaveBeenCalledWith({
         flow: "dirty-flow",
-        artCompositions: ["dirty-art"]
+        artCompositions: ["dirty-art"],
+        layouts: "dirty-layout"
       });
     } finally {
       flowPublisher.dispose();
       artPublisher.dispose();
-      cleanLayoutPublisher.dispose();
+      layoutPublisher.dispose();
     }
   });
 

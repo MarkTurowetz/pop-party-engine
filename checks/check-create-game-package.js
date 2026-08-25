@@ -3527,6 +3527,89 @@ module.exports = Object.freeze([
         screenWritable: document.querySelector('#flowScreen')?.dataset.authoringReadOnly === "false"
       }));
       await busyToolsPage.close();
+
+      const stalledToolsPage = await recoveryBrowser.newPage();
+      let stallNextHeartbeat = false;
+      let stalledSessionAttempts = 0;
+      let stalledSessionRoute = null;
+      const stalledResponse = {
+        ...busyResponse,
+        sessionId: "packed-browser-stalled-reconnect"
+      };
+      await stalledToolsPage.route("**/api/authoring/workspace/**", async (route) => {
+        const pathname = new URL(route.request().url()).pathname;
+        if (pathname.endsWith("/heartbeat") && stallNextHeartbeat) {
+          stallNextHeartbeat = false;
+          await route.fulfill({
+            status: 409,
+            contentType: "application/json",
+            body: JSON.stringify({
+              ok: false,
+              error: "The live prototype authoring session is no longer active",
+              errorCode: "AUTHORING_SESSION_STALE"
+            })
+          });
+          return;
+        }
+        if (pathname.endsWith("/session")) {
+          stalledSessionAttempts += 1;
+          if (stalledSessionAttempts === 2) {
+            stalledSessionRoute = route;
+            return;
+          }
+        }
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(stalledResponse) });
+      });
+      await stalledToolsPage.route("**/api/tool-drafts", async (route) => {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+      });
+      await stalledToolsPage.goto(recoverySecond.startup.localUrl + "/tools", { waitUntil: "load" });
+      await stalledToolsPage.waitForFunction(() => (
+        document.querySelector('#globalSaveStatus')?.textContent?.includes("Git is up to date")
+        && Boolean(document.querySelector('.flow-react-shell'))
+      ), null, { timeout: 15_000 });
+      await stalledToolsPage.waitForTimeout(300);
+      stallNextHeartbeat = true;
+      await stalledToolsPage.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await stalledToolsPage.waitForFunction(() => (
+        document.querySelector('#flowScreen')?.dataset.authoringReadOnly === 'true'
+        && document.querySelector('#flowScreen')?.inert === true
+        && document.querySelector('#globalSyncButton')?.textContent === 'Reconnecting…'
+      ), null, { timeout: 10_000 });
+      const stalledBeforeResume = await stalledToolsPage.evaluate(() => ({
+        screenInert: document.querySelector('#flowScreen')?.inert === true,
+        saveDisabled: Boolean(document.querySelector('#globalSaveButton')?.disabled),
+        status: document.querySelector('#globalSaveStatus')?.textContent || ''
+      }));
+      const reconnectResumedAt = Date.now();
+      await stalledToolsPage.evaluate(() => window.dispatchEvent(new Event('online')));
+      await stalledSessionRoute?.abort('timedout').catch(() => {});
+      await stalledToolsPage.waitForFunction(() => (
+        document.querySelector('#globalSaveStatus')?.textContent?.includes("Git is up to date")
+        && document.querySelector('#flowScreen')?.dataset.authoringReadOnly === 'false'
+        && document.querySelector('#flowScreen')?.inert === false
+      ), null, { timeout: 10_000 });
+      const reconnectResumeMs = Date.now() - reconnectResumedAt;
+      await stalledToolsPage.locator('[data-tool-target="layout"]').click();
+      await stalledToolsPage.waitForSelector('[data-tool-workspace="layout"]', { timeout: 15_000 });
+      await stalledToolsPage.locator('[data-layout-canvas]').click({ position: { x: 20, y: 20 } });
+      const stalledAfterResume = await stalledToolsPage.evaluate(() => ({
+        connected: document.querySelector('#globalSaveStatus')?.textContent?.includes("Git is up to date"),
+        screenWritable: document.querySelector('#layoutScreen')?.dataset.authoringReadOnly === 'false'
+          && document.querySelector('#layoutScreen')?.inert === false,
+        sidebarPresent: Boolean(document.querySelector('[data-layout-react-component="state-list"]')),
+        canvasPresent: Boolean(document.querySelector('[data-layout-canvas]')),
+        saveEnabled: !document.querySelector('#globalSaveButton')?.disabled,
+        navigationCount: performance.getEntriesByType('navigation').length,
+        diagnostics: window.__popPartyAuthoringDiagnostics
+      }));
+      const stalledAuthoringRecovery = {
+        before: stalledBeforeResume,
+        after: stalledAfterResume,
+        reconnectResumeMs,
+        sessionAttempts: stalledSessionAttempts
+      };
+      await stalledToolsPage.close();
       await recoveryBrowser.close();
       await recoverySecond.runtime.stop();
 
@@ -3677,6 +3760,7 @@ module.exports = Object.freeze([
         recoveredBrowserTitle,
         authoringRecovery,
         busyAuthoringReconnect: { busyReadOnly, busyReconnect, sessionAttempts: busySessionAttempts },
+        stalledAuthoringRecovery,
         recoveryPageErrors,
         pluginActionVisible: Boolean(pluginActionMeta && pluginActionMeta.fields.some((field) => field.key === "amount")),
         pluginInputVisible: Boolean(pluginInputMeta && pluginInputMeta.fields.some((field) => field.key === "resultVariable")),
@@ -3860,6 +3944,19 @@ module.exports = Object.freeze([
     || !development.busyAuthoringReconnect?.busyReconnect?.saveEnabled
     || !development.busyAuthoringReconnect?.busyReconnect?.screenWritable
     || development.busyAuthoringReconnect?.sessionAttempts < 3
+    || !development.stalledAuthoringRecovery?.before?.screenInert
+    || !development.stalledAuthoringRecovery?.before?.saveDisabled
+    || !development.stalledAuthoringRecovery?.after?.connected
+    || !development.stalledAuthoringRecovery?.after?.screenWritable
+    || !development.stalledAuthoringRecovery?.after?.sidebarPresent
+    || !development.stalledAuthoringRecovery?.after?.canvasPresent
+    || !development.stalledAuthoringRecovery?.after?.saveEnabled
+    || development.stalledAuthoringRecovery?.after?.navigationCount !== 1
+    || development.stalledAuthoringRecovery?.sessionAttempts !== 3
+    || development.stalledAuthoringRecovery?.reconnectResumeMs >= 1500
+    || !development.stalledAuthoringRecovery?.after?.diagnostics?.events?.some((event) => (
+      event.event === "control-abort" && event.trigger === "online" && event.request === "session"
+    ))
     || development.recoveryPageErrors?.length !== 0
     || !development.pluginActionVisible
     || !development.pluginInputVisible
@@ -4276,6 +4373,7 @@ module.exports = Object.freeze([
   console.log(`Stage projection browser evidence: private applies ${development.stageBeforePartialSubmission.applyCount}->${development.stageAfterPartialSubmission.applyCount}, public burst max frame gap ${development.stageAfterTransitionBurst.maxFrameGap.toFixed(1)}ms, max apply ${development.stageAfterTransitionBurst.maxApplyDuration.toFixed(1)}ms, layout reflows ${development.stageAfterTransitionBurst.layoutApplyCount}.`);
   console.log(`Background controller evidence: Stage applies stayed ${development.controllerProfileInteractions.backgroundPresence.applyCount}, player/renderer/timeline retained, max frame gap ${development.controllerProfileInteractions.backgroundPresence.maxFrameGap.toFixed(1)}ms.`);
   console.log(`Background Tools evidence: ${development.toolsLeaseRecovery.draftCount} clean-model recovery drafts, Stage applies stayed ${development.toolsLeaseRecovery.after.applyCount}, lobby renderer/timeline retained, max frame gap ${development.toolsLeaseRecovery.after.maxFrameGap.toFixed(1)}ms.`);
+  console.log(`Stalled Tools reconnect evidence: ${development.stalledAuthoringRecovery.reconnectResumeMs}ms, ${development.stalledAuthoringRecovery.sessionAttempts} session attempts, controls/canvas writable without reload.`);
   console.log(`Controller projection browser evidence: start ${development.vipControllerJourney.startSurface}, Next ${development.vipControllerJourney.advanceSurfaces.join("/")}, crafting choices ${development.vipControllerJourney.craftingChoice.optionCount}.`);
   console.log(`Hold progress browser evidence: quick tap hidden ${!development.quickTapProgressState.visible}, partial ${(development.partialHoldProgressState.progress * 100).toFixed(1)}%, complete ${(development.completedHoldProgressState.progress * 100).toFixed(0)}%, fixed and collection renderers retained.`);
   const migrationPreview = execFileSync("npm", ["run", "migrate"], { cwd: targetRoot, encoding: "utf8" });

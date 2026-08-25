@@ -42,9 +42,16 @@ function memoryCheckpointStore(initial: BrowserWorkspaceCheckpoint | null = null
 function browserWindow() {
   const storage = new Map<string, string>();
   const listeners = new Map<string, EventListener>();
+  const documentListeners = new Map<string, EventListener>();
   let intervalHandler: (() => void) | null = null;
+  const documentTarget = {
+    visibilityState: "visible",
+    addEventListener: vi.fn((type: string, listener: EventListener) => documentListeners.set(type, listener)),
+    removeEventListener: vi.fn()
+  };
   const win = {
     location: { origin: "https://tools.example", reload: vi.fn() },
+    document: documentTarget,
     sessionStorage: {
       getItem: (key: string) => storage.get(key) || null,
       setItem: (key: string, value: string) => storage.set(key, value),
@@ -67,7 +74,9 @@ function browserWindow() {
     storage,
     win,
     heartbeat: () => intervalHandler?.(),
-    focus: () => listeners.get("focus")?.({ type: "focus" } as Event)
+    focus: () => listeners.get("focus")?.({ type: "focus" } as Event),
+    online: () => listeners.get("online")?.({ type: "online" } as Event),
+    visible: () => documentListeners.get("visibilitychange")?.({ type: "visibilitychange" } as Event)
   };
 }
 
@@ -177,7 +186,7 @@ describe("live prototype browser workspace", () => {
       localRevision: "local-one",
       gitRevision: "git-one"
     });
-    expect(win.setTimeout).toHaveBeenCalledTimes(1);
+    expect(win.setTimeout).toHaveBeenCalledWith(expect.any(Function), 0);
   });
 
   it("starts a clean session when an expired session has no browser checkpoint", async () => {
@@ -431,5 +440,92 @@ describe("live prototype browser workspace", () => {
 
     workspace?.dispose();
     expect(browser.win.removeEventListener).toHaveBeenCalledWith("focus", expect.any(Function));
+  });
+
+  it("abandons a stalled control request and reuses one reconnect coordinator when connectivity resumes", async () => {
+    let sessionAttempts = 0;
+    let stalledRequestAborts = 0;
+    const stale = Object.assign(new Error("Session stale"), {
+      status: 409,
+      payload: { errorCode: "AUTHORING_SESSION_STALE" }
+    });
+    const postJson = vi.fn(async (
+      path: string,
+      _body: unknown,
+      requestOptions?: { signal?: AbortSignal }
+    ) => {
+      if (path.endsWith("/session")) {
+        sessionAttempts += 1;
+        if (sessionAttempts === 2) {
+          return await new Promise((_, reject) => {
+            requestOptions?.signal?.addEventListener("abort", () => {
+              stalledRequestAborts += 1;
+              reject(new DOMException("The operation was aborted", "AbortError"));
+            }, { once: true });
+          });
+        }
+        return sessionResponse();
+      }
+      if (path.endsWith("/heartbeat")) throw stale;
+      return { ok: true };
+    });
+    const browser = browserWindow();
+    const workspace = await beginLivePrototypeWorkspace(
+      { postJson } as unknown as ApiClient,
+      browser.win,
+      memoryCheckpointStore().store
+    );
+
+    browser.focus();
+    await vi.waitFor(() => expect(sessionAttempts).toBe(2));
+    expect(workspace?.getStatus().phase).toBe("reconnecting");
+
+    browser.online();
+    browser.focus();
+    await vi.waitFor(() => expect(sessionAttempts).toBe(3));
+    await workspace?.whenAttached();
+
+    expect(stalledRequestAborts).toBe(1);
+    expect(workspace?.getStatus().phase).toBe("synced");
+    workspace?.dispose();
+  });
+
+  it("shows transport loss distinctly and wakes its throttled retry on the online event", async () => {
+    let sessionAttempts = 0;
+    let heartbeatAttempts = 0;
+    const transportFailure = new TypeError("Failed to fetch");
+    const postJson = vi.fn(async (path: string) => {
+      if (path.endsWith("/session")) {
+        sessionAttempts += 1;
+        if (sessionAttempts === 2) throw transportFailure;
+        return sessionResponse();
+      }
+      if (path.endsWith("/heartbeat")) {
+        heartbeatAttempts += 1;
+        throw transportFailure;
+      }
+      return { ok: true };
+    });
+    const browser = browserWindow();
+    const workspace = await beginLivePrototypeWorkspace(
+      { postJson } as unknown as ApiClient,
+      browser.win,
+      memoryCheckpointStore().store
+    );
+
+    browser.focus();
+    await vi.waitFor(() => expect(sessionAttempts).toBe(2));
+    expect(heartbeatAttempts).toBe(1);
+    expect(workspace?.getStatus()).toMatchObject({
+      phase: "offline",
+      message: expect.stringMatching(/offline/i)
+    });
+
+    browser.online();
+    await vi.waitFor(() => expect(sessionAttempts).toBe(3));
+    await workspace?.whenAttached();
+
+    expect(workspace?.getStatus().phase).toBe("synced");
+    workspace?.dispose();
   });
 });

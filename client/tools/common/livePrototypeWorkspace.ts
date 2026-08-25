@@ -36,6 +36,7 @@ export type WorkspaceSyncPhase =
   | "saved-local"
   | "syncing"
   | "reconnecting"
+  | "offline"
   | "busy"
   | "conflict"
   | "error";
@@ -56,6 +57,28 @@ export interface LivePrototypeWorkspace {
   subscribe(listener: (status: WorkspaceSyncStatus) => void): () => void;
   getStatus(): WorkspaceSyncStatus;
   dispose(): void;
+}
+
+interface AuthoringConnectionDiagnostic {
+  sequence: number;
+  at: string;
+  event: string;
+  phase: WorkspaceSyncPhase;
+  attached: boolean;
+  request?: "heartbeat" | "session";
+  trigger?: string;
+  attempt?: number;
+  durationMs?: number;
+}
+
+interface AuthoringDiagnosticsWindow extends Window {
+  __popPartyAuthoringDiagnostics?: {
+    phase: WorkspaceSyncPhase;
+    attached: boolean;
+    reconnectAttempts: number;
+    lastEvent: AuthoringConnectionDiagnostic;
+    events: AuthoringConnectionDiagnostic[];
+  };
 }
 
 export function requestLivePrototypeSave(
@@ -107,10 +130,45 @@ export async function beginLivePrototypeWorkspace(
   let reconnectTimerResolve: (() => void) | null = null;
   let heartbeatTimer: number | null = null;
   let heartbeatPromise: Promise<void> | null = null;
+  let foregroundGeneration = 0;
+  let lastForegroundSignalAt = 0;
+  let lastForegroundSignature = "";
+  let reconnectAttempts = 0;
+  let diagnosticSequence = 0;
+  let activeControlRequest: {
+    controller: AbortController;
+    request: "heartbeat" | "session";
+    startedAt: number;
+    trigger: string;
+  } | null = null;
   const attachmentWaiters = new Set<{ resolve(): void; reject(error: unknown): void }>();
+
+  function recordConnectionEvent(
+    event: string,
+    details: Omit<Partial<AuthoringConnectionDiagnostic>, "sequence" | "at" | "event" | "phase" | "attached"> = {}
+  ): void {
+    const entry: AuthoringConnectionDiagnostic = {
+      sequence: ++diagnosticSequence,
+      at: new Date().toISOString(),
+      event,
+      phase: status.phase,
+      attached,
+      ...details
+    };
+    const target = win as AuthoringDiagnosticsWindow;
+    const events = [...(target.__popPartyAuthoringDiagnostics?.events || []), entry].slice(-40);
+    target.__popPartyAuthoringDiagnostics = {
+      phase: status.phase,
+      attached,
+      reconnectAttempts,
+      lastEvent: entry,
+      events
+    };
+  }
 
   function publishStatus(next: WorkspaceSyncStatus): void {
     status = next;
+    recordConnectionEvent("status");
     for (const listener of listeners) listener(status);
   }
 
@@ -145,6 +203,7 @@ export async function beginLivePrototypeWorkspace(
   }
 
   function waitForRetry(milliseconds: number): Promise<void> {
+    recordConnectionEvent("reconnect-wait", { durationMs: milliseconds });
     return new Promise((resolve) => {
       reconnectTimerResolve = resolve;
       reconnectTimer = win.setTimeout(() => {
@@ -153,6 +212,62 @@ export async function beginLivePrototypeWorkspace(
         resolve();
       }, milliseconds);
     });
+  }
+
+  function wakeReconnectRetry(trigger: string): boolean {
+    if (reconnectTimer === null) return false;
+    win.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    const resolve = reconnectTimerResolve;
+    reconnectTimerResolve = null;
+    recordConnectionEvent("reconnect-wake", { trigger });
+    resolve?.();
+    return true;
+  }
+
+  function controlRequestTimeoutMs(): number {
+    return Math.max(2000, Math.min(10_000, Math.floor(Number(started.leaseMs || 20_000) / 2)));
+  }
+
+  async function postControlRequest(
+    path: "/api/authoring/workspace/heartbeat" | "/api/authoring/workspace/session",
+    request: "heartbeat" | "session",
+    trigger: string
+  ): Promise<WorkspaceResponse> {
+    const controller = new AbortController();
+    const token = { controller, request, startedAt: Date.now(), trigger };
+    activeControlRequest = token;
+    const timeoutMs = controlRequestTimeoutMs();
+    const timeout = win.setTimeout(() => {
+      if (controller.signal.aborted) return;
+      token.trigger = "timeout";
+      recordConnectionEvent("control-timeout", { request, trigger: "timeout", durationMs: timeoutMs });
+      controller.abort();
+    }, timeoutMs);
+    recordConnectionEvent("control-start", { request, trigger });
+    try {
+      const response = await client.postJson<WorkspaceResponse, Record<string, never>>(
+        path,
+        {},
+        { signal: controller.signal }
+      );
+      recordConnectionEvent("control-success", {
+        request,
+        trigger,
+        durationMs: Date.now() - token.startedAt
+      });
+      return response;
+    } catch (error) {
+      recordConnectionEvent(controller.signal.aborted ? "control-abort" : "control-failure", {
+        request,
+        trigger: token.trigger,
+        durationMs: Date.now() - token.startedAt
+      });
+      throw error;
+    } finally {
+      win.clearTimeout(timeout);
+      if (activeControlRequest === token) activeControlRequest = null;
+    }
   }
 
   async function restoreBrowserCheckpoint(): Promise<void> {
@@ -213,19 +328,23 @@ export async function beginLivePrototypeWorkspace(
     }));
   }
 
-  function heartbeatNow(): Promise<void> {
+  function heartbeatNow(trigger = "interval"): Promise<void> {
     if (disposed || !attached) return Promise.resolve();
     if (heartbeatPromise) return heartbeatPromise;
-    heartbeatPromise = client.postJson<WorkspaceResponse, Record<string, never>>(
-        "/api/authoring/workspace/heartbeat",
-        {}
-      ).then(async (heartbeatState) => {
+    heartbeatPromise = postControlRequest(
+      "/api/authoring/workspace/heartbeat",
+      "heartbeat",
+      trigger
+    ).then(async (heartbeatState) => {
         started = { ...started, ...heartbeatState };
         if (heartbeatState.recoveryRequired) await recoverAuthoritativeBrowserModels();
       }).catch((error) => {
         const code = errorCode(error);
         if (code === "AUTHORING_SESSION_STALE" || code === "AUTHORING_SESSION_BUSY" || !errorStatus(error)) {
-          void reconnect(code === "AUTHORING_SESSION_BUSY" ? "busy" : "stale").catch(() => undefined);
+          const reason = code === "AUTHORING_SESSION_BUSY"
+            ? "busy"
+            : !errorStatus(error) ? "transport" : "stale";
+          void reconnect(reason).catch(() => undefined);
           return;
         }
         publishStatus({
@@ -251,9 +370,10 @@ export async function beginLivePrototypeWorkspace(
   async function attach(resuming: boolean): Promise<boolean> {
     let sessionAccepted = false;
     try {
-      let response = await client.postJson<WorkspaceResponse, Record<string, never>>(
+      let response = await postControlRequest(
         "/api/authoring/workspace/session",
-        {}
+        "session",
+        resuming ? "reconnect" : "initial"
       );
       sessionAccepted = true;
       started = { ...started, ...response };
@@ -264,9 +384,10 @@ export async function beginLivePrototypeWorkspace(
           resetRooms: false
         });
         win.sessionStorage.removeItem("pop-party-authoring-session");
-        response = await client.postJson<WorkspaceResponse, Record<string, never>>(
+        response = await postControlRequest(
           "/api/authoring/workspace/session",
-          {}
+          "session",
+          "clean-restart"
         );
         sessionAccepted = true;
         started = { ...started, ...response };
@@ -316,9 +437,12 @@ export async function beginLivePrototypeWorkspace(
         resolveAttachmentWaiters();
         return true;
       }
+      const transportFailure = !errorStatus(error);
       publishStatus({
-        phase: "reconnecting",
-        message: "Authoring connection interrupted · reconnecting without discarding browser work…",
+        phase: transportFailure ? "offline" : "reconnecting",
+        message: transportFailure
+          ? "Authoring service unavailable or offline · browser work preserved; retrying…"
+          : "Authoring connection interrupted · reconnecting without discarding browser work…",
         localRevision: storedCheckpoint?.workingRevision || started.workingRevision,
         gitRevision: started.baselineRevision
       });
@@ -326,9 +450,8 @@ export async function beginLivePrototypeWorkspace(
     }
   }
 
-  async function reconnect(reason = "stale"): Promise<void> {
+  async function reconnect(reason: "stale" | "busy" | "transport" = "stale"): Promise<void> {
     if (disposed) throw new Error("The authoring workspace is closed");
-    if (attached && reason !== "stale") return;
     if (reconnectPromise) return reconnectPromise;
     reconnectPromise = (async () => {
       attached = false;
@@ -336,16 +459,34 @@ export async function beginLivePrototypeWorkspace(
         win.clearInterval(heartbeatTimer);
         heartbeatTimer = null;
       }
+      const reconnectPhase = reason === "busy"
+        ? "busy"
+        : reason === "transport" ? "offline" : "reconnecting";
       publishStatus({
-        phase: reason === "busy" ? "busy" : "reconnecting",
+        phase: reconnectPhase,
         message: reason === "busy"
           ? "Another Tools tab is editing. This tab is read-only and will reconnect automatically when that session closes."
-          : "Authoring session changed · reconnecting and preserving browser work…",
+          : reason === "transport"
+            ? "Authoring service unavailable or offline · browser work preserved; retrying…"
+            : "Authoring session changed · reconnecting and preserving browser work…",
         localRevision: storedCheckpoint?.workingRevision || started.workingRevision,
         gitRevision: started.baselineRevision
       });
       while (!disposed) {
+        const attemptGeneration = foregroundGeneration;
+        reconnectAttempts += 1;
+        recordConnectionEvent("reconnect-attempt", {
+          attempt: reconnectAttempts,
+          trigger: reason
+        });
         if (await attach(true)) return;
+        if (foregroundGeneration !== attemptGeneration) {
+          recordConnectionEvent("reconnect-immediate-retry", {
+            attempt: reconnectAttempts,
+            trigger: "foreground"
+          });
+          continue;
+        }
         await waitForRetry(Math.max(1000, Math.min(5000, Math.floor(Number(started.leaseMs || 6000) / 3))));
       }
       throw new Error("The authoring workspace was closed before reconnecting");
@@ -370,15 +511,46 @@ export async function beginLivePrototypeWorkspace(
       resetRooms: false
     }).catch(() => undefined);
   };
-  const resumeHeartbeat = () => {
-    void heartbeatNow();
+  const resumeConnection = (trigger: "focus" | "visible" | "online") => {
+    if (disposed) return;
+    const signaledAt = Date.now();
+    const signature = `${attached}:${status.phase}`;
+    const activeNeedsDifferentSignal = Boolean(
+      activeControlRequest
+      && !activeControlRequest.controller.signal.aborted
+      && activeControlRequest.trigger !== trigger
+    );
+    if (
+      signaledAt - lastForegroundSignalAt < 250
+      && signature === lastForegroundSignature
+      && !activeNeedsDifferentSignal
+      && reconnectTimer === null
+    ) {
+      recordConnectionEvent("foreground-coalesced", { trigger });
+      return;
+    }
+    lastForegroundSignalAt = signaledAt;
+    lastForegroundSignature = signature;
+    foregroundGeneration += 1;
+    recordConnectionEvent("foreground-resume", { trigger });
+    wakeReconnectRetry(trigger);
+    if (activeControlRequest && !activeControlRequest.controller.signal.aborted) {
+      activeControlRequest.trigger = trigger;
+      activeControlRequest.controller.abort();
+      return;
+    }
+    if (attached) void heartbeatNow(trigger);
+    else void reconnect(status.phase === "offline" ? "transport" : "stale").catch(() => undefined);
   };
   const resumeVisibleHeartbeat = () => {
     if (win.document?.visibilityState === "hidden") return;
-    resumeHeartbeat();
+    resumeConnection("visible");
   };
   win.addEventListener("pagehide", discard);
-  win.addEventListener("focus", resumeHeartbeat);
+  const resumeFocusedHeartbeat = () => resumeConnection("focus");
+  const resumeOnlineHeartbeat = () => resumeConnection("online");
+  win.addEventListener("focus", resumeFocusedHeartbeat);
+  win.addEventListener("online", resumeOnlineHeartbeat);
   win.document?.addEventListener("visibilitychange", resumeVisibleHeartbeat);
 
   async function performSync(): Promise<WorkspaceResponse | null> {
@@ -534,8 +706,13 @@ export async function beginLivePrototypeWorkspace(
         reconnectTimerResolve = null;
       }
       win.removeEventListener("pagehide", discard);
-      win.removeEventListener("focus", resumeHeartbeat);
+      win.removeEventListener("focus", resumeFocusedHeartbeat);
+      win.removeEventListener("online", resumeOnlineHeartbeat);
       win.document?.removeEventListener("visibilitychange", resumeVisibleHeartbeat);
+      if (activeControlRequest && !activeControlRequest.controller.signal.aborted) {
+        activeControlRequest.trigger = "dispose";
+        activeControlRequest.controller.abort();
+      }
       discard();
       rejectAttachmentWaiters(new Error("The authoring workspace is closed"));
       client.setMutationRecoveryHandler?.(null);
@@ -552,11 +729,12 @@ export async function beginLivePrototypeWorkspace(
       win.sessionStorage.removeItem("pop-party-authoring-session");
       client.setMutationRecoveryHandler?.(null);
       win.removeEventListener("pagehide", discard);
-      win.removeEventListener("focus", resumeHeartbeat);
+      win.removeEventListener("focus", resumeFocusedHeartbeat);
+      win.removeEventListener("online", resumeOnlineHeartbeat);
       win.document?.removeEventListener("visibilitychange", resumeVisibleHeartbeat);
       return null;
     }
-    void reconnect("stale").catch(() => undefined);
+    void reconnect(!errorStatus(error) ? "transport" : "stale").catch(() => undefined);
   }
   if (
     storedCheckpoint

@@ -23,6 +23,21 @@ describe("tool API CSRF", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  it("forwards an abort signal without changing mutation recovery semantics", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    );
+    const controller = new AbortController();
+
+    await createApiClient({ fetchImpl }).postJson(
+      "/api/authoring/workspace/heartbeat",
+      {},
+      { signal: controller.signal }
+    );
+
+    expect(fetchImpl.mock.calls[0][1]?.signal).toBe(controller.signal);
+  });
+
   it("refreshes a cached CSRF token once after the administrator session is renewed", async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, csrfToken: "csrf-old" }), { status: 200 }))

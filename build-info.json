@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1294",
+  "version": "1.0.17.1295",
   "baseVersion": "1.0.17",
-  "buildNumber": 1294,
-  "commit": "2612d145",
-  "branch": "codex/layout-tool-default-state-multiselect",
-  "generatedAt": "2026-08-06T00:07:08.664Z"
+  "buildNumber": 1295,
+  "commit": "a316ee73",
+  "branch": "codex/tools-idle-recovery",
+  "generatedAt": "2026-08-25T19:35:18.691Z"
 }
