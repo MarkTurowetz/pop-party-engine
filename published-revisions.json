@@ -1151,6 +1151,19 @@
         "previousReleaseRevision": "2ad7ecc0e0e997fdcdc3c0bf579d1638d8db80c83b891f91856232808e46084e",
         "releaseRevision": "b802655043c6f62840f56a2c668c20b2ce1d31ab32d05be7ccd05d89d544c27e"
       }
+    },
+    "engine-preview-1.4.9-32911948804-1-65a56b5b756ba1da05c206c17f7315cfeae928db": {
+      "fingerprint": "6caa1bd83c17ad2c1b52155660552fce7cdcc3d8d612d600447391b1f1e9f53f",
+      "contentRevision": "154abda3d90954896216466280af15e8db16f9eec0d6f9d54eabce259ea8aaaa",
+      "release": {
+        "gameId": "pop-party-reference",
+        "gameBuild": "1.0.17",
+        "engineVersion": "1.4.9",
+        "pluginVersion": "1.0.17",
+        "contentRevision": "154abda3d90954896216466280af15e8db16f9eec0d6f9d54eabce259ea8aaaa",
+        "previousReleaseRevision": "b802655043c6f62840f56a2c668c20b2ce1d31ab32d05be7ccd05d89d544c27e",
+        "releaseRevision": "7a5462ac6f0d0e9a0e77baf3545758de3c46de6b2a8cfa5835adec0306dc1861"
+      }
     }
   },
   "12e15ebee30eccfcd482d90fa0c5e3a222856e98aa4789a4ea14e32b426cb4ac": {
