@@ -1,8 +1,8 @@
 {
-  "version": "1.0.17.1299",
+  "version": "1.0.17.1300",
   "baseVersion": "1.0.17",
-  "buildNumber": 1299,
-  "commit": "19da9caf",
-  "branch": "codex/release-engine-1-4-9",
-  "generatedAt": "2026-08-25T23:37:02.843Z"
+  "buildNumber": 1300,
+  "commit": "65a56b5b",
+  "branch": "codex/recursive-draft-action-hit-testing-1-4-10",
+  "generatedAt": "2026-08-26T00:47:36.922Z"
 }

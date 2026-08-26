@@ -280,7 +280,10 @@ concepts into focused modules.
     same-surface Art Manager Game Object by a semantic `keySource`. Nested bindings target an
     authored Art `container`, whose child distribution supplies the nested direction. Text,
     component, and lifecycle-state bindings are applied to each private item model through the
-    existing Art tree renderer. Keyed reorder/growth/shrink retains unchanged DOM, renderer,
+    existing Art tree renderer. A Controller item with `inputAction` restores its native button as
+    the explicit pointer hit target even when recursive Art ancestors are pointer-transparent;
+    noninteractive item hosts and backplates remain presentation-only. Keyed reorder/growth/shrink
+    retains unchanged DOM, renderer,
     timeline, and nested-host identity. Readiness rejects invalid layout/composition/component
     references, while dynamic duplicate keys or non-JSON-safe models fault that projection before
     publication. Stage collection updates remain within the Stage projection's frame-coalesced

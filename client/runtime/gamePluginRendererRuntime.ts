@@ -250,6 +250,7 @@ function reconcileRendererCollection(options: {
     itemHost.style.flex = "0 0 auto";
     itemHost.style.minWidth = "0";
     if (surface === "controller" && itemHost instanceof HTMLButtonElement && definition.inputAction) {
+      itemHost.dataset.gamePluginRendererInputHitTarget = "true";
       itemHost.style.border = "0";
       itemHost.style.padding = "0";
       itemHost.style.background = "transparent";
