@@ -289,7 +289,7 @@ module.exports = Object.freeze([
       fields: [{ key: "answersSubmittedTargetActionId", label: "After Submit", control: "actionTarget", default: "none" }],
       submission: [{ id: "confirmed", type: "integer", min: 1, max: 1 }],
       draftActions: [{
-        id: "cycleCell", collectionSource: "rows[].cells", itemKeySource: "id", disabledSource: "disabled", payloadKey: "cellId"
+        id: "cycleCell", collectionSource: "panels[].rows[].cells", itemKeySource: "id", disabledSource: "disabled", payloadKey: "cellId"
       }],
       controller: {
         layoutStateId: "fixture-private-draft-grid",
@@ -307,7 +307,8 @@ module.exports = Object.freeze([
           disabled: name === "beta" && context.viewer.name === "Two"
         }));
         const allocated = cells.reduce((sum, cell) => sum + cell.allocation, 0);
-        return { viewer: context.viewer.id, rows: [{ id: "top", cells: cells.slice(0, 4) }, { id: "bottom", cells: cells.slice(4) }], remaining: 3 - allocated, canSubmit: allocated === 3, showConfirm: true, confirmed: 1 };
+        const rows = [{ id: "top", cells: cells.slice(0, 4) }, { id: "bottom", cells: cells.slice(4) }];
+        return { viewer: context.viewer.id, panels: [{ id: "private-draft-panel-" + context.viewer.id, rows }], rows, remaining: 3 - allocated, canSubmit: allocated === 3, showConfirm: true, confirmed: 1 };
       },
       mutate(context, payload) {
         const cell = String(payload.cellId).split("-").at(-1);
@@ -569,7 +570,8 @@ function draftModel(context) {
     allocation: Number(allocations[name] || 0),
     disabled: name === "beta" && context.viewer.name === "Two"
   }));
-  return { viewer: context.viewer.id, rows: [{ id: "top", cells: cells.slice(0, 4) }, { id: "bottom", cells: cells.slice(4) }] };
+  const rows = [{ id: "top", cells: cells.slice(0, 4) }, { id: "bottom", cells: cells.slice(4) }];
+  return { viewer: context.viewer.id, panels: [{ id: "private-draft-panel-" + context.viewer.id, rows }] };
 }
 module.exports = Object.freeze([
   {
@@ -587,17 +589,25 @@ module.exports = Object.freeze([
       name: "Private Draft Grid",
       target: { layoutElementId: "fixture-draft-grid", layoutScope: "moment" },
       bindings: [{
-        id: "rows", kind: "collection", source: "rows",
+        id: "panels", kind: "collection", source: "panels",
         item: {
-          keySource: "id", artCompositionId: "fixture-draft-row", bindings: [
+          keySource: "id", artCompositionId: "fixture-draft-panel", bindings: [
             { id: "state", kind: "state", source: "state", fallback: "On", playback: "stop" },
-            { id: "cells", kind: "collection", source: "cells", targetComponentId: "cells-slot",
-            item: {
-              keySource: "id", artCompositionId: "fixture-draft-cell",
-              inputAction: { id: "cycleCell", ariaLabelSource: "label" },
-              bindings: cellBindings
+            { id: "rows", kind: "collection", source: "rows", targetComponentId: "rows-slot",
+              item: {
+                keySource: "id", artCompositionId: "fixture-draft-row", bindings: [
+                  { id: "state", kind: "state", source: "state", fallback: "On", playback: "stop" },
+                  { id: "cells", kind: "collection", source: "cells", targetComponentId: "cells-slot",
+                    item: {
+                      keySource: "id", artCompositionId: "fixture-draft-cell",
+                      inputAction: { id: "cycleCell", ariaLabelSource: "label" },
+                      bindings: cellBindings
+                    }
+                  }
+                ]
+              }
             }
-          }]
+          ]
         }
       }],
       select(context) { return draftModel(context); }
@@ -830,6 +840,14 @@ module.exports = Object.freeze([
     components: [{
       id: "cells-slot", name: "Cells Slot", kind: "container", childDistribution: "vertical",
       x: 165, y: 125, width: 320, height: 240, fillColor: "transparent", defaultAnimationState: "On", children: []
+    }]
+  };
+  artManifest.compositions["fixture-draft-panel"] = {
+    name: "Fixture Draft Panel", surface: "controller", compositionKind: "gameObject", isCustom: true,
+    canvas: { width: 330, height: 520 }, timeline: fixtureVisibleTimeline,
+    components: [{
+      id: "rows-slot", name: "Rows Slot", kind: "container", childDistribution: "vertical",
+      x: 165, y: 260, width: 320, height: 510, fillColor: "transparent", defaultAnimationState: "On", children: []
     }]
   };
   artManifest.compositions["fixture-player-avatar-art"] = {
@@ -3144,22 +3162,45 @@ module.exports = Object.freeze([
         window.__fixtureDraftEvents = [];
         window.addEventListener("pop-party:game-plugin-input-draft", (event) => window.__fixtureDraftEvents.push(event.detail));
       });
+      await controllerPage.evaluate(() => {
+        const grid = document.querySelector('[data-controller-layout-element-id="fixture-draft-grid"]');
+        if (grid) grid.scrollTop = 80;
+      });
+      await controllerPage.locator(alphaSelector).click({ trial: true });
       const draftIdentityBefore = await controllerPage.evaluate((selector) => {
         const control = document.querySelector(selector);
         const grid = document.querySelector('[data-controller-layout-element-id="fixture-draft-grid"]');
         control?.focus();
-        if (grid) grid.scrollTop = 80;
         window.__fixtureDraftControl = control;
         window.__fixtureDraftRenderer = window.PartyGameLayoutGameObjects?.artRendererForLayoutHost?.(control);
         window.__fixtureDraftArtLayer = control?.querySelector(":scope > .controller-widget-art-layer");
+        const panel = grid?.querySelector(':scope > [data-game-plugin-renderer-collection-item="true"]');
         return {
           rendererPresent: Boolean(window.__fixtureDraftRenderer),
           focused: document.activeElement === control,
           scrollTop: grid?.scrollTop,
           overflowed: Number(grid?.scrollHeight || 0) > Number(grid?.clientHeight || 0),
+          panelCount: grid?.querySelectorAll(':scope > [data-game-plugin-renderer-collection-item="true"]').length,
+          rowCount: panel?.querySelectorAll('[data-game-plugin-renderer-nested-collection="rows"] > [data-game-plugin-renderer-collection-item="true"]').length,
+          cellCount: panel?.querySelectorAll('[data-game-plugin-renderer-nested-collection="cells"] > [data-game-plugin-renderer-collection-item="true"]').length,
           bounds: control?.getBoundingClientRect().toJSON()
         };
       }, alphaSelector);
+      const draftPointerTargetBefore = await controllerPage.evaluate((selector) => {
+        const control = document.querySelector(selector);
+        const bounds = control?.getBoundingClientRect();
+        const target = bounds ? document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2) : null;
+        return {
+          exact: target === control,
+          tagName: target?.tagName || "",
+          itemKey: target?.getAttribute("data-game-plugin-renderer-item-key") || "",
+          pointerEvents: control ? getComputedStyle(control).pointerEvents : "",
+          declaredHitTarget: control?.getAttribute("data-game-plugin-renderer-input-hit-target") || ""
+        };
+      }, alphaSelector);
+      if (!draftPointerTargetBefore.exact) {
+        throw new Error("Recursive draft control is not the center-point hit target: " + JSON.stringify(draftPointerTargetBefore));
+      }
       const stageBeforeDraft = await dynamicStagePage.evaluate(() => ({
         applies: window.__popPartyStageMetrics?.applyCount,
         layoutApplies: window.__fixtureStageLayoutApplyCount,
@@ -3183,7 +3224,7 @@ module.exports = Object.freeze([
           const request = JSON.parse(response.request().postData() || "{}");
           return request.draftActionId === "cycleCell";
         });
-        await controllerPage.evaluate((selector) => document.querySelector(selector)?.click(), alphaSelector);
+        await controllerPage.locator(alphaSelector).click();
         const response = await responsePromise;
         if (!firstDraftRequest) firstDraftRequest = JSON.parse(response.request().postData() || "{}");
         await controllerPage.waitForFunction(({ playerId, expected }) => {
@@ -3263,6 +3304,37 @@ module.exports = Object.freeze([
         disabled: document.querySelector(selector)?.disabled,
         ariaDisabled: document.querySelector(selector)?.getAttribute("aria-disabled")
       }), betaTwoSelector);
+      let disabledDraftRequestCount = 0;
+      const countDisabledDraftRequest = (request) => {
+        if (!request.url().endsWith("/api/game-plugin-input") || request.method() !== "POST") return;
+        const body = JSON.parse(request.postData() || "{}");
+        if (body.draftActionId === "cycleCell") disabledDraftRequestCount += 1;
+      };
+      secondControllerPage.on("request", countDisabledDraftRequest);
+      const disabledDraftControl = secondControllerPage.locator(betaTwoSelector);
+      await disabledDraftControl.scrollIntoViewIfNeeded();
+      const disabledDraftBounds = await disabledDraftControl.boundingBox();
+      const disabledPointerHit = await secondControllerPage.evaluate((selector) => {
+        const control = document.querySelector(selector);
+        const bounds = control?.getBoundingClientRect();
+        return bounds && document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2) === control;
+      }, betaTwoSelector);
+      if (disabledDraftBounds) {
+        await secondControllerPage.mouse.click(
+          disabledDraftBounds.x + disabledDraftBounds.width / 2,
+          disabledDraftBounds.y + disabledDraftBounds.height / 2
+        );
+      }
+      await secondControllerPage.waitForTimeout(100);
+      secondControllerPage.off("request", countDisabledDraftRequest);
+      const twoAfterDisabledPointer = await heartbeat(two);
+      const disabledPointerState = {
+        exactHitTarget: disabledPointerHit,
+        requestCount: disabledDraftRequestCount,
+        allocation: twoAfterDisabledPointer.gamePlugin?.input?.viewModel?.rows
+          ?.flatMap((row) => row.cells || [])
+          .find((cell) => cell.id === two.player.id + "-beta")?.allocation
+      };
       const disabledDraftResponse = await fetch(first.startup.localUrl + "/api/game-plugin-input", {
         method: "POST",
         headers: playerHeaders(two),
@@ -3270,7 +3342,7 @@ module.exports = Object.freeze([
       });
       const disabledDraft = { status: disabledDraftResponse.status, body: await disabledDraftResponse.json() };
       for (let allocation = 1; allocation <= 3; allocation += 1) {
-        await controllerPage.evaluate((selector) => document.querySelector(selector)?.click(), alphaSelector);
+        await controllerPage.locator(alphaSelector).click();
         await controllerPage.waitForFunction(({ playerId, expected }) => {
           const rows = window.controllerState?.lobby?.gamePlugin?.input?.viewModel?.rows || [];
           const cell = rows.flatMap((row) => row.cells || []).find((candidate) => candidate.id === playerId + "-alpha");
@@ -3294,7 +3366,7 @@ module.exports = Object.freeze([
       const completeDraftForPage = async (page, joined) => {
         const selector = '[data-game-plugin-input-draft-item="' + joined.player.id + '-alpha"]';
         for (let allocation = 1; allocation <= 3; allocation += 1) {
-          await page.evaluate((target) => document.querySelector(target)?.click(), selector);
+          await page.locator(selector).click();
           await page.waitForFunction(({ playerId, expected }) => {
             const rows = window.controllerState?.lobby?.gamePlugin?.input?.viewModel?.rows || [];
             const cell = rows.flatMap((row) => row.cells || []).find((candidate) => candidate.id === playerId + "-alpha");
@@ -4395,12 +4467,14 @@ module.exports = Object.freeze([
           earlyConfirm: earlyDraftConfirm,
           privateIsolationBefore: draftPrivateIsolationBefore,
           identityBefore: draftIdentityBefore,
+          pointerTargetBefore: draftPointerTargetBefore,
           allocations: draftAllocations,
           reloadRecovery: draftReloadRecovery,
           duplicate: duplicateDraft,
           malformed: malformedDraft,
           foreign: foreignDraft,
           disabledState: disabledDraftState,
+          disabledPointerState,
           disabled: disabledDraft,
           afterFirstConfirm: draftAfterFirstConfirm,
           barrierAfterFirst: draftBarrierAfterFirst,
@@ -4827,8 +4901,15 @@ module.exports = Object.freeze([
     || development.privateDraftGrid?.identityBefore?.rendererPresent !== true
     || development.privateDraftGrid?.identityBefore?.focused !== true
     || development.privateDraftGrid?.identityBefore?.overflowed !== true
+    || !(development.privateDraftGrid?.identityBefore?.scrollTop > 0)
+    || development.privateDraftGrid?.identityBefore?.panelCount !== 1
+    || development.privateDraftGrid?.identityBefore?.rowCount !== 2
+    || development.privateDraftGrid?.identityBefore?.cellCount !== 8
     || !(development.privateDraftGrid?.identityBefore?.bounds?.width > 0)
     || !(development.privateDraftGrid?.identityBefore?.bounds?.height > 0)
+    || development.privateDraftGrid?.pointerTargetBefore?.exact !== true
+    || development.privateDraftGrid?.pointerTargetBefore?.pointerEvents !== "auto"
+    || development.privateDraftGrid?.pointerTargetBefore?.declaredHitTarget !== "true"
     || JSON.stringify(development.privateDraftGrid?.allocations?.map((item) => item.allocation)) !== JSON.stringify([1, 2, 3, 0])
     || development.privateDraftGrid?.allocations?.some((item) => (
       !item.retained || !item.rendererRetained || !item.artLayerRetained || !item.focused
@@ -4845,6 +4926,9 @@ module.exports = Object.freeze([
     || development.privateDraftGrid?.foreign?.body?.errorCode !== "GAME_PLUGIN_INPUT_DRAFT_INVALID"
     || development.privateDraftGrid?.disabledState?.disabled !== true
     || development.privateDraftGrid?.disabledState?.ariaDisabled !== "true"
+    || development.privateDraftGrid?.disabledPointerState?.exactHitTarget !== true
+    || development.privateDraftGrid?.disabledPointerState?.requestCount !== 0
+    || development.privateDraftGrid?.disabledPointerState?.allocation !== 0
     || development.privateDraftGrid?.disabled?.status !== 422
     || development.privateDraftGrid?.disabled?.body?.errorCode !== "GAME_PLUGIN_INPUT_DRAFT_INVALID"
     || development.privateDraftGrid?.afterFirstConfirm?.submitted !== true

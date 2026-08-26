@@ -262,6 +262,13 @@ button.controller-widget-art-host.has-controller-widget-art > .art-runtime-objec
   pointer-events: none;
 }
 
+/* Recursive renderer controls live inside pointer-transparent authored Art
+   containers. Re-establish only the declared native control as a hit target;
+   parent hosts and decorative backplates remain presentation-only. */
+button.game-plugin-renderer-collection-item[data-game-plugin-renderer-input-hit-target="true"] {
+  pointer-events: auto;
+}
+
 .choice-option-button.controller-widget-art-host.has-controller-widget-art {
   position: relative;
   min-height: 72px;
